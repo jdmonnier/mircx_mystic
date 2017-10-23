@@ -3,8 +3,7 @@ from astropy.io import fits as pyfits
 from astropy.time import Time
 import os
 
-import log
-import setup
+from . import log, setup
 
 def load (files):
     '''
@@ -12,7 +11,7 @@ def load (files):
     are added to each header: MJD-OBS and ORIGNAME.
     The output is a list of FITS headers.
     '''
-    log.trace('load_headers');
+    elog = log.trace ('load_headers');
     
     hdrs = []    
     for f in files:
@@ -36,10 +35,13 @@ def load (files):
             # Close
             hdrs.append(hdr);
             hdulist.close();
-            log.notice('Read header for %s'%f);
+            log.info('Read header for %s'%f);
+        except (KeyboardInterrupt, SystemExit):
+            raise;
         except:
             log.warning('Cannot get header of %s'%f);
-            
+
+    log.info ('%i headers loaded'%len(hdrs));
     return hdrs;
 
 def match (h1,h2,keys,delta):
@@ -68,7 +70,7 @@ def group (hdrs, mtype, delta=300.0):
     - the time distance is larger than delta.
     The output is a list of list.
     '''
-    log.trace('group_headers');
+    elog = log.trace('group_headers');
     
     groups = [[]];
     mjd = -10e9;
@@ -83,25 +85,25 @@ def group (hdrs, mtype, delta=300.0):
         # if different type, continue
         # and start new group
         if h['FILETYPE'] != mtype:
-            # log.notice('Skip file %s'%fileinfo);
+            # log.info('Skip file %s'%fileinfo);
             if groups[-1] != []:
                 groups.append([]);
             continue;
 
         # If no previous
         if groups[-1] == []:
-            log.notice('New group %s'%fileinfo);
+            log.info('New group %s'%fileinfo);
             groups[-1].append(h);
             continue;
 
         # If no match, we start new group
         if match (h,groups[-1][-1],keys,delta) is False:
-            log.notice('New group %s'%fileinfo);
+            log.info('New group %s'%fileinfo);
             groups.append([h]);
             continue;
 
         # Else, add to current group
-        log.notice('Add file %s'%fileinfo);
+        log.info('Add file %s'%fileinfo);
         groups[-1].append(h);
 
     # Clean from void groups
@@ -123,16 +125,17 @@ def assoc (h, allh, tag, keys, which='closest', required=0):
         if tmp:
             out.append(a)
 
-    # Check required
-    if len (out) < required:
-        log.warning ('Cannot find %i %s for %s'%(required,tag,h['ORIGNAME']))
-
     # Check closest
     if len (out) > required and which=='closest':
         # Case need closest and more than 1 not supported yet
         if required < 2:
             time_diffs = np.array([o['MJD-OBS'] - h['MJD-OBS'] for o in out])
             out = [out[np.abs(time_diffs).argmin()]]
+            
+    # Check required
+    if len (out) < required:
+        log.warning ('Cannot find %i %s for %s'%(required,tag,h['ORIGNAME']))
+    else:
+        log.info ('Find %i %s for %s'%(len(out),tag,h['ORIGNAME']));
         
-    log.notice ('Find %i %s for %s'%(len(out),tag,h['ORIGNAME']));
     return out

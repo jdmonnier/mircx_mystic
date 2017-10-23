@@ -1,59 +1,62 @@
-from __future__ import print_function
-#from builtins import object
+from timeit import default_timer as timer
 import time
 import sys
+import logging
 
-ERROR   = 1
-WARNING = 2
-NOTICE  = 4
-TRACE   = 8
-
-verbose_type = ERROR+WARNING+NOTICE+TRACE
-
-def set_verbose_type(val):
-    """
-    Set the verbose type, e.i.:
-      set_verbose_type(ERROR+WARNING) only warning and error will be verbosed
-      set_verbose_type(ERROR+WARNING+NOTICE) all verbose
-      etc ...
-
-    """
-    global verbose_type
-    verbose_type = val
-
+# Load colors
 try:
     import colorama as col
 except:
-    str_mtype = {ERROR:"ERROR", WARNING:"WARNING", NOTICE:"NOTICE", TRACE:"TRACE"}
+    RED     = '';
+    MAGENTA = '';
+    RESET   = '';
+    BLUE    = '';
+    GREEN   = '';
 else:
-    str_mtype = {
-                 ERROR:col.Fore.RED+"ERROR"+col.Fore.RESET,
-                 WARNING:col.Fore.MAGENTA+"WARNING"+col.Fore.RESET,
-                 NOTICE:col.Fore.BLUE+"NOTICE"+col.Fore.RESET,
-                 TRACE:col.Fore.GREEN+"TRACE"+col.Fore.RESET
-                 }
-        
-def log(msg, mtype=WARNING):
-    global verbose_type
-    _message_format = """[MRX: {mtype}] {date}: {msg}"""
+    RED     = col.Fore.RED;
+    MAGENTA = col.Fore.MAGENTA;
+    RESET   = col.Fore.RESET;
+    BLUE    = col.Fore.BLUE;
+    GREEN   = col.Fore.GREEN;
 
-    print 
-    if verbose_type & mtype:
-        print(_message_format.format(mtype=str_mtype[mtype],
-                                    date=time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()),
-                                    msg =msg
-                                   ))
-        sys.stdout.flush()
-                                                                                    
+
+# Setup the configuration to log in a file
+logging.basicConfig(
+     level=logging.DEBUG,
+     format="[%(levelname)-7.7s] %(asctime)s: %(message)s",
+     datefmt='%Y-%m-%dT%H:%M:%S',
+     filename='mircx_pipeline.log', filemode='w');
+
+# Get the logger
+logger = logging.getLogger('mircx_pipeline');
+
+# Also log in consode, with colors
+console = logging.StreamHandler();
+console.setLevel (logging.INFO);
+formatter = logging.Formatter("[%(color)s%(levelname)-7.7s"+RESET+"] "
+                              "%(asctime)s: %(message)s",
+                              datefmt='%Y-%m-%dT%H:%M:%S');
+console.setFormatter (formatter);
+logger.addHandler(console);
+
+# Logging function
+def info(msg):
+    logger.info (msg, extra={'color':BLUE});
+
+def warning(msg):
+    logger.warning (msg, extra={'color':MAGENTA});
+
 def error(msg):
-    log(msg, mtype=ERROR)
+    logger.error (msg, extra={'color':RED});
 
-def warning(msg, level=1):
-    log(msg, mtype=WARNING)
-    
-def notice(msg, level=1):
-    log(msg, mtype=NOTICE)
+class trace:
+    def __init__(self, funcname):
+        logger.info('Start '+funcname,extra={'color':GREEN});
+        self.funcname = funcname;
+        self.stime = timer();
 
-def trace(msg, level=1):
-    log(msg, mtype=TRACE)
+    def __del__(self):
+        if self.stime is not None and self.funcname is not None:
+            msg = 'End '+self.funcname+' in %.2fs'%(timer()-self.stime);
+            logger.info (msg,extra={'color':GREEN});
         

@@ -3,7 +3,7 @@ from astropy.io import fits as pyfits
 import numpy as np
 import os
 
-import log
+from . import log
 
 def calib_output (hdr):
     '''
@@ -38,21 +38,26 @@ def write (hdulist,filename):
     Write file.
     '''
     fileinfo = filename + ' ('+hdulist[0].header['FILETYPE']+')';
-    log.notice ('Write file %s'%fileinfo);
+    log.info ('Write file %s'%fileinfo);
     
     if os.path.exists (filename):
         os.remove (filename);
     
     hdulist.writeto (filename);
 
-def load_raw (hdrs):
+def load_raw (hdrs, coaddRamp=False):
     '''
     Load data and append into gigantic cube
     '''
+
+    # Build header
+    hdr = hdrs[0].copy();
+    hdr.set('HIERARCH MIRC QC NRAMP',0,'Total number of ramp loaded');
+    
     cube = [];
     for h in hdrs:
         fileinfo = h['ORIGNAME'] + ' (' +h['FILETYPE']+')';
-        log.notice ('Load file %s'%fileinfo);
+        log.info ('Load file %s'%fileinfo);
         hdulist = pyfits.open(h['ORIGNAME']);
 
         # Read compressed data. 
@@ -79,20 +84,24 @@ def load_raw (hdrs):
         bias = 0.5 * (np.median(data[:,:,:,0:10],axis=3) + np.median(data[:,:,:,-11:-1],axis=3));
         data = data - bias[:,:,:,None];
 
-        # Append        
-        cube.append(data);
+        # Append ramps or co-add them
+        hdr['HIERARCH MIRC QC NRAMP'] += data.shape[0]
+        if coaddRamp is True and len(cube) != 0:
+            cube[0] += np.sum (data,axis=0)[None,:,:,:];
+        else:
+            cube.append(data);
 
     # Convert to array
-    log.notice ('Convert to cube');
+    log.info ('Convert to cube');
     cube = np.array(cube);
-    
+
     # Concatenate all files into a single sequence
-    log.notice ('Reshape cube');
+    log.info ('Reshape cube');
     (a,b,c,d,e) = cube.shape;
     cube.shape = (a*b,c,d,e);
-
-    # Build header
-    hdr = hdrs[0].copy();
-    hdr.set('HIERARCH MIRC QC NFRAME',cube.shape[0],'Total number of frames used');
+    
+    # Compute the mean if coadd
+    if coaddRamp is True:
+        cube /= hdr['HIERARCH MIRC QC NRAMP'];
     
     return hdr,cube;

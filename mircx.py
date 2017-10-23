@@ -1,28 +1,29 @@
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 from astropy.stats import sigma_clipped_stats
 from astropy.io import fits as pyfits
-import os
+from scipy.fftpack import fft, ifft
 
-import log
-import files
+from . import log, files
 
 def remove_background (cube, hdr):
     ''' Remove the background from a cube(r,f,xy), in-place'''
     # Load background
-    log.notice ('Load background %s'%hdr['ORIGNAME']);
+    log.info ('Load background %s'%hdr['ORIGNAME']);
     hdulist  = pyfits.open(hdr['ORIGNAME']);
     bkg_data = hdulist[0].data;
     hdulist.close ();
     
     # Remove background
-    log.notice ('Remove background');
+    log.info ('Remove background');
     cube -= bkg_data[None,:,:,:];
 
 def crop_fringe_window (cube, hdr):
+    
     ''' Extract fringe window from a cube(r,f,xy)'''
     # Load window
-    log.notice ('Load window %s'%hdr['ORIGNAME']);
+    log.info ('Load window %s'%hdr['ORIGNAME']);
     hdulist  = pyfits.open(hdr['ORIGNAME']);
     sx = hdulist[0].header['HIERARCH MIRC QC FRINGE_WIN STARTX'];
     nx = hdulist[0].header['HIERARCH MIRC QC FRINGE_WIN NX'];
@@ -31,8 +32,10 @@ def crop_fringe_window (cube, hdr):
     hdulist.close ();
 
     # Crop the fringe window
-    log.notice ('Extract the fringe window');
-    return cube[:,:,sy:sy+ny,sx:sx+nx];
+    log.info ('Extract the fringe window');
+    output = cube[:,:,sy:sy+ny,sx:sx+nx]
+
+    return output;
     
 def compute_background (hdrs,output=None,overwrite=True):
     '''
@@ -40,7 +43,7 @@ def compute_background (hdrs,output=None,overwrite=True):
     BACKGROUND. The output file had the mean and rms over
     all frames, written as ramp.
     '''
-    log.trace('compute_background');
+    elog = log.trace ('compute_background');
     
     # Default output
     if output is None:
@@ -48,30 +51,23 @@ def compute_background (hdrs,output=None,overwrite=True):
 
     # Check
     if os.path.exists (output+'.fits') and overwrite is False:
-        log.notice ('Product already exists');
+        log.info ('Product already exists');
         return 1;
     
     # Load files
-    hdr,cube = files.load_raw (hdrs);
+    hdr,cube = files.load_raw (hdrs, coaddRamp=True);
 
     # Background mean and rms
-    log.notice ('Compute mean');
-    bkg_mean = np.mean (cube, axis=0);
+    log.info ('Compute mean');
+    bkg_mean = cube[0,:,:,:];
     
-    log.notice ('Compute rms');
-    bkg_rms  = np.std (cube, axis=0);
-
     # Add QC parameters
-    f0,x0,y0 = bkg_mean.shape;
+    nf,nx,ny = bkg_mean.shape;
     d = 10;
     
-    (mean,med,std) = sigma_clipped_stats (bkg_mean[f0/2,x0/2-d:x0/2+d,y0/2-d:y0/2+d]);
+    (mean,med,std) = sigma_clipped_stats (bkg_mean[nf/2,nx/2-d:nx/2+d,ny/2-d:ny/2+d]);
     hdr.set ('HIERARCH MIRC QC MEAN MED',med,'[adu]');
     hdr.set ('HIERARCH MIRC QC MEAN STD',std,'[adu]');
-
-    (mean,med,std) = sigma_clipped_stats (bkg_rms[f0/2,x0/2-d:x0/2+d,y0/2-d:y0/2+d]);
-    hdr.set ('HIERARCH MIRC QC NOISE MED',med,'[adu]');
-    hdr.set ('HIERARCH MIRC QC NOISE STD',std,'[adu]');
     
     # Create output HDU
     hdu1 = pyfits.PrimaryHDU (bkg_mean);
@@ -83,24 +79,15 @@ def compute_background (hdrs,output=None,overwrite=True):
     hdu1.header['FILETYPE'] = 'BACKGROUND_REDUCED';
     for i,h in enumerate(hdrs):
         hdu1.header['HIERARCH MIRC PRO RAW%i'%i] = h['ORIGNAME'];
-        
-    # Add second HDU
-    hdu2 = pyfits.ImageHDU (bkg_rms);
-    hdu2.header['BUNIT']   = 'ADU';
-    hdu2.header['EXTNAME'] = 'RMS';
 
     # Write output file
-    hdulist = pyfits.HDUList ([hdu1,hdu2]);
+    hdulist = pyfits.HDUList ([hdu1]);
     files.write (hdulist, output+'.fits');
 
     # Figures
     fig,ax = plt.subplots();
-    ax.imshow (bkg_mean[f0/2,:,:]);
+    ax.imshow (bkg_mean[nf/2,:,:]);
     fig.savefig (output+'_mean.png');
-    
-    fig,ax = plt.subplots();
-    ax.imshow (bkg_rms[f0/2,:,:]);
-    fig.savefig (output+'_rms.png');
 
     plt.close("all");
     return hdulist;
@@ -110,7 +97,10 @@ def compute_windows (hdrs,bkg,output=None,overwrite=True):
     Find the location of the fringe on the detector.
     The output file contains a binary (0/1) image.
     '''
-    log.trace('compute_window');
+    elog = log.trace ('compute_windows');
+    
+    # Check inputs
+    bkg = bkg[0] if type(bkg) == list else bkg;
     
     # Default output
     if output is None:
@@ -118,17 +108,17 @@ def compute_windows (hdrs,bkg,output=None,overwrite=True):
 
     # Check
     if os.path.exists (output+'.fits') and overwrite is False:
-        log.notice ('Product already exists');
+        log.info ('Product already exists');
         return 1;
 
     # Load files
-    hdr,cube = files.load_raw (hdrs);
+    hdr,cube = files.load_raw (hdrs, coaddRamp=True);
 
     # Remove background
     remove_background (cube, bkg);
 
     # Compute the sum
-    log.notice ('Compute sum');
+    log.info ('Compute sum');
     fmean = np.mean (cube, axis=(0,1));
 
     # Figures
@@ -143,7 +133,7 @@ def compute_windows (hdrs,bkg,output=None,overwrite=True):
     idy_s = np.argmax(fcut>0.25);
     idy_e = len(fcut) - np.argmax(fcut[::-1]>0.25);
     
-    log.notice ('Found limit in spectral direction: %i:%i'%(idy_s,idy_e));
+    log.info ('Found limit in spectral direction: %i:%i'%(idy_s,idy_e));
     fmeancut = fmean[idy_s:idy_e,:];
 
     # Get spatial limits of profile
@@ -153,7 +143,7 @@ def compute_windows (hdrs,bkg,output=None,overwrite=True):
     idx_s = np.argmax(fcut>0.25);
     idx_e = len(fcut) - np.argmax(fcut[::-1]>0.25);
     
-    log.notice ('Found limit in spatial direction: %i:%i'%(idx_s,idx_e));
+    log.info ('Found limit in spatial direction: %i:%i'%(idx_s,idx_e));
     fmeancut = fmeancut[:,idx_s:idx_e];
 
     # Figures
@@ -172,12 +162,11 @@ def compute_windows (hdrs,bkg,output=None,overwrite=True):
     hdr.set ('HIERARCH MIRC QC FRINGE_WIN NY',idy_e-idy_s,'[pix]');
     
     # Create output HDU
-    hdu1 = pyfits.PrimaryHDU (pixmap);
+    hdu1 = pyfits.PrimaryHDU (fmeancut);
     hdu1.header = hdr;
 
     # Update header
     hdu1.header['BZERO'] = 0;
-    hdu1.header['BUNIT'] = 'ADU';
     hdu1.header['FILETYPE'] = 'PIXMAP';
 
     # Set files
@@ -192,19 +181,23 @@ def compute_windows (hdrs,bkg,output=None,overwrite=True):
     plt.close("all");
     return fmean;
 
-def compute_snr (hdrs,bkg,win,output=None,overwrite=True):
+def compute_preproc (hdrs,bkg,win,output=None,overwrite=True):
     '''
-    Compute SNR
+    Compute preproc file
     '''
-    log.trace('compute_snr');
+    elog = log.trace ('compute_preproc');
+
+    # Check inputs
+    bkg = bkg[0] if type(bkg) == list else bkg;
+    win = win[0] if type(win) == list else win;
 
     # Default output
     if output is None:
-        output = files.reduced_output (hdrs[0])+'_snr';
+        output = files.reduced_output (hdrs[0])+'_preproc';
 
     # Check
     if os.path.exists (output+'.fits') and overwrite is False:
-        log.notice ('Product already exists');
+        log.info ('Product already exists');
         return 1;
         
     # Load files
@@ -222,15 +215,40 @@ def compute_snr (hdrs,bkg,win,output=None,overwrite=True):
     
     # Crop fringe part
     fringe = crop_fringe_window (cube, win);
-    nr,nf,nx,ny = fringe.shape;
 
+    # Create output HDU
+    log.info ('Create file');
+    hdu1 = pyfits.PrimaryHDU (fringe);
+    hdu1.header = hdr;
+
+    # Update header
+    hdu1.header['BZERO'] = 0;
+    hdu1.header['BUNIT'] = 'ADU';
+    hdu1.header['FILETYPE'] = 'PREPROC';
+
+    # Set files
+    for i,h in enumerate(hdrs):
+        hdu1.header['HIERARCH MIRC PRO RAW%i'%i] = h['ORIGNAME'];
+    hdu1.header['HIERARCH MIRC PRO BACKGROUND'] = bkg['ORIGNAME'];
+    hdu1.header['HIERARCH MIRC PRO WINDOW'] = win['ORIGNAME'];
+
+    # Write output file
+    hdulist = pyfits.HDUList (hdu1);
+    files.write (hdulist, output+'.fits');
+    
+    plt.close("all");
+    return fringe;
+    
+def compute_snr (hdrs,output=None,overwrite=True):
+
+    nr,nf,nx,ny = fringe.shape;
+    
     # Compute fft
-    log.notice ('Compute FFT');
-    from scipy.fftpack import fft, ifft
+    log.info ('Compute FFT');
     fringe_ft = fft (fringe, axis=-1);
 
     # Compute integrated PSD (no coherent integration)
-    log.notice ('Compute PSD');
+    log.info ('Compute PSD');
     mean_psd = np.mean (np.abs(fringe_ft)**2, (0,1));
 
     # Figures
@@ -242,7 +260,7 @@ def compute_snr (hdrs,bkg,win,output=None,overwrite=True):
     fig.savefig (output+'_psd.png');
 
     # Compute cross-spectra
-    log.notice ('Compute CSP');
+    log.info ('Compute CSP');
     csd = 0.5 * fringe_ft[:,0:nf-3:4] * np.conj (fringe_ft[:,2:nf-1:4]) + \
           0.5 * fringe_ft[:,1:nf-2:4] * np.conj (fringe_ft[:,3:nf-0:4]);
     mean_psd = np.mean (csd, (0,1)).real;
