@@ -23,7 +23,7 @@ def loaddir (dirs):
         log.info ('Load directory: '+dir);
         files = glob.glob(dir+'/mircx*.fit*');
         files = sorted (files);
-        hdrs.extend (load (files[0:100]));
+        hdrs.extend (load (files));
 
     return hdrs;
 
