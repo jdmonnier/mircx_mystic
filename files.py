@@ -5,33 +5,24 @@ import os
 
 from . import log
 
-def calib_output (hdr):
+def output (outputDir,hdr,suffix):
     '''
-    Return a string like: ./calib/mircx00550
+    Return a string like: ./outputDir/mircx00550_suffix
     '''
-    directory = './calib/';
-    if not os.path.exists(directory):
-        os.makedirs(directory)    
     
-    name = hdr['ORIGNAME'];
-    name = os.path.splitext(os.path.basename(name))[0];
-    if name[-5:] == '.fits':
-        name = name[0:-5];
-    return directory + name;
-
-def reduced_output (hdr):
-    '''
-    Return a string like: ./reduced/mircx00550
-    '''
-    directory = './reduced/';
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    # Build diretory if needed
+    if not os.path.exists (outputDir):
+        os.makedirs (outputDir);
         
+    # Get filename 
     name = hdr['ORIGNAME'];
-    name = os.path.splitext(os.path.basename(name))[0];
+    name = os.path.splitext (os.path.basename(name))[0];
     if name[-5:] == '.fits':
         name = name[0:-5];
-    return directory + name;
+    
+    # Return
+    output = outputDir + '/' + name + '_' + suffix;
+    return output;
 
 def write (hdulist,filename):
     '''

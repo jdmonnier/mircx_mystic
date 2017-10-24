@@ -4,6 +4,7 @@
 import mircx_pipeline as mrx
 import glob
 import argparse
+import os
 
 usage = """
 description:
@@ -14,7 +15,7 @@ description:
 examples = """
 examples:
   cd /path/to/my/data/
-  mirx_preproc.py --background=FALSE
+  mirx_preproc.py --background=FALSE --output-dir=./mytest/
  
 """
 
@@ -27,25 +28,30 @@ parser = argparse.ArgumentParser (description=usage, epilog=examples,
 TrueFalse = ['TRUE','FALSE'];
 TrueFalseOverwrite = ['TRUE','FALSE','OVERWRITE'];
 
-parser.add_argument ("--background", dest="background",default='TRUE',choices=TrueFalseOverwrite,
-                    help="compute the BACKGROUND products [TRUE]");
+parser.add_argument ("--background", dest="background",default='TRUE',
+                     choices=TrueFalseOverwrite,
+                     help="compute the BACKGROUND products [TRUE]");
 
-parser.add_argument ("--pixmap", dest="pixmap",default='TRUE',choices=TrueFalseOverwrite,
-                    help="compute the PIXMAP products [TRUE]");
+parser.add_argument ("--pixmap", dest="pixmap",default='TRUE',
+                     choices=TrueFalseOverwrite,
+                     help="compute the PIXMAP products [TRUE]");
 
-parser.add_argument ("--preproc", dest="preproc",default='TRUE',choices=TrueFalseOverwrite,
-                    help="compute the PREPROC products [TRUE]");
+parser.add_argument ("--preproc", dest="preproc",default='TRUE',
+                     choices=TrueFalseOverwrite,
+                     help="compute the PREPROC products [TRUE]");
+
+parser.add_argument ("--output-dir", dest="outputDir",default='./reduced/',
+                     help="output directories for product");
 
 # Parse argument
 argoptions = parser.parse_args();
-
-dirCalib   = './calib/';
-dirReduced = './reduced/';
 
 #
 # Initialisation
 #
 
+# Output
+outputDir = argoptions.outputDir;
 
 # Define setup keys
 keys = mrx.setup.detector + mrx.setup.instrument;
@@ -65,8 +71,18 @@ if argoptions.background != 'FALSE':
 
     # Compute all backgrounds
     for i,gp in enumerate(gps):
-        mrx.log.info ('Compute background {0} over {1} '.format(i+1,len(gps)));
-        mrx.compute_background (gp, overwrite=overwrite);
+        try:
+            mrx.log.info ('Compute background {0} over {1} '.format(i+1,len(gps)));
+            
+            output = mrx.files.output (outputDir, gp[0], 'bkg');
+            if os.path.exists (output+'.fits') and overwrite is False:
+                mrx.log.info ('Product already exists');
+                continue;
+                
+            mrx.compute_background (gp, output=output);
+            
+        except Exception as exc:
+            mrx.log.error ('Cannot compute preproc: '+str(exc));
 
 #
 # Compute PIXMAP
@@ -79,14 +95,25 @@ if argoptions.pixmap != 'FALSE':
     overwrite = (argoptions.pixmap == 'OVERWRITE');
 
     # Read all calibration products
-    hdrs_calib = mrx.headers.loaddir (dirCalib);
+    hdrs_calib = mrx.headers.loaddir (outputDir);
 
-    # Compute all window
+    # Compute all pixmap
     for i,gp in enumerate(gps):
-        mrx.log.info ('Compute window {0} over {1} '.format(i+1,len(gps)));
-        bkg = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_REDUCED',
-                                 keys, which='closest', required=1);
-        mrx.compute_windows (gp, bkg[0], overwrite=overwrite);
+        try:
+            mrx.log.info ('Compute pixmap {0} over {1} '.format(i+1,len(gps)));
+
+            output = mrx.files.output (outputDir, gp[0], 'pixmap');
+            if os.path.exists (output+'.fits') and overwrite is False:
+                mrx.log.info ('Product already exists');
+                continue;
+            
+            bkg = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_REDUCED',
+                                     keys, which='closest', required=1);
+            
+            mrx.compute_pixmap (gp, bkg, output=output);
+            
+        except Exception as exc:
+            mrx.log.error ('Cannot compute preproc: '+str(exc));
 
 #
 # Compute PREPROC
@@ -99,14 +126,28 @@ if argoptions.preproc != 'FALSE':
     overwrite = (argoptions.preproc == 'OVERWRITE');
 
     # Read all calibration products
-    hdrs_calib = mrx.headers.loaddir (dirCalib);
+    hdrs_calib = mrx.headers.loaddir (outputDir);
 
     # Compute 
     for i,gp in enumerate(gps):
-        mrx.log.info ('Compute preproc {0} over {1} '.format(i+1,len(gps)));
-        bkg = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_REDUCED',
-                                keys, which='closest', required=1);
-        win = mrx.headers.assoc (gp[0], hdrs_calib, 'PIXMAP',
-                                keys, which='closest', required=1);
-        mrx.compute_preproc (gp,bkg[0],win[0], overwrite=overwrite);
+        try:
+            mrx.log.info ('Compute preproc {0} over {1} '.format(i+1,len(gps)));
+            
+            output = mrx.files.output (outputDir, gp[0], 'preproc');
+            if os.path.exists (output+'.fits') and overwrite is False:
+                mrx.log.info ('Product already exists');
+                continue;
+                
+            bkg  = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_REDUCED',
+                                    keys, which='closest', required=1);
+            
+            pmap = mrx.headers.assoc (gp[0], hdrs_calib, 'PIXMAP',
+                                    keys, which='closest', required=1);
+            
+            mrx.compute_preproc (gp, bkg, pmap, output=output);
+            
+        except Exception as exc:
+            mrx.log.error ('Cannot compute preproc: '+str(exc));
+            
+            
 

@@ -1,5 +1,4 @@
 import numpy as np
-import os
 import matplotlib.pyplot as plt
 from astropy.stats import sigma_clipped_stats
 from astropy.io import fits as pyfits
@@ -37,22 +36,13 @@ def crop_fringe_window (cube, hdr):
 
     return output;
     
-def compute_background (hdrs,output=None,overwrite=True):
+def compute_background (hdrs,output='output_bkg'):
     '''
     Compute BACKGROUND_REDUCED file from a sequence of
     BACKGROUND. The output file had the mean and rms over
     all frames, written as ramp.
     '''
     elog = log.trace ('compute_background');
-    
-    # Default output
-    if output is None:
-        output = files.calib_output (hdrs[0])+'_bkg';
-
-    # Check
-    if os.path.exists (output+'.fits') and overwrite is False:
-        log.info ('Product already exists');
-        return 1;
     
     # Load files
     hdr,cube = files.load_raw (hdrs, coaddRamp=True);
@@ -97,25 +87,20 @@ def compute_background (hdrs,output=None,overwrite=True):
     plt.close("all");
     return hdulist;
 
-def compute_windows (hdrs,bkg,output=None,overwrite=True):
+def compute_pixmap (hdrs,bkg,output='output_pixmap'):
     '''
     Find the location of the fringe on the detector.
     The output file contains a binary (0/1) image.
     '''
-    elog = log.trace ('compute_windows');
+    elog = log.trace ('compute_pixmap');
     
+    # Check inputs
+    if bkg == [] or bkg is None:
+        raise ValueError('Missing mandatory input');
+
     # Check inputs
     bkg = bkg[0] if type(bkg) == list else bkg;
     
-    # Default output
-    if output is None:
-        output = files.calib_output (hdrs[0])+'_win';
-
-    # Check
-    if os.path.exists (output+'.fits') and overwrite is False:
-        log.info ('Product already exists');
-        return 1;
-
     # Load files
     hdr,cube = files.load_raw (hdrs, coaddRamp=True);
 
@@ -156,7 +141,7 @@ def compute_windows (hdrs,bkg,output=None,overwrite=True):
     ax.imshow (fmeancut);
     fig.savefig (output+'_cut.png');
 
-    # Compute the window map as binary
+    # Compute the pix map as binary
     pixmap = np.zeros(fmean.shape);
     pixmap[idy_s:idy_e,idx_s:idx_e] = 1;
 
@@ -186,25 +171,21 @@ def compute_windows (hdrs,bkg,output=None,overwrite=True):
     plt.close("all");
     return fmean;
 
-def compute_preproc (hdrs,bkg,win,output=None,overwrite=True):
+def compute_preproc (hdrs,bkg,pmap,output='output_pixmap'):
     '''
     Compute preproc file
     '''
     elog = log.trace ('compute_preproc');
 
     # Check inputs
-    bkg = bkg[0] if type(bkg) == list else bkg;
-    win = win[0] if type(win) == list else win;
+    if  bkg == []  or bkg is None or \
+        pmap == [] or pmap is None:
+        raise ValueError('Missing mandatory input');
+    
+    # Check inputs
+    bkg  = bkg[0]  if type(bkg) == list  else bkg;
+    pmap = pmap[0] if type(pmap) == list else pmap;
 
-    # Default output
-    if output is None:
-        output = files.reduced_output (hdrs[0])+'_preproc';
-
-    # Check
-    if os.path.exists (output+'.fits') and overwrite is False:
-        log.info ('Product already exists');
-        return 1;
-        
     # Load files
     hdr,cube = files.load_raw (hdrs);
 
@@ -219,7 +200,7 @@ def compute_preproc (hdrs,bkg,win,output=None,overwrite=True):
     hdr.set ('HIERARCH MIRC QC EMPTY STD',std,'[adu]');
     
     # Crop fringe part
-    fringe = crop_fringe_window (cube, win);
+    fringe = crop_fringe_window (cube, pmap);
 
     # Create output HDU
     log.info ('Create file');
@@ -235,7 +216,7 @@ def compute_preproc (hdrs,bkg,win,output=None,overwrite=True):
     for i,h in enumerate(hdrs):
         hdu1.header['HIERARCH MIRC PRO RAW%i'%i] = h['ORIGNAME'];
     hdu1.header['HIERARCH MIRC PRO BACKGROUND'] = bkg['ORIGNAME'];
-    hdu1.header['HIERARCH MIRC PRO WINDOW'] = win['ORIGNAME'];
+    hdu1.header['HIERARCH MIRC PRO PIXMAP'] = pmap['ORIGNAME'];
 
     # Write output file
     hdulist = pyfits.HDUList (hdu1);

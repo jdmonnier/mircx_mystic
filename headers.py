@@ -60,8 +60,8 @@ def load (files):
             log.info('Read header for %s'%f);
         except (KeyboardInterrupt, SystemExit):
             raise;
-        except:
-            log.warning('Cannot get header of %s'%f);
+        except Exception as exc:
+            log.warning ('Cannot get header of '+f+' ('+str(exc)+')');
 
     log.info ('%i headers loaded'%len(hdrs));
     return hdrs;
