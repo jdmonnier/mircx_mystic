@@ -2,8 +2,30 @@ import numpy as np
 from astropy.io import fits as pyfits
 from astropy.time import Time
 import os
+import glob
 
 from . import log, setup
+
+def loaddir (dirs):
+    '''
+    Load the headers of all files mircx*.fit* from
+    the input list of directory
+    '''
+    elog = log.trace ('loaddir');
+
+    # Ensure this is a list
+    if type(dirs) == str:
+        dirs = [dirs];
+
+    # Load all dirs
+    hdrs = [];
+    for dir in dirs:
+        log.info ('Load directory: '+dir);
+        files = glob.glob(dir+'/mircx*.fit*');
+        files = sorted (files);
+        hdrs.extend (load (files[0:100]));
+
+    return hdrs;
 
 def load (files):
     '''
@@ -11,7 +33,7 @@ def load (files):
     are added to each header: MJD-OBS and ORIGNAME.
     The output is a list of FITS headers.
     '''
-    elog = log.trace ('load_headers');
+    elog = log.trace ('load');
     
     hdrs = []    
     for f in files:
@@ -77,6 +99,9 @@ def group (hdrs, mtype, delta=300.0):
 
     # Key used to define setup
     keys = ['FILETYPE'] + setup.detector + setup.instrument;
+
+    # Sort by time
+    hdrs = sorted (hdrs,key=lambda h: h['MJD-OBS']);
     
     # Assume hdrs is sorted
     for h in hdrs:

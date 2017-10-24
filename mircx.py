@@ -64,8 +64,13 @@ def compute_background (hdrs,output=None,overwrite=True):
     # Add QC parameters
     nf,nx,ny = bkg_mean.shape;
     d = 10;
+
+    # Select which one to plot
+    idf = int(nf/2);
+    idx = int(nx/2);
+    idy = int(ny/2);
     
-    (mean,med,std) = sigma_clipped_stats (bkg_mean[nf/2,nx/2-d:nx/2+d,ny/2-d:ny/2+d]);
+    (mean,med,std) = sigma_clipped_stats (bkg_mean[idf,idx-d:idx+d,idy-d:idy+d]);
     hdr.set ('HIERARCH MIRC QC MEAN MED',med,'[adu]');
     hdr.set ('HIERARCH MIRC QC MEAN STD',std,'[adu]');
     
@@ -86,7 +91,7 @@ def compute_background (hdrs,output=None,overwrite=True):
 
     # Figures
     fig,ax = plt.subplots();
-    ax.imshow (bkg_mean[nf/2,:,:]);
+    ax.imshow (bkg_mean[idf,:,:]);
     fig.savefig (output+'_mean.png');
 
     plt.close("all");
@@ -242,6 +247,7 @@ def compute_preproc (hdrs,bkg,win,output=None,overwrite=True):
 def compute_snr (hdrs,output=None,overwrite=True):
 
     nr,nf,nx,ny = fringe.shape;
+    ny2 = int(ny/2);
     
     # Compute fft
     log.info ('Compute FFT');
@@ -254,9 +260,9 @@ def compute_snr (hdrs,output=None,overwrite=True):
     # Figures
     (mean,med,std) = sigma_clipped_stats (mean_psd);
     fig,ax = plt.subplots(3,1);
-    ax[0].imshow (mean_psd[:,0:ny/2],vmin=med-5*std,vmax=med+5*std);
-    ax[1].plot (mean_psd[:,0:ny/2].T);
-    ax[2].plot (mean_psd[:,0:ny/2].T); ax[2].set_ylim (med-3*std, med+3*std);
+    ax[0].imshow (mean_psd[:,0:ny2],vmin=med-5*std,vmax=med+5*std);
+    ax[1].plot (mean_psd[:,0:ny2].T);
+    ax[2].plot (mean_psd[:,0:ny2].T); ax[2].set_ylim (med-3*std, med+3*std);
     fig.savefig (output+'_psd.png');
 
     # Compute cross-spectra
@@ -268,9 +274,9 @@ def compute_snr (hdrs,output=None,overwrite=True):
     # Figures
     (mean,med,std) = sigma_clipped_stats (mean_psd);
     fig,ax = plt.subplots(3,1);
-    ax[0].imshow (mean_psd[:,0:ny/2],vmin=med-5*std,vmax=med+5*std);
-    ax[1].plot (mean_psd[:,0:ny/2].T);
-    ax[2].plot (mean_psd[:,0:ny/2].T); ax[2].set_ylim (med-3*std, med+3*std);
+    ax[0].imshow (mean_psd[:,0:ny2],vmin=med-5*std,vmax=med+5*std);
+    ax[1].plot (mean_psd[:,0:ny2].T);
+    ax[2].plot (mean_psd[:,0:ny2].T); ax[2].set_ylim (med-3*std, med+3*std);
     fig.savefig (output+'_csd.png');
     
     
