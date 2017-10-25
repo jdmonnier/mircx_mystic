@@ -111,7 +111,7 @@ def compute_background (hdrs,output='output_bkg'):
     files.write (hdulist, output+'.fits');
 
     # Figures
-    fig,(ax1,ax2) = plt.subplots(1,2);
+    fig,(ax1,ax2) = plt.subplots (2,1);
     ax1.imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std);
     ax2.imshow (bkg_mean[idf,:,:], vmin=med-20*std, vmax=med+20*std);
     fig.savefig (output+'_mean.png');
