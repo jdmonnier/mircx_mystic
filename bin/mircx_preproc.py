@@ -47,6 +47,10 @@ parser.add_argument ("--preproc", dest="preproc",default='TRUE',
 parser.add_argument ("--output-dir", dest="outputDir",default='./reduced/',
                      help="output directories for product");
 
+parser.add_argument ("--max-file", dest="maxFile",default=None,
+                     help="maximum nuber of file to load to build"
+                          "product (speed-up for tests)");
+
 # Parse argument
 argoptions = parser.parse_args();
 
@@ -56,6 +60,12 @@ argoptions = parser.parse_args();
 
 # Output
 outputDir = argoptions.outputDir;
+
+# Format maxFile
+mf = argoptions.maxFile;
+if mf is not None:
+    mrx.log.warning ('--max-file set to '+mf+', wont use all data!!');
+    mf = int(mf);
 
 # Define setup keys
 keys = mrx.setup.detector + mrx.setup.instrument;
@@ -85,7 +95,7 @@ if argoptions.background != 'FALSE':
                 
             mrx.log.setFile (output+'.log');
 
-            mrx.compute_background (gp, output=output);
+            mrx.compute_background (gp[0:mf], output=output);
             
         except Exception as exc:
             mrx.log.error ('Cannot compute background: '+str(exc));
@@ -122,7 +132,7 @@ if argoptions.pixmap != 'FALSE':
             bkg = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_REDUCED',
                                      keys, which='closest', required=1);
             
-            mrx.compute_pixmap (gp, bkg, output=output);
+            mrx.compute_pixmap (gp[0:mf], bkg, output=output);
             
         except Exception as exc:
             mrx.log.error ('Cannot compute pixmap: '+str(exc));
@@ -161,7 +171,7 @@ if argoptions.preproc != 'FALSE':
             pmap = mrx.headers.assoc (gp[0], hdrs_calib, 'PIXMAP',
                                     keys, which='closest', required=1);
             
-            mrx.compute_preproc (gp, bkg, pmap, output=output);
+            mrx.compute_preproc (gp[0:mf], bkg, pmap, output=output);
             
         except Exception as exc:
             mrx.log.error ('Cannot compute preproc: '+str(exc));
