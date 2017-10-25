@@ -1,2 +1,22 @@
+* Description
+
 This is data-quality pipeline of MIRCX.
 We use it to explore the performances of the detectors.
+
+* Requirements
+
+python3 in anaconda3
+some packages (all from anaconda3)
+
+* Usage
+
+Make sure the mircx_pipeline is located in a directory
+pointed out by your $PYTHONPATH variable.
+
+Go in the directory you want to reduce, run the script:
+
+  bin/mircx_preproc.py
+
+Look at output products in ./reduced/
+
+
