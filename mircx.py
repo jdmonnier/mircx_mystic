@@ -6,8 +6,24 @@ from scipy.fftpack import fft, ifft
 
 from . import log, files
 
+def check_hdrs_input (hdrs, required=1):
+    ''' Check the input when provided as hdrs'''
+
+    # Ensure a list
+    if type(hdrs) is not list:
+        hdrs = [hdrs];
+
+    # Check inputs are headers
+    hdrs = [h for h in hdrs if type(h) is pyfits.header.Header or \
+            type(h) is pyfits.hdu.compressed.CompImageHeader];
+
+    if len(hdrs) < required:
+        raise ValueError ('Missing mandatory input');
+    
+
 def remove_background (cube, hdr):
     ''' Remove the background from a cube(r,f,xy), in-place'''
+
     # Load background
     log.info ('Load background %s'%hdr['ORIGNAME']);
     hdulist  = pyfits.open(hdr['ORIGNAME']);
@@ -19,10 +35,10 @@ def remove_background (cube, hdr):
     cube -= bkg_data[None,:,:,:];
 
 def crop_fringe_window (cube, hdr):
-    
     ''' Extract fringe window from a cube(r,f,xy)'''
+    
     # Load window
-    log.info ('Load window %s'%hdr['ORIGNAME']);
+    log.info ('Load pixmap %s'%hdr['ORIGNAME']);
     hdulist  = pyfits.open(hdr['ORIGNAME']);
     sx = hdulist[0].header['HIERARCH MIRC QC FRINGE_WIN STARTX'];
     nx = hdulist[0].header['HIERARCH MIRC QC FRINGE_WIN NX'];
@@ -43,6 +59,9 @@ def compute_background (hdrs,output='output_bkg'):
     all frames, written as ramp.
     '''
     elog = log.trace ('compute_background');
+
+    # Check inputs
+    check_hdrs_input (hdrs, required=1);
     
     # Load files
     hdr,cube = files.load_raw (hdrs, coaddRamp=True);
@@ -95,17 +114,14 @@ def compute_pixmap (hdrs,bkg,output='output_pixmap'):
     elog = log.trace ('compute_pixmap');
     
     # Check inputs
-    if bkg == [] or bkg is None:
-        raise ValueError('Missing mandatory input');
-
-    # Check inputs
-    bkg = bkg[0] if type(bkg) == list else bkg;
+    check_hdrs_input (hdrs, required=1);
+    check_hdrs_input (bkg, required=1);
     
     # Load files
     hdr,cube = files.load_raw (hdrs, coaddRamp=True);
 
     # Remove background
-    remove_background (cube, bkg);
+    remove_background (cube, bkg[0]);
 
     # Compute the sum
     log.info ('Compute sum');
@@ -162,7 +178,7 @@ def compute_pixmap (hdrs,bkg,output='output_pixmap'):
     # Set files
     for i,h in enumerate(hdrs):
         hdu1.header['HIERARCH MIRC PRO RAW%i'%i] = h['ORIGNAME'];
-    hdu1.header['HIERARCH MIRC PRO BACKGROUND'] = bkg['ORIGNAME'];
+    hdu1.header['HIERARCH MIRC PRO BACKGROUND'] = bkg[0]['ORIGNAME'];
 
     # Write output file
     hdulist = pyfits.HDUList (hdu1);
@@ -178,19 +194,15 @@ def compute_preproc (hdrs,bkg,pmap,output='output_pixmap'):
     elog = log.trace ('compute_preproc');
 
     # Check inputs
-    if  bkg == []  or bkg is None or \
-        pmap == [] or pmap is None:
-        raise ValueError('Missing mandatory input');
-    
-    # Check inputs
-    bkg  = bkg[0]  if type(bkg) == list  else bkg;
-    pmap = pmap[0] if type(pmap) == list else pmap;
+    check_hdrs_input (hdrs, required=1);
+    check_hdrs_input (bkg, required=1);
+    check_hdrs_input (pmap, required=1);
 
     # Load files
     hdr,cube = files.load_raw (hdrs);
 
     # Remove background
-    remove_background (cube, bkg);
+    remove_background (cube, bkg[0]);
 
     # Check background subtraction in empty region
     empty = np.mean (cube[:,:,30:45,150:250], axis=(0,1));
@@ -200,7 +212,7 @@ def compute_preproc (hdrs,bkg,pmap,output='output_pixmap'):
     hdr.set ('HIERARCH MIRC QC EMPTY STD',std,'[adu]');
     
     # Crop fringe part
-    fringe = crop_fringe_window (cube, pmap);
+    fringe = crop_fringe_window (cube, pmap[0]);
 
     # Create output HDU
     log.info ('Create file');
@@ -215,8 +227,8 @@ def compute_preproc (hdrs,bkg,pmap,output='output_pixmap'):
     # Set files
     for i,h in enumerate(hdrs):
         hdu1.header['HIERARCH MIRC PRO RAW%i'%i] = h['ORIGNAME'];
-    hdu1.header['HIERARCH MIRC PRO BACKGROUND'] = bkg['ORIGNAME'];
-    hdu1.header['HIERARCH MIRC PRO PIXMAP'] = pmap['ORIGNAME'];
+    hdu1.header['HIERARCH MIRC PRO BACKGROUND'] = bkg[0]['ORIGNAME'];
+    hdu1.header['HIERARCH MIRC PRO PIXMAP'] = pmap[0]['ORIGNAME'];
 
     # Write output file
     hdulist = pyfits.HDUList (hdu1);
@@ -229,6 +241,9 @@ def compute_snr (hdrs,output=None,overwrite=True):
 
     nr,nf,nx,ny = fringe.shape;
     ny2 = int(ny/2);
+
+    # Check inputs
+    check_hdrs_input (hdrs, required=1);
     
     # Compute fft
     log.info ('Compute FFT');

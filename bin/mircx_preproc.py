@@ -28,6 +28,10 @@ parser = argparse.ArgumentParser (description=usage, epilog=examples,
 TrueFalse = ['TRUE','FALSE'];
 TrueFalseOverwrite = ['TRUE','FALSE','OVERWRITE'];
 
+parser.add_argument ("--debug", dest="debug",default='FALSE',
+                     choices=TrueFalse,
+                     help="stop or error [TRUE]");
+
 parser.add_argument ("--background", dest="background",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the BACKGROUND products [TRUE]");
@@ -79,10 +83,16 @@ if argoptions.background != 'FALSE':
                 mrx.log.info ('Product already exists');
                 continue;
                 
+            mrx.log.setFile (output+'.log');
+
             mrx.compute_background (gp, output=output);
             
         except Exception as exc:
-            mrx.log.error ('Cannot compute preproc: '+str(exc));
+            mrx.log.error ('Cannot compute background: '+str(exc));
+            if argoptions.debug == 'TRUE': raise;
+        finally:
+            mrx.log.closeFile ();
+
 
 #
 # Compute PIXMAP
@@ -107,13 +117,18 @@ if argoptions.pixmap != 'FALSE':
                 mrx.log.info ('Product already exists');
                 continue;
             
+            mrx.log.setFile (output+'.log');
+            
             bkg = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_REDUCED',
                                      keys, which='closest', required=1);
             
             mrx.compute_pixmap (gp, bkg, output=output);
             
         except Exception as exc:
-            mrx.log.error ('Cannot compute preproc: '+str(exc));
+            mrx.log.error ('Cannot compute pixmap: '+str(exc));
+            if argoptions.debug == 'TRUE': raise;
+        finally:
+            mrx.log.closeFile ();
 
 #
 # Compute PREPROC
@@ -137,6 +152,8 @@ if argoptions.preproc != 'FALSE':
             if os.path.exists (output+'.fits') and overwrite is False:
                 mrx.log.info ('Product already exists');
                 continue;
+
+            mrx.log.setFile (output+'.log');
                 
             bkg  = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_REDUCED',
                                     keys, which='closest', required=1);
@@ -148,6 +165,9 @@ if argoptions.preproc != 'FALSE':
             
         except Exception as exc:
             mrx.log.error ('Cannot compute preproc: '+str(exc));
+            if argoptions.debug == 'TRUE': raise;
+        finally:
+            mrx.log.closeFile ();
             
             
 

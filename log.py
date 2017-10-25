@@ -1,6 +1,7 @@
 from timeit import default_timer as timer
 import time
 import sys
+import os
 import logging
 
 # Load colors
@@ -19,25 +20,33 @@ else:
     BLUE    = col.Fore.BLUE;
     GREEN   = col.Fore.GREEN;
 
-
-# Setup the configuration to log in a file
-logging.basicConfig(
-     level=logging.DEBUG,
-     format="[%(levelname)-7.7s] %(asctime)s: %(message)s",
-     datefmt='%Y-%m-%dT%H:%M:%S',
-     filename='mircx_pipeline.log', filemode='w');
-
 # Get the logger
-logger = logging.getLogger('mircx_pipeline');
+logger = logging.getLogger ('mircx_pipeline');
 
-# Also log in consode, with colors
-console = logging.StreamHandler();
-console.setLevel (logging.INFO);
-formatter = logging.Formatter("[%(color)s%(levelname)-7.7s"+RESET+"] "
-                              "%(asctime)s: %(message)s",
-                              datefmt='%Y-%m-%dT%H:%M:%S');
-console.setFormatter (formatter);
-logger.addHandler(console);
+# Setup the configuration to log in the consol
+logging.basicConfig (
+     level=logging.DEBUG,
+     format="[%(color)s%(levelname)-7.7s"+RESET+"] %(asctime)s: %(message)s",
+     datefmt='%Y-%m-%dT%H:%M:%S');
+
+
+# Set a logfile
+def setFile (filename):
+    info ('Set logFile: '+filename);
+    for h in logger.handlers:
+        logger.removeHandler (h);
+    logfile = logging.FileHandler (filename, mode='w');
+    logfile.setLevel (logging.DEBUG);
+    formatter = logging.Formatter ("[%(levelname)-7.7s] "
+                                   "%(asctime)s: %(message)s",
+                                    datefmt='%Y-%m-%dT%H:%M:%S');
+    logfile.setFormatter (formatter);
+    logger.addHandler (logfile);
+
+# Stop logging in files
+def closeFile ():
+    for h in logger.handlers:
+        logger.removeHandler (h);
 
 # Logging function
 def info(msg):
@@ -49,6 +58,7 @@ def warning(msg):
 def error(msg):
     logger.error (msg, extra={'color':RED});
 
+# Trace function (measure time until killed)
 class trace:
     def __init__(self, funcname):
         logger.info('Start '+funcname,extra={'color':GREEN});
