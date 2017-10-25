@@ -78,9 +78,9 @@ def compute_background (hdrs,output='output_bkg'):
     # Load files
     hdr,cube = files.load_raw (hdrs, coaddRamp=True);
 
-    # Background mean and rms
-    log.info ('Compute mean');
-    bkg_mean = cube[0,:,:,:];
+    # Background mean
+    log.info ('Compute mean over ramps');
+    bkg_mean = np.mean (cube, axis=0);
     
     # Add QC parameters
     nf,nx,ny = bkg_mean.shape;
@@ -148,7 +148,7 @@ def compute_pixmap (hdrs,bkg,output='output_pixmap'):
     remove_background (cube, bkg[0]);
 
     # Compute the sum
-    log.info ('Compute sum');
+    log.info ('Compute mean over ramps and frames');
     fmean = np.mean (cube, axis=(0,1));
 
     # Figures

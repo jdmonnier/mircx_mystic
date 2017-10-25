@@ -51,18 +51,22 @@ parser.add_argument ("--max-file", dest="maxFile",default=None,
                      help="maximum nuber of file to load to build"
                           "product (speed-up for tests)");
 
+parser.add_argument ("--delta-time", dest="dTime",default=300,
+                     help="maximum time between files to be groupped (s) [300]");
+
 # Parse argument
-argoptions = parser.parse_args();
+argopt = parser.parse_args();
 
 #
 # Initialisation
 #
 
 # Output
-outputDir = argoptions.outputDir;
+outputDir = argopt.outputDir;
+dTime = float(argopt.dTime);
 
 # Format maxFile
-mf = argoptions.maxFile;
+mf = argopt.maxFile;
 if mf is not None:
     mrx.log.warning ('--max-file set to '+mf+', wont use all data!!');
     mf = int(mf);
@@ -77,11 +81,11 @@ hdrs_raw = mrx.headers.loaddir ('./');
 # Compute BACKGROUND_REDUCED
 #
 
-if argoptions.background != 'FALSE':
+if argopt.background != 'FALSE':
     
     # Group backgrounds
-    gps = mrx.headers.group (hdrs_raw, 'BACKGROUND');
-    overwrite = (argoptions.background == 'OVERWRITE');
+    gps = mrx.headers.group (hdrs_raw, 'BACKGROUND', delta=dTime);
+    overwrite = (argopt.background == 'OVERWRITE');
 
     # Compute all backgrounds
     for i,gp in enumerate(gps):
@@ -99,7 +103,7 @@ if argoptions.background != 'FALSE':
             
         except Exception as exc:
             mrx.log.error ('Cannot compute background: '+str(exc));
-            if argoptions.debug == 'TRUE': raise;
+            if argopt.debug == 'TRUE': raise;
         finally:
             mrx.log.closeFile ();
 
@@ -108,11 +112,11 @@ if argoptions.background != 'FALSE':
 # Compute PIXMAP
 #
 
-if argoptions.pixmap != 'FALSE':
+if argopt.pixmap != 'FALSE':
 
     # Group all FOREGROUND
-    gps = mrx.headers.group (hdrs_raw, 'FOREGROUND');
-    overwrite = (argoptions.pixmap == 'OVERWRITE');
+    gps = mrx.headers.group (hdrs_raw, 'FOREGROUND', delta=dTime);
+    overwrite = (argopt.pixmap == 'OVERWRITE');
 
     # Read all calibration products
     hdrs_calib = mrx.headers.loaddir (outputDir);
@@ -136,7 +140,7 @@ if argoptions.pixmap != 'FALSE':
             
         except Exception as exc:
             mrx.log.error ('Cannot compute pixmap: '+str(exc));
-            if argoptions.debug == 'TRUE': raise;
+            if argopt.debug == 'TRUE': raise;
         finally:
             mrx.log.closeFile ();
 
@@ -144,11 +148,11 @@ if argoptions.pixmap != 'FALSE':
 # Compute PREPROC
 #
 
-if argoptions.preproc != 'FALSE':
+if argopt.preproc != 'FALSE':
 
     # Group all DATA
-    gps = mrx.headers.group (hdrs_raw, 'DATA');
-    overwrite = (argoptions.preproc == 'OVERWRITE');
+    gps = mrx.headers.group (hdrs_raw, 'DATA', delta=dTime);
+    overwrite = (argopt.preproc == 'OVERWRITE');
 
     # Read all calibration products
     hdrs_calib = mrx.headers.loaddir (outputDir);
@@ -175,7 +179,7 @@ if argoptions.preproc != 'FALSE':
             
         except Exception as exc:
             mrx.log.error ('Cannot compute preproc: '+str(exc));
-            if argoptions.debug == 'TRUE': raise;
+            if argopt.debug == 'TRUE': raise;
         finally:
             mrx.log.closeFile ();
             

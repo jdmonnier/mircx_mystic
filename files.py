@@ -1,5 +1,6 @@
 from astropy.time import Time
 from astropy.io import fits as pyfits
+from astropy.stats import sigma_clipped_stats
 import numpy as np
 import os
 
@@ -38,7 +39,11 @@ def write (hdulist,filename):
 
 def load_raw (hdrs, coaddRamp=False):
     '''
-    Load data and append into gigantic cube
+    Load data and append into gigantic cube. The output cube is
+    of shape: [nfile*nramp, nframes, ny, ny].
+    
+    If coaddRamp==True, the ramps inside each file are averaged together.
+    Thus the resulting cube is of shape [nfile, nframes, ny, ny]    
     '''
 
     # Build header
@@ -72,15 +77,16 @@ def load_raw (hdrs, coaddRamp=False):
         
         # Preproc data
         data = np.diff (data.astype('float'),axis=1);
-        bias = 0.5 * (np.median(data[:,:,:,0:10],axis=3) + np.median(data[:,:,:,-11:-1],axis=3));
+        ids = np.append (np.arange(10), data.shape[-1] - np.arange(1,11));
+        bias = np.median (data[:,:,:,ids],axis=3);
         data = data - bias[:,:,:,None];
 
         # Append ramps or co-add them
         hdr['HIERARCH MIRC QC NRAMP'] += data.shape[0]
-        if coaddRamp is True and len(cube) != 0:
-            cube[0] += np.sum (data,axis=0)[None,:,:,:];
+        if coaddRamp is True:
+            cube.append (np.mean (data,axis=0)[None,:,:,:]);
         else:
-            cube.append(data);
+            cube.append (data);
 
     # Convert to array
     log.info ('Convert to cube');
@@ -90,9 +96,5 @@ def load_raw (hdrs, coaddRamp=False):
     log.info ('Reshape cube');
     (a,b,c,d,e) = cube.shape;
     cube.shape = (a*b,c,d,e);
-    
-    # Compute the mean if coadd
-    if coaddRamp is True:
-        cube /= hdr['HIERARCH MIRC QC NRAMP'];
     
     return hdr,cube;
