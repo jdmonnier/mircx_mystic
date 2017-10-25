@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from astropy.time import Time
 from astropy.io import fits as pyfits
 from astropy.stats import sigma_clipped_stats
@@ -74,7 +75,7 @@ def load_raw (hdrs, coaddRamp=False):
 
         # Close file
         hdulist.close();
-        
+
         # Preproc data
         data = np.diff (data.astype('float'),axis=1);
         ids = np.append (np.arange(10), data.shape[-1] - np.arange(1,11));
@@ -96,5 +97,6 @@ def load_raw (hdrs, coaddRamp=False):
     log.info ('Reshape cube');
     (a,b,c,d,e) = cube.shape;
     cube.shape = (a*b,c,d,e);
-    
+
+    plt.close('all');
     return hdr,cube;

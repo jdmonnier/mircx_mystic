@@ -92,8 +92,8 @@ def compute_background (hdrs,output='output_bkg'):
     idy = int(ny/2);
     
     (mean,med,std) = sigma_clipped_stats (bkg_mean[idf,idx-d:idx+d,idy-d:idy+d]);
-    hdr.set ('HIERARCH MIRC QC MEAN MED',med,'[adu]');
-    hdr.set ('HIERARCH MIRC QC MEAN STD',std,'[adu]');
+    hdr.set ('HIERARCH MIRC QC MEAN MED',med,'[adu] for frame nf/2');
+    hdr.set ('HIERARCH MIRC QC MEAN STD',std,'[adu] for frame nf/2');
 
     # Create output HDU
     hdu1 = pyfits.PrimaryHDU (bkg_mean);
