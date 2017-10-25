@@ -111,8 +111,9 @@ def compute_background (hdrs,output='output_bkg'):
     files.write (hdulist, output+'.fits');
 
     # Figures
-    fig,ax = plt.subplots();
-    ax.imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std);
+    fig,(ax1,ax2) = plt.subplots(1,2);
+    ax1.imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std);
+    ax2.imshow (bkg_mean[idf,:,:], vmin=med-20*std, vmax=med+20*std);
     fig.savefig (output+'_mean.png');
 
     fig,ax = plt.subplots();
@@ -122,7 +123,7 @@ def compute_background (hdrs,output='output_bkg'):
     fig.savefig (output+'_histo.png');
 
     fig,ax = plt.subplots();
-    ax.plot (np.median (bkg_mean,axis=(0,1)));
+    ax.plot (np.median (bkg_mean,axis=(1,2)));
     ax.set_xlabel ("Frame");
     ax.set_ylabel ("Median of pixels (adu)");
     fig.savefig (output+'_ramp.png');
