@@ -36,18 +36,30 @@ def remove_background (cube, hdr):
 
 def crop_fringe_window (cube, hdr):
     ''' Extract fringe window from a cube(r,f,xy)'''
+    log.info ('Extract the fringe window');
     
     # Load window
-    log.info ('Load pixmap %s'%hdr['ORIGNAME']);
-    hdulist  = pyfits.open(hdr['ORIGNAME']);
-    sx = hdulist[0].header['HIERARCH MIRC QC FRINGE_WIN STARTX'];
-    nx = hdulist[0].header['HIERARCH MIRC QC FRINGE_WIN NX'];
-    sy = hdulist[0].header['HIERARCH MIRC QC FRINGE_WIN STARTY'];
-    ny = hdulist[0].header['HIERARCH MIRC QC FRINGE_WIN NY'];
-    hdulist.close ();
+    sx = hdr['HIERARCH MIRC QC FRINGE_WIN STARTX'];
+    nx = hdr['HIERARCH MIRC QC FRINGE_WIN NX'];
+    sy = hdr['HIERARCH MIRC QC FRINGE_WIN STARTY'];
+    ny = hdr['HIERARCH MIRC QC FRINGE_WIN NY'];
 
     # Crop the fringe window
-    log.info ('Extract the fringe window');
+    output = cube[:,:,sy:sy+ny,sx:sx+nx]
+
+    return output;
+
+def crop_empty_window (cube, hdr):
+    ''' Extract empty window from a cube(r,f,xy)'''
+    log.info ('Extract the empty window');
+    
+    # Load window
+    sx = hdr['HIERARCH MIRC QC EMPTY_WIN STARTX'];
+    nx = hdr['HIERARCH MIRC QC EMPTY_WIN NX'];
+    sy = hdr['HIERARCH MIRC QC EMPTY_WIN STARTY'];
+    ny = hdr['HIERARCH MIRC QC EMPTY_WIN NY'];
+
+    # Crop the fringe window
     output = cube[:,:,sy:sy+ny,sx:sx+nx]
 
     return output;
@@ -82,7 +94,7 @@ def compute_background (hdrs,output='output_bkg'):
     (mean,med,std) = sigma_clipped_stats (bkg_mean[idf,idx-d:idx+d,idy-d:idy+d]);
     hdr.set ('HIERARCH MIRC QC MEAN MED',med,'[adu]');
     hdr.set ('HIERARCH MIRC QC MEAN STD',std,'[adu]');
-    
+
     # Create output HDU
     hdu1 = pyfits.PrimaryHDU (bkg_mean);
     hdu1.header = hdr;
@@ -100,8 +112,20 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Figures
     fig,ax = plt.subplots();
-    ax.imshow (bkg_mean[idf,:,:]);
+    ax.imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std);
     fig.savefig (output+'_mean.png');
+
+    fig,ax = plt.subplots();
+    ax.hist (bkg_mean[idf,:,:].flatten(),bins=med+std*np.linspace(-10,10,50));
+    ax.set_xlabel ("Value at frame nf/2 (adu)");
+    ax.set_ylabel ("Number of pixels");
+    fig.savefig (output+'_histo.png');
+
+    fig,ax = plt.subplots();
+    ax.plot (np.median (bkg_mean,axis=(0,1)));
+    ax.set_xlabel ("Frame");
+    ax.set_ylabel ("Median of pixels (adu)");
+    fig.savefig (output+'_ramp.png');
 
     plt.close("all");
     return hdulist;
@@ -166,6 +190,20 @@ def compute_pixmap (hdrs,bkg,output='output_pixmap'):
     hdr.set ('HIERARCH MIRC QC FRINGE_WIN NX',idx_e-idx_s,'[pix]');
     hdr.set ('HIERARCH MIRC QC FRINGE_WIN STARTY',idy_s,'[pix]');
     hdr.set ('HIERARCH MIRC QC FRINGE_WIN NY',idy_e-idy_s,'[pix]');
+
+    # Add QC parameters
+    hdr.set ('HIERARCH MIRC QC EMPTY_WIN STARTX',200,'[pix]');
+    hdr.set ('HIERARCH MIRC QC EMPTY_WIN NX',50,'[pix]');
+    hdr.set ('HIERARCH MIRC QC EMPTY_WIN STARTY',idy_e+10,'[pix]');
+    hdr.set ('HIERARCH MIRC QC EMPTY_WIN NY',10,'[pix]');
+
+    # Check background subtraction in empty region
+    empty = crop_empty_window (cube, hdr);
+    empty = np.mean (empty, axis=(0,1));
+    (mean,med,std) = sigma_clipped_stats (empty);
+    hdr.set ('HIERARCH MIRC QC EMPTY MED',med,'[adu]');
+    hdr.set ('HIERARCH MIRC QC EMPTY MEAN',mean,'[adu]');
+    hdr.set ('HIERARCH MIRC QC EMPTY STD',std,'[adu]');
     
     # Create output HDU
     hdu1 = pyfits.PrimaryHDU (fmeancut);
@@ -205,7 +243,8 @@ def compute_preproc (hdrs,bkg,pmap,output='output_pixmap'):
     remove_background (cube, bkg[0]);
 
     # Check background subtraction in empty region
-    empty = np.mean (cube[:,:,30:45,150:250], axis=(0,1));
+    empty = crop_empty_window (cube, hdr);
+    empty = np.mean (empty, axis=(0,1));
     (mean,med,std) = sigma_clipped_stats (empty);
     hdr.set ('HIERARCH MIRC QC EMPTY MED',med,'[adu]');
     hdr.set ('HIERARCH MIRC QC EMPTY MEAN',mean,'[adu]');
