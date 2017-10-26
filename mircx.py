@@ -66,7 +66,7 @@ def crop_empty_window (cube, hdr):
     
 def compute_background (hdrs,output='output_bkg'):
     '''
-    Compute BACKGROUND_REDUCED file from a sequence of
+    Compute BACKGROUND_MEAN file from a sequence of
     BACKGROUND. The output file had the mean and rms over
     all frames, written as ramp.
     '''
@@ -79,7 +79,7 @@ def compute_background (hdrs,output='output_bkg'):
     hdr,cube = files.load_raw (hdrs, coaddRamp=True);
 
     # Background mean
-    log.info ('Compute mean and rms over ramps');
+    log.info ('Compute mean and rms over input files');
     bkg_mean = np.mean (cube, axis=0);
     bkg_std  = np.std (cube, axis=0) / np.sqrt (cube.shape[0]);
     
@@ -106,17 +106,15 @@ def compute_background (hdrs,output='output_bkg'):
     # Update header
     hdu1.header['BZERO'] = 0;
     hdu1.header['BUNIT'] = 'ADU';
-    hdu1.header['FILETYPE'] = 'BACKGROUND_REDUCED';
-    for i,h in enumerate(hdrs):
-        hdu1.header['HIERARCH MIRC PRO RAW%i'%i] = h['ORIGNAME'];
+    hdu1.header['FILETYPE'] = 'BACKGROUND_MEAN';
 
     # Create second HDU
     hdu2 = pyfits.ImageHDU (bkg_std);
     
     # Update header
     hdu2.header['BZERO'] = 0;
-    hdu1.header['BUNIT'] = 'ADU';
-    hdu1.header['EXTNAME'] = 'BACKGROUND_ERR';
+    hdu2.header['BUNIT'] = 'ADU';
+    hdu2.header['EXTNAME'] = 'BACKGROUND_ERR';
 
     # Write output file
     hdulist = pyfits.HDUList ([hdu1,hdu2]);
@@ -228,8 +226,6 @@ def compute_pixmap (hdrs,bkg,output='output_pixmap'):
     hdu1.header['FILETYPE'] = 'PIXMAP';
 
     # Set files
-    for i,h in enumerate(hdrs):
-        hdu1.header['HIERARCH MIRC PRO RAW%i'%i] = h['ORIGNAME'];
     hdu1.header['HIERARCH MIRC PRO BACKGROUND'] = bkg[0]['ORIGNAME'];
 
     # Write output file
@@ -278,8 +274,6 @@ def compute_preproc (hdrs,bkg,pmap,output='output_pixmap'):
     hdu1.header['FILETYPE'] = 'PREPROC';
 
     # Set files
-    for i,h in enumerate(hdrs):
-        hdu1.header['HIERARCH MIRC PRO RAW%i'%i] = h['ORIGNAME'];
     hdu1.header['HIERARCH MIRC PRO BACKGROUND'] = bkg[0]['ORIGNAME'];
     hdu1.header['HIERARCH MIRC PRO PIXMAP'] = pmap[0]['ORIGNAME'];
 
@@ -339,8 +333,6 @@ def compute_snr (hdrs,output=None,overwrite=True):
     hdu1.header['FILETYPE'] = 'SNR';
 
     # Set files
-    for i,h in enumerate(hdrs):
-        hdu1.header['HIERARCH MIRC PRO RAW%i'%i] = h['ORIGNAME'];
     hdu1.header['HIERARCH MIRC PRO BACKGROUND'] = bkg['ORIGNAME'];
 
     # Write output file

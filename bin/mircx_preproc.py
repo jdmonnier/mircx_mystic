@@ -78,7 +78,7 @@ keys = mrx.setup.detector + mrx.setup.instrument;
 hdrs_raw = mrx.headers.loaddir ('./');
 
 #
-# Compute BACKGROUND_REDUCED
+# Compute BACKGROUND_MEAN
 #
 
 if argopt.background != 'FALSE':
@@ -133,7 +133,7 @@ if argopt.pixmap != 'FALSE':
             
             mrx.log.setFile (output+'.log');
             
-            bkg = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_REDUCED',
+            bkg = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
                                      keys, which='closest', required=1);
             
             mrx.compute_pixmap (gp[0:mf], bkg, output=output);
@@ -169,7 +169,7 @@ if argopt.preproc != 'FALSE':
 
             mrx.log.setFile (output+'.log');
                 
-            bkg  = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_REDUCED',
+            bkg  = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
                                     keys, which='closest', required=1);
             
             pmap = mrx.headers.assoc (gp[0], hdrs_calib, 'PIXMAP',
