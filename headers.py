@@ -109,7 +109,7 @@ def group (hdrs, mtype, delta=300.0):
         
         # if different type, continue
         # and start new group
-        if h['FILETYPE'] != mtype:
+        if mtype not in h['FILETYPE']:
             # log.info('Skip file %s'%fileinfo);
             if groups[-1] != []:
                 groups.append([]);

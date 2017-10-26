@@ -36,9 +36,13 @@ parser.add_argument ("--background", dest="background",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the BACKGROUND products [TRUE]");
 
-parser.add_argument ("--pixmap", dest="pixmap",default='TRUE',
+parser.add_argument ("--fringe-map", dest="fmap",default='TRUE',
                      choices=TrueFalseOverwrite,
-                     help="compute the PIXMAP products [TRUE]");
+                     help="compute the FRINGE_MAP products [TRUE]");
+
+parser.add_argument ("--beam-map", dest="bmap",default='TRUE',
+                     choices=TrueFalseOverwrite,
+                     help="compute the BEAM_MAP products [TRUE]");
 
 parser.add_argument ("--preproc", dest="preproc",default='TRUE',
                      choices=TrueFalseOverwrite,
@@ -109,24 +113,24 @@ if argopt.background != 'FALSE':
 
 
 #
-# Compute PIXMAP
+# Compute FRINGE_MAP
 #
 
-if argopt.pixmap != 'FALSE':
-
-    # Group all FOREGROUND
-    gps = mrx.headers.group (hdrs_raw, 'FOREGROUND', delta=dTime);
-    overwrite = (argopt.pixmap == 'OVERWRITE');
+if argopt.fmap != 'FALSE':
 
     # Read all calibration products
     hdrs_calib = mrx.headers.loaddir (outputDir);
 
-    # Compute all pixmap
+    # Group all FOREGROUND
+    gps = mrx.headers.group (hdrs_raw, 'FOREGROUND', delta=dTime);
+    overwrite = (argopt.fmap == 'OVERWRITE');
+
+    # Compute all
     for i,gp in enumerate(gps):
         try:
-            mrx.log.info ('Compute pixmap {0} over {1} '.format(i+1,len(gps)));
+            mrx.log.info ('Compute FRINGE_MAP {0} over {1} '.format(i+1,len(gps)));
 
-            output = mrx.files.output (outputDir, gp[0], 'pixmap');
+            output = mrx.files.output (outputDir, gp[0], 'fmap');
             if os.path.exists (output+'.fits') and overwrite is False:
                 mrx.log.info ('Product already exists');
                 continue;
@@ -136,13 +140,53 @@ if argopt.pixmap != 'FALSE':
             bkg = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
                                      keys, which='closest', required=1);
             
-            mrx.compute_pixmap (gp[0:mf], bkg, output=output);
+            mrx.compute_fringemap (gp[0:mf], bkg, output=output);
             
         except Exception as exc:
-            mrx.log.error ('Cannot compute pixmap: '+str(exc));
+            mrx.log.error ('Cannot compute FRINGE_MAP: '+str(exc));
             if argopt.debug == 'TRUE': raise;
         finally:
             mrx.log.closeFile ();
+
+#
+# Compute BEAMi_MAP
+#
+
+if argopt.bmap != 'FALSE':
+        
+    # Read all calibration products
+    hdrs_calib = mrx.headers.loaddir (outputDir);
+    
+    # Group all BEAMi
+    gps = mrx.headers.group (hdrs_raw, 'BEAM', delta=dTime);
+    overwrite = (argopt.bmap == 'OVERWRITE');
+
+    # Compute all 
+    for i,gp in enumerate(gps):
+        try:
+            mrx.log.info ('Compute BEAM_MAP {0} over {1} '.format(i+1,len(gps)));
+
+            name = gp[0]['FILETYPE'].lower()+'map';
+            output = mrx.files.output (outputDir, gp[0], name);
+            if os.path.exists (output+'.fits') and overwrite is False:
+                mrx.log.info ('Product already exists');
+                continue;
+            
+            mrx.log.setFile (output+'.log');
+            
+            bkg = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
+                                     keys, which='closest', required=1);
+            
+            mrx.compute_beammap (gp[0:mf], bkg, output=output);
+            
+        except Exception as exc:
+            mrx.log.error ('Cannot compute BEAM_MAP: '+str(exc));
+            if argopt.debug == 'TRUE': raise;
+        finally:
+            mrx.log.closeFile ();
+        
+
+    
 
 #
 # Compute PREPROC
@@ -150,12 +194,12 @@ if argopt.pixmap != 'FALSE':
 
 if argopt.preproc != 'FALSE':
 
+    # Read all calibration products
+    hdrs_calib = mrx.headers.loaddir (outputDir);
+
     # Group all DATA
     gps = mrx.headers.group (hdrs_raw, 'DATA', delta=dTime);
     overwrite = (argopt.preproc == 'OVERWRITE');
-
-    # Read all calibration products
-    hdrs_calib = mrx.headers.loaddir (outputDir);
 
     # Compute 
     for i,gp in enumerate(gps):
@@ -172,7 +216,7 @@ if argopt.preproc != 'FALSE':
             bkg  = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
                                     keys, which='closest', required=1);
             
-            pmap = mrx.headers.assoc (gp[0], hdrs_calib, 'PIXMAP',
+            pmap = mrx.headers.assoc (gp[0], hdrs_calib, 'FRINGE_MAP',
                                     keys, which='closest', required=1);
             
             mrx.compute_preproc (gp[0:mf], bkg, pmap, output=output);
