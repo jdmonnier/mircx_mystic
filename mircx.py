@@ -132,9 +132,9 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Figures
     fig,(ax1,ax2,ax3) = plt.subplots (3,1);
-    ax1.imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std);
-    ax2.imshow (bkg_mean[idf,:,:], vmin=med-20*std, vmax=med+20*std);
-    ax3.imshow (bkg_std[idf,:,:], vmin=smed-20*sstd, vmax=smed+20*sstd);
+    ax1.imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std, interpolation='none');
+    ax2.imshow (bkg_mean[idf,:,:], vmin=med-20*std, vmax=med+20*std, interpolation='none');
+    ax3.imshow (bkg_std[idf,:,:], vmin=smed-20*sstd, vmax=smed+20*sstd, interpolation='none');
     fig.savefig (output+'_mean.png');
 
     fig,ax = plt.subplots();
@@ -174,7 +174,7 @@ def compute_fringemap (hdrs,bkg,output='output_fringemap'):
 
     # Figures
     fig,ax = plt.subplots();
-    ax.imshow (fmean);
+    ax.imshow (fmean, interpolation='none');
     fig.savefig (output+'_sum.png');
 
     # Keep only fringes (supposedly smoothed in x)
@@ -203,7 +203,7 @@ def compute_fringemap (hdrs,bkg,output='output_fringemap'):
 
     # Figures
     fig,ax = plt.subplots();
-    ax.imshow (fmeancut);
+    ax.imshow (fmeancut, interpolation='none');
     fig.savefig (output+'_cut.png');
 
     # Add QC parameters
@@ -293,14 +293,14 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
 
     # Figures
     fig,ax = plt.subplots(3,1);
-    ax[0].imshow (fmap);
+    ax[0].imshow (fmap, interpolation='none');
     ax[1].plot (fx, label='Data');
     ax[1].plot (x[idx:idx+nx],gx(x[idx:idx+nx]), label='Gaussian');
     ax[1].legend ();
     fig.savefig (output+'_fit.png');
 
     fig,ax = plt.subplots();
-    ax.imshow (fmeancut);
+    ax.imshow (fmeancut, interpolation='none');
     fig.savefig (output+'_cut.png');
 
     # Create output HDU
@@ -385,7 +385,7 @@ def compute_snr (hdrs,output=None,overwrite=True):
     # Figures
     (mean,med,std) = sigma_clipped_stats (mean_psd);
     fig,ax = plt.subplots(3,1);
-    ax[0].imshow (mean_psd[:,0:ny2],vmin=med-5*std,vmax=med+5*std);
+    ax[0].imshow (mean_psd[:,0:ny2],vmin=med-5*std,vmax=med+5*std, interpolation='none');
     ax[1].plot (mean_psd[:,0:ny2].T);
     ax[2].plot (mean_psd[:,0:ny2].T); ax[2].set_ylim (med-3*std, med+3*std);
     fig.savefig (output+'_psd.png');
@@ -399,7 +399,7 @@ def compute_snr (hdrs,output=None,overwrite=True):
     # Figures
     (mean,med,std) = sigma_clipped_stats (mean_psd);
     fig,ax = plt.subplots(3,1);
-    ax[0].imshow (mean_psd[:,0:ny2],vmin=med-5*std,vmax=med+5*std);
+    ax[0].imshow (mean_psd[:,0:ny2],vmin=med-5*std,vmax=med+5*std, interpolation='none');
     ax[1].plot (mean_psd[:,0:ny2].T);
     ax[2].plot (mean_psd[:,0:ny2].T); ax[2].set_ylim (med-3*std, med+3*std);
     fig.savefig (output+'_csd.png');
