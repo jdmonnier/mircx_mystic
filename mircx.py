@@ -79,22 +79,26 @@ def compute_background (hdrs,output='output_bkg'):
     hdr,cube = files.load_raw (hdrs, coaddRamp=True);
 
     # Background mean
-    log.info ('Compute mean over ramps');
+    log.info ('Compute mean and rms over ramps');
     bkg_mean = np.mean (cube, axis=0);
+    bkg_std  = np.std (cube, axis=0) / np.sqrt (cube.shape[0]);
     
-    # Add QC parameters
+    # Select which one to plot
     nf,nx,ny = bkg_mean.shape;
     d = 10;
-
-    # Select which one to plot
     idf = int(nf/2);
     idx = int(nx/2);
     idy = int(ny/2);
     
+    # Add QC parameters
     (mean,med,std) = sigma_clipped_stats (bkg_mean[idf,idx-d:idx+d,idy-d:idy+d]);
-    hdr.set ('HIERARCH MIRC QC MEAN MED',med,'[adu] for frame nf/2');
-    hdr.set ('HIERARCH MIRC QC MEAN STD',std,'[adu] for frame nf/2');
+    hdr.set ('HIERARCH MIRC QC BKG_MEAN MED',med,'[adu] for frame nf/2');
+    hdr.set ('HIERARCH MIRC QC BKG_MEAN STD',std,'[adu] for frame nf/2');
 
+    (smean,smed,sstd) = sigma_clipped_stats (bkg_std[idf,idx-d:idx+d,idy-d:idy+d]);
+    hdr.set ('HIERARCH MIRC QC BKG_ERR MED',smed,'[adu] for frame nf/2');
+    hdr.set ('HIERARCH MIRC QC BKG_ERR STD',sstd,'[adu] for frame nf/2');
+    
     # Create output HDU
     hdu1 = pyfits.PrimaryHDU (bkg_mean);
     hdu1.header = hdr;
@@ -106,14 +110,23 @@ def compute_background (hdrs,output='output_bkg'):
     for i,h in enumerate(hdrs):
         hdu1.header['HIERARCH MIRC PRO RAW%i'%i] = h['ORIGNAME'];
 
+    # Create second HDU
+    hdu2 = pyfits.ImageHDU (bkg_std);
+    
+    # Update header
+    hdu2.header['BZERO'] = 0;
+    hdu1.header['BUNIT'] = 'ADU';
+    hdu1.header['EXTNAME'] = 'BACKGROUND_ERR';
+
     # Write output file
-    hdulist = pyfits.HDUList ([hdu1]);
+    hdulist = pyfits.HDUList ([hdu1,hdu2]);
     files.write (hdulist, output+'.fits');
 
     # Figures
-    fig,(ax1,ax2) = plt.subplots (2,1);
+    fig,(ax1,ax2,ax3) = plt.subplots (3,1);
     ax1.imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std);
     ax2.imshow (bkg_mean[idf,:,:], vmin=med-20*std, vmax=med+20*std);
+    ax3.imshow (bkg_std[idf,:,:], vmin=smed-20*sstd, vmax=smed+20*sstd);
     fig.savefig (output+'_mean.png');
 
     fig,ax = plt.subplots();
@@ -194,9 +207,9 @@ def compute_pixmap (hdrs,bkg,output='output_pixmap'):
 
     # Add QC parameters
     hdr.set ('HIERARCH MIRC QC EMPTY_WIN STARTX',200,'[pix]');
-    hdr.set ('HIERARCH MIRC QC EMPTY_WIN NX',50,'[pix]');
+    hdr.set ('HIERARCH MIRC QC EMPTY_WIN NX',80,'[pix]');
     hdr.set ('HIERARCH MIRC QC EMPTY_WIN STARTY',idy_e+10,'[pix]');
-    hdr.set ('HIERARCH MIRC QC EMPTY_WIN NY',10,'[pix]');
+    hdr.set ('HIERARCH MIRC QC EMPTY_WIN NY',15,'[pix]');
 
     # Check background subtraction in empty region
     empty = crop_empty_window (cube, hdr);
