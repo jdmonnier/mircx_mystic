@@ -11,7 +11,7 @@ from scipy.fftpack import fft, ifft
 from scipy.signal import medfilt;
 from scipy.ndimage.interpolation import shift as subpix_shift
 
-from . import log, files
+from . import log, files, headers
 
 def check_hdrs_input (hdrs, required=1):
     ''' Check the input when provided as hdrs'''
@@ -117,6 +117,7 @@ def compute_background (hdrs,output='output_bkg'):
     hdu1.header = hdr;
 
     # Update header
+    headers.set_revision (hdu1.header);
     hdu1.header['BZERO'] = 0;
     hdu1.header['BUNIT'] = 'ADU';
     hdu1.header['FILETYPE'] = 'BACKGROUND_MEAN';
@@ -302,6 +303,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     hdu1.header['FILETYPE'] = hdrs[0]['FILETYPE']+'_MAP';
 
     # Set files
+    headers.set_revision (hdu1.header);
     hdu1.header['HIERARCH MIRC PRO BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
 
     # Write output file
@@ -406,6 +408,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     hdu1.header['FILETYPE'] += '_PREPROC';
     
     # Set files
+    headers.set_revision (hdu1.header);
     hdu1.header['HIERARCH MIRC PRO BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
     hdu1.header['HIERARCH MIRC PRO FRINGE_MAP'] = bmaps[0]['ORIGNAME'];
     for bmap in bmaps:

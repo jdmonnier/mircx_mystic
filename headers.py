@@ -6,6 +6,10 @@ import glob
 
 from . import log, setup
 
+def set_revision (hdr):
+    from .version import revision
+    hdr['HIERARCH MIRC PRO REV'] = (revision,'Version of mircx_pipeline');
+
 def loaddir (dirs):
     '''
     Load the headers of all files mircx*.fit* from
