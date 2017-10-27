@@ -181,3 +181,4 @@ def compute_snr (hdrs,output=None,overwrite=True):
         
     plt.close("all");
     return fringe;
+        photos[beam,:,:,:,:] = subpix_shift (photo, [0,0,-shifty,0]);
