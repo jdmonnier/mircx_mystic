@@ -42,14 +42,12 @@ def load (files):
     hdrs = []    
     for f in files:
         try:
-            # Open file
-            hdulist = pyfits.open (f);
             
             # Load file header
             if f[-7:] == 'fits.fz':
-                hdr = hdulist[1].header;
+                hdr = pyfits.getheader(f, 1);
             else:
-                hdr = hdulist[0].header;
+                hdr = pyfits.getheader(f, 0);
 
             # Add file name
             hdr['ORIGNAME'] = f;
@@ -58,10 +56,10 @@ def load (files):
             t = Time(hdr['DATE-OBS'] + 'T'+ hdr['UTC-OBS'], format='isot', scale='utc');
             hdr['MJD-OBS'] = t.mjd;
 
-            # Close
-            hdrs.append(hdr);
-            hdulist.close();
+            # Append
+            hdrs.append (hdr);
             log.info('Read header for %s'%f);
+            
         except (KeyboardInterrupt, SystemExit):
             raise;
         except Exception as exc:
