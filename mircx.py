@@ -32,9 +32,7 @@ def remove_background (cube, hdr):
 
     # Load background
     log.info ('Load background %s'%hdr['ORIGNAME']);
-    hdulist  = pyfits.open(hdr['ORIGNAME']);
-    bkg_data = hdulist[0].data;
-    hdulist.close ();
+    bkg_data  = pyfits.getdata (hdr['ORIGNAME'],0);
     
     # Remove background
     log.info ('Remove background');
@@ -42,7 +40,7 @@ def remove_background (cube, hdr):
 
 def crop_window (cube, hdr):
     ''' Extract fringe window from a cube(r,f,xy)'''
-    log.info ('Extract region');
+    log.debug ('Extract region');
 
     sx = hdr['* STARTX'][0];
     nx = hdr['* NX'][0];
@@ -221,8 +219,10 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     hdr.set (name+'NY',ny,'[pix]');
 
     # Add QC parameters to for optimal extraction
-    hdr.set (name+'SIGMAX',gx.stddev.value,'[pix]');
-    hdr.set (name+'MEANX',gx.mean.value,'[pix] python-def');
+    hdr.set (name+'WIDTHX',gx.stddev.value,'[pix]');
+    hdr.set (name+'CENTERX',gx.mean.value,'[pix] python-def');
+    hdr.set (name+'WIDTHY',0.5*ny,'[pix]');
+    hdr.set (name+'CENTERY',ny+0.5*ny,'[pix] python-def');
 
     # Figures
     fig,ax = plt.subplots(3,1);
@@ -264,8 +264,10 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     hdr.set (name+'NY',ny,'[pix]');
 
     # Add QC parameters to for optimal extraction
-    hdr.set (name+'SIGMAX',gx.stddev.value,'[pix]');
-    hdr.set (name+'MEANX',gx.mean.value,'[pix] python-def');
+    hdr.set (name+'WIDTHX',gx.stddev.value,'[pix]');
+    hdr.set (name+'CENTERX',gx.mean.value,'[pix] python-def');
+    hdr.set (name+'WIDTHY',0.5*ny,'[pix]');
+    hdr.set (name+'CENTERY',ny+0.5*ny,'[pix] python-def');
 
     # Figures
     fig,ax = plt.subplots(3,1);
@@ -311,50 +313,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     files.write (hdulist, output+'.fits');
     
     plt.close("all");
-    return cmean_cut,f0y,p0y;
-
-def extract_photo (cube,bmaps,ny):
-    '''
-    Extract photometric channels of a cube, according
-    to the windows defined in the headers bmaps. The
-    photometric output are shifted spectrally to match
-    the position of the fringe window.
-    '''
-
-    # Init photometries to zero
-    photos = np.zeros (cube[:,:,0:ny,0:6].shape);
-
-    # Loop on provided BEAM_MAP
-    for beam in range(6):
-
-        # Loop for the necessary map
-        bmap = [ b for b in bmaps if b['FILETYPE'] == 'BEAM%i_MAP'%(beam+1) ];
-        if len (bmap) != 1:
-            log.warning ('Cannot extract photometry %i'%beam);
-            continue;
-        else:
-            log.debug ('Extract photometry %i'%beam);
-            bmap = bmap[0];
-
-        # Crop window 
-        hdrwin = bmap["* QC WIN PHOTO *"];
-        photo = crop_window (cube, hdrwin);
-
-        # Collapse (FIXME, TODO: can be improved)
-        photo = np.sum (photo, axis=3);
-
-        # Shift spectra
-        shifty = bmap['MIRC QC WIN PHOTO SHIFTY'] - \
-                 bmap['MIRC QC WIN PHOTO STARTY'] + \
-                 bmap['MIRC QC WIN FRINGE STARTY'];
-        photo = subpix_shift (photo, [0,0,-shifty]);
-
-        # Set in cube
-        n = np.minimum (bmap['MIRC QC WIN PHOTO NY'],ny);
-        photos[:,:,0:n,beam] = photo[:,:,0:n];
-
-    # Return
-    return photos;
+    return hdulist;
         
 def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     '''
@@ -362,6 +321,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     fringe window. The second HDU contains the 6 photometries
     already extracted and re-aligned spectrally
     '''
+    
     elog = log.trace ('compute_preproc');
 
     # Check inputs
@@ -379,20 +339,65 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     check_empty_window (cube, hdr);
 
     # We use the fringe window of the first BEAM_MAP
-    hdrwin = bmaps[0]["* QC WIN FRINGE *"];
+    # (FIME: could be improved)
+    hdrwin0 = bmaps[0]["* QC WIN FRINGE *"];
     
     # Crop fringe windows
     log.info ('Crop fringe region');
-    fringe = crop_window (cube, hdrwin);
+    fringe = crop_window (cube, hdrwin0);
 
-    # Extract photometries
-    ny = fringe.shape[2];
-    photos = extract_photo (cube,bmaps,ny);
-    
+    # Init photometries and map to zero
+    nr,nf,ny,nx = fringe.shape;
+    photos      = np.zeros ((6,nr,nf,ny,1));
+    photo_maps  = np.zeros ((6,ny,1));
+    fringe_maps = np.zeros ((6,ny,nx));
+
+    # Loop on provided BEAM_MAP
+    for beam in range(6):
+
+        # Loop for the necessary map
+        bmap = [ b for b in bmaps if b['FILETYPE'] == 'BEAM%i_MAP'%(beam+1) ];
+        if len (bmap) != 1:
+            log.warning ('Cannot extract photometry %i'%beam);
+            continue;
+        else:
+            log.debug ('Extract photometry %i'%beam);
+            bmap = bmap[0];
+
+        # Shift value
+        shifty = bmap['MIRC QC WIN PHOTO SHIFTY'] - \
+                 bmap['MIRC QC WIN PHOTO STARTY'] + \
+                 bmap['MIRC QC WIN FRINGE STARTY'];
+        n = np.minimum (bmap['MIRC QC WIN PHOTO NY'],ny);
+
+        # Get data
+        bcube = pyfits.getdata (bmap['ORIGNAME'], 0);
+        hdrwin = bmap["* QC WIN PHOTO *"];
+        
+        # Crop photometry and collapse
+        # (FIXME, TODO: can be improved)
+        photo = crop_window (cube, hdrwin);
+        photo = np.sum (photo, axis=3)[:,:,:,None];
+
+        # Shift spectra and set in cube
+        photo = subpix_shift (photo, [0,0,-shifty,0]);
+        photos[beam,:,:,0:n,:] = photo[:,:,0:n,:];
+
+        # Same on map photometry
+        photo_map = crop_window (bcube[None,None,:,:], hdrwin);
+        photo_map = np.sum (photo_map, axis=3)[:,:,:,None];
+        
+        photo_map = subpix_shift (photo_map, [0,0,-shifty,0]);
+        photo_maps[beam,0:n,:] = photo_map[0,0,0:n,:];
+
+        # Same on map fringe
+        fringe_map = crop_window (bcube[None,None,:,:], hdrwin0)[0,0,:,:];
+        fringe_maps[beam,:,:] = fringe_map; 
+        
     # Figures
     fig,ax = plt.subplots();
     ax.plot (np.mean (fringe, axis=(0,1,3)), '--', label='fringes');
-    ax.plot (np.mean (photos, axis=(0,1)));
+    ax.plot (np.mean (photos, axis=(1,2,4)).T);
     ax.legend ();
     fig.savefig (output+'_spectra.png');
     
@@ -419,9 +424,22 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     hdu2.header['BUNIT'] = 'ADU';
     hdu2.header['EXTNAME'] = 'PHOTOMETRY_PREPROC';
 
+    # Second HDU with fringe map
+    hdu3 = pyfits.ImageHDU (fringe_maps);
+    hdu3.header['BUNIT'] = 'ADU';
+    hdu3.header['EXTNAME'] = 'FRINGE_MAP';
+
+    # Second HDU with photometries map
+    hdu4 = pyfits.ImageHDU (photo_maps);
+    hdu4.header['BUNIT'] = 'ADU';
+    hdu4.header['EXTNAME'] = 'PHOTOMETRY_MAP';
+    
     # Write file
-    hdulist = pyfits.HDUList ([hdu1,hdu2]);
+    hdulist = pyfits.HDUList ([hdu1,hdu2,hdu3,hdu4]);
     files.write (hdulist, output+'.fits');
     
     plt.close("all");
-    return fringe;
+    return hdulist;
+
+def compute_snr (hdrs):
+    pass;
