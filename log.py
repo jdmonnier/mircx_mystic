@@ -25,7 +25,7 @@ logger = logging.getLogger ('mircx_pipeline');
 
 # Setup the configuration to log in the consol
 logging.basicConfig (
-     level=logging.DEBUG,
+     level=logging.INFO,
      format="[%(color)s%(levelname)-7.7s"+RESET+"] %(asctime)s: %(message)s",
      datefmt='%Y-%m-%dT%H:%M:%S');
 
@@ -36,7 +36,7 @@ def setFile (filename):
     for h in logger.handlers:
         logger.removeHandler (h);
     logfile = logging.FileHandler (filename, mode='w');
-    logfile.setLevel (logging.DEBUG);
+    logfile.setLevel (logging.INFO);
     formatter = logging.Formatter ("[%(levelname)-7.7s] "
                                    "%(asctime)s: %(message)s",
                                     datefmt='%Y-%m-%dT%H:%M:%S');
@@ -58,6 +58,9 @@ def warning(msg):
 def error(msg):
     logger.error (msg, extra={'color':RED});
 
+def debug(msg):
+    logger.debug (debug, extra={'color':RESET});
+    
 # Trace function (measure time until killed)
 class trace:
     def __init__(self, funcname):

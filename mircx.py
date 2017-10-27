@@ -5,8 +5,11 @@ from astropy.stats import sigma_clipped_stats
 from astropy.io import fits as pyfits
 from astropy.modeling import models, fitting
 
+from skimage.feature import register_translation
+
 from scipy.fftpack import fft, ifft
 from scipy.signal import medfilt;
+from scipy.ndimage.interpolation import shift as subpix_shift
 
 from . import log, files
 
@@ -37,40 +40,40 @@ def remove_background (cube, hdr):
     log.info ('Remove background');
     cube -= bkg_data[None,:,:,:];
 
-def crop_fringe_window (cube, hdr):
+def crop_window (cube, hdr):
     ''' Extract fringe window from a cube(r,f,xy)'''
-    log.info ('Extract the fringe window');
-    
-    # Load window
-    sx = hdr['HIERARCH MIRC QC FRINGE_WIN STARTX'];
-    nx = hdr['HIERARCH MIRC QC FRINGE_WIN NX'];
-    sy = hdr['HIERARCH MIRC QC FRINGE_WIN STARTY'];
-    ny = hdr['HIERARCH MIRC QC FRINGE_WIN NY'];
+    log.info ('Extract region');
 
-    # Crop the fringe window
-    output = cube[:,:,sy:sy+ny,sx:sx+nx]
-
-    return output;
+    sx = hdr['* STARTX'][0];
+    nx = hdr['* NX'][0];
+    sy = hdr['* STARTY'][0];
+    ny = hdr['* NY'][0];
     
-def check_empty_window (cube, hdr, hdrqc):
+    # Return the crop
+    return cube[:,:,sy:sy+ny,sx:sx+nx];
+    
+def check_empty_window (cube, hdr):
     ''' Extract empty window from a cube(r,f,xy)'''
     log.info ('Check the empty window');
     
-    # Load window
-    sx = hdr['HIERARCH MIRC QC EMPTY_WIN STARTX'];
-    nx = hdr['HIERARCH MIRC QC EMPTY_WIN NX'];
-    sy = hdr['HIERARCH MIRC QC EMPTY_WIN STARTY'];
-    ny = hdr['HIERARCH MIRC QC EMPTY_WIN NY'];
+    # Hardcoded defined
+    sx,nx = (200,80);
+    sy,ny = (45,55)
 
-    # Crop the fringe window
-    empty = cube[:,:,sy:sy+ny,sx:sx+nx]
+    # Add QC parameters
+    hdr.set ('HIERARCH MIRC QC WIN EMPTY STARTX',sx,'[pix]');
+    hdr.set ('HIERARCH MIRC QC WIN EMPTY NX',nx,'[pix]');
+    hdr.set ('HIERARCH MIRC QC WIN EMPTY STARTY',sx,'[pix]');
+    hdr.set ('HIERARCH MIRC QC WIN EMPTY NY',nx,'[pix]');
+
+    # Crop the empty window
+    empty = np.mean (cube[:,:,sy:sy+ny,sx:sx+nx], axis=(0,1));
 
     # Compute QC
-    if hdrqc is not None:
-        (mean,med,std) = sigma_clipped_stats (empty);
-        hdrqc.set ('HIERARCH MIRC QC EMPTY MED',med,'[adu]');
-        hdrqc.set ('HIERARCH MIRC QC EMPTY MEAN',mean,'[adu]');
-        hdrqc.set ('HIERARCH MIRC QC EMPTY STD',std,'[adu]');
+    (mean,med,std) = sigma_clipped_stats (empty);
+    hdr.set ('HIERARCH MIRC QC EMPTY MED',med,'[adu]');
+    hdr.set ('HIERARCH MIRC QC EMPTY MEAN',mean,'[adu]');
+    hdr.set ('HIERARCH MIRC QC EMPTY STD',std,'[adu]');
 
     return empty;
     
@@ -152,96 +155,11 @@ def compute_background (hdrs,output='output_bkg'):
     plt.close("all");
     return hdulist;
 
-def compute_fringemap (hdrs,bkg,output='output_fringemap'):
-    '''
-    Find the location of the fringe on the detector.
-    '''
-    elog = log.trace ('compute_fringemap');
-    
-    # Check inputs
-    check_hdrs_input (hdrs, required=1);
-    check_hdrs_input (bkg, required=1);
-    
-    # Load files
-    hdr,cube = files.load_raw (hdrs, coaddRamp=True);
-
-    # Remove background
-    remove_background (cube, bkg[0]);
-
-    # Compute the sum
-    log.info ('Compute mean over ramps and frames');
-    fmean = np.mean (cube, axis=(0,1));
-
-    # Figures
-    fig,ax = plt.subplots();
-    ax.imshow (fmean, interpolation='none');
-    fig.savefig (output+'_sum.png');
-
-    # Keep only fringes (supposedly smoothed in x)
-    fmap = medfilt (fmean, [1,11]);
-    
-    # Get spectral limits of profile
-    fcut = np.mean (fmap,axis=1);
-    fcut /= np.max (fcut);
-
-    idy_s = np.argmax (fcut>0.25);
-    idy_e = len(fcut) - np.argmax(fcut[::-1]>0.25);
-    
-    log.info ('Found limit in spectral direction: %i:%i'%(idy_s,idy_e));
-
-    # Get spatial limits of profile
-    fcut = np.mean (fmap[idy_s:idy_e,:],axis=0);
-    fcut /= np.max (fcut);
-    
-    idx_s = np.argmax (fcut>0.25);
-    idx_e = len(fcut) - np.argmax(fcut[::-1]>0.25);
-    
-    log.info ('Found limit in spatial direction: %i:%i'%(idx_s,idx_e));
-
-    # Cut
-    fmeancut = fmean[idy_s:idy_e,idx_s:idx_e];
-
-    # Figures
-    fig,ax = plt.subplots();
-    ax.imshow (fmeancut, interpolation='none');
-    fig.savefig (output+'_cut.png');
-
-    # Add QC parameters
-    hdr.set ('HIERARCH MIRC QC FRINGE_WIN STARTX',idx_s,'[pix]');
-    hdr.set ('HIERARCH MIRC QC FRINGE_WIN NX',idx_e-idx_s,'[pix]');
-    hdr.set ('HIERARCH MIRC QC FRINGE_WIN STARTY',idy_s,'[pix]');
-    hdr.set ('HIERARCH MIRC QC FRINGE_WIN NY',idy_e-idy_s,'[pix]');
-
-    # Add QC parameters
-    hdr.set ('HIERARCH MIRC QC EMPTY_WIN STARTX',200,'[pix]');
-    hdr.set ('HIERARCH MIRC QC EMPTY_WIN NX',80,'[pix]');
-    hdr.set ('HIERARCH MIRC QC EMPTY_WIN STARTY',idy_e+10,'[pix]');
-    hdr.set ('HIERARCH MIRC QC EMPTY_WIN NY',15,'[pix]');
-
-    # Check background subtraction in empty region
-    check_empty_window (cube, hdr, hdr);
-    
-    # Create output HDU
-    hdu1 = pyfits.PrimaryHDU (fmeancut);
-    hdu1.header = hdr;
-
-    # Update header
-    hdu1.header['BZERO'] = 0;
-    hdu1.header['FILETYPE'] = 'FRINGE_MAP';
-
-    # Set files
-    hdu1.header['HIERARCH MIRC PRO BACKGROUND'] = bkg[0]['ORIGNAME'];
-
-    # Write output file
-    hdulist = pyfits.HDUList (hdu1);
-    files.write (hdulist, output+'.fits');
-        
-    plt.close("all");
-    return fmean;
-
 def compute_beammap (hdrs,bkg,output='output_beammap'):
     '''
-    Compute beam file
+    Compute BEAM_MAP product. The output product contains
+    keywords defining the fringe window and the photometric
+    windows, as well as the spectral shift between them.
     '''
     elog = log.trace ('compute_beammap');
 
@@ -255,41 +173,98 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     # Remove background
     remove_background (cube, bkg[0]);
 
+    # Check background subtraction in empty region
+    check_empty_window (cube, hdr);
+
     # Compute the sum
     log.info ('Compute mean over ramps and frames');
-    fmean = np.mean (cube, axis=(0,1));
+    cmean = np.mean (cube, axis=(0,1));
+    cmean_cut = cmean * 0.0;
 
-    # Remove the fringe window (suposedly smoothed in x)
-    fmap = fmean - medfilt (fmean, [1,11]);
-    fmap = medfilt (fmap, [3,1]);
+    # Compute the flux in fringe window
+    # (suposedly smoothed in x)
+    fmap = medfilt (cmean, [1,11]);
 
-    # Fit x-position with Gaussian
-    fx = np.mean (fmap, axis=0);
-    x  = np.arange(len(fx));
-    gx_init = models.Gaussian1D (amplitude=np.max(fx), mean=np.argmax(fx), stddev=1.);
-    gx = fitting.LevMarLSQFitter()(gx_init, x, fx);
+    # Compute the flux in the photometric window
+    # (suposedly sharp in x)
+    pmap = medfilt (cmean - fmap, [3,1]);
+
+    # Fit spatial of photometry with Gaussian
+    px = np.mean (pmap, axis=0);
+    x  = np.arange(len(px));
+    gx_init = models.Gaussian1D (amplitude=np.max(px), mean=np.argmax(px), stddev=1.);
+    gx = fitting.LevMarLSQFitter()(gx_init, x, px);
     idx = int(round(gx.mean - 3*gx.stddev));
     nx  = int(round(6*gx.stddev)+1);
 
-    # Get y-position
-    fy  = medfilt (np.mean (fmap[:,idx:idx+nx], axis=1), 5);
+    log.info ('Found limit photo in spatial direction: %i %i'%(idx,nx));
+    
+    # Get spectral limit of photometry
+    p0y = np.mean (pmap[:,idx:idx+nx], axis=1);
+    py  = medfilt (p0y, 5);
+    py /= np.max (py);
+    idy = np.argmax (py>0.25) - 2;
+    ny  = (len(py) - np.argmax(py[::-1]>0.25)) + 3 - idy;
+
+    log.info ('Found limit photo in spectral direction: %i %i'%(idy,ny));
+    
+    # Cut x-chan
+    pcut = cmean[idy:idy+ny,idx:idx+nx];
+    cmean_cut[idy:idy+ny,idx:idx+nx] = pcut;
+
+    # Add QC parameters for window
+    name = 'HIERARCH MIRC QC WIN PHOTO ';
+    hdr.set (name+'STARTX',idx,'[pix] python-def');
+    hdr.set (name+'NX',nx,'[pix]');
+    hdr.set (name+'STARTY',idy,'[pix]');
+    hdr.set (name+'NY',ny,'[pix]');
+
+    # Add QC parameters to for optimal extraction
+    hdr.set (name+'SIGMAX',gx.stddev.value,'[pix]');
+    hdr.set (name+'MEANX',gx.mean.value,'[pix] python-def');
+
+    # Figures
+    fig,ax = plt.subplots(3,1);
+    ax[0].imshow (pmap, interpolation='none');
+    ax[1].plot (px, label='Data');
+    ax[1].plot (x[idx:idx+nx],gx(x[idx:idx+nx]), label='Gaussian');
+    ax[1].legend ();
+    ax[2].imshow (pcut, interpolation='none');
+    fig.savefig (output+'_pfit.png');
+
+    # Get spectral limits of fringe
+    f0y = np.mean (fmap,axis=1);
+    fy  = medfilt (f0y, 5);
     fy /= np.max (fy);
     idy = np.argmax (fy>0.25) - 1;
     ny  = (len(fy) - np.argmax(fy[::-1]>0.25)) + 1 - idy;
+    
+    log.info ('Found limit fringe in spectral direction: %i %i'%(idy,ny));
 
-    # Cut
-    fmeancut = fmean[idy:idy+ny,idx:idx+nx];
+    # Fit spatial of fringe with Gaussian
+    fx = np.mean (fmap[idy:idy+ny,:], axis=0);
+    x  = np.arange(len(fx));
+    gx_init = models.Gaussian1D (amplitude=np.max(fx), mean=np.argmax(fx), stddev=50.);
+    gx = fitting.LevMarLSQFitter()(gx_init, x, fx);
+    idx = int(round(gx.mean - 3*gx.stddev));
+    nx  = int(round(6*gx.stddev)+1);
+        
+    log.info ('Found limit fringe in spatial direction: %i %i'%(idx,nx));
+
+    # Cut fringe
+    fcut = cmean[idy:idy+ny,idx:idx+nx];
+    cmean_cut[idy:idy+ny,idx:idx+nx] = fcut;
 
     # Add QC parameters for window
-    name = 'HIERARCH MIRC QC '+hdrs[0]['FILETYPE']+'_WIN';
-    hdr.set (name+' STARTX',idx,'[pix]');
-    hdr.set (name+' NX',nx,'[pix]');
-    hdr.set (name+' STARTY',idy,'[pix]');
-    hdr.set (name+' NY',ny,'[pix]');
+    name = 'HIERARCH MIRC QC WIN FRINGE ';
+    hdr.set (name+'STARTX',idx,'[pix] python-def');
+    hdr.set (name+'NX',nx,'[pix]');
+    hdr.set (name+'STARTY',idy,'[pix]');
+    hdr.set (name+'NY',ny,'[pix]');
 
     # Add QC parameters to for optimal extraction
-    hdr.set (name+' SIGMAX',gx.stddev.value,'[pix]');
-    hdr.set (name+' MEANX',gx.mean.value,'[pix]');
+    hdr.set (name+'SIGMAX',gx.stddev.value,'[pix]');
+    hdr.set (name+'MEANX',gx.mean.value,'[pix] python-def');
 
     # Figures
     fig,ax = plt.subplots(3,1);
@@ -297,14 +272,29 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     ax[1].plot (fx, label='Data');
     ax[1].plot (x[idx:idx+nx],gx(x[idx:idx+nx]), label='Gaussian');
     ax[1].legend ();
-    fig.savefig (output+'_fit.png');
+    ax[2].imshow (fcut, interpolation='none');
+    fig.savefig (output+'_ffit.png');
 
-    fig,ax = plt.subplots();
-    ax.imshow (fmeancut, interpolation='none');
+    # Shift between photo and fringes in spectral direction
+    p0y /= np.max (p0y);
+    f0y /= np.max (f0y);
+    shifty = register_translation(p0y[:,None],f0y[:,None],upsample_factor=100)[0][0];
+    
+    name = 'HIERARCH MIRC QC WIN PHOTO SHIFTY';
+    hdr.set (name,shifty,'[pix] shift of PHOTO versus FRINGE');
+
+    # Figures
+    fig,ax = plt.subplots(3,1);
+    ax[0].imshow (cmean, interpolation='none');
+    ax[1].imshow (cmean_cut, interpolation='none');
+    ax[2].plot (f0y, label='fringe');
+    ax[2].plot (p0y, label='photo');
+    ax[2].plot (subpix_shift (p0y, -shifty), label='shifted photo');
+    ax[2].legend ();
     fig.savefig (output+'_cut.png');
 
     # Create output HDU
-    hdu1 = pyfits.PrimaryHDU (fmeancut);
+    hdu1 = pyfits.PrimaryHDU (cmean_cut);
     hdu1.header = hdr;
 
     # Update header
@@ -312,26 +302,70 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     hdu1.header['FILETYPE'] = hdrs[0]['FILETYPE']+'_MAP';
 
     # Set files
-    hdu1.header['HIERARCH MIRC PRO BACKGROUND'] = bkg[0]['ORIGNAME'];
+    hdu1.header['HIERARCH MIRC PRO BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
 
     # Write output file
     hdulist = pyfits.HDUList (hdu1);
     files.write (hdulist, output+'.fits');
     
-    
     plt.close("all");
-    return fmean;
+    return cmean_cut,f0y,p0y;
 
-def compute_preproc (hdrs,bkg,fmap,output='output_preproc'):
+def extract_photo (cube,bmaps,ny):
     '''
-    Compute preproc file
+    Extract photometric channels of a cube, according
+    to the windows defined in the headers bmaps. The
+    photometric output are shifted spectrally to match
+    the position of the fringe window.
+    '''
+
+    # Init photometries to zero
+    photos = np.zeros (cube[:,:,0:ny,0:6].shape);
+
+    # Loop on provided BEAM_MAP
+    for beam in range(6):
+
+        # Loop for the necessary map
+        bmap = [ b for b in bmaps if b['FILETYPE'] == 'BEAM%i_MAP'%(beam+1) ];
+        if len (bmap) != 1:
+            log.warning ('Cannot extract photometry %i'%beam);
+            continue;
+        else:
+            log.debug ('Extract photometry %i'%beam);
+            bmap = bmap[0];
+
+        # Crop window 
+        hdrwin = bmap["* QC WIN PHOTO *"];
+        photo = crop_window (cube, hdrwin);
+
+        # Collapse (FIXME, TODO: can be improved)
+        photo = np.sum (photo, axis=3);
+
+        # Shift spectra
+        shifty = bmap['MIRC QC WIN PHOTO SHIFTY'] - \
+                 bmap['MIRC QC WIN PHOTO STARTY'] + \
+                 bmap['MIRC QC WIN FRINGE STARTY'];
+        photo = subpix_shift (photo, [0,0,-shifty]);
+
+        # Set in cube
+        n = np.minimum (bmap['MIRC QC WIN PHOTO NY'],ny);
+        photos[:,:,0:n,beam] = photo[:,:,0:n];
+
+    # Return
+    return photos;
+        
+def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
+    '''
+    Compute preproc file. The first HDU contains the
+    fringe window. The second HDU contains the 6 photometries
+    already extracted and re-aligned spectrally
     '''
     elog = log.trace ('compute_preproc');
 
     # Check inputs
-    check_hdrs_input (hdrs, required=1);
-    check_hdrs_input (bkg, required=1);
-    check_hdrs_input (fmap, required=1);
+    check_hdrs_input (hdrs,  required=1);
+    check_hdrs_input (bkg,   required=1);
+    check_hdrs_input (bmaps, required=1);
 
     # Load files
     hdr,cube = files.load_raw (hdrs);
@@ -340,86 +374,51 @@ def compute_preproc (hdrs,bkg,fmap,output='output_preproc'):
     remove_background (cube, bkg[0]);
 
     # Check background subtraction in empty region
-    check_empty_window (cube, fmap[0], hdr);
-    
-    # Crop fringe part
-    fringe = crop_fringe_window (cube, fmap[0]);
+    check_empty_window (cube, hdr);
 
+    # We use the fringe window of the first BEAM_MAP
+    hdrwin = bmaps[0]["* QC WIN FRINGE *"];
+    
+    # Crop fringe windows
+    log.info ('Crop fringe region');
+    fringe = crop_window (cube, hdrwin);
+
+    # Extract photometries
+    ny = fringe.shape[2];
+    photos = extract_photo (cube,bmaps,ny);
+    
+    # Figures
+    fig,ax = plt.subplots();
+    ax.plot (np.mean (fringe, axis=(0,1,3)), '--', label='fringes');
+    ax.plot (np.mean (photos, axis=(0,1)));
+    ax.legend ();
+    fig.savefig (output+'_spectra.png');
+    
     # Create output HDU
     log.info ('Create file');
     hdu1 = pyfits.PrimaryHDU (fringe);
     hdu1.header = hdr;
-
+    
     # Update header
+    hdu1.header += hdrwin;
     hdu1.header['BZERO'] = 0;
     hdu1.header['BUNIT'] = 'ADU';
-    hdu1.header['FILETYPE'] = 'PREPROC';
-
+    hdu1.header['FILETYPE'] += '_PREPROC';
+    
     # Set files
-    hdu1.header['HIERARCH MIRC PRO BACKGROUND'] = bkg[0]['ORIGNAME'];
-    hdu1.header['HIERARCH MIRC PRO FRINGE_MAP'] = fmap[0]['ORIGNAME'];
+    hdu1.header['HIERARCH MIRC PRO BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
+    hdu1.header['HIERARCH MIRC PRO FRINGE_MAP'] = bmaps[0]['ORIGNAME'];
+    for bmap in bmaps:
+        hdu1.header['HIERARCH MIRC PRO '+bmap['FILETYPE']] = bmap['ORIGNAME'];
 
-    # Write output file
-    hdulist = pyfits.HDUList (hdu1);
+    # Second HDU with photometries
+    hdu2 = pyfits.ImageHDU (photos);
+    hdu2.header['BUNIT'] = 'ADU';
+    hdu2.header['EXTNAME'] = 'PHOTOMETRY_PREPROC';
+
+    # Write file
+    hdulist = pyfits.HDUList ([hdu1,hdu2]);
     files.write (hdulist, output+'.fits');
     
-    plt.close("all");
-    return fringe;
-    
-def compute_snr (hdrs,output=None,overwrite=True):
-
-    nr,nf,nx,ny = fringe.shape;
-    ny2 = int(ny/2);
-
-    # Check inputs
-    check_hdrs_input (hdrs, required=1);
-    
-    # Compute fft
-    log.info ('Compute FFT');
-    fringe_ft = fft (fringe, axis=-1);
-
-    # Compute integrated PSD (no coherent integration)
-    log.info ('Compute PSD');
-    mean_psd = np.mean (np.abs(fringe_ft)**2, (0,1));
-
-    # Figures
-    (mean,med,std) = sigma_clipped_stats (mean_psd);
-    fig,ax = plt.subplots(3,1);
-    ax[0].imshow (mean_psd[:,0:ny2],vmin=med-5*std,vmax=med+5*std, interpolation='none');
-    ax[1].plot (mean_psd[:,0:ny2].T);
-    ax[2].plot (mean_psd[:,0:ny2].T); ax[2].set_ylim (med-3*std, med+3*std);
-    fig.savefig (output+'_psd.png');
-
-    # Compute cross-spectra
-    log.info ('Compute CSP');
-    csd = 0.5 * fringe_ft[:,0:nf-3:4] * np.conj (fringe_ft[:,2:nf-1:4]) + \
-          0.5 * fringe_ft[:,1:nf-2:4] * np.conj (fringe_ft[:,3:nf-0:4]);
-    mean_psd = np.mean (csd, (0,1)).real;
-
-    # Figures
-    (mean,med,std) = sigma_clipped_stats (mean_psd);
-    fig,ax = plt.subplots(3,1);
-    ax[0].imshow (mean_psd[:,0:ny2],vmin=med-5*std,vmax=med+5*std, interpolation='none');
-    ax[1].plot (mean_psd[:,0:ny2].T);
-    ax[2].plot (mean_psd[:,0:ny2].T); ax[2].set_ylim (med-3*std, med+3*std);
-    fig.savefig (output+'_csd.png');
-    
-    
-    # Create output HDU
-    hdu1 = pyfits.PrimaryHDU (fringe);
-    hdu1.header = hdr;
-
-    # Update header
-    hdu1.header['BZERO'] = 0;
-    hdu1.header['BUNIT'] = 'ADU';
-    hdu1.header['FILETYPE'] = 'SNR';
-
-    # Set files
-    hdu1.header['HIERARCH MIRC PRO BACKGROUND'] = bkg['ORIGNAME'];
-
-    # Write output file
-    hdulist = pyfits.HDUList (hdu1);
-    files.write (hdulist, output+'.fits');
-        
     plt.close("all");
     return fringe;

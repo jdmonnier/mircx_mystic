@@ -36,10 +36,6 @@ parser.add_argument ("--background", dest="background",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the BACKGROUND products [TRUE]");
 
-parser.add_argument ("--fringe-map", dest="fmap",default='TRUE',
-                     choices=TrueFalseOverwrite,
-                     help="compute the FRINGE_MAP products [TRUE]");
-
 parser.add_argument ("--beam-map", dest="bmap",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the BEAM_MAP products [TRUE]");
@@ -112,41 +108,6 @@ if argopt.background != 'FALSE':
             mrx.log.closeFile ();
 
 
-#
-# Compute FRINGE_MAP
-#
-
-if argopt.fmap != 'FALSE':
-
-    # Read all calibration products
-    hdrs_calib = mrx.headers.loaddir (outputDir);
-
-    # Group all FOREGROUND
-    gps = mrx.headers.group (hdrs_raw, 'FOREGROUND', delta=dTime);
-    overwrite = (argopt.fmap == 'OVERWRITE');
-
-    # Compute all
-    for i,gp in enumerate(gps):
-        try:
-            mrx.log.info ('Compute FRINGE_MAP {0} over {1} '.format(i+1,len(gps)));
-
-            output = mrx.files.output (outputDir, gp[0], 'fmap');
-            if os.path.exists (output+'.fits') and overwrite is False:
-                mrx.log.info ('Product already exists');
-                continue;
-            
-            mrx.log.setFile (output+'.log');
-            
-            bkg = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
-                                     keys, which='closest', required=1);
-            
-            mrx.compute_fringemap (gp[0:mf], bkg, output=output);
-            
-        except Exception as exc:
-            mrx.log.error ('Cannot compute FRINGE_MAP: '+str(exc));
-            if argopt.debug == 'TRUE': raise;
-        finally:
-            mrx.log.closeFile ();
 
 #
 # Compute BEAMi_MAP
@@ -215,11 +176,14 @@ if argopt.preproc != 'FALSE':
                 
             bkg  = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
                                     keys, which='closest', required=1);
+
+            pmaps = [];
+            for i in range(1,7):
+                tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MAP'%i,
+                                         keys, which='closest', required=1);
+                pmaps.extend(tmp);
             
-            pmap = mrx.headers.assoc (gp[0], hdrs_calib, 'FRINGE_MAP',
-                                    keys, which='closest', required=1);
-            
-            mrx.compute_preproc (gp[0:mf], bkg, pmap, output=output);
+            mrx.compute_preproc (gp[0:mf], bkg, pmaps, output=output);
             
         except Exception as exc:
             mrx.log.error ('Cannot compute preproc: '+str(exc));
