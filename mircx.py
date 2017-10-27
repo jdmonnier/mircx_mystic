@@ -278,6 +278,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     ax[0].imshow (fmap, interpolation='none');
     ax[1].plot (fx, label='Data');
     ax[1].plot (x,ffit(x), label='Gaussian');
+    ax[1].set_ylabel ('adu/pix/fr');
     ax[1].legend ();
     ax[2].imshow (fmap[int(fyc-ns):int(fyc+ns+1)+1,int(fxc-2*fxw):int(fxc+2*fxw)], interpolation='none');
     fig.savefig (output+'_ffit.png');
@@ -402,6 +403,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     fig,ax = plt.subplots();
     ax.plot (np.mean (fringe, axis=(0,1,3)), '--', label='fringes');
     ax.plot (np.mean (photos, axis=(1,2,4)).T);
+    ax[1].set_ylabel ('adu/pix/fr');
     ax.legend ();
     fig.savefig (output+'_spectra.png');
     
