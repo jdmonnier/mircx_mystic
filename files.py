@@ -2,6 +2,10 @@ import matplotlib.pyplot as plt
 from astropy.time import Time
 from astropy.io import fits as pyfits
 from astropy.stats import sigma_clipped_stats
+
+from scipy.signal import medfilt;
+from scipy.ndimage import gaussian_filter
+
 import numpy as np
 import os
 
@@ -77,14 +81,18 @@ def load_raw (hdrs, coaddRamp=False):
         # Close file
         hdulist.close();
 
-        # Preproc data
-        data = np.diff (data.astype('float'),axis=1);
-        ids = np.append (np.arange(10), data.shape[-1] - np.arange(1,11));
+        # Take difference of consecutive frames
+        data = np.diff (data.astype('float'),axis=1)[:,0:-1,:,:];
+        
+        # Remove bias. Note that the median should be taken
+        # with an odd number of samples, to be unbiased.
+        ids = np.append (np.arange(15), data.shape[-1] - np.arange(1,15));
         bias = np.median (data[:,:,:,ids],axis=3);
+        bias = gaussian_filter (bias,[0,0,1]);
         data = data - bias[:,:,:,None];
 
         # Append ramps or co-add them
-        hdr['HIERARCH MIRC QC NRAMP'] += data.shape[0]
+        hdr['HIERARCH MIRC QC NRAMP'] += data.shape[0];
         if coaddRamp is True:
             cube.append (np.mean (data,axis=0)[None,:,:,:]);
         else:
