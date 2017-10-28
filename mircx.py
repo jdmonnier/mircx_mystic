@@ -36,7 +36,7 @@ def remove_background (cube, hdr):
     
     # Remove background
     log.info ('Remove background');
-    cube -= bkg_data[None,:,:,:];
+    cube -= bkg_data;
 
 def crop_window (cube, hdr, cx, dx, cy, dy):
     ''' Extract fringe window from a cube(r,f,xy)'''
@@ -111,7 +111,7 @@ def compute_background (hdrs,output='output_bkg'):
     hdr.set ('HIERARCH MIRC QC BKG_ERR STD',sstd,'[adu] for frame nf/2');
     
     # Create output HDU
-    hdu1 = pyfits.PrimaryHDU (bkg_mean);
+    hdu1 = pyfits.PrimaryHDU (bkg_mean[None,:,:,:]);
     hdu1.header = hdr;
 
     # Update header
@@ -157,10 +157,13 @@ def compute_background (hdrs,output='output_bkg'):
 def getwidth (curve, threshold=None):
     
     if threshold is None:
-        threshold = 0.25*np.max (curve);
+        threshold = 0.5*np.max (curve);
         
-    first = np.argmax (curve > threshold);
-    last = len(curve) - np.argmax (curve[::-1] > threshold) - 1;
+    f = np.argmax (curve > threshold) - 1;
+    first = f + (threshold - curve[f]) / (curve[f+1] - curve[f]);
+    
+    l = len(curve) - np.argmax (curve[::-1] > threshold) - 1;
+    last = l + (threshold - curve[l]) / (curve[l+1] - curve[l]);
     
     return 0.5*(last+first), 0.5*(last-first)
     
@@ -293,7 +296,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     fig.savefig (output+'_cut.png');
 
     # Create output HDU
-    hdu1 = pyfits.PrimaryHDU (cmean);
+    hdu1 = pyfits.PrimaryHDU (cmean[None,None,:,:]);
     hdu1.header = hdr;
 
     # Update header
@@ -357,8 +360,8 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     # Init photometries and map to zero
     nr,nf,ny,nx = fringe.shape;
     photos      = np.zeros ((6,nr,nf,ny,2*pxw+1));
-    photo_maps  = np.zeros ((6,ny,2*pxw+1));
-    fringe_maps = np.zeros ((6,ny,2*fxw+1));
+    photo_maps  = np.zeros ((6,1,1,ny,2*pxw+1));
+    fringe_maps = np.zeros ((6,1,1,ny,2*fxw+1));
 
     # Loop on provided BEAM_MAP
     for beam in range(6):
@@ -381,8 +384,8 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
         photos[beam,:,:,:,:] = cube[:,:,pyc-ns:pyc+ns+1,pxc-pxw:pxc+pxw+1]
 
         bcube = pyfits.getdata (bmap['ORIGNAME'], 0);
-        photo_maps[beam,:,:]  = bcube[pyc-ns:pyc+ns+1,pxc-pxw:pxc+pxw+1];
-        fringe_maps[beam,:,:] = bcube[fyc-ns:fyc+ns+1,fxc-fxw:fxc+fxw+1];
+        photo_maps[beam,:,:,:,:]  = bcube[:,:,pyc-ns:pyc+ns+1,pxc-pxw:pxc+pxw+1];
+        fringe_maps[beam,:,:,:,:] = bcube[:,:,fyc-ns:fyc+ns+1,fxc-fxw:fxc+fxw+1];
 
         # Keep track of shift and crop value, to recenter spectra        
         shifty = bmap['MIRC QC WIN PHOTO SHIFTY'] - pyc + fyc;
