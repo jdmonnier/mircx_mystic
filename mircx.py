@@ -563,12 +563,12 @@ def compute_snr (hdrs, output='output_snr'):
 
     # Do coherence integration
     ncoher = 3.;
-    log.info ('Coherent integration over %f'%ncoher);
+    log.info ('Coherent integration over %.1f frames'%ncoher);
     base_dft = gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant');
     bias_dft = gaussian_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant');
         
     # Compute power and unbias it
-    bias_power = np.mean (np.abs(bias_dft)**2,axis=-1, keepdims=True);
+    bias_power = np.mean (np.abs (bias_dft)**2,axis=-1,keepdims=True);
     base_power = np.abs (base_dft)**2 - bias_power;
 
     # Compute group-delay in [m]
@@ -576,7 +576,8 @@ def compute_snr (hdrs, output='output_snr'):
     gdelay /= (1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi);
 
     # Compute unbiased PSD for plots
-    fringe_upsd = np.abs(cf[:,:,:,0:nx/2])**2 - bias_power;
+    cf_upsd  = np.abs(cf[:,:,:,0:nx/2])**2;
+    cf_upsd -= np.mean (cf_upsd[:,:,:,ibias],axis=3,keepdims=True);
 
     log.info ('Figures');
     
@@ -598,19 +599,17 @@ def compute_snr (hdrs, output='output_snr'):
     
     # Power densities
     fig,ax = plt.subplots (3,1);
-    ax[0].imshow ( np.mean (fringe_upsd, axis=(0,1)));
+    ax[0].imshow ( np.mean (cf_upsd, axis=(0,1)));
     for f in ifreqs: ax[0].axvline (np.abs(f), color='k', linestyle='--');
-    ax[1].imshow (np.sum (base_power,axis=(0,1)));
-    ax[2].plot ( np.mean (fringe_upsd, axis=(0,1))[ny/2,:]);
-    ax[2].plot ( np.mean (fringe_upsd - np.mean(fringe_upsd[:,:,:,ibias],axis=3,keepdims=True), \
-                          axis=(0,1))[ny/2,:]);
-    ax[2].grid();
+    ax[1].plot ( np.mean (cf_upsd, axis=(0,1))[ny/2,:]);
+    ax[1].grid();
+    ax[2].imshow (np.sum (base_power,axis=(0,1)));
     fig.savefig (output+'_psd.png');
 
     # Power SNR
     fig,ax = plt.subplots (2,1);
     ax[0].plot (np.log10 (np.mean (base_power/bias_power + 1,axis=1)[:,ny/2,:]));
-    ax[0].grid(); ax[0].set_ylabel ('log10(SNR)');
+    ax[0].grid(); ax[0].set_ylabel ('log10 (SNR)');
     ax[1].plot (np.mean (gdelay,axis=1) * 1e6);
     ax[1].grid(); ax[1].set_ylabel ('gdelay (um)');
     fig.savefig (output+'_snr_gd.png');
