@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 
 from astropy.stats import sigma_clipped_stats
 from astropy.io import fits as pyfits
@@ -10,14 +11,19 @@ from skimage.feature import register_translation
 from scipy.fftpack import fft, ifft
 from scipy.signal import medfilt;
 from scipy.ndimage.interpolation import shift as subpix_shift
+from scipy.ndimage import gaussian_filter;
 
 from . import log, files, headers, setup
+
+def gaussian_filter_cpx (input,sigma,**kwargs):
+    return gaussian_filter (input.real,sigma,**kwargs) + \
+           gaussian_filter (input.imag,sigma,**kwargs) * 1.j;
 
 def check_hdrs_input (hdrs, required=1):
     ''' Check the input when provided as hdrs'''
 
     # Ensure a list
-    if type(hdrs) is not list:
+    if type (hdrs) is not list:
         hdrs = [hdrs];
 
     # Check inputs are headers
@@ -341,21 +347,29 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     # (FIME: could be improved)
 
     # Extract the fringe as the middle of all provided map
-    fxc = int(round(np.mean ([b['MIRC QC WIN FRINGE CENTERX'] for b in bmaps])));
-    fyc = int(round(np.mean ([b['MIRC QC WIN FRINGE CENTERY'] for b in bmaps])));
+    fxc0 = np.mean ([b['MIRC QC WIN FRINGE CENTERX'] for b in bmaps]);
+    fyc0 = np.mean ([b['MIRC QC WIN FRINGE CENTERY'] for b in bmaps]);
+                   
+    # Define the closest integer
+    fxc = int(round(fxc0));
+    fyc = int(round(fyc0));
 
     # Expected size on spatial and spectral direction are hardcoded 
     fxw = int(setup.get_fringe_widthx (hdr) / 2);
     pxw = int(setup.get_photo_widthx (hdr) / 2 + 1.5);
-    ns = int(setup.get_nspec (hdr)/2 + 3.5);
+    ns  = int(setup.get_nspec (hdr)/2 + 3.5);
     
     # Crop fringe windows
     log.info ('Extract fringe region');
     fringe = cube[:,:,fyc-ns:fyc+ns+1,fxc-fxw:fxc+fxw+1];
 
-    # Keep track
+    # Keep track of crop value
     hdr['HIERARCH MIRC QC WIN FRINGE STARTX'] = (fxc-fxw, '[pix] python-def');
     hdr['HIERARCH MIRC QC WIN FRINGE STARTY'] = (fyc-ns, '[pix] python-def');
+
+    # Keep track of these values
+    hdr['HIERARCH MIRC QC WIN FRINGE CENTERX'] = (fxc0-(fxc-fxw),'[pix]');
+    hdr['HIERARCH MIRC QC WIN FRINGE CENTERY'] = (fyc0-(fyc-ns),'[pix]');
 
     # Init photometries and map to zero
     nr,nf,ny,nx = fringe.shape;
@@ -375,26 +389,28 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
             log.debug ('Extract photometry %i'%beam);
             bmap = bmap[0];
 
-        # Get the position of the spectra
+        # Get the position of the photo spectra
         pxc = int(round(bmap['MIRC QC WIN PHOTO CENTERX']));
         pyc = int(round(bmap['MIRC QC WIN PHOTO CENTERY']));
             
-        # Extract data
+        # Extract photometric data
         log.info ('Extract photo region');
         photos[beam,:,:,:,:] = cube[:,:,pyc-ns:pyc+ns+1,pxc-pxw:pxc+pxw+1]
 
+        # Extract photo_map and fringe_map data
         bcube = pyfits.getdata (bmap['ORIGNAME'], 0);
         photo_maps[beam,:,:,:,:]  = bcube[:,:,pyc-ns:pyc+ns+1,pxc-pxw:pxc+pxw+1];
         fringe_maps[beam,:,:,:,:] = bcube[:,:,fyc-ns:fyc+ns+1,fxc-fxw:fxc+fxw+1];
 
-        # Keep track of shift and crop value, to recenter spectra        
-        shifty = bmap['MIRC QC WIN PHOTO SHIFTY'] - pyc + fyc;
-
+        # Keep track of crop value
         name = 'HIERARCH MIRC QC WIN PHOTO%i'%beam;
-        hdr[name+' SHIFTY'] = (shifty, '[pix]');
         hdr[name+' STARTX'] = (pxc-pxw, '[pix] python-def');
         hdr[name+' STARTY'] = (pyc-ns, '[pix] python-def');
 
+        # Keep track of shift
+        shifty = bmap['MIRC QC WIN PHOTO SHIFTY'] - pyc + fyc;
+        hdr[name+' SHIFTY'] = (shifty, '[pix]');
+        
 
     # Figure
     fig,ax = plt.subplots(2,1);
@@ -406,7 +422,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     fig,ax = plt.subplots();
     ax.plot (np.mean (fringe, axis=(0,1,3)), '--', label='fringes');
     ax.plot (np.mean (photos, axis=(1,2,4)).T);
-    ax[1].set_ylabel ('adu/pix/fr');
+    ax.set_ylabel ('adu/pix/fr');
     ax.legend ();
     fig.savefig (output+'_spectra.png');
     
@@ -449,5 +465,155 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     plt.close("all");
     return hdulist;
 
-def compute_snr (hdrs):
+def compute_snr (hdrs, output='output_snr'):
+    elog = log.trace ('compute_snr');
+
+    # Check inputs
+    check_hdrs_input (hdrs,  required=1);
+    f = hdrs[0]['ORIGNAME'];
+
+    # Load data
+    log.info ('Load PREPROC file %s'%f);
+    hdr = pyfits.getheader (f);
+    fringe = pyfits.getdata (f);
+    photo  = pyfits.getdata (f, 'PHOTOMETRY_PREPROC');
+    photo_map  = pyfits.getdata (f, 'PHOTOMETRY_MAP');
+    fringe_map = pyfits.getdata (f, 'FRINGE_MAP');
+
+    nr,nf,ny,nx = fringe.shape
+
+    # Build wavelength
+    lbd0,dlbd = setup.get_lbd0 (hdr);
+    lbd = (np.arange (ny) - hdr['HIERARCH MIRC QC WIN FRINGE CENTERY']) * dlbd + lbd0;
+
+    # Optimal extraction of  photometry
+    # (same profile for all spectral channels)
+    log.info ('Extract photometry');
+    profile = np.mean (photo_map, axis=3, keepdims=True);
+    profile = profile * np.sum (profile,axis=-1, keepdims=True) / np.sum (profile**2,axis=-1, keepdims=True);
+    photo = np.sum (photo * profile, axis=-1);
+
+    # Spectral shift of photometry to align with fringes
+    for b in range(6):
+        shifty = hdr['HIERARCH MIRC QC WIN PHOTO%i SHIFTY'%b];
+        log.info ('Shift photometry %i by -%.3f pixels'%(b,shifty));
+        photo[b,:,:,:] = subpix_shift (photo[b,:,:,:], [0,0,-shifty]);
+    
+    # Temporal / Spectral averaging of photometry
+    # to be discussed
+    log.info ('Temporal / Spectral averaging of photometry');
+    spectra  = np.mean (photo, axis=(1,2), keepdims=True);
+    spectra /= np.sum (spectra,axis=3, keepdims=True);
+    injection = np.sum (photo, axis=3, keepdims=True);
+    photo = spectra*injection;
+
+    # Smooth photometry
+    log.info ('Smooth photometry');
+    photo = gaussian_filter (photo,(0,0,2,0));
+
+    # Construct kappa-matrix
+    log.info ('Construct kappa-matrix');
+    kappa  = medfilt (fringe_map,[1,1,1,1,11]);
+    kappa  = kappa / np.sum (photo_map * profile, axis=-1,keepdims=True);
+
+    # Compute flux in fringes
+    log.info ('Compute dc in fringes');
+    cont = np.zeros ((nr,nf,ny,nx));
+    for b in range(6):
+        cont += photo[b,:,:,:,None] * kappa[b,:,:,:,:];
+
+    # Subtract continuum
+    log.info ('Subtract dc');
+    fringe_hf = fringe - cont;
+
+    # Model (x,f)
+    log.info ('Model of data');
+    nfq = int(nx/2);
+    x = 1. * np.arange(nx) / nx;
+    f = 1. * np.arange(1,nfq+1);
+
+    # Scale to ensure the frequencies fall
+    # into integer pixels (max freq in 40)
+    freqs = setup.get_base_freq (hdr);
+    scale0 = 40. / np.abs (freqs * nx).max();
+    ifreqs = np.round(freqs * scale0 * nx).astype(int);
+
+    # Compute DFT
+    model = np.zeros ((nx,nfq*2+1));
+    cf = 0.j + np.zeros ((nr*nf,ny,nfq+1));
+    for y in np.arange(ny):
+        log.info ('Fit channel %i'%y);
+        amp = np.ones (nx);
+        model[:,0] = amp;
+        scale = lbd0 / lbd[y] / scale0;
+        model[:,1:nfq+1] = amp[:,None] * 2 * np.cos (2.*np.pi * x[:,None] * f[None,:] * scale);
+        model[:, nfq+1:] = amp[:,None] * 2 * np.sin (2.*np.pi * x[:,None] * f[None,:] * scale);
+        cfc = np.tensordot (model,fringe_hf[:,:,y,:],axes=([0],[2])).reshape((nx,nr*nf)).T;
+        cf[:,y,0]  = cfc[:,0];
+        cf[:,y,1:] = cfc[:,1:nfq+1] - 1.j * cfc[:,nfq+1:];
+    cf.shape = (nr,nf,ny,nfq+1);
+
+    # DFT at fringe frequencies
+    base_dft  = cf[:,:,:,np.abs(ifreqs)];
+    
+    # Add additional frequencies to ifreqs
+    # to get the bias power
+    ibias = np.abs (ifreqs).max() + 4 + np.arange (5);
+    bias_dft  = cf[:,:,:,ibias];
+
+    # Do coherence integration
+    ncoher = 3.;
+    log.info ('Coherent integration over %f'%ncoher);
+    base_dft = gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant');
+    bias_dft = gaussian_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant');
+        
+    # Compute power and unbias it
+    bias_power = np.mean (np.abs(bias_dft)**2,axis=-1, keepdims=True);
+    base_power = np.abs (base_dft)**2 - bias_power;
+
+    # Compute group-delay in [m]
+    gdelay = np.angle (np.sum (base_dft[:,:,1:,:] * np.conj (base_dft[:,:,:-1,:]), axis=2));
+    gdelay /= (1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi);
+
+    # Compute unbiased PSD for plots
+    fringe_upsd = np.abs(cf[:,:,:,0:nx/2])**2 - bias_power;
+
+    log.info ('Figures');
+    
+    # Check photometry
+    fig,ax = plt.subplots ();
+    ax.hist2d (np.mean (fringe,axis=(2,3)).flatten(),
+                np.mean (cont,axis=(2,3)).flatten(),
+                bins=40, norm=LogNorm());
+    ax.set_xlabel('fringe dc'); ax.set_ylabel('sum of photo');
+    fig.savefig (output+'_contcorr.png');
+
+    # Integrated spectra
+    fig,ax = plt.subplots ();
+    ax.plot (lbd*1e6,np.mean (fringe,axis=(0,1,3)),'--', label='fringes');
+    ax.plot (lbd*1e6,np.mean (photo,axis=(1,2)).T, label='photo');
+    ax.legend(); ax.grid();
+    ax.set_xlabel ('lbd (um)'); ax.set_ylabel ('adu/pix/frame');
+    fig.savefig (output+'_spectra.png');
+    
+    # Power densities
+    fig,ax = plt.subplots (3,1);
+    ax[0].imshow ( np.mean (fringe_upsd, axis=(0,1)));
+    for f in ifreqs: ax[0].axvline (np.abs(f), color='k', linestyle='--');
+    ax[1].imshow (np.sum (base_power,axis=(0,1)));
+    ax[2].plot ( np.mean (fringe_upsd, axis=(0,1))[ny/2,:]);
+    ax[2].plot ( np.mean (fringe_upsd - np.mean(fringe_upsd[:,:,:,ibias],axis=3,keepdims=True), \
+                          axis=(0,1))[ny/2,:]);
+    ax[2].grid();
+    fig.savefig (output+'_psd.png');
+
+    # Power SNR
+    fig,ax = plt.subplots (2,1);
+    ax[0].plot (np.log10 (np.mean (base_power/bias_power + 1,axis=1)[:,ny/2,:]));
+    ax[0].grid(); ax[0].set_ylabel ('log10(SNR)');
+    ax[1].plot (np.mean (gdelay,axis=1) * 1e6);
+    ax[1].grid(); ax[1].set_ylabel ('gdelay (um)');
+    fig.savefig (output+'_snr_gd.png');
+        
+    plt.close('all');
     pass;

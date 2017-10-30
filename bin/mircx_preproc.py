@@ -59,7 +59,7 @@ if argopt.background != 'FALSE':
                 
             mrx.log.setFile (output+'.log');
 
-            mrx.compute_background (gp[0:argopt.mf], output=output);
+            mrx.compute_background (gp[0:argopt.max_file], output=output);
             
         except Exception as exc:
             mrx.log.error ('Cannot compute background: '+str(exc));
@@ -98,7 +98,7 @@ if argopt.bmap != 'FALSE':
             bkg = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
                                      keys, which='closest', required=1);
             
-            mrx.compute_beammap (gp[0:argopt.mf], bkg, output=output);
+            mrx.compute_beammap (gp[0:argopt.max_file], bkg, output=output);
             
         except Exception as exc:
             mrx.log.error ('Cannot compute BEAM_MAP: '+str(exc));
@@ -143,7 +143,7 @@ if argopt.preproc != 'FALSE':
                                          keys, which='closest', required=1);
                 pmaps.extend(tmp);
             
-            mrx.compute_preproc (gp[0:argopt.mf], bkg, pmaps, output=output);
+            mrx.compute_preproc (gp[0:argopt.max_file], bkg, pmaps, output=output);
             
         except Exception as exc:
             mrx.log.error ('Cannot compute preproc: '+str(exc));
@@ -151,5 +151,39 @@ if argopt.preproc != 'FALSE':
         finally:
             mrx.log.closeFile ();
             
+
+#
+# Compute SNR
+#
+
+if argopt.snr != 'FALSE':
+
+    # Read all calibration products
+    hdrs_calib = mrx.headers.loaddir (argopt.outputDir);
+
+    # Group all DATA
+    gps = mrx.headers.group (hdrs_calib, 'DATA_PREPROC', delta=0);
+    overwrite = (argopt.preproc == 'OVERWRITE');
+
+    # Compute 
+    for i,gp in enumerate(gps):
+        try:
+            mrx.log.info ('Compute snr {0} over {1} '.format(i+1,len(gps)));
             
+            output = mrx.files.output (argopt.outputDir, gp[0], 'snr');
+            if os.path.exists (output+'.fits') and overwrite is False:
+                mrx.log.info ('Product already exists');
+                continue;
+
+            mrx.log.setFile (output+'.log');
+            
+            mrx.compute_snr (gp, output=output);
+            
+        except Exception as exc:
+            mrx.log.error ('Cannot compute snr: '+str(exc));
+            if argopt.debug == 'TRUE': raise;
+        finally:
+            mrx.log.closeFile ();
+            
+                        
 
