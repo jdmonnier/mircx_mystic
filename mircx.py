@@ -130,10 +130,15 @@ def compute_background (hdrs,output='output_bkg'):
     ax3.imshow (bkg_std[idf,:,:], vmin=smed-20*sstd, vmax=smed+20*sstd, interpolation='none');
     fig.savefig (output+'_mean.png');
 
-    fig,ax = plt.subplots();
-    ax.hist (bkg_mean[idf,:,:].flatten(),bins=med+std*np.linspace(-10,10,50));
-    ax.set_xlabel ("Value at frame nf/2 (adu)");
-    ax.set_ylabel ("Number of pixels");
+    fig,ax = plt.subplots (2,1);
+    ax[0].hist (bkg_mean[idf,:,:].flatten(),bins=med+std*np.linspace(-10,10,50));
+    ax[0].set_ylabel ("Number of pixels");
+    ax[0].grid ();
+    ax[1].hist (bkg_mean[idf,:,:].flatten(),bins=med+std*np.linspace(-10,10,50));
+    ax[1].set_ylabel ("Number of pixels");
+    ax[1].set_xlabel ("Value at frame nf/2 (adu)");
+    ax[1].set_yscale ('log');
+    ax[1].grid ();
     fig.savefig (output+'_histo.png');
 
     fig,ax = plt.subplots();
