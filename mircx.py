@@ -480,6 +480,9 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     return hdulist;
 
 def compute_snr (hdrs, output='output_snr', ncoher=3.0):
+    '''
+    Compute the SNR
+    '''
     elog = log.trace ('compute_snr');
 
     # Check inputs
@@ -666,6 +669,14 @@ def compute_snr (hdrs, output='output_snr', ncoher=3.0):
     ax[1].grid(); ax[1].set_ylabel ('gdelay (um)');
     ax[1].set_xlabel ('ramp');
     fig.savefig (output+'_snr_gd.png');
+    
+    # fig,ax = plt.subplots (2,1);
+    # ax[0].plot (np.log10 (base_broad_snr.reshape(nr*nf,-1)));
+    # ax[0].grid(); ax[0].set_ylabel ('log10 (SNR_bb)');
+    # ax[1].plot (base_gd.reshape(nr*nf,-1) * 1e6);
+    # ax[1].grid(); ax[1].set_ylabel ('gdelay (um)');
+    # ax[1].set_xlabel ('frame');
+    # fig.savefig (output+'_snr_gd_rt.png');
 
     # File
     log.info ('Create file');
@@ -674,7 +685,7 @@ def compute_snr (hdrs, output='output_snr', ncoher=3.0):
     hdu1 = pyfits.PrimaryHDU ([]);
     hdu1.header = hdr;
     hdu1.header['FILETYPE'] = 'SNR';
-    
+
     # Set files
     headers.set_revision (hdu1.header);
     hdu1.header[HMP+'PREPROC'] = hdrs[0]['ORIGNAME'];
