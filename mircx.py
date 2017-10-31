@@ -72,7 +72,6 @@ def extract_maps (hdr, bmaps):
     They are cropped to mach the windows in hdr
     '''
 
-
     # Setup
     npx = hdr[HMW+'PHOTO NX'];
     npy = hdr[HMW+'PHOTO NY'];

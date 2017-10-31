@@ -1,3 +1,4 @@
-* Extract the window of the photometric channel
-* Compute RMS and time statistic of background
-* Re-do the window management, to save vigned in the preproc
+* Re-do the window management, based on existing value in RAW headers
+* Spectral calibration
+* Photometry normalisation
+* OIFITS
