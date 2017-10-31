@@ -33,28 +33,21 @@ def check_hdrs_input (hdrs, required=1):
     if len(hdrs) < required:
         raise ValueError ('Missing mandatory input');
     
-def remove_background (cube, hdr):
-    ''' Remove the background from a cube(r,f,xy), in-place'''
-
-    # Load background
-    log.info ('Load background %s'%hdr['ORIGNAME']);
-    bkg_data  = pyfits.getdata (hdr['ORIGNAME'],0);
+def getwidth (curve, threshold=None):
+    '''
+    Compute the size of curve
+    '''
     
-    # Remove background
-    log.info ('Remove background');
-    cube -= bkg_data;
-
-def crop_window (cube, hdr, cx, dx, cy, dy):
-    ''' Extract fringe window from a cube(r,f,xy)'''
-    log.debug ('Extract region');
-
-    sx = hdr['* STARTX'][0];
-    nx = hdr['* NX'][0];
-    sy = hdr['* STARTY'][0];
-    ny = hdr['* NY'][0];
+    if threshold is None:
+        threshold = 0.5*np.max (curve);
+        
+    f = np.argmax (curve > threshold) - 1;
+    first = f + (threshold - curve[f]) / (curve[f+1] - curve[f]);
     
-    # Return the crop
-    return cube[:,:,sy:sy+ny,sx:sx+nx];
+    l = len(curve) - np.argmax (curve[::-1] > threshold) - 1;
+    last = l + (threshold - curve[l]) / (curve[l+1] - curve[l]);
+    
+    return 0.5*(last+first), 0.5*(last-first)
     
 def check_empty_window (cube, hdr):
     ''' Extract empty window from a cube(r,f,xy)'''
@@ -159,19 +152,6 @@ def compute_background (hdrs,output='output_bkg'):
 
     plt.close("all");
     return hdulist;
-
-def getwidth (curve, threshold=None):
-    
-    if threshold is None:
-        threshold = 0.5*np.max (curve);
-        
-    f = np.argmax (curve > threshold) - 1;
-    first = f + (threshold - curve[f]) / (curve[f+1] - curve[f]);
-    
-    l = len(curve) - np.argmax (curve[::-1] > threshold) - 1;
-    last = l + (threshold - curve[l]) / (curve[l+1] - curve[l]);
-    
-    return 0.5*(last+first), 0.5*(last-first)
     
 def compute_beammap (hdrs,bkg,output='output_beammap'):
     '''
@@ -196,7 +176,8 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     ns = int(setup.get_nspec (hdr)/2 + 0.5) + 1;
 
     # Remove background
-    remove_background (cube, bkg[0]);
+    log.info ('Load background %s'%bkg[0]['ORIGNAME']);
+    cube -= pyfits.getdata (bkg[0]['ORIGNAME'],0);
 
     # Check background subtraction in empty region
     check_empty_window (cube, hdr);
@@ -338,7 +319,8 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     hdr,cube = files.load_raw (hdrs);
 
     # Remove background
-    remove_background (cube, bkg[0]);
+    log.info ('Load background %s'%bkg[0]['ORIGNAME']);
+    cube -= pyfits.getdata (bkg[0]['ORIGNAME'],0);
 
     # Check background subtraction in empty region
     check_empty_window (cube, hdr);
@@ -561,7 +543,7 @@ def compute_snr (hdrs, output='output_snr'):
     ibias = np.abs (ifreqs).max() + 4 + np.arange (5);
     bias_dft  = cf[:,:,:,ibias];
 
-    # Do coherence integration
+    # Do coherent integration
     ncoher = 3.;
     log.info ('Coherent integration over %.1f frames'%ncoher);
     base_dft = gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant');
