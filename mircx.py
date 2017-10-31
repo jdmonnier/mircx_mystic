@@ -50,19 +50,19 @@ def check_empty_window (cube, hdr):
     sy,ny = (45,55)
 
     # Add QC parameters
-    hdr.set (HMQ+'WIN EMPTY STARTX',sx,'[pix]');
-    hdr.set (HMQ+'WIN EMPTY NX',nx,'[pix]');
-    hdr.set (HMQ+'WIN EMPTY STARTY',sx,'[pix]');
-    hdr.set (HMQ+'WIN EMPTY NY',nx,'[pix]');
+    hdr[HMQ+'WIN EMPTY STARTX'] = (sx,'[pix]');
+    hdr[HMQ+'WIN EMPTY NX'] = (nx,'[pix]');
+    hdr[HMQ+'WIN EMPTY STARTY'] = (sx,'[pix]');
+    hdr[HMQ+'WIN EMPTY NY'] = (nx,'[pix]');
 
     # Crop the empty window
     empty = np.mean (cube[:,:,sy:sy+ny,sx:sx+nx], axis=(0,1));
 
     # Compute QC
     (mean,med,std) = sigma_clipped_stats (empty);
-    hdr.set (HMQ+'EMPTY MED',med,'[adu]');
-    hdr.set (HMQ+'EMPTY MEAN',mean,'[adu]');
-    hdr.set (HMQ+'EMPTY STD',std,'[adu]');
+    hdr[HMQ+'EMPTY MED'] = (med,'[adu]');
+    hdr[HMQ+'EMPTY MEAN'] = (mean,'[adu]');
+    hdr[HMQ+'EMPTY STD'] = (std,'[adu]');
 
     return empty;
     
@@ -111,6 +111,9 @@ def compute_background (hdrs,output='output_bkg'):
     (smean,nmed,nstd) = sigma_clipped_stats (bkg_noise[idy-dy:idy+dy,idx-dx:idx+dx]);
     hdr.set (HMQ+'BKG_NOISE MED',round(nmed,5),'[adu] for first file');
     hdr.set (HMQ+'BKG_NOISE STD',round(nstd,5),'[adu] for first file');
+
+    # Define quality flag
+    hdr[HMQ+'QUALITY'] = (1./(smed+1e-10), 'quality of data');
     
     # Create output HDU
     hdu1 = pyfits.PrimaryHDU (bkg_mean[None,:,:,:]);
@@ -240,10 +243,10 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     log.info ('Found limit photo in spatial direction: %f %f'%(pxc,pxw));
     
     # Add QC parameters for window
-    hdr.set (HMW+'PHOTO WIDTHX',pxw,'[pix]');
-    hdr.set (HMW+'PHOTO CENTERX',pxc,'[pix] python-def');
-    hdr.set (HMW+'PHOTO WIDTHY',pyw,'[pix]');
-    hdr.set (HMW+'PHOTO CENTERY',pyc,'[pix] python-def');
+    hdr[HMW+'PHOTO WIDTHX']  = (pxw,'[pix]');
+    hdr[HMW+'PHOTO CENTERX'] = (pxc,'[pix] python-def');
+    hdr[HMW+'PHOTO WIDTHY']  = (pyw,'[pix]');
+    hdr[HMW+'PHOTO CENTERY'] = (pyc,'[pix] python-def');
 
     # Get spectral limits of fringe
     fy  = np.mean (fmap,axis=1);
@@ -259,10 +262,10 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     log.info ('Found limit fringe in spatial direction: %f %f'%(fxc,fxw));
 
     # Add QC parameters for window
-    hdr.set (HMW+'FRINGE WIDTHX',fxw,'[pix]');
-    hdr.set (HMW+'FRINGE CENTERX',fxc,'[pix] python-def');
-    hdr.set (HMW+'FRINGE WIDTHY',fyw,'[pix]');
-    hdr.set (HMW+'FRINGE CENTERY',fyc,'[pix] python-def');
+    hdr[HMW+'FRINGE WIDTHX']  = (fxw,'[pix]');
+    hdr[HMW+'FRINGE CENTERX'] = (fxc,'[pix] python-def');
+    hdr[HMW+'FRINGE WIDTHY']  = (fyw,'[pix]');
+    hdr[HMW+'FRINGE CENTERY'] = (fyc,'[pix] python-def');
     
     # Extract spectrum of photo and fringes
     p_spectra = np.mean (pmap[:,int(pxc-2):int(pxc+3)], axis=1);
@@ -275,7 +278,10 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     shifty = register_translation (p_spectra[:,None],f_spectra[:,None],upsample_factor=100)[0][0];
 
     # Set in header
-    hdr.set (HMW+'PHOTO SHIFTY',shifty,'[pix] shift of PHOTO versus FRINGE');
+    hdr[HMW+'PHOTO SHIFTY'] = (shifty,'[pix] shift of PHOTO versus FRINGE');
+
+    # Define quality flag
+    hdr[HMQ+'QUALITY'] = (np.max (fmap), 'quality of data');
 
     # Figures
     log.info ('Figures');

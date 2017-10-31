@@ -163,10 +163,19 @@ def assoc (h, allh, tag, keys, which='closest', required=0):
 
     # Check closest
     if len (out) > required and which=='closest':
-        # Case need closest and more than 1 not supported yet
         if required < 2:
             time_diffs = np.array([o['MJD-OBS'] - h['MJD-OBS'] for o in out])
             out = [out[np.abs(time_diffs).argmin()]]
+        else:
+            raise NotImplementedError('Not supported yet');
+            
+    # Check best quality
+    if len (out) > required and which=='best':
+        if required < 2:
+            quality = np.array([o['HIERARCH MIRC QC QUALITY'] for o in out]);
+            out = [out[np.argmax (quality)]];
+        else:
+            raise NotImplementedError('Not supported yet');
             
     # Check required
     if len (out) < required:
