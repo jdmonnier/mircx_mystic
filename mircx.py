@@ -76,7 +76,7 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Check inputs
     headers.check_input (hdrs, required=1);
-    
+
     # Load files
     hdr,cube = files.load_raw (hdrs, coaddRamp=True);
 
@@ -84,22 +84,33 @@ def compute_background (hdrs,output='output_bkg'):
     log.info ('Compute mean and rms over input files');
     bkg_mean = np.mean (cube, axis=0);
     bkg_std  = np.std (cube, axis=0) / np.sqrt (cube.shape[0]);
+
+    # Load all ramp of first file to get temporal variance
+    __,cube = files.load_raw (hdrs[0:1], coaddRamp=False);
+
+    # Compute temporal rms
+    log.info ('Compute rms over ramp/frame of first file');
+    bkg_noise = np.std (cube[:,3:-3,:,:], axis=(0,1));
     
     # Select which one to plot
-    nf,nx,ny = bkg_mean.shape;
-    d = 10;
+    nf,ny,nx = bkg_mean.shape;
+    dy,dx = 35,15;
     idf = int(nf/2);
     idx = int(nx/2);
     idy = int(ny/2);
     
     # Add QC parameters
-    (mean,med,std) = sigma_clipped_stats (bkg_mean[idf,idx-d:idx+d,idy-d:idy+d]);
+    (mean,med,std) = sigma_clipped_stats (bkg_mean[idf,idy-dy:idy+dy,idx-dx:idx+dx]);
     hdr.set (HMQ+'BKG_MEAN MED',med,'[adu] for frame nf/2');
     hdr.set (HMQ+'BKG_MEAN STD',std,'[adu] for frame nf/2');
 
-    (smean,smed,sstd) = sigma_clipped_stats (bkg_std[idf,idx-d:idx+d,idy-d:idy+d]);
+    (smean,smed,sstd) = sigma_clipped_stats (bkg_std[idf,idy-dy:idy+dy,idx-dx:idx+dx]);
     hdr.set (HMQ+'BKG_ERR MED',smed,'[adu] for frame nf/2');
     hdr.set (HMQ+'BKG_ERR STD',sstd,'[adu] for frame nf/2');
+    
+    (smean,nmed,nstd) = sigma_clipped_stats (bkg_noise[idy-dy:idy+dy,idx-dx:idx+dx]);
+    hdr.set (HMQ+'BKG_NOISE MED',round(nmed,5),'[adu] for first file');
+    hdr.set (HMQ+'BKG_NOISE STD',round(nstd,5),'[adu] for first file');
     
     # Create output HDU
     hdu1 = pyfits.PrimaryHDU (bkg_mean[None,:,:,:]);
@@ -113,23 +124,34 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Create second HDU
     hdu2 = pyfits.ImageHDU (bkg_std);
-    
-    # Update header
     hdu2.header['BZERO'] = 0;
     hdu2.header['BUNIT'] = 'ADU';
     hdu2.header['EXTNAME'] = 'BACKGROUND_ERR';
 
+    # Create third HDU
+    hdu3 = pyfits.ImageHDU (bkg_noise);
+    hdu3.header['BZERO'] = 0;
+    hdu3.header['BUNIT'] = 'ADU';
+    hdu3.header['EXTNAME'] = 'BACKGROUND_NOISE';
+    
     # Write output file
-    hdulist = pyfits.HDUList ([hdu1,hdu2]);
+    hdulist = pyfits.HDUList ([hdu1,hdu2,hdu3]);
     files.write (hdulist, output+'.fits');
 
     # Figures
-    fig,(ax1,ax2,ax3) = plt.subplots (3,1);
-    ax1.imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std, interpolation='none');
-    ax2.imshow (bkg_mean[idf,:,:], vmin=med-20*std, vmax=med+20*std, interpolation='none');
-    ax3.imshow (bkg_std[idf,:,:], vmin=smed-20*sstd, vmax=smed+20*sstd, interpolation='none');
+    log.info ('Figures');
+
+    # Images
+    fig,ax = plt.subplots (3,1);
+    ax[0].imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std, interpolation='none');
+    ax[0].set_ylabel ('Mean');
+    ax[1].imshow (bkg_mean[idf,:,:], vmin=med-20*std, vmax=med+20*std, interpolation='none');
+    ax[1].set_ylabel ('Mean');
+    ax[2].imshow (bkg_std[idf,:,:], vmin=smed-20*sstd, vmax=smed+20*sstd, interpolation='none');
+    ax[2].set_ylabel ('Mean_err');
     fig.savefig (output+'_mean.png');
 
+    # Histograms of median
     fig,ax = plt.subplots (2,1);
     ax[0].hist (bkg_mean[idf,:,:].flatten(),bins=med+std*np.linspace(-10,10,50));
     ax[0].set_ylabel ("Number of pixels");
@@ -141,6 +163,19 @@ def compute_background (hdrs,output='output_bkg'):
     ax[1].grid ();
     fig.savefig (output+'_histo.png');
 
+    # Histograms of noise
+    fig,ax = plt.subplots (2,1);
+    ax[0].hist (bkg_noise.flatten(),bins=nmed+nstd*np.linspace(-1.1,10,50));
+    ax[0].set_ylabel ("Number of pixels");
+    ax[0].grid ();
+    ax[1].hist (bkg_noise.flatten(),bins=nmed+nstd*np.linspace(-1.1,10,50));
+    ax[1].set_ylabel ("Number of pixels");
+    ax[1].set_xlabel ("Value for first file");
+    ax[1].set_yscale ('log');
+    ax[1].grid ();
+    fig.savefig (output+'_histonoise.png');
+
+    # Ramp
     fig,ax = plt.subplots();
     ax.plot (np.median (bkg_mean,axis=(1,2)));
     ax.set_xlabel ("Frame");
