@@ -174,13 +174,13 @@ if argopt.preproc != 'FALSE':
             bkg  = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
                                     keys, which='closest', required=1);
 
-            pmaps = [];
+            bmaps = [];
             for i in range(1,7):
                 tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MAP'%i,
                                          keys, which='best', required=1);
-                pmaps.extend(tmp);
+                bmaps.extend(tmp);
             
-            mrx.compute_preproc (gp[0:argopt.max_file], bkg, pmaps, output=output);
+            mrx.compute_preproc (gp[0:argopt.max_file], bkg, bmaps, output=output);
             
         except Exception as exc:
             mrx.log.error ('Cannot compute preproc: '+str(exc));
@@ -214,7 +214,13 @@ if argopt.snr != 'FALSE':
 
             mrx.log.setFile (output+'.log');
             
-            mrx.compute_snr (gp, output=output);
+            bmaps = [];
+            for i in range(1,7):
+                tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MAP'%i,
+                                         keys, which='best', required=1);
+                bmaps.extend(tmp);
+            
+            mrx.compute_snr (gp, bmaps, output=output);
             
         except Exception as exc:
             mrx.log.error ('Cannot compute snr: '+str(exc));
