@@ -587,24 +587,46 @@ def compute_snr (hdrs, output='output_snr', ncoher=3.0):
 
     # Do coherent integration
     log.info ('Coherent integration over %.1f frames'%ncoher);
+    hdr[HMQ+'NFRAME_COHER'] = (ncoher,'nb. of frames integrated coherently');
     base_dft = gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant');
     bias_dft = gaussian_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant');
         
+    # Compute group-delay in [m] and broad-band power
+    log.info ('Compute GD');
+    base_gd  = np.angle (np.sum (base_dft[:,:,1:,:] * np.conj (base_dft[:,:,:-1,:]), axis=2));
+    base_gd /= (1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi);
+
+    phasor = np.exp (2.j*np.pi * base_gd[:,:,None,:] / lbd[None,None,:,None]);
+    base_broad_power = np.abs (np.sum (base_dft * phasor, axis=2))**2;
+
+    # Compute group-delay and broad-band power for bias
+    bias_gd  = np.angle (np.sum (bias_dft[:,:,1:,:] * np.conj (bias_dft[:,:,:-1,:]), axis=2));
+    bias_gd /= (1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi);
+        
+    phasor = np.exp (2.j*np.pi * bias_gd[:,:,None,:] / lbd[None,None,:,None]);
+    bias_broad_power = np.mean (np.abs (np.sum (bias_dft * phasor, axis=2))**2,axis=-1,keepdims=True);
+    
+    # Broad-band SNR
+    base_broad_snr = base_broad_power / bias_broad_power + 1;
+
     # Compute power and unbias it
     bias_power = np.mean (np.abs (bias_dft)**2,axis=-1,keepdims=True);
     base_power = np.abs (base_dft)**2 - bias_power;
-
-    # Compute group-delay in [m]
-    gdelay = np.angle (np.sum (base_dft[:,:,1:,:] * np.conj (base_dft[:,:,:-1,:]), axis=2));
-    gdelay /= (1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi);
 
     # Compute unbiased PSD for plots
     cf_upsd  = np.abs(cf[:,:,:,0:nx/2])**2;
     cf_upsd -= np.mean (cf_upsd[:,:,:,ibias],axis=3,keepdims=True);
 
     # QC for power
-    # for b,name in enumerate ()
-    # hdr[HMQ+'POWER MEAN']
+    for b,name in enumerate (setup.get_base_name ()):
+        val = np.mean (base_power[:,:,ny/2,b], axis=(0,1));
+        hdr[HMQ+'POWER'+name+' MEAN'] = (val,'Fringe Power at lbd0');
+        val = np.std (base_power[:,:,ny/2,b], axis=(0,1));
+        hdr[HMQ+'POWER'+name+' STD'] = (val,'Fringe Power at lbd0');
+        val = np.mean (base_broad_snr[:,:,b], axis=(0,1));
+        hdr[HMQ+'SNR'+name+' MEAN'] = (val,'Broad-band SNR');
+        val = np.std (base_broad_snr[:,:,b], axis=(0,1));
+        hdr[HMQ+'SNR'+name+' STD'] = (val,'Broad-band SNR');
 
     # Figures
     log.info ('Figures');
@@ -638,10 +660,11 @@ def compute_snr (hdrs, output='output_snr', ncoher=3.0):
 
     # Power SNR
     fig,ax = plt.subplots (2,1);
-    ax[0].plot (np.log10 (np.mean (base_power/bias_power + 1,axis=1)[:,ny/2,:]));
-    ax[0].grid(); ax[0].set_ylabel ('log10 (SNR)');
-    ax[1].plot (np.mean (gdelay,axis=1) * 1e6);
+    ax[0].plot (np.log10 (np.mean (base_broad_snr,axis=1)));
+    ax[0].grid(); ax[0].set_ylabel ('log10 (SNR_bb)');
+    ax[1].plot (np.mean (base_gd,axis=1) * 1e6);
     ax[1].grid(); ax[1].set_ylabel ('gdelay (um)');
+    ax[1].set_xlabel ('ramp');
     fig.savefig (output+'_snr_gd.png');
 
     # File
