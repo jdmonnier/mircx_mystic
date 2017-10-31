@@ -118,19 +118,16 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Update header
     headers.set_revision (hdu1.header);
-    hdu1.header['BZERO'] = 0;
     hdu1.header['BUNIT'] = 'ADU';
     hdu1.header['FILETYPE'] = 'BACKGROUND_MEAN';
 
     # Create second HDU
-    hdu2 = pyfits.ImageHDU (bkg_std);
-    hdu2.header['BZERO'] = 0;
+    hdu2 = pyfits.ImageHDU (bkg_std[None,:,:,:]);
     hdu2.header['BUNIT'] = 'ADU';
     hdu2.header['EXTNAME'] = 'BACKGROUND_ERR';
 
     # Create third HDU
-    hdu3 = pyfits.ImageHDU (bkg_noise);
-    hdu3.header['BZERO'] = 0;
+    hdu3 = pyfits.ImageHDU (bkg_noise[None,None,:,:]);
     hdu3.header['BUNIT'] = 'ADU';
     hdu3.header['EXTNAME'] = 'BACKGROUND_NOISE';
     
@@ -318,15 +315,22 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     # First HDU
     hdu1 = pyfits.PrimaryHDU (cmean[None,None,:,:]);
     hdu1.header = hdr;
-    hdu1.header['BZERO'] = 0;
     hdu1.header['FILETYPE'] = hdrs[0]['FILETYPE']+'_MAP';
 
     # Set files
     headers.set_revision (hdu1.header);
     hdu1.header[HMP+'BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
 
+    # Second HDU
+    hdu2 = pyfits.ImageHDU (fmap);
+    hdu2.header['EXTNAME'] = 'FRINGE_MAP';
+
+    # Third HDU
+    hdu3 = pyfits.ImageHDU (pmap);
+    hdu3.header['EXTNAME'] = 'PHOTOMETRY_MAP';
+    
     # Write output file
-    hdulist = pyfits.HDUList (hdu1);
+    hdulist = pyfits.HDUList ([hdu1,hdu2,hdu3]);
     files.write (hdulist, output+'.fits');
     
     plt.close("all");
@@ -446,7 +450,6 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     # First HDU
     hdu1 = pyfits.PrimaryHDU (fringe);
     hdu1.header = hdr;
-    hdu1.header['BZERO'] = 0;
     hdu1.header['BUNIT'] = 'ADU';
     hdu1.header['FILETYPE'] += '_PREPROC';
     

@@ -56,6 +56,7 @@ def load_raw (hdrs, coaddRamp=False):
     # Build header
     hdr = hdrs[0].copy();
     hdr.set('HIERARCH MIRC QC NRAMP',0,'Total number of ramp loaded');
+    hdr['BZERO'] = 0;
     
     cube = [];
     for h in hdrs:
