@@ -25,7 +25,12 @@ examples:
 """
 
 # Parse arguments
-argopt = mrx.batch.parser.parse_args ();
+try:
+    argopt;
+    print ('Dont parse arguments (already existing)');
+except NameError:
+    argopt = mrx.batch.parser.parse_args ();
+    print ('Parse arguments');
 
 #
 # Initialisation
@@ -163,7 +168,7 @@ if argopt.snr != 'FALSE':
 
     # Group all DATA
     gps = mrx.headers.group (hdrs_calib, 'DATA_PREPROC', delta=0);
-    overwrite = (argopt.preproc == 'OVERWRITE');
+    overwrite = (argopt.snr == 'OVERWRITE');
 
     # Compute 
     for i,gp in enumerate(gps):

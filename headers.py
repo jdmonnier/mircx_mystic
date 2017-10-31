@@ -6,9 +6,18 @@ import glob
 
 from . import log, setup
 
+# Global shortcut
+HM  = 'HIERARCH MIRC ';
+HMQ = 'HIERARCH MIRC QC ';
+HMP = 'HIERARCH MIRC PRO ';
+HMW = 'HIERARCH MIRC QC WIN ';
+
 def set_revision (hdr):
+    '''
+    Set revision number into the code
+    '''
     from .version import revision
-    hdr['HIERARCH MIRC PRO REV'] = (revision,'Version of mircx_pipeline');
+    hdr[HMP+'REV'] = (revision,'Version of mircx_pipeline');
 
 def loaddir (dirs):
     '''
@@ -166,3 +175,23 @@ def assoc (h, allh, tag, keys, which='closest', required=0):
         log.info ('Find %i %s'%(len(out),tag));
         
     return out
+
+def check_input (hdrs, required=1, maximum=100000):
+    '''
+    Check the input when provided as hdrs
+    '''
+
+    # Ensure a list
+    if type (hdrs) is not list:
+        hdrs = [hdrs];
+
+    # Check inputs are headers
+    hdrs = [h for h in hdrs if type(h) is pyfits.header.Header or \
+            type(h) is pyfits.hdu.compressed.CompImageHeader];
+
+    if len(hdrs) < required:
+        raise ValueError ('Missing mandatory input');
+
+    if len(hdrs) > maximum:
+        raise ValueError ('Too many input');
+    

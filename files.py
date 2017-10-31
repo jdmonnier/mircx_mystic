@@ -10,6 +10,7 @@ import numpy as np
 import os
 
 from . import log
+from .headers import HM, HMQ, HMP, HMW;
 
 def output (outputDir,hdr,suffix):
     '''

@@ -1,49 +1,41 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
+import numpy as np;
 
-from astropy.stats import sigma_clipped_stats
-from astropy.io import fits as pyfits
-from astropy.modeling import models, fitting
+import matplotlib.pyplot as plt;
+from matplotlib.colors import LogNorm;
 
-from skimage.feature import register_translation
+from astropy.stats import sigma_clipped_stats;
+from astropy.io import fits as pyfits;
+from astropy.modeling import models, fitting;
 
-from scipy.fftpack import fft, ifft
+from skimage.feature import register_translation;
+
+from scipy.fftpack import fft, ifft;
 from scipy.signal import medfilt;
-from scipy.ndimage.interpolation import shift as subpix_shift
+from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter;
 
-from . import log, files, headers, setup
+from . import log, files, headers, setup;
+from .headers import HM, HMQ, HMP, HMW;
 
 def gaussian_filter_cpx (input,sigma,**kwargs):
+    ''' Gaussian filter of a complex array '''
     return gaussian_filter (input.real,sigma,**kwargs) + \
            gaussian_filter (input.imag,sigma,**kwargs) * 1.j;
-
-def check_hdrs_input (hdrs, required=1):
-    ''' Check the input when provided as hdrs'''
-
-    # Ensure a list
-    if type (hdrs) is not list:
-        hdrs = [hdrs];
-
-    # Check inputs are headers
-    hdrs = [h for h in hdrs if type(h) is pyfits.header.Header or \
-            type(h) is pyfits.hdu.compressed.CompImageHeader];
-
-    if len(hdrs) < required:
-        raise ValueError ('Missing mandatory input');
     
 def getwidth (curve, threshold=None):
     '''
-    Compute the size of curve
+    Compute the width of curve around its maximum,
+    given a threshold. Return the tuple (center,fhwm)
     '''
     
     if threshold is None:
         threshold = 0.5*np.max (curve);
-        
+
+    # Find rising point
     f = np.argmax (curve > threshold) - 1;
     first = f + (threshold - curve[f]) / (curve[f+1] - curve[f]);
     
+    # Find lowering point
     l = len(curve) - np.argmax (curve[::-1] > threshold) - 1;
     last = l + (threshold - curve[l]) / (curve[l+1] - curve[l]);
     
@@ -58,19 +50,19 @@ def check_empty_window (cube, hdr):
     sy,ny = (45,55)
 
     # Add QC parameters
-    hdr.set ('HIERARCH MIRC QC WIN EMPTY STARTX',sx,'[pix]');
-    hdr.set ('HIERARCH MIRC QC WIN EMPTY NX',nx,'[pix]');
-    hdr.set ('HIERARCH MIRC QC WIN EMPTY STARTY',sx,'[pix]');
-    hdr.set ('HIERARCH MIRC QC WIN EMPTY NY',nx,'[pix]');
+    hdr.set (HMQ+'WIN EMPTY STARTX',sx,'[pix]');
+    hdr.set (HMQ+'WIN EMPTY NX',nx,'[pix]');
+    hdr.set (HMQ+'WIN EMPTY STARTY',sx,'[pix]');
+    hdr.set (HMQ+'WIN EMPTY NY',nx,'[pix]');
 
     # Crop the empty window
     empty = np.mean (cube[:,:,sy:sy+ny,sx:sx+nx], axis=(0,1));
 
     # Compute QC
     (mean,med,std) = sigma_clipped_stats (empty);
-    hdr.set ('HIERARCH MIRC QC EMPTY MED',med,'[adu]');
-    hdr.set ('HIERARCH MIRC QC EMPTY MEAN',mean,'[adu]');
-    hdr.set ('HIERARCH MIRC QC EMPTY STD',std,'[adu]');
+    hdr.set (HMQ+'EMPTY MED',med,'[adu]');
+    hdr.set (HMQ+'EMPTY MEAN',mean,'[adu]');
+    hdr.set (HMQ+'EMPTY STD',std,'[adu]');
 
     return empty;
     
@@ -83,7 +75,7 @@ def compute_background (hdrs,output='output_bkg'):
     elog = log.trace ('compute_background');
 
     # Check inputs
-    check_hdrs_input (hdrs, required=1);
+    headers.check_input (hdrs, required=1);
     
     # Load files
     hdr,cube = files.load_raw (hdrs, coaddRamp=True);
@@ -102,12 +94,12 @@ def compute_background (hdrs,output='output_bkg'):
     
     # Add QC parameters
     (mean,med,std) = sigma_clipped_stats (bkg_mean[idf,idx-d:idx+d,idy-d:idy+d]);
-    hdr.set ('HIERARCH MIRC QC BKG_MEAN MED',med,'[adu] for frame nf/2');
-    hdr.set ('HIERARCH MIRC QC BKG_MEAN STD',std,'[adu] for frame nf/2');
+    hdr.set (HMQ+'BKG_MEAN MED',med,'[adu] for frame nf/2');
+    hdr.set (HMQ+'BKG_MEAN STD',std,'[adu] for frame nf/2');
 
     (smean,smed,sstd) = sigma_clipped_stats (bkg_std[idf,idx-d:idx+d,idy-d:idy+d]);
-    hdr.set ('HIERARCH MIRC QC BKG_ERR MED',smed,'[adu] for frame nf/2');
-    hdr.set ('HIERARCH MIRC QC BKG_ERR STD',sstd,'[adu] for frame nf/2');
+    hdr.set (HMQ+'BKG_ERR MED',smed,'[adu] for frame nf/2');
+    hdr.set (HMQ+'BKG_ERR STD',sstd,'[adu] for frame nf/2');
     
     # Create output HDU
     hdu1 = pyfits.PrimaryHDU (bkg_mean[None,:,:,:]);
@@ -162,8 +154,8 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     elog = log.trace ('compute_beammap');
 
     # Check inputs
-    check_hdrs_input (hdrs, required=1);
-    check_hdrs_input (bkg, required=1);
+    headers.check_input (hdrs, required=1);
+    headers.check_input (bkg, required=1, maximum=1);
     
     # Load files
     hdr,cube = files.load_raw (hdrs, coaddRamp=True);
@@ -211,12 +203,10 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     log.info ('Found limit photo in spatial direction: %f %f'%(pxc,pxw));
     
     # Add QC parameters for window
-    name = 'HIERARCH MIRC QC WIN PHOTO ';
-    hdr.set (name+'WIDTHX',pxw,'[pix]');
-    hdr.set (name+'CENTERX',pxc,'[pix] python-def');
-    hdr.set (name+'WIDTHY',pyw,'[pix]');
-    hdr.set (name+'CENTERY',pyc,'[pix] python-def');
-
+    hdr.set (HMW+'PHOTO WIDTHX',pxw,'[pix]');
+    hdr.set (HMW+'PHOTO CENTERX',pxc,'[pix] python-def');
+    hdr.set (HMW+'PHOTO WIDTHY',pyw,'[pix]');
+    hdr.set (HMW+'PHOTO CENTERY',pyc,'[pix] python-def');
 
     # Get spectral limits of fringe
     fy  = np.mean (fmap,axis=1);
@@ -232,13 +222,11 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     log.info ('Found limit fringe in spatial direction: %f %f'%(fxc,fxw));
 
     # Add QC parameters for window
-    name = 'HIERARCH MIRC QC WIN FRINGE ';
-    hdr.set (name+'WIDTHX',fxw,'[pix]');
-    hdr.set (name+'CENTERX',fxc,'[pix] python-def');
-    hdr.set (name+'WIDTHY',fyw,'[pix]');
-    hdr.set (name+'CENTERY',fyc,'[pix] python-def');
+    hdr.set (HMW+'FRINGE WIDTHX',fxw,'[pix]');
+    hdr.set (HMW+'FRINGE CENTERX',fxc,'[pix] python-def');
+    hdr.set (HMW+'FRINGE WIDTHY',fyw,'[pix]');
+    hdr.set (HMW+'FRINGE CENTERY',fyc,'[pix] python-def');
     
-
     # Extract spectrum of photo and fringes
     p_spectra = np.mean (pmap[:,int(pxc-2):int(pxc+3)], axis=1);
     p_spectra /= np.max (p_spectra);
@@ -248,10 +236,12 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
 
     # Shift between photo and fringes in spectral direction
     shifty = register_translation (p_spectra[:,None],f_spectra[:,None],upsample_factor=100)[0][0];
-    
-    name = 'HIERARCH MIRC QC WIN PHOTO SHIFTY';
-    hdr.set (name,shifty,'[pix] shift of PHOTO versus FRINGE');
-    
+
+    # Set in header
+    hdr.set (HMW+'PHOTO SHIFTY',shifty,'[pix] shift of PHOTO versus FRINGE');
+
+    # Figures
+    log.info ('Figures');
     
     # Figures of photo
     fig,ax = plt.subplots(3,1);
@@ -273,7 +263,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     ax[2].imshow (fmap[int(fyc-ns):int(fyc+ns+1)+1,int(fxc-2*fxw):int(fxc+2*fxw)], interpolation='none');
     fig.savefig (output+'_ffit.png');
 
-    # Figures
+    # Shifted spectra
     fig,ax = plt.subplots(2,1);
     ax[0].imshow (cmean, interpolation='none');
     ax[1].plot (f_spectra, label='fringe');
@@ -282,17 +272,18 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     ax[1].legend ();
     fig.savefig (output+'_cut.png');
 
-    # Create output HDU
+    # File
+    log.info ('Create file');
+    
+    # First HDU
     hdu1 = pyfits.PrimaryHDU (cmean[None,None,:,:]);
     hdu1.header = hdr;
-
-    # Update header
     hdu1.header['BZERO'] = 0;
     hdu1.header['FILETYPE'] = hdrs[0]['FILETYPE']+'_MAP';
 
     # Set files
     headers.set_revision (hdu1.header);
-    hdu1.header['HIERARCH MIRC PRO BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
+    hdu1.header[HMP+'BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
 
     # Write output file
     hdulist = pyfits.HDUList (hdu1);
@@ -311,9 +302,9 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     elog = log.trace ('compute_preproc');
 
     # Check inputs
-    check_hdrs_input (hdrs,  required=1);
-    check_hdrs_input (bkg,   required=1);
-    check_hdrs_input (bmaps, required=1);
+    headers.check_input (hdrs,  required=1);
+    headers.check_input (bkg,   required=1, maximum=1);
+    headers.check_input (bmaps, required=1, maximum=6);
 
     # Load files
     hdr,cube = files.load_raw (hdrs);
@@ -346,12 +337,12 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     fringe = cube[:,:,fyc-ns:fyc+ns+1,fxc-fxw:fxc+fxw+1];
 
     # Keep track of crop value
-    hdr['HIERARCH MIRC QC WIN FRINGE STARTX'] = (fxc-fxw, '[pix] python-def');
-    hdr['HIERARCH MIRC QC WIN FRINGE STARTY'] = (fyc-ns, '[pix] python-def');
+    hdr[HMW+'FRINGE STARTX'] = (fxc-fxw, '[pix] python-def');
+    hdr[HMW+'FRINGE STARTY'] = (fyc-ns, '[pix] python-def');
 
     # Keep track of these values
-    hdr['HIERARCH MIRC QC WIN FRINGE CENTERX'] = (fxc0-(fxc-fxw),'[pix]');
-    hdr['HIERARCH MIRC QC WIN FRINGE CENTERY'] = (fyc0-(fyc-ns),'[pix]');
+    hdr[HMW+'FRINGE CENTERX'] = (fxc0-(fxc-fxw),'[pix]');
+    hdr[HMW+'FRINGE CENTERY'] = (fyc0-(fyc-ns),'[pix]');
 
     # Init photometries and map to zero
     nr,nf,ny,nx = fringe.shape;
@@ -385,22 +376,23 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
         fringe_maps[beam,:,:,:,:] = bcube[:,:,fyc-ns:fyc+ns+1,fxc-fxw:fxc+fxw+1];
 
         # Keep track of crop value
-        name = 'HIERARCH MIRC QC WIN PHOTO%i'%beam;
-        hdr[name+' STARTX'] = (pxc-pxw, '[pix] python-def');
-        hdr[name+' STARTY'] = (pyc-ns, '[pix] python-def');
+        hdr[HMW+'PHOTO%i STARTX'%beam] = (pxc-pxw, '[pix] python-def');
+        hdr[HMW+'PHOTO%i STARTY'%beam] = (pyc-ns, '[pix] python-def');
 
         # Keep track of shift
         shifty = bmap['MIRC QC WIN PHOTO SHIFTY'] - pyc + fyc;
-        hdr[name+' SHIFTY'] = (shifty, '[pix]');
+        hdr[HMW+'PHOTO%i SHIFTY'%beam] = (shifty, '[pix]');
         
+    # Figures
+    log.info ('Figures');
 
-    # Figure
+    # Fringe mean
     fig,ax = plt.subplots(2,1);
     ax[0].imshow (np.mean (fringe,axis=(0,1)), interpolation='none');
     ax[1].imshow (np.swapaxes (np.mean (photos,axis=(1,2)), 0,1).reshape((ny,-1)), interpolation='none');
     fig.savefig (output+'_mean.png');
 
-    # Figures
+    # Spectra
     fig,ax = plt.subplots();
     ax.plot (np.mean (fringe, axis=(0,1,3)), '--', label='fringes');
     ax.plot (np.mean (photos, axis=(1,2,4)).T);
@@ -408,22 +400,22 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     ax.legend ();
     fig.savefig (output+'_spectra.png');
     
-    # Create output HDU
+    # File
     log.info ('Create file');
+    
+    # First HDU
     hdu1 = pyfits.PrimaryHDU (fringe);
     hdu1.header = hdr;
-    
-    # Update header
     hdu1.header['BZERO'] = 0;
     hdu1.header['BUNIT'] = 'ADU';
     hdu1.header['FILETYPE'] += '_PREPROC';
     
     # Set files
     headers.set_revision (hdu1.header);
-    hdu1.header['HIERARCH MIRC PRO BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
-    hdu1.header['HIERARCH MIRC PRO FRINGE_MAP'] = bmaps[0]['ORIGNAME'];
+    hdu1.header[HMP+'BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
+    hdu1.header[HMP+'FRINGE_MAP'] = bmaps[0]['ORIGNAME'];
     for bmap in bmaps:
-        hdu1.header['HIERARCH MIRC PRO '+bmap['FILETYPE']] = bmap['ORIGNAME'];
+        hdu1.header[HMP+bmap['FILETYPE']] = bmap['ORIGNAME'];
 
     # Second HDU with photometries
     hdu2 = pyfits.ImageHDU (photos);
@@ -447,11 +439,11 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     plt.close("all");
     return hdulist;
 
-def compute_snr (hdrs, output='output_snr'):
+def compute_snr (hdrs, output='output_snr', ncoher=3.0):
     elog = log.trace ('compute_snr');
 
     # Check inputs
-    check_hdrs_input (hdrs,  required=1);
+    headers.check_input (hdrs,  required=1, maximum=1);
     f = hdrs[0]['ORIGNAME'];
 
     # Load data
@@ -466,7 +458,7 @@ def compute_snr (hdrs, output='output_snr'):
 
     # Build wavelength
     lbd0,dlbd = setup.get_lbd0 (hdr);
-    lbd = (np.arange (ny) - hdr['HIERARCH MIRC QC WIN FRINGE CENTERY']) * dlbd + lbd0;
+    lbd = (np.arange (ny) - hdr[HMW+'FRINGE CENTERY']) * dlbd + lbd0;
 
     # Optimal extraction of  photometry
     # (same profile for all spectral channels)
@@ -477,7 +469,7 @@ def compute_snr (hdrs, output='output_snr'):
 
     # Spectral shift of photometry to align with fringes
     for b in range(6):
-        shifty = hdr['HIERARCH MIRC QC WIN PHOTO%i SHIFTY'%b];
+        shifty = hdr[HMW+'PHOTO%i SHIFTY'%b];
         log.info ('Shift photometry %i by -%.3f pixels'%(b,shifty));
         photo[b,:,:,:] = subpix_shift (photo[b,:,:,:], [0,0,-shifty]);
     
@@ -504,6 +496,16 @@ def compute_snr (hdrs, output='output_snr'):
     for b in range(6):
         cont += photo[b,:,:,:,None] * kappa[b,:,:,:,:];
 
+    # QC about the fringe dc
+    photodc_mean    = np.mean (cont,axis=(2,3));
+    fringedc_mean = np.mean (fringe,axis=(2,3));
+    hdr[HMQ+'DC MEAN'] = np.mean (fringedc_mean) / np.mean (photodc_mean);
+    
+    poly_dc = np.polyfit (photodc_mean.flatten(), fringedc_mean.flatten(), 2);
+    hdr[HMQ+'DC ORDER0'] = (poly_dc[0],'[adu] fit DC(photo)');
+    hdr[HMQ+'DC ORDER1'] = (poly_dc[1],'[adu/adu] fit DC(photo)');
+    hdr[HMQ+'DC ORDER2'] = (poly_dc[2],'[adu/adu2] fit DC(photo)');
+        
     # Subtract continuum
     log.info ('Subtract dc');
     fringe_hf = fringe - cont;
@@ -544,7 +546,6 @@ def compute_snr (hdrs, output='output_snr'):
     bias_dft  = cf[:,:,:,ibias];
 
     # Do coherent integration
-    ncoher = 3.;
     log.info ('Coherent integration over %.1f frames'%ncoher);
     base_dft = gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant');
     bias_dft = gaussian_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant');
@@ -561,15 +562,22 @@ def compute_snr (hdrs, output='output_snr'):
     cf_upsd  = np.abs(cf[:,:,:,0:nx/2])**2;
     cf_upsd -= np.mean (cf_upsd[:,:,:,ibias],axis=3,keepdims=True);
 
+    # QC for power
+    # for b,name in enumerate ()
+    # hdr[HMQ+'POWER MEAN']
+
+    # Figures
     log.info ('Figures');
     
-    # Check photometry
+    # Check dc
     fig,ax = plt.subplots ();
-    ax.hist2d (np.mean (fringe,axis=(2,3)).flatten(),
-                np.mean (cont,axis=(2,3)).flatten(),
-                bins=40, norm=LogNorm());
+    ax.hist2d (photodc_mean.flatten(), fringedc_mean.flatten(),
+               bins=40, norm=LogNorm());
+    plt.plot (photodc_mean.flatten(),np.poly1d(poly_dc)(photodc_mean.flatten()),'--');
+    plt.plot (photodc_mean.flatten(),photodc_mean.flatten(),'-');
     ax.set_xlabel('fringe dc'); ax.set_ylabel('sum of photo');
-    fig.savefig (output+'_contcorr.png');
+    ax.grid();
+    fig.savefig (output+'_dccorr.png');
 
     # Integrated spectra
     fig,ax = plt.subplots ();
@@ -595,6 +603,22 @@ def compute_snr (hdrs, output='output_snr'):
     ax[1].plot (np.mean (gdelay,axis=1) * 1e6);
     ax[1].grid(); ax[1].set_ylabel ('gdelay (um)');
     fig.savefig (output+'_snr_gd.png');
+
+    # File
+    log.info ('Create file');
+
+    # First HDU
+    hdu1 = pyfits.PrimaryHDU ([]);
+    hdu1.header = hdr;
+    hdu1.header['FILETYPE'] = 'SNR';
+    
+    # Set files
+    headers.set_revision (hdu1.header);
+    hdu1.header[HMP+'PREPROC'] = hdrs[0]['ORIGNAME'];
         
-    plt.close('all');
-    pass;
+    # Write file
+    hdulist = pyfits.HDUList ([hdu1]);
+    files.write (hdulist, output+'.fits');
+    
+    plt.close("all");
+    return hdulist;

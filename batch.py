@@ -3,7 +3,6 @@ import argparse
 
 parser = argparse.ArgumentParser (description="", epilog="",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter);
-# RawDescriptionHelpFormatter
 
 TrueFalse = ['TRUE','FALSE'];
 TrueFalseOverwrite = ['TRUE','FALSE','OVERWRITE'];
