@@ -68,3 +68,14 @@ def get_base_beam ():
                      [3,4],[3,5],\
                      [4,5]]);
     return tmp;
+
+def get_base_name ():
+    '''
+    Return the base name for each base
+    '''
+    tmp = np.array (['01','02','03','04','05',\
+                     '12','13','14','15',\
+                     '23','24','25',\
+                     '34','35',\
+                     '45']);
+    return tmp;
