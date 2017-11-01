@@ -2,7 +2,7 @@
   Module to reduce the MIRCX data
 """
 
-from . import headers, setup, files, batch
+from . import headers, setup, files, batch, oifits
 
 
 from .mircx import compute_background

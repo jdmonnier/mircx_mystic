@@ -519,51 +519,61 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     lbd0,dlbd = setup.get_lbd0 (hdr);
     lbd = (np.arange (ny) - fcy) * dlbd + lbd0;
 
-    # Optimal extraction of photometry with profile
+    # Define profile for optimal extraction of photometry
+    # The same profile is used for all spectral channels
     # profile is normalised to be flux-conservative
-    # (same profile for all spectral channels)
+    profile  = np.mean (photo_map, axis=3, keepdims=True);
+    profile *= np.sum (profile,axis=-1, keepdims=True) / np.sum (profile**2,axis=-1, keepdims=True);
+
+    # Optimal extraction of photometry with profile
     log.info ('Extract photometry with profile');
-    profile = np.mean (photo_map, axis=3, keepdims=True);
-    profile = profile * np.sum (profile,axis=-1, keepdims=True) / np.sum (profile**2,axis=-1, keepdims=True);
     photo = np.sum (photo * profile, axis=-1);
 
-    # Spectral shift of photometry to align with fringes
-    for b in range(6):
-        log.info ('Shift photometry %i by -%.3f pixels'%(b,shifty[b]));
-        photo[b,:,:,:] = subpix_shift (photo[b,:,:,:], [0,0,-shifty[b]]);
-    
-    # Temporal / Spectral averaging of photometry
-    # to be discussed
-    log.info ('Temporal / Spectral averaging of photometry');
-    spectra  = np.mean (photo, axis=(1,2), keepdims=True);
-    spectra /= np.sum (spectra,axis=3, keepdims=True);
-    injection = np.sum (photo, axis=3, keepdims=True);
-    photo = spectra*injection;
-
-    # Smooth photometry
-    log.info ('Smooth photometry by 2 frames');
-    photo = gaussian_filter (photo,(0,0,2,0));
-
     # Construct kappa-matrix
-    log.info ('Construct kappa-matrix');
-    kappa  = medfilt (fringe_map,[1,1,1,1,11]);
-    kappa  = kappa / np.sum (photo_map * profile, axis=-1,keepdims=True);
-
     # Use the provided kappa-matrix if any
     # so that the photo signal is the
     # normalisation to the fringe
+    log.info ('Use kappa-matrix');
+    kappa = np.sum (medfilt (fringe_map,[1,1,1,1,11]), axis=-1) / \
+            np.sum (photo_map * profile, axis=-1);
+
+    # kappa is defined so that photo is the
+    # total number of adu in the fringe
+    photok = photo * kappa;
+
+    # Smooth photometry
+    log.info ('Smooth photometry by 2 frames');
+    photok = gaussian_filter (photok,(0,0,2,0));
+
+    # Spectral shift of photometry to align with fringes
+    for b in range(6):
+        log.info ('Shift photometry %i by %.3f pixels'%(b,+shifty[b]));
+        photok[b,:,:,:] = subpix_shift (photok[b,:,:,:], [0,0,+shifty[b]]);
+
+    # Temporal / Spectral averaging of photometry
+    # to be discussed
+    log.info ('Temporal / Spectral averaging of photometry');
+    spectra  = np.mean (photok, axis=(1,2), keepdims=True);
+    spectra /= np.sum (spectra,axis=3, keepdims=True);
+    injection = np.sum (photok, axis=3, keepdims=True);
+    photok = spectra*injection;
+    
+    
 
     # Compute flux in fringes
     log.info ('Compute dc in fringes');
+    fringe_map  = medfilt (fringe_map,[1,1,1,1,11]);
+    fringe_map /= np.sum (fringe_map, axis=-1,keepdims=True);
+    
     cont = np.zeros ((nr,nf,ny,nx));
     for b in range(6):
-        cont += photo[b,:,:,:,None] * kappa[b,:,:,:,:];
+        cont += photok[b,:,:,:,None] * fringe_map[b,:,:,:,:];
         
     # QC about the fringe dc
     log.info ('Compute QC about dc');
-    photodc_mean    = np.mean (cont,axis=(2,3));
+    photodc_mean  = np.mean (cont,axis=(2,3));
     fringedc_mean = np.mean (fringe,axis=(2,3));
-    hdr[HMQ+'DC MEAN'] = np.mean (fringedc_mean) / np.mean (photodc_mean);
+    hdr[HMQ+'DC MEAN'] = np.sum (fringedc_mean) / np.sum (photodc_mean);
     
     poly_dc = np.polyfit (photodc_mean.flatten(), fringedc_mean.flatten(), 2);
     hdr[HMQ+'DC ORDER0'] = (poly_dc[0],'[adu] fit DC(photo)');
@@ -586,12 +596,13 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     scale0 = 40. / np.abs (freqs * nx).max();
     ifreqs = np.round(freqs * scale0 * nx).astype(int);
 
-    # Compute DFT
+    # Compute DFT. The amplitude of the complex number
+    # correspond to the total adu in the fringe enveloppe
     model = np.zeros ((nx,nfq*2+1));
     cf = 0.j + np.zeros ((nr*nf,ny,nfq+1));
     for y in np.arange(ny):
         log.info ('Fit channel %i'%y);
-        amp = np.ones (nx);
+        amp = np.ones (nx) / nx;
         model[:,0] = amp;
         scale = lbd0 / lbd[y] / scale0;
         model[:,1:nfq+1] = amp[:,None] * 2 * np.cos (2.*np.pi * x[:,None] * f[None,:] * scale);
@@ -627,11 +638,21 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     fig.savefig (output+'_dccorr.png');
 
     # Integrated spectra
-    fig,ax = plt.subplots ();
-    ax.plot (lbd*1e6,np.mean (fringe,axis=(0,1,3)),'--', label='fringes');
-    ax.plot (lbd*1e6,np.mean (photo,axis=(1,2)).T, label='photo');
-    ax.legend(); ax.grid();
-    ax.set_xlabel ('lbd (um)'); ax.set_ylabel ('adu/pix/frame');
+    fig,ax = plt.subplots (2,1);
+    ax[0].plot (lbd*1e6,np.mean (fringe,axis=(0,1,3)),'--', label='fringes and photo');
+    ax[0].plot (lbd*1e6,np.mean (photo,axis=(1,2)).T);
+    ax[0].legend(); ax[0].grid();
+    ax[0].set_ylabel ('adu/pix/frame');
+    
+    val = np.mean (fringe,axis=(0,1,3));
+    val /= np.max (medfilt (val,3), keepdims=True);
+    ax[1].plot (lbd*1e6,val,'--', label='fringes and photo * kappa * map');
+    val = np.mean (photok, axis=(1,2));
+    val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True);
+    ax[1].plot (lbd*1e6,val.T);
+    ax[1].legend(); ax[1].grid();
+    ax[1].set_ylabel ('normalized');
+    ax[1].set_xlabel ('lbd (um)');
     fig.savefig (output+'_spectra.png');
     
     # Power densities
@@ -655,18 +676,23 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     # Set DFT of fringes, bias, photometry and lbd
     hdu1 = pyfits.ImageHDU (base_dft.real);
     hdu1.header['EXTNAME'] = 'BASE_DFT_REAL';
+    hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
     
     hdu2 = pyfits.ImageHDU (base_dft.imag);
     hdu2.header['EXTNAME'] = 'BASE_DFT_IMAG';
+    hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
     
     hdu3 = pyfits.ImageHDU (bias_dft.real);
     hdu3.header['EXTNAME'] = 'BIAS_DFT_REAL';
+    hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
     
     hdu4 = pyfits.ImageHDU (bias_dft.imag);
     hdu4.header['EXTNAME'] = 'BIAS_DFT_IMAG';
+    hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
     
     hdu5 = pyfits.ImageHDU (np.transpose (photo,axes=(1,2,3,0)));
     hdu5.header['EXTNAME'] = 'PHOTOMETRY';
+    hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
 
     hdu6 = pyfits.ImageHDU (lbd);
     hdu6.header['EXTNAME'] = 'WAVELENGTH';
@@ -712,7 +738,6 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     base_dft = gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
     bias_dft = gaussian_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
     photo = gaussian_filter (photo,(0,ncoher,0,0),mode='constant',truncate=2.0);
-
             
     # Compute group-delay in [m] and broad-band power
     log.info ('Compute GD');
@@ -769,13 +794,12 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
 
     # Compute visibility
     log.info ('Compute VIS');
-    log.warning ('zeroing !!');
     # base_power *= base_flag;
     # norm_power *= base_flag;
     # bias_power *= base_flag;
     vis = np.nanmean (base_power - bias_power, axis=(0,1)) / np.nanmean (norm_power, axis=(0,1));
 
-    # QC for power
+    # QC for VIS
     for b,name in enumerate (setup.get_base_name ()):
         val = headers.rep_nan (vis[ny/2,b]);
         hdr[HMQ+'VISS'+name+' MEAN'] = (val,'visibility at lbd0');
