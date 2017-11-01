@@ -14,7 +14,7 @@ from scipy.signal import medfilt;
 from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter;
 
-from . import log, files, headers, setup;
+from . import log, files, headers, setup, oifits;
 from .headers import HM, HMQ, HMP, HMW;
 
 def gaussian_filter_cpx (input,sigma,**kwargs):
@@ -792,17 +792,20 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     base_flag = 1.0 * (base_snr > 5.0);
     base_flag[base_flag == 0.0] = np.nan;
 
-    # Compute visibility
-    log.info ('Compute VIS');
     # base_power *= base_flag;
     # norm_power *= base_flag;
     # bias_power *= base_flag;
-    vis = np.nanmean (base_power - bias_power, axis=(0,1)) / np.nanmean (norm_power, axis=(0,1));
 
-    # QC for VIS
-    for b,name in enumerate (setup.get_base_name ()):
-        val = headers.rep_nan (vis[ny/2,b]);
-        hdr[HMQ+'VISS'+name+' MEAN'] = (val,'visibility at lbd0');
+    # Create the file
+    hdulist = oifits.create (hdr, lbd);
+
+    # Statistic to compute VIS2. The quantities shall
+    # be (sample, lbd, base)
+    u_power = np.mean (base_power - bias_power, axis=1);
+    l_power = np.mean (norm_power, axis=1);
+    time = np.zeros (l_power.shape[0]);
+
+    oifits.add_vis2 (hdulist, u_power, l_power, time);
 
     # Figures
     log.info ('Figures');
@@ -830,13 +833,10 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     log.info ('Create file');
 
     # First HDU
-    hdu0 = pyfits.PrimaryHDU ([]);
-    hdu0.header = hdr;
-    hdu0.header['FILETYPE'] = 'VIS';
-    hdu0.header[HMP+'RTS'] = hdrs[0]['ORIGNAME'];
+    hdulist[0].header['FILETYPE'] = 'VIS';
+    hdulist[0].header[HMP+'RTS'] = hdrs[0]['ORIGNAME'];
     
     # Write file
-    hdulist = pyfits.HDUList ([hdu0]);
     files.write (hdulist, output+'.fits');
             
     plt.close("all");

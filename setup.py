@@ -79,3 +79,51 @@ def get_base_name ():
                      '34','35',\
                      '45']);
     return tmp;
+
+def get_beam_tel (hdr,mbeam):
+    # CHARA beam of the MIRC beams
+    cbeam = np.array ([hdr['BEAMORD%i'%i] for i in range(6)]);
+    cbeam  = cbeam[mbeam];
+
+    # Check configuration
+    if hdr['TEL_KEY'] != 'S1=0,S2=1,E1=2,E2=3,W1=4,W2=5':
+        raise ValueError('Configuration unsuported');
+    else:
+        ctel = np.array(['S1','S2','E1','E2','W1','W2']);
+
+    # CHARA tel of the CHARA beams
+    return ctel[cbeam];
+    
+def get_beam_index (hdr,mbeam):
+    # CHARA beam of the MIRC beams
+    cbeam = np.array ([hdr['BEAMORD%i'%i] for i in range(6)]);
+    cbeam  = cbeam[mbeam];
+
+    # Check configuration
+    if hdr['TEL_KEY'] != 'S1=0,S2=1,E1=2,E2=3,W1=4,W2=5':
+        raise ValueError('Configuration unsuported');
+    else:
+        cidx = np.array(range (6));
+
+    # CHARA tel of the CHARA beams
+    return cidx[cbeam];
+
+def get_base_uv (hdr):
+    # Get the telescope names of each base
+    tels = get_beam_tel (hdr,get_base_beam ());
+
+    u = np.zeros (15);
+    v = np.zeros (15);
+    
+    for b,t in enumerate(tels):
+        if 'U_'+t[0]+'-'+t[1] in hdr:
+            u[b] = hdr['U_'+t[0]+'-'+t[1]];
+            v[b] = hdr['V_'+t[0]+'-'+t[1]];
+        elif 'U_'+t[1]+'-'+t[0] in hdr:
+            u[b] = -hdr['U_'+t[1]+'-'+t[0]];
+            v[b] = -hdr['V_'+t[1]+'-'+t[0]];
+        else:
+            raise ValueError('Cannot load UV from header');
+
+    # CHARA tel of the CHARA beams
+    return u,v;
