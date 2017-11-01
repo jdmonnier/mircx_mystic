@@ -50,10 +50,10 @@ def check_empty_window (cube, hdr):
     sy,ny = (45,55)
 
     # Add QC parameters
-    hdr[HMQ+'WIN EMPTY STARTX'] = (sx,'[pix]');
+    hdr[HMQ+'WIN EMPTY STARTX'] = (sx,'[pix] python-ref');
+    hdr[HMQ+'WIN EMPTY STARTY'] = (sy,'[pix] python-ref');
     hdr[HMQ+'WIN EMPTY NX'] = (nx,'[pix]');
-    hdr[HMQ+'WIN EMPTY STARTY'] = (sx,'[pix]');
-    hdr[HMQ+'WIN EMPTY NY'] = (nx,'[pix]');
+    hdr[HMQ+'WIN EMPTY NY'] = (ny,'[pix]');
 
     # Crop the empty window
     empty = np.mean (cube[:,:,sy:sy+ny,sx:sx+nx], axis=(0,1));
@@ -512,7 +512,7 @@ def compute_snr (hdrs, bmaps, output='output_snr', ncoher=3.0):
     photo  = pyfits.getdata (f, 'PHOTOMETRY_PREPROC');
     nr,nf,ny,nx = fringe.shape
 
-    # Define maps
+    # Get fringe and photo maps
     fringe_map, photo_map, shifty = extract_maps (hdr, bmaps);
 
     # Compute the expected position of lbd0    
@@ -522,9 +522,10 @@ def compute_snr (hdrs, bmaps, output='output_snr', ncoher=3.0):
     lbd0,dlbd = setup.get_lbd0 (hdr);
     lbd = (np.arange (ny) - fcy) * dlbd + lbd0;
 
-    # Optimal extraction of  photometry
+    # Optimal extraction of photometry with profile
+    # profile is normalised to be flux-conservative
     # (same profile for all spectral channels)
-    log.info ('Extract photometry');
+    log.info ('Extract photometry with profile');
     profile = np.mean (photo_map, axis=3, keepdims=True);
     profile = profile * np.sum (profile,axis=-1, keepdims=True) / np.sum (profile**2,axis=-1, keepdims=True);
     photo = np.sum (photo * profile, axis=-1);
@@ -543,7 +544,7 @@ def compute_snr (hdrs, bmaps, output='output_snr', ncoher=3.0):
     photo = spectra*injection;
 
     # Smooth photometry
-    log.info ('Smooth photometry');
+    log.info ('Smooth photometry by 2 frames');
     photo = gaussian_filter (photo,(0,0,2,0));
 
     # Construct kappa-matrix
@@ -556,8 +557,9 @@ def compute_snr (hdrs, bmaps, output='output_snr', ncoher=3.0):
     cont = np.zeros ((nr,nf,ny,nx));
     for b in range(6):
         cont += photo[b,:,:,:,None] * kappa[b,:,:,:,:];
-
+        
     # QC about the fringe dc
+    log.info ('Compute QC about dc');
     photodc_mean    = np.mean (cont,axis=(2,3));
     fringedc_mean = np.mean (fringe,axis=(2,3));
     hdr[HMQ+'DC MEAN'] = np.mean (fringedc_mean) / np.mean (photodc_mean);
@@ -601,8 +603,7 @@ def compute_snr (hdrs, bmaps, output='output_snr', ncoher=3.0):
     # DFT at fringe frequencies
     base_dft  = cf[:,:,:,np.abs(ifreqs)];
     
-    # Add additional frequencies to ifreqs
-    # to get the bias power
+    # DFT at bias frequencies
     ibias = np.abs (ifreqs).max() + 4 + np.arange (5);
     bias_dft  = cf[:,:,:,ibias];
 
@@ -634,7 +635,8 @@ def compute_snr (hdrs, bmaps, output='output_snr', ncoher=3.0):
     bias_power = np.mean (np.abs (bias_dft)**2,axis=-1,keepdims=True);
     base_power = np.abs (base_dft)**2 - bias_power;
 
-    # Compute unbiased PSD for plots
+    # Compute unbiased PSD for plots (without coherent average
+    # thus the bias is larger than in the base data).
     cf_upsd  = np.abs(cf[:,:,:,0:nx/2])**2;
     cf_upsd -= np.mean (cf_upsd[:,:,:,ibias],axis=3,keepdims=True);
 
