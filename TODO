@@ -1,4 +1,17 @@
 * Re-do the window management, based on existing value in RAW headers
+
 * Spectral calibration
+
+* Photometry extraction
+Think on the dimensions...
+
 * Photometry normalisation
+Require fringe selection (GD)
+for the correlation plots to be valid
+
+Deal with photometric normalisation in way
+that the photo signal in RTS is the normalisation
+including the kappa-matrix
+
 * OIFITS
+

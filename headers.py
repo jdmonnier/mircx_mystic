@@ -12,12 +12,6 @@ HMQ = 'HIERARCH MIRC QC ';
 HMP = 'HIERARCH MIRC PRO ';
 HMW = 'HIERARCH MIRC QC WIN ';
 
-def set_revision (hdr):
-    '''
-    Set revision number into the code
-    '''
-    from .version import revision
-    hdr[HMP+'REV'] = (revision,'Version of mircx_pipeline');
 
 def loaddir (dirs):
     '''
@@ -203,4 +197,7 @@ def check_input (hdrs, required=1, maximum=100000):
 
     if len(hdrs) > maximum:
         raise ValueError ('Too many input');
-    
+
+def rep_nan (val,*rep):
+    if not rep: rep = 0.0;
+    return val if val == val else rep;

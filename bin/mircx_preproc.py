@@ -57,9 +57,13 @@ parser.add_argument ("--preproc", dest="preproc",default='FALSE',
                      choices=TrueFalseOverwrite,
                      help="compute the PREPROC products");
 
-parser.add_argument ("--snr", dest="snr",default='FALSE',
+parser.add_argument ("--rts", dest="rts",default='FALSE',
                      choices=TrueFalseOverwrite,
-                     help="compute the SNR products");
+                     help="compute the RTS products");
+
+parser.add_argument ("--vis", dest="vis",default='FALSE',
+                     choices=TrueFalseOverwrite,
+                     help="compute the VIS products");
 
 #
 # Initialisation
@@ -87,7 +91,7 @@ if argopt.background != 'FALSE':
     # Compute all backgrounds
     for i,gp in enumerate(gps):
         try:
-            mrx.log.info ('Compute background {0} over {1} '.format(i+1,len(gps)));
+            mrx.log.info ('Compute BACKGROUND_MEAN {0} over {1} '.format(i+1,len(gps)));
             
             output = mrx.files.output (argopt.outputDir, gp[0], 'bkg');
             if os.path.exists (output+'.fits') and overwrite is False:
@@ -99,7 +103,7 @@ if argopt.background != 'FALSE':
             mrx.compute_background (gp[0:argopt.max_file], output=output);
             
         except Exception as exc:
-            mrx.log.error ('Cannot compute background: '+str(exc));
+            mrx.log.error ('Cannot compute BACKGROUND_MEAN: '+str(exc));
             if argopt.debug == 'TRUE': raise;
         finally:
             mrx.log.closeFile ();
@@ -162,7 +166,7 @@ if argopt.preproc != 'FALSE':
     # Compute 
     for i,gp in enumerate(gps):
         try:
-            mrx.log.info ('Compute preproc {0} over {1} '.format(i+1,len(gps)));
+            mrx.log.info ('Compute PREPROC {0} over {1} '.format(i+1,len(gps)));
             
             output = mrx.files.output (argopt.outputDir, gp[0], 'preproc');
             if os.path.exists (output+'.fits') and overwrite is False:
@@ -183,31 +187,31 @@ if argopt.preproc != 'FALSE':
             mrx.compute_preproc (gp[0:argopt.max_file], bkg, bmaps, output=output);
             
         except Exception as exc:
-            mrx.log.error ('Cannot compute preproc: '+str(exc));
+            mrx.log.error ('Cannot compute PREPROC: '+str(exc));
             if argopt.debug == 'TRUE': raise;
         finally:
             mrx.log.closeFile ();
             
 
 #
-# Compute SNR
+# Compute RTS
 #
 
-if argopt.snr != 'FALSE':
+if argopt.rts != 'FALSE':
 
     # Read all calibration products
     hdrs_calib = mrx.headers.loaddir (argopt.outputDir);
 
     # Group all DATA
     gps = mrx.headers.group (hdrs_calib, 'DATA_PREPROC', delta=0);
-    overwrite = (argopt.snr == 'OVERWRITE');
+    overwrite = (argopt.rts == 'OVERWRITE');
 
     # Compute 
     for i,gp in enumerate(gps):
         try:
-            mrx.log.info ('Compute snr {0} over {1} '.format(i+1,len(gps)));
+            mrx.log.info ('Compute RTS {0} over {1} '.format(i+1,len(gps)));
             
-            output = mrx.files.output (argopt.outputDir, gp[0], 'snr');
+            output = mrx.files.output (argopt.outputDir, gp[0], 'rts');
             if os.path.exists (output+'.fits') and overwrite is False:
                 mrx.log.info ('Product already exists');
                 continue;
@@ -220,13 +224,47 @@ if argopt.snr != 'FALSE':
                                          keys, which='best', required=1);
                 bmaps.extend(tmp);
             
-            mrx.compute_snr (gp, bmaps, output=output);
-            
+            mrx.compute_rts (gp, bmaps, output=output);
+
         except Exception as exc:
-            mrx.log.error ('Cannot compute snr: '+str(exc));
+            mrx.log.error ('Cannot compute RTS: '+str(exc));
             if argopt.debug == 'TRUE': raise;
         finally:
             mrx.log.closeFile ();
             
-                        
+#
+# Compute VIS
+#
+
+if argopt.vis != 'FALSE':
+
+    # Read all calibration products
+    hdrs_calib = mrx.headers.loaddir (argopt.outputDir);
+
+    # Group all DATA
+    gps = mrx.headers.group (hdrs_calib, 'RTS', delta=0);
+    overwrite = (argopt.vis == 'OVERWRITE');
+
+    # Compute 
+    for i,gp in enumerate(gps):
+        try:
+            mrx.log.info ('Compute VIS {0} over {1} '.format(i+1,len(gps)));
+            
+            output = mrx.files.output (argopt.outputDir, gp[0], 'vis');
+            if os.path.exists (output+'.fits') and overwrite is False:
+                mrx.log.info ('Product already exists');
+                continue;
+
+            mrx.log.setFile (output+'.log');
+
+            for nc in [0,2,4,16,64,128]:
+                mrx.compute_vis (gp, output=output+'_c%03i'%nc, ncoher=nc);
+
+        except Exception as exc:
+            mrx.log.error ('Cannot compute VIS: '+str(exc));
+            if argopt.debug == 'TRUE': raise;
+        finally:
+            mrx.log.closeFile ();
+            
+                                    
 

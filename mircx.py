@@ -152,26 +152,25 @@ def compute_background (hdrs,output='output_bkg'):
     hdr[HMQ+'QUALITY'] = (1./(smed+1e-10), 'quality of data');
     
     # Create output HDU
-    hdu1 = pyfits.PrimaryHDU (bkg_mean[None,:,:,:]);
-    hdu1.header = hdr;
+    hdu0 = pyfits.PrimaryHDU (bkg_mean[None,:,:,:]);
+    hdu0.header = hdr;
 
     # Update header
-    headers.set_revision (hdu1.header);
-    hdu1.header['BUNIT'] = 'ADU';
-    hdu1.header['FILETYPE'] = 'BACKGROUND_MEAN';
+    hdu0.header['BUNIT'] = 'ADU';
+    hdu0.header['FILETYPE'] = 'BACKGROUND_MEAN';
 
     # Create second HDU
-    hdu2 = pyfits.ImageHDU (bkg_std[None,:,:,:]);
-    hdu2.header['BUNIT'] = 'ADU';
-    hdu2.header['EXTNAME'] = 'BACKGROUND_ERR';
+    hdu1 = pyfits.ImageHDU (bkg_std[None,:,:,:]);
+    hdu1.header['BUNIT'] = 'ADU';
+    hdu1.header['EXTNAME'] = 'BACKGROUND_ERR';
 
     # Create third HDU
-    hdu3 = pyfits.ImageHDU (bkg_noise[None,None,:,:]);
-    hdu3.header['BUNIT'] = 'ADU';
-    hdu3.header['EXTNAME'] = 'BACKGROUND_NOISE';
+    hdu2 = pyfits.ImageHDU (bkg_noise[None,None,:,:]);
+    hdu2.header['BUNIT'] = 'ADU';
+    hdu2.header['EXTNAME'] = 'BACKGROUND_NOISE';
     
     # Write output file
-    hdulist = pyfits.HDUList ([hdu1,hdu2,hdu3]);
+    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2]);
     files.write (hdulist, output+'.fits');
 
     # Figures
@@ -355,24 +354,23 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     log.info ('Create file');
     
     # First HDU
-    hdu1 = pyfits.PrimaryHDU (cmean[None,None,:,:]);
-    hdu1.header = hdr;
-    hdu1.header['FILETYPE'] = hdrs[0]['FILETYPE']+'_MAP';
+    hdu0 = pyfits.PrimaryHDU (cmean[None,None,:,:]);
+    hdu0.header = hdr;
+    hdu0.header['FILETYPE'] = hdrs[0]['FILETYPE']+'_MAP';
 
     # Set files
-    headers.set_revision (hdu1.header);
-    hdu1.header[HMP+'BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
+    hdu0.header[HMP+'BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
 
     # Second HDU
-    hdu2 = pyfits.ImageHDU (fmap);
-    hdu2.header['EXTNAME'] = 'FRINGE_MAP';
+    hdu1 = pyfits.ImageHDU (fmap);
+    hdu1.header['EXTNAME'] = 'FRINGE_MAP';
 
     # Third HDU
-    hdu3 = pyfits.ImageHDU (pmap);
-    hdu3.header['EXTNAME'] = 'PHOTOMETRY_MAP';
+    hdu2 = pyfits.ImageHDU (pmap);
+    hdu2.header['EXTNAME'] = 'PHOTOMETRY_MAP';
     
     # Write output file
-    hdulist = pyfits.HDUList ([hdu1,hdu2,hdu3]);
+    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2]);
     files.write (hdulist, output+'.fits');
     
     plt.close("all");
@@ -470,35 +468,34 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     log.info ('Create file');
     
     # First HDU
-    hdu1 = pyfits.PrimaryHDU (fringe);
-    hdu1.header = hdr;
-    hdu1.header['BUNIT'] = 'ADU';
-    hdu1.header['FILETYPE'] += '_PREPROC';
+    hdu0 = pyfits.PrimaryHDU (fringe);
+    hdu0.header = hdr;
+    hdu0.header['BUNIT'] = 'ADU';
+    hdu0.header['FILETYPE'] += '_PREPROC';
     
     # Set files
-    headers.set_revision (hdu1.header);
-    hdu1.header[HMP+'BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
-    hdu1.header[HMP+'FRINGE_MAP'] = bmaps[0]['ORIGNAME'];
+    hdu0.header[HMP+'BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
+    hdu0.header[HMP+'FRINGE_MAP'] = bmaps[0]['ORIGNAME'];
     for bmap in bmaps:
-        hdu1.header[HMP+bmap['FILETYPE']] = bmap['ORIGNAME'];
+        hdu0.header[HMP+bmap['FILETYPE']] = bmap['ORIGNAME'];
 
     # Second HDU with photometries
-    hdu2 = pyfits.ImageHDU (photos);
-    hdu2.header['BUNIT'] = 'ADU';
-    hdu2.header['EXTNAME'] = 'PHOTOMETRY_PREPROC';
+    hdu1 = pyfits.ImageHDU (photos);
+    hdu1.header['BUNIT'] = 'ADU';
+    hdu1.header['EXTNAME'] = 'PHOTOMETRY_PREPROC';
     
     # Write file
-    hdulist = pyfits.HDUList ([hdu1,hdu2]);
+    hdulist = pyfits.HDUList ([hdu0,hdu1]);
     files.write (hdulist, output+'.fits');
     
     plt.close("all");
     return hdulist;
 
-def compute_snr (hdrs, bmaps, output='output_snr', ncoher=3.0):
+def compute_rts (hdrs, bmaps, output='output_rts'):
     '''
-    Compute the SNR
+    Compute the RTS
     '''
-    elog = log.trace ('compute_snr');
+    elog = log.trace ('compute_rts');
 
     # Check inputs
     headers.check_input (hdrs,  required=1, maximum=1);
@@ -551,6 +548,10 @@ def compute_snr (hdrs, bmaps, output='output_snr', ncoher=3.0):
     log.info ('Construct kappa-matrix');
     kappa  = medfilt (fringe_map,[1,1,1,1,11]);
     kappa  = kappa / np.sum (photo_map * profile, axis=-1,keepdims=True);
+
+    # Use the provided kappa-matrix if any
+    # so that the photo signal is the
+    # normalisation to the fringe
 
     # Compute flux in fringes
     log.info ('Compute dc in fringes');
@@ -607,49 +608,10 @@ def compute_snr (hdrs, bmaps, output='output_snr', ncoher=3.0):
     ibias = np.abs (ifreqs).max() + 4 + np.arange (5);
     bias_dft  = cf[:,:,:,ibias];
 
-    # Do coherent integration
-    log.info ('Coherent integration over %.1f frames'%ncoher);
-    hdr[HMQ+'NFRAME_COHER'] = (ncoher,'nb. of frames integrated coherently');
-    base_dft = gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant');
-    bias_dft = gaussian_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant');
-        
-    # Compute group-delay in [m] and broad-band power
-    log.info ('Compute GD');
-    base_gd  = np.angle (np.sum (base_dft[:,:,1:,:] * np.conj (base_dft[:,:,:-1,:]), axis=2));
-    base_gd /= (1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi);
-
-    phasor = np.exp (2.j*np.pi * base_gd[:,:,None,:] / lbd[None,None,:,None]);
-    base_broad_power = np.abs (np.sum (base_dft * phasor, axis=2))**2;
-
-    # Compute group-delay and broad-band power for bias
-    bias_gd  = np.angle (np.sum (bias_dft[:,:,1:,:] * np.conj (bias_dft[:,:,:-1,:]), axis=2));
-    bias_gd /= (1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi);
-        
-    phasor = np.exp (2.j*np.pi * bias_gd[:,:,None,:] / lbd[None,None,:,None]);
-    bias_broad_power = np.mean (np.abs (np.sum (bias_dft * phasor, axis=2))**2,axis=-1,keepdims=True);
-    
-    # Broad-band SNR
-    base_broad_snr = base_broad_power / bias_broad_power + 1;
-
-    # Compute power and unbias it
-    bias_power = np.mean (np.abs (bias_dft)**2,axis=-1,keepdims=True);
-    base_power = np.abs (base_dft)**2 - bias_power;
-
     # Compute unbiased PSD for plots (without coherent average
     # thus the bias is larger than in the base data).
     cf_upsd  = np.abs(cf[:,:,:,0:nx/2])**2;
-    cf_upsd -= np.mean (cf_upsd[:,:,:,ibias],axis=3,keepdims=True);
-
-    # QC for power
-    for b,name in enumerate (setup.get_base_name ()):
-        val = np.mean (base_power[:,:,ny/2,b], axis=(0,1));
-        hdr[HMQ+'POWER'+name+' MEAN'] = (val,'Fringe Power at lbd0');
-        val = np.std (base_power[:,:,ny/2,b], axis=(0,1));
-        hdr[HMQ+'POWER'+name+' STD'] = (val,'Fringe Power at lbd0');
-        val = np.mean (base_broad_snr[:,:,b], axis=(0,1));
-        hdr[HMQ+'SNR'+name+' MEAN'] = (val,'Broad-band SNR');
-        val = np.std (base_broad_snr[:,:,b], axis=(0,1));
-        hdr[HMQ+'SNR'+name+' STD'] = (val,'Broad-band SNR');
+    cf_upsd -= np.mean (cf_upsd[:,:,:,ibias],axis=-1,keepdims=True);
 
     # Figures
     log.info ('Figures');
@@ -673,46 +635,186 @@ def compute_snr (hdrs, bmaps, output='output_snr', ncoher=3.0):
     fig.savefig (output+'_spectra.png');
     
     # Power densities
-    fig,ax = plt.subplots (3,1);
+    fig,ax = plt.subplots (2,1);
     ax[0].imshow ( np.mean (cf_upsd, axis=(0,1)));
     for f in ifreqs: ax[0].axvline (np.abs(f), color='k', linestyle='--');
     ax[1].plot ( np.mean (cf_upsd, axis=(0,1))[ny/2,:]);
+    ax[1].set_xlim (0,cf_upsd.shape[-1]);
     ax[1].grid();
-    ax[2].imshow (np.sum (base_power,axis=(0,1)));
     fig.savefig (output+'_psd.png');
-
-    # Power SNR
-    fig,ax = plt.subplots (2,1);
-    ax[0].plot (np.log10 (np.mean (base_broad_snr,axis=1)));
-    ax[0].grid(); ax[0].set_ylabel ('log10 (SNR_bb)');
-    ax[1].plot (np.mean (base_gd,axis=1) * 1e6);
-    ax[1].grid(); ax[1].set_ylabel ('gdelay (um)');
-    ax[1].set_xlabel ('ramp');
-    fig.savefig (output+'_snr_gd.png');
-    
-    # fig,ax = plt.subplots (2,1);
-    # ax[0].plot (np.log10 (base_broad_snr.reshape(nr*nf,-1)));
-    # ax[0].grid(); ax[0].set_ylabel ('log10 (SNR_bb)');
-    # ax[1].plot (base_gd.reshape(nr*nf,-1) * 1e6);
-    # ax[1].grid(); ax[1].set_ylabel ('gdelay (um)');
-    # ax[1].set_xlabel ('frame');
-    # fig.savefig (output+'_snr_gd_rt.png');
 
     # File
     log.info ('Create file');
 
     # First HDU
-    hdu1 = pyfits.PrimaryHDU ([]);
-    hdu1.header = hdr;
-    hdu1.header['FILETYPE'] = 'SNR';
+    hdu0 = pyfits.PrimaryHDU ([]);
+    hdu0.header = hdr;
+    hdu0.header['FILETYPE'] = 'RTS';
+    hdu0.header[HMP+'PREPROC'] = hdrs[0]['ORIGNAME'];
 
-    # Set files
-    headers.set_revision (hdu1.header);
-    hdu1.header[HMP+'PREPROC'] = hdrs[0]['ORIGNAME'];
+    # Set DFT of fringes, bias, photometry and lbd
+    hdu1 = pyfits.ImageHDU (base_dft.real);
+    hdu1.header['EXTNAME'] = 'BASE_DFT_REAL';
+    
+    hdu2 = pyfits.ImageHDU (base_dft.imag);
+    hdu2.header['EXTNAME'] = 'BASE_DFT_IMAG';
+    
+    hdu3 = pyfits.ImageHDU (bias_dft.real);
+    hdu3.header['EXTNAME'] = 'BIAS_DFT_REAL';
+    
+    hdu4 = pyfits.ImageHDU (bias_dft.imag);
+    hdu4.header['EXTNAME'] = 'BIAS_DFT_IMAG';
+    
+    hdu5 = pyfits.ImageHDU (np.transpose (photo,axes=(1,2,3,0)));
+    hdu5.header['EXTNAME'] = 'PHOTOMETRY';
+
+    hdu6 = pyfits.ImageHDU (lbd);
+    hdu6.header['EXTNAME'] = 'WAVELENGTH';
+    hdu6.header['BUNIT'] = 'm';
         
     # Write file
-    hdulist = pyfits.HDUList ([hdu1]);
+    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2,hdu3,hdu4,hdu5,hdu6]);
     files.write (hdulist, output+'.fits');
     
     plt.close("all");
     return hdulist;
+
+def compute_vis (hdrs, output='output_vis', ncoher=3.0):
+    '''
+    Compute the VIS
+    '''
+    elog = log.trace ('compute_vis');
+
+    # Check inputs
+    headers.check_input (hdrs,  required=1, maximum=1);
+    f = hdrs[0]['ORIGNAME'];
+
+    # Get data
+    log.info ('Load RTS file %s'%f);
+    hdr = pyfits.getheader (f);
+    base_dft  = pyfits.getdata (f, 'BASE_DFT_IMAG') * 1.j;
+    base_dft += pyfits.getdata (f, 'BASE_DFT_REAL');
+    bias_dft  = pyfits.getdata (f, 'BIAS_DFT_IMAG') * 1.j;
+    bias_dft += pyfits.getdata (f, 'BIAS_DFT_REAL');
+    photo     = pyfits.getdata (f, 'PHOTOMETRY');
+    lbd       = pyfits.getdata (f, 'WAVELENGTH');
+
+    # Dimensions
+    nr,nf,ny,nb = base_dft.shape;
+
+    # Compute lbd0 and dlbd
+    lbd0 = np.mean (lbd);
+    dlbd = np.mean (np.diff (lbd));
+
+    # Do coherent integration
+    log.info ('Coherent integration over %.1f frames'%ncoher);
+    hdr[HMQ+'NFRAME_COHER'] = (ncoher,'nb. of frames integrated coherently');
+    base_dft = gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
+    bias_dft = gaussian_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
+    photo = gaussian_filter (photo,(0,ncoher,0,0),mode='constant',truncate=2.0);
+
+            
+    # Compute group-delay in [m] and broad-band power
+    log.info ('Compute GD');
+    base_gd  = np.angle (np.sum (base_dft[:,:,1:,:] * np.conj (base_dft[:,:,:-1,:]), axis=2, keepdims=True));
+    base_gd /= (1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi);
+
+    phasor = np.exp (2.j*np.pi * base_gd / lbd[None,None,:,None]);
+    base_powerbb = np.abs (np.sum (base_dft * phasor, axis=2, keepdims=True))**2;
+
+    # Compute group-delay and broad-band power for bias
+    bias_gd  = np.angle (np.sum (bias_dft[:,:,1:,:] * np.conj (bias_dft[:,:,:-1,:]), axis=2,keepdims=True));
+    bias_gd /= (1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi);
+        
+    phasor = np.exp (2.j*np.pi * bias_gd / lbd[None,None,:,None]);
+    bias_powerbb = np.mean (np.abs (np.sum (bias_dft * phasor, axis=2,keepdims=True))**2,axis=-1,keepdims=True);
+    
+    # Broad-band SNR
+    base_snrbb = base_powerbb / bias_powerbb + 1;
+
+    # Compute power per spectral channels
+    bias_power = np.mean (np.abs (bias_dft)**2,axis=-1,keepdims=True);
+    base_power = np.abs (base_dft)**2; 
+
+    # Compute norm power
+    log.info ('Compute norm power');
+    base = setup.get_base_beam ();
+    norm_power = photo[:,:,:,base[:,0]] * photo[:,:,:,base[:,1]];
+    
+    # QC for power
+    log.info ('Compute QC for power');
+    for b,name in enumerate (setup.get_base_name ()):
+        val = np.mean (norm_power[:,:,ny/2,b], axis=(0,1));
+        hdr[HMQ+'NORM'+name+' MEAN'] = (val,'Norm Power at lbd0');
+        val = np.mean (base_power[:,:,ny/2,b], axis=(0,1));
+        hdr[HMQ+'POWER'+name+' MEAN'] = (val,'Fringe Power at lbd0');
+        val = np.std (base_power[:,:,ny/2,b], axis=(0,1));
+        hdr[HMQ+'POWER'+name+' STD'] = (val,'Fringe Power at lbd0');
+        val = np.mean (base_snrbb[:,:,:,b]);
+        hdr[HMQ+'SNR'+name+' MEAN'] = (val,'Broad-band SNR');
+        val = np.std (base_snrbb[:,:,:,b]);
+        hdr[HMQ+'SNR'+name+' STD'] = (val,'Broad-band SNR');
+    val = np.mean (bias_power[:,:,ny/2,:], axis=(0,1,-1));
+    hdr[HMQ+'BIAS MEAN'] = (val,'Bias Power at lbd0');
+
+    # Compute mean SNR over ramp
+    # TODO: probably should another time-constant
+    base_snr = np.mean (base_snrbb, axis=1,keepdims=True);
+
+    # TODO: Bootstrap over baseline
+
+    # Compute flag from averaged SNR over the ramp
+    base_flag = 1.0 * (base_snr > 5.0);
+    base_flag[base_flag == 0.0] = np.nan;
+
+    # Compute visibility
+    log.info ('Compute VIS');
+    log.warning ('zeroing !!');
+    # base_power *= base_flag;
+    # norm_power *= base_flag;
+    # bias_power *= base_flag;
+    vis = np.nanmean (base_power - bias_power, axis=(0,1)) / np.nanmean (norm_power, axis=(0,1));
+
+    # QC for power
+    for b,name in enumerate (setup.get_base_name ()):
+        val = headers.rep_nan (vis[ny/2,b]);
+        hdr[HMQ+'VISS'+name+' MEAN'] = (val,'visibility at lbd0');
+
+    # Figures
+    log.info ('Figures');
+
+    # Correlation
+    fig,axes = plt.subplots (5,3);
+    for b,ax in enumerate(axes.flatten()):
+        ax.plot ( np.mean (norm_power[:,:,ny/2,b],1), np.mean (base_power[:,:,ny/2,b],1), 'o');
+        ax.grid();
+    fig.savefig (output+'_norm_power.png');
+    
+    # SNR, GD and FLAGs
+    fig,ax = plt.subplots (3,1);
+    ax[0].imshow (np.log10 (np.mean (base_snrbb,axis=(1,2))).T);
+    ax[0].grid(); ax[0].set_ylabel ('log10 (SNR_bb)');
+    ax[1].imshow (np.mean (base_gd,axis=(1,2)).T * 1e6);
+    ax[1].grid(); ax[1].set_ylabel ('gdelay (um)');
+    ax[1].set_xlabel ('ramp');
+    ax[2].imshow (np.mean (base_flag,axis=(1,2)).T);
+    ax[2].grid(); ax[1].set_ylabel ('gdelay (um)');
+    ax[2].set_xlabel ('flag');
+    fig.savefig (output+'_snr_gd.png');
+
+    # File
+    log.info ('Create file');
+
+    # First HDU
+    hdu0 = pyfits.PrimaryHDU ([]);
+    hdu0.header = hdr;
+    hdu0.header['FILETYPE'] = 'VIS';
+    hdu0.header[HMP+'RTS'] = hdrs[0]['ORIGNAME'];
+    
+    # Write file
+    hdulist = pyfits.HDUList ([hdu0]);
+    files.write (hdulist, output+'.fits');
+            
+    plt.close("all");
+    return hdulist;
+    

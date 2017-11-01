@@ -11,6 +11,7 @@ import os
 
 from . import log
 from .headers import HM, HMQ, HMP, HMW;
+from .version import revision
 
 def output (outputDir,hdr,suffix):
     '''
@@ -35,9 +36,16 @@ def write (hdulist,filename):
     '''
     Write file.
     '''
-    fileinfo = filename + ' ('+hdulist[0].header['FILETYPE']+')';
-    log.info ('Write file %s'%fileinfo);
+    # Get header
+    hdr = hdulist[0].header;
     
+    fileinfo = filename + ' ('+hdr['FILETYPE']+')';
+    log.info ('Write file %s'%fileinfo);
+
+    # Add the pipeline version
+    hdr[HMP+'REV'] = (revision,'Version of mircx_pipeline');
+
+    # Remove if existing
     if os.path.exists (filename):
         os.remove (filename);
     
