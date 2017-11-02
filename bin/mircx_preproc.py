@@ -257,8 +257,9 @@ if argopt.vis != 'FALSE':
 
             mrx.log.setFile (output+'.log');
 
+            # for nc in [0,0.5,1,2,4,8,16,32,64,128]:
             for nc in [0.5]:
-                mrx.compute_vis (gp, output=output+'_c%03i'%int(nc*10), ncoher=nc);
+                mrx.compute_vis (gp, output=output+'_c%04i'%int(nc*10), ncoher=nc);
 
         except Exception as exc:
             mrx.log.error ('Cannot compute VIS: '+str(exc));

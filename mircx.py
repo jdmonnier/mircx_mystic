@@ -15,13 +15,73 @@ from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter;
 
 from . import log, files, headers, setup, oifits;
-from .headers import HM, HMQ, HMP, HMW;
+from .headers import HM, HMQ, HMP, HMW, rep_nan;
+
+def remove_badpixels (hdr, cube, bkg, output='output'):
+
+    # Load background error
+    bkg_noise = pyfits.getdata (bkg[0]['ORIGNAME'],0);
+    bkg_noise = np.mean (bkg_noise, (0,1));
+    delta = bkg_noise - medfilt (bkg_noise, (3,3));
+    stat = sigma_clipped_stats (delta);
+    thr_mean = 40.0;
+    bad_mean = np.abs(delta-stat[0])/stat[2] > thr_mean;
+
+    hdr[HMQ+'BADPIX MEAN_THRESHOLD'] = (thr_mean, 'threshold in sigma');
+    hdr[HMQ+'BADPIX MEAN_NUMBER'] = (np.sum (bad_mean), 'nb. of badpix');
+
+    # Load background error
+    bkg_noise = pyfits.getdata (bkg[0]['ORIGNAME'],'BACKGROUND_ERR');
+    bkg_noise = np.mean (bkg_noise, (0,1));
+    delta = bkg_noise - medfilt (bkg_noise, (3,3));
+    stat = sigma_clipped_stats (delta);
+    thr_err = 5.0;
+    bad_err = np.abs(delta-stat[0])/stat[2] > thr_err;
+
+    hdr[HMQ+'BADPIX ERR_THRESHOLD'] = (thr_err, 'threshold in sigma');
+    hdr[HMQ+'BADPIX ERR_NUMBER'] = (np.sum (bad_err), 'nb. of badpix');
+    
+    # Load background error
+    bkg_noise = pyfits.getdata (bkg[0]['ORIGNAME'],'BACKGROUND_NOISE');
+    bkg_noise = np.mean (bkg_noise, (0,1));
+    delta = bkg_noise - medfilt (bkg_noise, (3,3));
+    stat = sigma_clipped_stats (delta);
+    thr_noise = 15.0;
+    bad_noise = np.abs(delta-stat[0])/stat[2] > thr_noise;
+
+    hdr[HMQ+'BADPIX NOISE_THRESHOLD'] = (thr_noise, 'threshold in sigma');
+    hdr[HMQ+'BADPIX NOISE_NUMBER'] = (np.sum (bad_noise), 'nb. of badpix');
+
+    # Ignore on the edges
+    bad = bad_mean + bad_err + bad_noise;
+    bad[0,:] = False; bad[-1,:] = False;
+    bad[:,0] = False; bad[:,-1] = False;
+    idx = np.argwhere (bad);
+    
+    # Remove them
+    log.info ('Remove %i bad pixels'%np.sum (bad));
+    ref = np.mean (cube, axis=(0,1));
+    cube[:,:,idx[:,0],idx[:,1]] = 0.25 * cube[:,:,idx[:,0]-1,idx[:,1]-1] + \
+                                  0.25 * cube[:,:,idx[:,0]+1,idx[:,1]-1] + \
+                                  0.25 * cube[:,:,idx[:,0]-1,idx[:,1]+1] + \
+                                  0.25 * cube[:,:,idx[:,0]+1,idx[:,1]+1];
+
+    # Figure
+    fig,ax = plt.subplots (3,1);
+    ax[0].imshow (bad);
+    ax[1].imshow (ref);
+    ax[2].imshow (np.mean (cube, axis=(0,1)));
+    fig.savefig (output+'_rmbad.png');
+
+    return cube;
+    
 
 def gaussian_filter_cpx (input,sigma,**kwargs):
     ''' Gaussian filter of a complex array '''
     return gaussian_filter (input.real,sigma,**kwargs) + \
            gaussian_filter (input.imag,sigma,**kwargs) * 1.j;
-    
+
+               
 def getwidth (curve, threshold=None):
     '''
     Compute the width of curve around its maximum,
@@ -234,7 +294,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     
     # Load files
     hdr,cube = files.load_raw (hdrs, coaddRamp=True);
-
+    
     # Get dimensions
     nr,nf,ny,nx = cube.shape;
     x  = np.arange (nx);
@@ -246,6 +306,9 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     log.info ('Load background %s'%bkg[0]['ORIGNAME']);
     cube -= pyfits.getdata (bkg[0]['ORIGNAME'],0);
 
+    # Remove bad pixels
+    cube = remove_badpixels (hdr, cube, bkg, output=output);
+    
     # Check background subtraction in empty region
     check_empty_window (cube, hdr);
 
@@ -397,11 +460,11 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     log.info ('Load background %s'%bkg[0]['ORIGNAME']);
     cube -= pyfits.getdata (bkg[0]['ORIGNAME'],0);
 
+    # Remove bad pixels
+    cube = remove_badpixels (hdr, cube, bkg, output=output);
+
     # Check background subtraction in empty region
     check_empty_window (cube, hdr);
-
-    # We use the fringe window of the first BEAM_MAP
-    # (FIME: could be improved)
 
     # Extract the fringe as the middle of all provided map
     fxc0 = np.mean ([b['MIRC QC WIN FRINGE CENTERX'] for b in bmaps]);
@@ -435,6 +498,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     photos = np.zeros ((6,nr,nf,ny,2*pxw+1));
     for bmap in bmaps:
         if bmap == []: continue;
+        log.info ('Use %s: %s'%(bmap['FILETYPE'],bmap['ORIGNAME']));
         
         # Get the position of the photo spectra
         pxc = int(round(bmap['MIRC QC WIN PHOTO CENTERX']));
@@ -511,7 +575,7 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
 
     # Get fringe and photo maps
     fringe_map, photo_map, shifty = extract_maps (hdr, bmaps);
-
+    
     # Compute the expected position of lbd0    
     fcy = np.mean ([h[HMW+'FRINGE CENTERY'] for h in bmaps]) - hdr[HMW+'FRINGE STARTY'];
     
@@ -521,21 +585,81 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
 
     # Define profile for optimal extraction of photometry
     # The same profile is used for all spectral channels
-    # profile is normalised to be flux-conservative
-    profile  = np.mean (photo_map, axis=3, keepdims=True);
+    profile = np.mean (photo_map, axis=3, keepdims=True);
+
+    # Remove edge of the profile
+    profile /= np.sum (profile,axis=-1, keepdims=True);
+    profile[profile<0.1] = 0.0;
+
+    # Profile is normalised to be flux-conservative
     profile *= np.sum (profile,axis=-1, keepdims=True) / np.sum (profile**2,axis=-1, keepdims=True);
+    
+    # Profile extraction
+    fig,axes = plt.subplots (3,2);
+    for b in range(6):
+        ax = axes.flatten()[b];
+        val = np.mean (profile[b,:,:,:,:],axis=(0,1,2));
+        ax.plot (val / np.mean (val), label='profile');
+        val = np.mean (photo[b,:,:,:,:],axis=(0,1,2));
+        ax.plot (val / np.mean (val), label='photo');
+        ax.legend(); ax.grid();
+    fig.savefig (output+'_profile.png');
 
     # Optimal extraction of photometry with profile
     log.info ('Extract photometry with profile');
     photo = np.sum (photo * profile, axis=-1);
 
-    # Construct kappa-matrix
-    # Use the provided kappa-matrix if any
-    # so that the photo signal is the
-    # normalisation to the fringe
-    log.info ('Use kappa-matrix');
-    kappa = np.sum (medfilt (fringe_map,[1,1,1,1,11]), axis=-1) / \
-            np.sum (photo_map * profile, axis=-1);
+    # Re-align photometry (all with the same)
+    log.info ('Register photo');
+    for b in range(6):
+        photo[b,:,:,:] = subpix_shift (photo[b,:,:,:], [0,0,-shifty[b]]);
+
+    # Build kappa from the bmaps.
+    # kappa(nb,nr,nf,ny)
+    log.info ('Build kappa-matrix with filtering');
+    upper = np.sum (medfilt (fringe_map,[1,1,1,1,11]), axis=-1);
+    lower = np.sum (medfilt (photo_map,[1,1,1,1,1]) * profile, axis=-1);
+    for b in range(6):
+        lower[b,:,:,:] = subpix_shift (lower[b,:,:,:], [0,0,-shifty[b]]);
+
+    kappa = upper / (lower + 1e-20);
+
+    # Filter the kappa-matrix and the data to avoid
+    # craps on the edges. treshold(ny)
+    log.info ('Compute threshold');
+    threshold = np.mean (medfilt (fringe_map,[1,1,1,1,11]), axis = (0,1,2,-1));
+    threshold /= np.max (medfilt (threshold,3));
+    threshold = threshold > 0.5;
+
+    log.info ('Apply threshold');
+    fringe *= threshold[None,None,:,None];
+    photo  *= threshold[None,None,None,:];
+    kappa  *= threshold[None,None,None,:];
+        
+    # Kappa-matrix as spectrum
+    fig,axes = plt.subplots (3,2);
+    for b in range (6):
+        ax = axes.flatten()[b];
+        val = np.mean (upper, axis=(1,2));
+        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True);
+        ax.plot (lbd*1e6,val[b,:],'--', label='upper');
+        val = np.mean (lower, axis=(1,2));
+        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True);
+        ax.plot (lbd*1e6,val[b,:], label='lower');
+        val = np.mean (kappa, axis=(1,2));
+        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True);
+        ax.plot (lbd*1e6,val[b,:], label='kappa');
+        ax.legend(); ax.grid();
+        ax.set_ylim ((0.1,1.5));
+        ax.set_ylabel ('normalized');
+    fig.savefig (output+'_kappa.png');
+
+    # Use a supplementary kappa-matrix if provided
+    
+    # Kappa-matrix
+    fig,ax = plt.subplots (1);
+    ax.imshow (np.mean (kappa,axis=(1,2)));
+    fig.savefig (output+'_kappaimg.png');
 
     # kappa is defined so that photo is the
     # total number of adu in the fringe
@@ -545,25 +669,18 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     log.info ('Smooth photometry by 2 frames');
     photok = gaussian_filter (photok,(0,0,2,0));
 
-    # Spectral shift of photometry to align with fringes
-    for b in range(6):
-        log.info ('Shift photometry %i by %.3f pixels'%(b,+shifty[b]));
-        photok[b,:,:,:] = subpix_shift (photok[b,:,:,:], [0,0,+shifty[b]]);
-
     # Temporal / Spectral averaging of photometry
     # to be discussed
     log.info ('Temporal / Spectral averaging of photometry');
     spectra  = np.mean (photok, axis=(1,2), keepdims=True);
-    spectra /= np.sum (spectra,axis=3, keepdims=True);
+    spectra /= np.sum (spectra, axis=3, keepdims=True);
     injection = np.sum (photok, axis=3, keepdims=True);
     photok = spectra*injection;
     
-    
-
     # Compute flux in fringes
     log.info ('Compute dc in fringes');
-    fringe_map  = medfilt (fringe_map,[1,1,1,1,11]);
-    fringe_map /= np.sum (fringe_map, axis=-1,keepdims=True);
+    fringe_map  = medfilt (fringe_map, [1,1,1,1,11]);
+    fringe_map /= np.sum (fringe_map, axis=-1, keepdims=True);
     
     cont = np.zeros ((nr,nf,ny,nx));
     for b in range(6):
@@ -573,7 +690,7 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     log.info ('Compute QC about dc');
     photodc_mean  = np.mean (cont,axis=(2,3));
     fringedc_mean = np.mean (fringe,axis=(2,3));
-    hdr[HMQ+'DC MEAN'] = np.sum (fringedc_mean) / np.sum (photodc_mean);
+    hdr[HMQ+'DC MEAN'] = rep_nan (np.sum (fringedc_mean) / np.sum (photodc_mean));
     
     poly_dc = np.polyfit (photodc_mean.flatten(), fringedc_mean.flatten(), 2);
     hdr[HMQ+'DC ORDER0'] = (poly_dc[0],'[adu] fit DC(photo)');
@@ -639,10 +756,14 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
 
     # Integrated spectra
     fig,ax = plt.subplots (2,1);
-    ax[0].plot (lbd*1e6,np.mean (fringe,axis=(0,1,3)),'--', label='fringes and photo');
-    ax[0].plot (lbd*1e6,np.mean (photo,axis=(1,2)).T);
+    val = np.mean (fringe,axis=(0,1,3));
+    val /= np.max (medfilt (val,3), keepdims=True);
+    ax[0].plot (lbd*1e6,val,'--', label='fringes and photo');
+    val = np.mean (photo, axis=(1,2));
+    val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True);
+    ax[0].plot (lbd*1e6,val.T);
     ax[0].legend(); ax[0].grid();
-    ax[0].set_ylabel ('adu/pix/frame');
+    ax[0].set_ylabel ('normalized');
     
     val = np.mean (fringe,axis=(0,1,3));
     val /= np.max (medfilt (val,3), keepdims=True);

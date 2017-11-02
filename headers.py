@@ -200,4 +200,4 @@ def check_input (hdrs, required=1, maximum=100000):
 
 def rep_nan (val,*rep):
     if not rep: rep = 0.0;
-    return val if val == val else rep;
+    return val if np.isfinite (val) else rep;
