@@ -240,7 +240,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     x  = np.arange (nx);
 
     # Number of spectral channels to extract on plots
-    ns = int(setup.get_nspec (hdr)/2 + 0.5) + 1;
+    ns = int(setup.nspec (hdr)/2 + 0.5) + 1;
 
     # Remove background
     log.info ('Load background %s'%bkg[0]['ORIGNAME']);
@@ -412,9 +412,9 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     fyc = int(round(fyc0));
 
     # Expected size on spatial and spectral direction are hardcoded 
-    fxw = int(setup.get_fringe_widthx (hdr) / 2);
-    pxw = int(setup.get_photo_widthx (hdr) / 2 + 1.5);
-    ns  = int(setup.get_nspec (hdr)/2 + 3.5);
+    fxw = int(setup.fringe_widthx (hdr) / 2);
+    pxw = int(setup.photo_widthx (hdr) / 2 + 1.5);
+    ns  = int(setup.nspec (hdr)/2 + 3.5);
     
     # Keep track of crop value
     hdr[HMW+'FRINGE STARTX'] = (fxc-fxw, '[pix] python-def');
@@ -516,7 +516,7 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     fcy = np.mean ([h[HMW+'FRINGE CENTERY'] for h in bmaps]) - hdr[HMW+'FRINGE STARTY'];
     
     # Build wavelength
-    lbd0,dlbd = setup.get_lbd0 (hdr);
+    lbd0,dlbd = setup.lbd0 (hdr);
     lbd = (np.arange (ny) - fcy) * dlbd + lbd0;
 
     # Define profile for optimal extraction of photometry
@@ -592,7 +592,7 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
 
     # Scale to ensure the frequencies fall
     # into integer pixels (max freq in 40)
-    freqs = setup.get_base_freq (hdr);
+    freqs = setup.base_freq (hdr);
     scale0 = 40. / np.abs (freqs * nx).max();
     ifreqs = np.round(freqs * scale0 * nx).astype(int);
 
@@ -763,12 +763,12 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
 
     # Compute norm power
     log.info ('Compute norm power');
-    base = setup.get_base_beam ();
+    base = setup.base_beam ();
     norm_power = photo[:,:,:,base[:,0]] * photo[:,:,:,base[:,1]];
     
     # QC for power
     log.info ('Compute QC for power');
-    for b,name in enumerate (setup.get_base_name ()):
+    for b,name in enumerate (setup.base_name ()):
         val = np.mean (norm_power[:,:,ny/2,b], axis=(0,1));
         hdr[HMQ+'NORM'+name+' MEAN'] = (val,'Norm Power at lbd0');
         val = np.mean (base_power[:,:,ny/2,b], axis=(0,1));
@@ -792,30 +792,18 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     base_flag = 1.0 * (base_snr > 5.0);
     base_flag[base_flag == 0.0] = np.nan;
 
-    # base_power *= base_flag;
-    # norm_power *= base_flag;
-    # bias_power *= base_flag;
-
     # Create the file
     hdulist = oifits.create (hdr, lbd);
 
-    # Statistic to compute VIS2. The quantities shall
-    # be (sample, lbd, base)
-    u_power = np.mean (base_power - bias_power, axis=1);
-    l_power = np.mean (norm_power, axis=1);
-    time = np.zeros (l_power.shape[0]);
+    # Compute OI_VIS2
+    u_power = np.nanmean ((base_power - bias_power)*base_flag, axis=1);
+    l_power = np.nanmean (norm_power*base_flag, axis=1);
+    time = np.ones (l_power.shape[0]) * hdr['MJD-OBS'];
 
-    oifits.add_vis2 (hdulist, u_power, l_power, time);
+    oifits.add_vis2 (hdulist, time, u_power, l_power, output=output);
 
     # Figures
     log.info ('Figures');
-
-    # Correlation
-    fig,axes = plt.subplots (5,3);
-    for b,ax in enumerate(axes.flatten()):
-        ax.plot ( np.mean (norm_power[:,:,ny/2,b],1), np.mean (base_power[:,:,ny/2,b],1), 'o');
-        ax.grid();
-    fig.savefig (output+'_norm_power.png');
     
     # SNR, GD and FLAGs
     fig,ax = plt.subplots (3,1);

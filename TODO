@@ -3,9 +3,11 @@
 * Spectral calibration
 
 * Photometry extraction
+
 Think on the dimensions...
 
 * Photometry normalisation
+
 Require fringe selection (GD)
 for the correlation plots to be valid
 
@@ -15,3 +17,9 @@ including the kappa-matrix
 
 * OIFITS
 
+Better MJD, better INT_TIME, better UCOORD,VCOORD
+Compute errors on vis2 with bootstraping
+
+* Preproc
+
+Propagate the frame_numer

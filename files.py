@@ -63,7 +63,8 @@ def load_raw (hdrs, coaddRamp=False):
 
     # Build header
     hdr = hdrs[0].copy();
-    hdr.set('HIERARCH MIRC QC NRAMP',0,'Total number of ramp loaded');
+    hdr['HIERARCH MIRC QC NRAMP'] = (0,'Total number of ramp loaded');
+    hdr['HIERARCH MIRC QC NFILE'] = (0,'Total number of files loaded');
     hdr['BZERO'] = 0;
     
     cube = [];
@@ -112,6 +113,9 @@ def load_raw (hdrs, coaddRamp=False):
         # requires to avoid the HIERARCH)
         nraw = len (hdr['*MIRC PRO RAW*']);
         hdr['HIERARCH MIRC PRO RAW%i'%(nraw+1,)] = h['ORIGNAME'];
+        hdr['HIERARCH MIRC QC NFILE'] += 1;
+
+        
 
     # Convert to array
     log.info ('Convert to cube');
