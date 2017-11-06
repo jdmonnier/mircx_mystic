@@ -29,6 +29,7 @@ def remove_badpixels (hdr, cube, bkg, output='output'):
 
     hdr[HMQ+'BADPIX MEAN_THRESHOLD'] = (thr_mean, 'threshold in sigma');
     hdr[HMQ+'BADPIX MEAN_NUMBER'] = (np.sum (bad_mean), 'nb. of badpix');
+    log.info ('Found %i bad pixels in MEAN'%np.sum (bad_mean));
 
     # Load background error
     bkg_noise = pyfits.getdata (bkg[0]['ORIGNAME'],'BACKGROUND_ERR');
@@ -40,6 +41,7 @@ def remove_badpixels (hdr, cube, bkg, output='output'):
 
     hdr[HMQ+'BADPIX ERR_THRESHOLD'] = (thr_err, 'threshold in sigma');
     hdr[HMQ+'BADPIX ERR_NUMBER'] = (np.sum (bad_err), 'nb. of badpix');
+    log.info ('Found %i bad pixels in ERR'%np.sum (bad_err));
     
     # Load background error
     bkg_noise = pyfits.getdata (bkg[0]['ORIGNAME'],'BACKGROUND_NOISE');
@@ -51,8 +53,9 @@ def remove_badpixels (hdr, cube, bkg, output='output'):
 
     hdr[HMQ+'BADPIX NOISE_THRESHOLD'] = (thr_noise, 'threshold in sigma');
     hdr[HMQ+'BADPIX NOISE_NUMBER'] = (np.sum (bad_noise), 'nb. of badpix');
+    log.info ('Found %i bad pixels in NOISE'%np.sum (bad_noise));
 
-    # Ignore on the edges
+    # Ignore the badpixels on the edges
     bad = bad_mean + bad_err + bad_noise;
     bad[0,:] = False; bad[-1,:] = False;
     bad[:,0] = False; bad[:,-1] = False;
@@ -140,7 +143,6 @@ def extract_maps (hdr, bmaps):
     
     fringe_map = np.zeros ((6,1,1,nfy,nfx));
     photo_map  = np.zeros ((6,1,1,npy,npx));
-    shifty     = np.zeros (6);
     
     # Loop for the necessary map
     for bmap in bmaps:
@@ -158,9 +160,7 @@ def extract_maps (hdr, bmaps):
         psy = hdr[HMW+'PHOTO%i STARTY'%(beam)];
         photo_map[beam,:,:,:,:] = mean_map[:,:,psy:psy+npy,psx:psx+npx];
 
-        shifty[beam] = bmap[HMW+'PHOTO SHIFTY'] - psy + fsy;
-
-    return fringe_map, photo_map, shifty;
+    return fringe_map, photo_map;
 
 def compute_background (hdrs,output='output_bkg'):
     '''
@@ -574,7 +574,7 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     nr,nf,ny,nx = fringe.shape
 
     # Get fringe and photo maps
-    fringe_map, photo_map, shifty = extract_maps (hdr, bmaps);
+    fringe_map, photo_map = extract_maps (hdr, bmaps);
     
     # Compute the expected position of lbd0    
     fcy = np.mean ([h[HMW+'FRINGE CENTERY'] for h in bmaps]) - hdr[HMW+'FRINGE STARTY'];
@@ -589,10 +589,11 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
 
     # Remove edge of the profile
     profile /= np.sum (profile,axis=-1, keepdims=True);
-    profile[profile<0.1] = 0.0;
+    profile[profile<0.01] = 0.0;
 
     # Profile is normalised to be flux-conservative
-    profile *= np.sum (profile,axis=-1, keepdims=True) / np.sum (profile**2,axis=-1, keepdims=True);
+    profile *= np.sum (profile,axis=-1, keepdims=True) / \
+               np.sum (profile**2,axis=-1, keepdims=True);
     
     # Profile extraction
     fig,axes = plt.subplots (3,2);
@@ -609,6 +610,15 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     log.info ('Extract photometry with profile');
     photo = np.sum (photo * profile, axis=-1);
 
+    # Shift between photo and fringes in spectral direction
+    log.info ('Register photometry to fringe');
+    shifty = np.zeros (6);
+    upper = np.sum (medfilt (fringe_map,[1,1,1,1,11]), axis=(1,2,4));
+    lower = np.sum (medfilt (photo_map,[1,1,1,1,1]) * profile, axis=(1,2,4));
+    for b in range (6):
+        shifty[b] = register_translation (lower[b,:,None],upper[b,:,None],
+                                              upsample_factor=100)[0][0];
+
     # Re-align photometry (all with the same)
     log.info ('Register photo');
     for b in range(6):
@@ -616,7 +626,7 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
 
     # Build kappa from the bmaps.
     # kappa(nb,nr,nf,ny)
-    log.info ('Build kappa-matrix with filtering');
+    log.info ('Build kappa-matrix with profile, filtering and registration');
     upper = np.sum (medfilt (fringe_map,[1,1,1,1,11]), axis=-1);
     lower = np.sum (medfilt (photo_map,[1,1,1,1,1]) * profile, axis=-1);
     for b in range(6):
@@ -626,12 +636,11 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
 
     # Filter the kappa-matrix and the data to avoid
     # craps on the edges. treshold(ny)
-    log.info ('Compute threshold');
+    log.info ('Apply threshold');
     threshold = np.mean (medfilt (fringe_map,[1,1,1,1,11]), axis = (0,1,2,-1));
     threshold /= np.max (medfilt (threshold,3));
-    threshold = threshold > 0.5;
+    threshold = threshold > 0.25;
 
-    log.info ('Apply threshold');
     fringe *= threshold[None,None,:,None];
     photo  *= threshold[None,None,None,:];
     kappa  *= threshold[None,None,None,:];
@@ -661,12 +670,12 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     ax.imshow (np.mean (kappa,axis=(1,2)));
     fig.savefig (output+'_kappaimg.png');
 
-    # kappa is defined so that photo is the
+    # kappa is defined so that photok is the
     # total number of adu in the fringe
     photok = photo * kappa;
 
     # Smooth photometry
-    log.info ('Smooth photometry by 2 frames');
+    log.info ('Smooth photometry by sigma=2 frames');
     photok = gaussian_filter (photok,(0,0,2,0));
 
     # Temporal / Spectral averaging of photometry
@@ -884,8 +893,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
 
     # Compute norm power
     log.info ('Compute norm power');
-    base = setup.base_beam ();
-    norm_power = photo[:,:,:,base[:,0]] * photo[:,:,:,base[:,1]];
+    bbeam = setup.base_beam ();
+    norm_power = photo[:,:,:,bbeam[:,0]] * photo[:,:,:,bbeam[:,1]];
     
     # QC for power
     log.info ('Compute QC for power');
@@ -910,27 +919,38 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     # TODO: Bootstrap over baseline
 
     # Compute flag from averaged SNR over the ramp
-    base_flag = 1.0 * (base_snr > 5.0);
+    base_flag = 1.0 * (base_snr > 3.0);
     base_flag[base_flag == 0.0] = np.nan;
 
     # Create the file
     hdulist = oifits.create (hdr, lbd);
 
+    # Compute the time stamp
+    time = np.ones (base_dft.shape[0]) * hdr['MJD-OBS'];
+    
     # Compute OI_VIS2
     u_power = np.nanmean ((base_power - bias_power)*base_flag, axis=1);
     l_power = np.nanmean (norm_power*base_flag, axis=1);
-    time = np.ones (l_power.shape[0]) * hdr['MJD-OBS'];
 
     oifits.add_vis2 (hdulist, time, u_power, l_power, output=output);
+
+    # Compute closure
+    t_cpx = (base_dft * base_flag)[:,:,:,setup.triplet_base()];
+    t_cpx = np.nanmean (t_cpx[:,:,:,:,0] * t_cpx[:,:,:,:,1] * np.conj (t_cpx[:,:,:,:,2]), axis=1);
+    t_norm = photo[:,:,:,setup.triplet_beam()];
+    t_norm = np.nanmean (t_norm[:,:,:,:,0] * t_norm[:,:,:,:,1] * t_norm[:,:,:,:,2], axis=1);
+
+        
+    oifits.add_t3 (hdulist, time, t_cpx, t_norm, output=output);
 
     # Figures
     log.info ('Figures');
     
     # SNR, GD and FLAGs
     fig,ax = plt.subplots (3,1);
-    ax[0].imshow (np.log10 (np.mean (base_snrbb,axis=(1,2))).T);
+    ax[0].plot (np.log10 (np.mean (base_snrbb,axis=(1,2))));
     ax[0].grid(); ax[0].set_ylabel ('log10 (SNR_bb)');
-    ax[1].imshow (np.mean (base_gd,axis=(1,2)).T * 1e6);
+    ax[1].plot (np.mean (base_gd,axis=(1,2)) * 1e6);
     ax[1].grid(); ax[1].set_ylabel ('gdelay (um)');
     ax[1].set_xlabel ('ramp');
     ax[2].imshow (np.mean (base_flag,axis=(1,2)).T);

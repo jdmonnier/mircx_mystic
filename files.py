@@ -27,6 +27,12 @@ def output (outputDir,hdr,suffix):
     name = os.path.splitext (os.path.basename(name))[0];
     if name[-5:] == '.fits':
         name = name[0:-5];
+
+    # Clean from stuff added already
+    for test in ['_vis','_rts','_preproc']:
+        if len(name) < len(test): continue;
+        if name[-len(test):] == test:
+            name = name[:-len(test)];
     
     # Return
     output = outputDir + '/' + name + '_' + suffix;

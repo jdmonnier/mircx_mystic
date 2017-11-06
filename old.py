@@ -182,3 +182,17 @@ def compute_snr (hdrs,output=None,overwrite=True):
     plt.close("all");
     return fringe;
         photos[beam,:,:,:,:] = subpix_shift (photo, [0,0,-shifty,0]);
+
+def triplet_beam ():
+    '''
+    Return the MIRC beam numbering for each base
+    beam[15,2]
+    '''
+    tmp = np.array ([[0,1,2],[0,1,3][0,1,4],[0,1,5],
+                     [0,2,3],[0,2,4][0,2,5],
+                     [0,3,4],[0,3,5],
+                     [0,4,5],
+                     [1,2,3],[1,2,4],[1,2,5],
+                     
+                         ]);
+    return tmp;

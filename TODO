@@ -1,6 +1,9 @@
-* Re-do the window management, based on existing value in RAW headers
-
 * Spectral calibration
+
+* Preproc
+
+Propagate the frame_numer
+Use a flat-field
 
 * Photometry extraction
 
@@ -11,15 +14,8 @@ Think on the dimensions...
 Require fringe selection (GD)
 for the correlation plots to be valid
 
-Deal with photometric normalisation in way
-that the photo signal in RTS is the normalisation
-including the kappa-matrix
-
 * OIFITS
 
 Better MJD, better INT_TIME, better UCOORD,VCOORD
 Compute errors on vis2 with bootstraping
 
-* Preproc
-
-Propagate the frame_numer

@@ -75,8 +75,9 @@ argopt = parser.parse_args ();
 # Define setup keys
 keys = mrx.setup.detector + mrx.setup.instrument;
 
-# Get all RAW files from current dir 
-hdrs_raw = mrx.headers.loaddir ('./');
+# Get all RAW files from current dir
+if argopt.background != 'FALSE' or argopt.preproc != 'FALSE':
+    hdrs_raw = mrx.headers.loaddir ('./');
 
 #
 # Compute BACKGROUND_MEAN

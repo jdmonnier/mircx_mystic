@@ -75,12 +75,36 @@ def base_name ():
     Return the MIRC base name for each base
     name[15]
     '''
-    tmp = np.array (['01','02','03','04','05',\
-                     '12','13','14','15',\
-                     '23','24','25',\
-                     '34','35',\
-                     '45']);
+    return np.array (['%i%i'%(t[0],t[1]) for t in base_beam ()]);
+
+def triplet_base ():
+    '''
+    Return the base of each triplet. The last base
+    of the triplet is conjugated.
+    '''
+    tmp = np.array ([[0,5,1],[0,6,2],[0,7,3],[0,8,4], [1,9,2],[1,10,3],[1,11,4], [2,12,3],[2,13,4], [3,14,4],
+                     [5,9,6],[5,10,7],[5,11,8], [6,12,7],[6,13,8], [7,14,8],
+                     [9,12,10],[9,13,11], [10,14,11],
+                     [12,14,13]]);
     return tmp;
+
+def triplet_beam ():
+    '''
+    Return the base of each triplet. The last base
+    of the triplet is conjugated.
+    '''
+    tmp = np.array ([[0,1,2],[0,1,3],[0,1,4],[0,1,5], [0,2,3],[0,2,4],[0,2,5], [0,3,4],[0,3,5], [0,4,5],
+                     [1,2,3],[1,2,4],[1,2,5], [1,3,4],[1,3,5], [1,4,5],
+                     [2,3,4],[2,3,5], [2,4,5],
+                     [3,4,5]]);
+    return tmp;
+
+def triplet_name ():
+    '''
+    Return the MIRC triplet name for each triplet
+    name[20]
+    '''
+    return np.array (['%i%i%i'%(t[0],t[1],t[2]) for t in triplet_beam()]);
 
 def beam_tel (hdr):
     '''
