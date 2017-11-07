@@ -3,7 +3,7 @@
 * Preproc
 
 Propagate the frame_numer
-Use a flat-field
+Use a flat-field and bad pixel
 
 * Photometry extraction
 
