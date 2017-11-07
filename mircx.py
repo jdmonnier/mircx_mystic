@@ -78,7 +78,6 @@ def remove_badpixels (hdr, cube, bkg, output='output'):
 
     return cube;
     
-
 def gaussian_filter_cpx (input,sigma,**kwargs):
     ''' Gaussian filter of a complex array '''
     return gaussian_filter (input.real,sigma,**kwargs) + \
@@ -477,7 +476,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     # Expected size on spatial and spectral direction are hardcoded 
     fxw = int(setup.fringe_widthx (hdr) / 2);
     pxw = int(setup.photo_widthx (hdr) / 2 + 1.5);
-    ns  = int(setup.nspec (hdr)/2 + 3.5);
+    ns  = int(setup.nspec (hdr)/2 + 2.5);
     
     # Keep track of crop value
     hdr[HMW+'FRINGE STARTX'] = (fxc-fxw, '[pix] python-def');
@@ -636,16 +635,21 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
 
     # Filter the kappa-matrix and the data to avoid
     # craps on the edges. treshold(ny)
-    log.info ('Apply threshold');
+    log.info ('Compute threshold');
     threshold = np.mean (medfilt (fringe_map,[1,1,1,1,11]), axis = (0,1,2,-1));
     threshold /= np.max (medfilt (threshold,3));
     threshold = threshold > 0.25;
 
-    fringe *= threshold[None,None,:,None];
-    photo  *= threshold[None,None,None,:];
-    kappa  *= threshold[None,None,None,:];
+    log.info ('Apply threshold');
+    # fringe *= threshold[None,None,:,None];
+    # photo  *= threshold[None,None,None,:];
+    # kappa  *= threshold[None,None,None,:];
+    fringe[:,:,~threshold,:] = 0.0;
+    photo[:,:,:,~threshold]  = 0.0;
+    kappa[:,:,:,~threshold]  = 0.0;
         
     # Kappa-matrix as spectrum
+    log.info ('Plot kappa');
     fig,axes = plt.subplots (3,2);
     for b in range (6):
         ax = axes.flatten()[b];
@@ -672,6 +676,7 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
 
     # kappa is defined so that photok is the
     # total number of adu in the fringe
+    log.info ('Compute kappak');
     photok = photo * kappa;
 
     # Smooth photometry
@@ -739,7 +744,12 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     cf.shape = (nr,nf,ny,nfq+1);
 
     # DFT at fringe frequencies
+    log.info ('Extract fringe frequency');
     base_dft  = cf[:,:,:,np.abs(ifreqs)];
+
+    # Take complex conjugated for negative frequencies
+    idx = ifreqs < 0.0;
+    base_dft[:,:,:,idx].imag *= -1.0;
     
     # DFT at bias frequencies
     ibias = np.abs (ifreqs).max() + 4 + np.arange (5);
