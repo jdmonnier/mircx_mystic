@@ -39,11 +39,14 @@ parser.add_argument ("--output-dir", dest="outputDir",default='./reduced/',type=
                      help="output directories for product");
 
 parser.add_argument ("--max-file", dest="max_file",default=300,type=int,
-                     help="maximum nuber of file to load to build "
+                     help="maximum number of file to load to build "
                           "product (speed-up for tests)");
 
 parser.add_argument ("--delta-time", dest="delta",default=300,type=float,
-                     help="maximum time between files to be groupped (s)");
+                     help="maximum time between consecutive files to be groupped (s)");
+
+parser.add_argument ("--Delta-time", dest="Delta",default=300,type=float,
+                     help="maximum time between first and last files to be groupped (s)");
 
 parser.add_argument ("--background", dest="background",default='FALSE',
                      choices=TrueFalseOverwrite,
@@ -161,7 +164,7 @@ if argopt.preproc != 'FALSE':
     hdrs_calib = mrx.headers.loaddir (argopt.outputDir);
 
     # Group all DATA
-    gps = mrx.headers.group (hdrs_raw, 'DATA', delta=argopt.delta);
+    gps = mrx.headers.group (hdrs_raw, 'DATA', delta=argopt.delta, Delta=argopt.Delta);
     overwrite = (argopt.preproc == 'OVERWRITE');
 
     # Compute 

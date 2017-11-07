@@ -88,7 +88,7 @@ def match (h1,h2,keys,delta):
     # Ensure binary output
     return True if answer else False;
 
-def group (hdrs, mtype, delta=300.0):
+def group (hdrs, mtype, delta=300.0, Delta=300.0):
     '''
     Group the input headers into list of compatible files.
     A new group is started if:
@@ -126,12 +126,18 @@ def group (hdrs, mtype, delta=300.0):
             groups[-1].append(h);
             continue;
 
-        # If no match, we start new group
+        # If no match with last, we start new group
         if match (h,groups[-1][-1],keys,delta) is False:
-            log.info('New group %s'%fileinfo);
+            log.info('New group (gap) %s'%fileinfo);
             groups.append([h]);
             continue;
 
+        # If no match with last, we start new group
+        if match (h,groups[-1][0],keys,Delta) is False:
+            log.info('New group (integration) %s'%fileinfo);
+            groups.append([h]);
+            continue;
+        
         # Else, add to current group
         log.info('Add file %s'%fileinfo);
         groups[-1].append(h);

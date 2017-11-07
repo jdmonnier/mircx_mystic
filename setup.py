@@ -90,8 +90,7 @@ def triplet_base ():
 
 def triplet_beam ():
     '''
-    Return the base of each triplet. The last base
-    of the triplet is conjugated.
+    Return the beams of each triplet
     '''
     tmp = np.array ([[0,1,2],[0,1,3],[0,1,4],[0,1,5], [0,2,3],[0,2,4],[0,2,5], [0,3,4],[0,3,5], [0,4,5],
                      [1,2,3],[1,2,4],[1,2,5], [1,3,4],[1,3,5], [1,4,5],

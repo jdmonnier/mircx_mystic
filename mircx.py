@@ -934,13 +934,12 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
 
     oifits.add_vis2 (hdulist, time, u_power, l_power, output=output);
 
-    # Compute closure
+    # Compute OI_T3
     t_cpx = (base_dft * base_flag)[:,:,:,setup.triplet_base()];
     t_cpx = np.nanmean (t_cpx[:,:,:,:,0] * t_cpx[:,:,:,:,1] * np.conj (t_cpx[:,:,:,:,2]), axis=1);
     t_norm = photo[:,:,:,setup.triplet_beam()];
     t_norm = np.nanmean (t_norm[:,:,:,:,0] * t_norm[:,:,:,:,1] * t_norm[:,:,:,:,2], axis=1);
 
-        
     oifits.add_t3 (hdulist, time, t_cpx, t_norm, output=output);
 
     # Figures
