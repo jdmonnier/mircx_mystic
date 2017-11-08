@@ -5,19 +5,15 @@
 Propagate the frame_numer
 Use a flat-field and bad pixel
 
+* Use the dark at the time of the RTS ?
+
 * Photometry extraction
 
 Think on the dimensions...
 
-* VIS
-
-Implement baseline boostraping !!
-
-Require fringe selection (GD)
-for the correlation plots to be valid
-
 * OIFITS
 
 Better MJD, better INT_TIME, better UCOORD,VCOORD
-Compute errors on vis2 with bootstraping
+Compute errors on vis2 and t3phi with bootstraping
 
+* Wavelength calibration
