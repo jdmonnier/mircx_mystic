@@ -14,7 +14,7 @@ from scipy.signal import medfilt;
 from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter;
 
-from . import log, files, headers, setup, oifits;
+from . import log, files, headers, setup, oifits, signal;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
 def remove_badpixels (hdr, cube, bkg, output='output'):
@@ -77,31 +77,6 @@ def remove_badpixels (hdr, cube, bkg, output='output'):
     fig.savefig (output+'_rmbad.png');
 
     return cube;
-    
-def gaussian_filter_cpx (input,sigma,**kwargs):
-    ''' Gaussian filter of a complex array '''
-    return gaussian_filter (input.real,sigma,**kwargs) + \
-           gaussian_filter (input.imag,sigma,**kwargs) * 1.j;
-
-               
-def getwidth (curve, threshold=None):
-    '''
-    Compute the width of curve around its maximum,
-    given a threshold. Return the tuple (center,fhwm)
-    '''
-    
-    if threshold is None:
-        threshold = 0.5*np.max (curve);
-
-    # Find rising point
-    f = np.argmax (curve > threshold) - 1;
-    first = f + (threshold - curve[f]) / (curve[f+1] - curve[f]);
-    
-    # Find lowering point
-    l = len(curve) - np.argmax (curve[::-1] > threshold) - 1;
-    last = l + (threshold - curve[l]) / (curve[l+1] - curve[l]);
-    
-    return 0.5*(last+first), 0.5*(last-first)
     
 def check_empty_window (cube, hdr):
     ''' Extract empty window from a cube(r,f,xy)'''
@@ -328,7 +303,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
 
     # Get spectral limit of photometry
     py = np.mean (pmap[:,idx-2:idx+3], axis=1);
-    pyc,pyw = getwidth (medfilt (py, 5));
+    pyc,pyw = signal.getwidth (medfilt (py, 5));
 
     # Fit spatial of photometry with Gaussian
     px = np.mean (pmap[int(pyc-pyw):int(pyc+pyw),:], axis=0);
@@ -347,7 +322,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
 
     # Get spectral limits of fringe
     fy  = np.mean (fmap,axis=1);
-    fyc,fyw = getwidth (medfilt (fy, 5));
+    fyc,fyw = signal.getwidth (medfilt (fy, 5));
     
     # Fit spatial of fringe with Gaussian
     fx  = np.mean (fmap[int(fyc-fyw):int(fyc+fyw),:], axis=0);
@@ -875,8 +850,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     # Do coherent integration
     log.info ('Coherent integration over %.1f frames'%ncoher);
     hdr[HMQ+'NFRAME_COHER'] = (ncoher,'nb. of frames integrated coherently');
-    base_dft = gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
-    bias_dft = gaussian_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
+    base_dft = signal.gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
+    bias_dft = signal.gaussian_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
     photo = gaussian_filter (photo,(0,ncoher,0,0),mode='constant',truncate=2.0);
             
     # Compute group-delay in [m] and broad-band power
@@ -922,12 +897,13 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     val = np.mean (bias_power[:,:,ny/2,:], axis=(0,1,-1));
     hdr[HMQ+'BIAS MEAN'] = (val,'Bias Power at lbd0');
 
-    # Compute mean SNR over ramp
-    # TODO: probably should another time-constant
-    base_snr = np.mean (base_snrbb, axis=1,keepdims=True);
+    # Smooth SNR (should do the same for GD actually)
+    log.info ('Smooth SNR over %.1f frames'%ncoher*10);
+    base_snr = gaussian_filter (base_snrbb, (0,ncoher*10,0,0));
 
-    # TODO: Bootstrap over baseline
-    log.info ('TODO: should implement bootstraping');
+    # Bootstrap over baseline
+    base_snr *= base_snr > 3.0;
+    base_snr, base_gd = signal.bootstrap (base_snr, base_gd);
 
     # Compute flag from averaged SNR over the ramp
     base_flag = 1.0 * (base_snr > 3.0);

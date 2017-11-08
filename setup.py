@@ -77,6 +77,12 @@ def base_name ():
     '''
     return np.array (['%i%i'%(t[0],t[1]) for t in base_beam ()]);
 
+''' beam to base matrix '''
+beam_to_base = np.zeros ((15,6));
+for b,beams in enumerate(base_beam ()):
+    beam_to_base[b,beams[0]] = +1;
+    beam_to_base[b,beams[1]] = -1;
+
 def triplet_base ():
     '''
     Return the base of each triplet. The last base

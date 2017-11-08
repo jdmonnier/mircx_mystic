@@ -63,17 +63,21 @@ def load (files, hlog=[]):
 
     # Files available in log
     filesin = [os.path.split (h['ORIGNAME'])[1] for h in hlog];
-    
+
+    # Loop on files
     for fn,f in enumerate (files):
-        log.info('Read header %i over %i (%s)'%(fn,len(files),f));
         try:
+            
+            # Recover or read header
             try:
                 hdr = hlog[filesin.index (os.path.split (f)[1])];
+                log.info('Recover header %i over %i (%s)'%(fn,len(files),f));
             except:
                 if f[-7:] == 'fits.fz':
                     hdr = pyfits.getheader(f, 1);
                 else:
                     hdr = pyfits.getheader(f, 0);
+                log.info('Read header %i over %i (%s)'%(fn,len(files),f));
 
             # Add file name
             hdr['ORIGNAME'] = f;
