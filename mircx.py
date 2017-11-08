@@ -541,10 +541,10 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     f = hdrs[0]['ORIGNAME'];
 
     # Load DATA
-    log.info ('Load PREPROC file %s'%f);
+    log.info ('Load PREPROC file (copy) %s'%f);
     hdr = pyfits.getheader (f);
-    fringe = pyfits.getdata (f);
-    photo  = pyfits.getdata (f, 'PHOTOMETRY_PREPROC');
+    fringe = pyfits.getdata (f).copy();
+    photo  = pyfits.getdata (f, 'PHOTOMETRY_PREPROC').copy();
     nr,nf,ny,nx = fringe.shape
 
     # Get fringe and photo maps
@@ -615,15 +615,10 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     threshold /= np.max (medfilt (threshold,3));
 
     log.info ('Apply threshold');
-    #threshold = threshold > 0.25;
-    #fringe[:,:,~threshold,:] = 0.0;
-    #photo[:,:,:,~threshold]  = 0.0;
-    #kappa[:,:,:,~threshold]  = 0.0;
-    
-    idx = np.where (threshold < 0.25)[0];
-    fringe[:,:,idx,:] = 0.0;
-    photo[:,:,:,idx]  = 0.0;
-    kappa[:,:,:,idx]  = 0.0;
+    threshold = threshold > 0.25;
+    fringe[:,:,~threshold,:] = 0.0;
+    photo[:,:,:,~threshold]  = 0.0;
+    kappa[:,:,:,~threshold]  = 0.0;
         
     # Kappa-matrix as spectrum
     log.info ('Plot kappa');
