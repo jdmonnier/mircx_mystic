@@ -3,6 +3,7 @@ from astropy.io import fits as pyfits
 from astropy.time import Time
 import os
 import glob
+import pickle
 
 from . import log, setup
 
@@ -11,7 +12,6 @@ HM  = 'HIERARCH MIRC ';
 HMQ = 'HIERARCH MIRC QC ';
 HMP = 'HIERARCH MIRC PRO ';
 HMW = 'HIERARCH MIRC QC WIN ';
-
 
 def loaddir (dirs):
     '''
@@ -28,29 +28,52 @@ def loaddir (dirs):
     hdrs = [];
     for dir in dirs:
         log.info ('Load directory: '+dir);
-        files = glob.glob(dir+'/mircx*.fit*');
+        files = glob.glob (dir+'/mircx*.fit*');
         files = sorted (files);
-        hdrs.extend (load (files));
+
+        # Load log
+        fpkl = dir+'/mircx_hdrs.pkl';
+        if os.path.isfile (fpkl):
+            log.info ('Load binary log %s'%fpkl);
+            hlog = pickle.load (open(fpkl, 'rb'));
+        else:
+            hlog = [];
+
+        # Load header
+        hdrs_here = load (files, hlog=hlog);
+                
+        # Dump log
+        log.info ('Write binary log %s'%fpkl);
+        if os.path.isfile (fpkl): os.remove (fpkl);
+        pickle.dump (hdrs_here, open(fpkl, 'wb'), -1);
+        
+        # Append headers
+        hdrs.extend (hdrs_here);
 
     return hdrs;
 
-def load (files):
+def load (files, hlog=[]):
     '''
     Load the headers of all input files. The following keywords
     are added to each header: MJD-OBS and ORIGNAME.
     The output is a list of FITS headers.
     '''
     elog = log.trace ('load');
+    hdrs = []
+
+    # Files available in log
+    filesin = [os.path.split (h['ORIGNAME'])[1] for h in hlog];
     
-    hdrs = []    
-    for f in files:
+    for fn,f in enumerate (files):
+        log.info('Read header %i over %i (%s)'%(fn,len(files),f));
         try:
-            
-            # Load file header
-            if f[-7:] == 'fits.fz':
-                hdr = pyfits.getheader(f, 1);
-            else:
-                hdr = pyfits.getheader(f, 0);
+            try:
+                hdr = hlog[filesin.index (os.path.split (f)[1])];
+            except:
+                if f[-7:] == 'fits.fz':
+                    hdr = pyfits.getheader(f, 1);
+                else:
+                    hdr = pyfits.getheader(f, 0);
 
             # Add file name
             hdr['ORIGNAME'] = f;
@@ -61,7 +84,6 @@ def load (files):
 
             # Append
             hdrs.append (hdr);
-            log.info('Read header for %s'%f);
             
         except (KeyboardInterrupt, SystemExit):
             raise;

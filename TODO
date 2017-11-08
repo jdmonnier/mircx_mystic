@@ -9,7 +9,9 @@ Use a flat-field and bad pixel
 
 Think on the dimensions...
 
-* Photometry normalisation
+* VIS
+
+Implement baseline boostraping !!
 
 Require fringe selection (GD)
 for the correlation plots to be valid

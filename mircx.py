@@ -927,17 +927,18 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     base_snr = np.mean (base_snrbb, axis=1,keepdims=True);
 
     # TODO: Bootstrap over baseline
+    log.info ('TODO: should implement bootstraping');
 
     # Compute flag from averaged SNR over the ramp
     base_flag = 1.0 * (base_snr > 3.0);
     base_flag[base_flag == 0.0] = np.nan;
 
+    # Compute the time stamp of each ramp
+    time = np.ones (base_dft.shape[0]) * hdr['MJD-OBS'];
+    
     # Create the file
     hdulist = oifits.create (hdr, lbd);
 
-    # Compute the time stamp
-    time = np.ones (base_dft.shape[0]) * hdr['MJD-OBS'];
-    
     # Compute OI_VIS2
     u_power = np.nanmean ((base_power - bias_power)*base_flag, axis=1);
     l_power = np.nanmean (norm_power*base_flag, axis=1);
