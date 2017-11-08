@@ -906,8 +906,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     base_snr *= base_snr > 3.0;
     base_snr, base_gd = signal.bootstrap (base_snr, base_gd);
 
-    # Compute flag from averaged SNR over the ramp
-    base_flag = 1.0 * (base_snr > 3.0);
+    # Compute selection flag from averaged SNR over the ramp
+    base_flag = 1.0 * (np.mean (base_snr,axis=1,keepdims=True) > 3.0);
     base_flag[base_flag == 0.0] = np.nan;
 
     # Compute the time stamp of each ramp
@@ -923,7 +923,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     oifits.add_vis2 (hdulist, time, u_power, l_power, output=output);
 
     # Compute OI_T3
-    t_cpx = (base_dft * base_flag)[:,:,:,setup.triplet_base()];
+    t_cpx = (base_dft*base_flag)[:,:,:,setup.triplet_base()];
     t_cpx = np.nanmean (t_cpx[:,:,:,:,0] * t_cpx[:,:,:,:,1] * np.conj (t_cpx[:,:,:,:,2]), axis=1);
     t_norm = photo[:,:,:,setup.triplet_beam()];
     t_norm = np.nanmean (t_norm[:,:,:,:,0] * t_norm[:,:,:,:,1] * t_norm[:,:,:,:,2], axis=1);
