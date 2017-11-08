@@ -154,14 +154,14 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     
     # QC for VIS
     for b,name in enumerate (setup.base_name ()):
-        val = rep_nan (vis2[ny/2,b]);
+        val = rep_nan (vis2[int(ny/2),b]);
         hdr[HMQ+'VISS'+name+' MEAN'] = (val,'visibility at lbd0');
     
     # Correlation plot
     log.info ('Correlation plots');
     fig,axes = plt.subplots (5,3);
     for b,ax in enumerate(axes.flatten()):
-        ax.plot ( u_power[:,ny/2,b], l_power[:,ny/2,b], 'o');
+        ax.plot ( u_power[:,int(ny/2),b], l_power[:,int(ny/2),b], 'o');
         ax.grid();
     fig.savefig (output+'_norm_power.png');
 
@@ -238,13 +238,13 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     
     # QC for T3
     for t,name in enumerate (setup.triplet_name()):
-        val = rep_nan (t3phi[ny/2,t])*180/np.pi;
+        val = rep_nan (t3phi[int(ny/2),t])*180/np.pi;
         hdr[HMQ+'T3PHI'+name+' MEAN'] = (val,'[deg] tphi at lbd0');
     
     # Correlation plot
     log.info ('Correlation plots');
     fig,axes = plt.subplots (5,4);
     for t,ax in enumerate(axes.flatten()):
-        ax.plot ( t_product.real[:,ny/2,t], t_product.imag[:,ny/2,t], 'o');
+        ax.plot ( t_product.real[:,int(ny/2),t], t_product.imag[:,int(ny/2),t], 'o');
         ax.grid();
     fig.savefig (output+'_bispec.png');
