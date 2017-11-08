@@ -613,15 +613,17 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     log.info ('Compute threshold');
     threshold = np.mean (medfilt (fringe_map,[1,1,1,1,11]), axis = (0,1,2,-1));
     threshold /= np.max (medfilt (threshold,3));
-    threshold = threshold > 0.25;
 
     log.info ('Apply threshold');
-    # fringe *= threshold[None,None,:,None];
-    # photo  *= threshold[None,None,None,:];
-    # kappa  *= threshold[None,None,None,:];
-    fringe[:,:,~threshold,:] = 0.0;
-    photo[:,:,:,~threshold]  = 0.0;
-    kappa[:,:,:,~threshold]  = 0.0;
+    #threshold = threshold > 0.25;
+    #fringe[:,:,~threshold,:] = 0.0;
+    #photo[:,:,:,~threshold]  = 0.0;
+    #kappa[:,:,:,~threshold]  = 0.0;
+    
+    idx = np.where (threshold < 0.25)[0];
+    fringe[:,:,idx,:] = 0.0;
+    photo[:,:,:,idx]  = 0.0;
+    kappa[:,:,:,idx]  = 0.0;
         
     # Kappa-matrix as spectrum
     log.info ('Plot kappa');
