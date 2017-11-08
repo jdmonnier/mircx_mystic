@@ -842,6 +842,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
 
     # Dimensions
     nr,nf,ny,nb = base_dft.shape;
+    log.info ('Data size nramp=%i nframe=%i nlbd=%i nbase=%i'%base_dft.shape);
 
     # Compute lbd0 and dlbd
     lbd0 = np.mean (lbd);
