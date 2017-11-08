@@ -732,7 +732,7 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
 
     # Compute unbiased PSD for plots (without coherent average
     # thus the bias is larger than in the base data).
-    cf_upsd  = np.abs(cf[:,:,:,0:nx/2])**2;
+    cf_upsd  = np.abs(cf[:,:,:,0:int(nx/2)])**2;
     cf_upsd -= np.mean (cf_upsd[:,:,:,ibias],axis=-1,keepdims=True);
 
     # Figures
