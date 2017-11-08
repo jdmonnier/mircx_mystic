@@ -104,6 +104,9 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     hdr = hdulist[0].header;
     ns,ny,nb = u_power.shape;
 
+    # Remove warning for invalid
+    old_np_setting = np.seterr (divide='ignore',invalid='ignore');
+
     # How many valid frame
     valid = np.isfinite (u_power) * np.isfinite (l_power);
     nvalid = np.nansum (1. * valid, axis=0);
@@ -165,6 +168,9 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
         ax.grid();
     fig.savefig (output+'_norm_power.png');
 
+    # Reset warning
+    np.seterr (**old_np_setting);
+
 def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     '''
     Compute the OI_T3 table from a sample of observations
@@ -175,6 +181,9 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     log.info ('Compute OI_T3');
     hdr = hdulist[0].header;
     ns,ny,nt = t_product.shape;
+
+    # Remove warning for invalid
+    old_np_setting = np.seterr (divide='ignore',invalid='ignore');
 
     # Discard triple product without amplitude
     t_product[t_product==0] = np.nan;
@@ -189,7 +198,7 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     t3phiErr = t3phi * 0.0;
 
     # Compute mean norm
-    t3amp = np.nanmean (t_product, axis=0) / np.nanmean (t_norm, axis=0);
+    t3amp = np.abs (np.nanmean (t_product, axis=0)) / np.nanmean (t_norm, axis=0);
     t3ampErr = t3amp * 0.0;
     
     # Construct mjd[ns,ny,nb]
@@ -235,7 +244,6 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     tbhdu.header['DATE-OBS'] = hdr['DATE-OBS'];
     hdulist.append(tbhdu);
     
-    
     # QC for T3
     for t,name in enumerate (setup.triplet_name()):
         val = rep_nan (t3phi[int(ny/2),t])*180/np.pi;
@@ -248,3 +256,6 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
         ax.plot ( t_product.real[:,int(ny/2),t], t_product.imag[:,int(ny/2),t], 'o');
         ax.grid();
     fig.savefig (output+'_bispec.png');
+
+    # Reset warning
+    np.seterr (**old_np_setting);

@@ -774,7 +774,7 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     fig,ax = plt.subplots (2,1);
     ax[0].imshow (np.mean (cf_upsd, axis=(0,1)));
     for f in ifreqs: ax[0].axvline (np.abs(f), color='k', linestyle='--');
-    ax[1].plot (np.mean (cf_upsd, axis=(0,1))[ny/2,:]);
+    ax[1].plot (np.mean (cf_upsd, axis=(0,1))[int(ny/2),:]);
     ax[1].set_xlim (0,cf_upsd.shape[-1]);
     ax[1].grid();
     fig.savefig (output+'_psd.png');
@@ -884,21 +884,21 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     # QC for power
     log.info ('Compute QC for power');
     for b,name in enumerate (setup.base_name ()):
-        val = np.mean (norm_power[:,:,ny/2,b], axis=(0,1));
+        val = np.mean (norm_power[:,:,int(ny/2),b], axis=(0,1));
         hdr[HMQ+'NORM'+name+' MEAN'] = (val,'Norm Power at lbd0');
-        val = np.mean (base_power[:,:,ny/2,b], axis=(0,1));
+        val = np.mean (base_power[:,:,int(ny/2),b], axis=(0,1));
         hdr[HMQ+'POWER'+name+' MEAN'] = (val,'Fringe Power at lbd0');
-        val = np.std (base_power[:,:,ny/2,b], axis=(0,1));
+        val = np.std (base_power[:,:,int(ny/2),b], axis=(0,1));
         hdr[HMQ+'POWER'+name+' STD'] = (val,'Fringe Power at lbd0');
         val = np.mean (base_snrbb[:,:,:,b]);
         hdr[HMQ+'SNR'+name+' MEAN'] = (val,'Broad-band SNR');
         val = np.std (base_snrbb[:,:,:,b]);
         hdr[HMQ+'SNR'+name+' STD'] = (val,'Broad-band SNR');
-    val = np.mean (bias_power[:,:,ny/2,:], axis=(0,1,-1));
+    val = np.mean (bias_power[:,:,int(ny/2),:], axis=(0,1,-1));
     hdr[HMQ+'BIAS MEAN'] = (val,'Bias Power at lbd0');
 
     # Smooth SNR (should do the same for GD actually)
-    log.info ('Smooth SNR over %.1f frames'%ncoher*10);
+    log.info ('Smooth SNR over %.1f frames'%(ncoher*10));
     base_snr = gaussian_filter (base_snrbb, (0,ncoher*10,0,0));
 
     # Bootstrap over baseline
