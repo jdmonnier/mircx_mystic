@@ -16,4 +16,6 @@ Think on the dimensions...
 Better MJD, better INT_TIME, better UCOORD,VCOORD
 Compute errors on vis2 and t3phi with bootstraping
 
+Bispectrum is not coherent !
+
 * Wavelength calibration

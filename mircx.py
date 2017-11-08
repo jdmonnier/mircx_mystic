@@ -724,7 +724,7 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
 
     # Take complex conjugated for negative frequencies
     idx = ifreqs < 0.0;
-    base_dft[:,:,:,idx].imag *= -1.0;
+    base_dft[:,:,:,idx] = np.conj(base_dft[:,:,:,idx]);
     
     # DFT at bias frequencies
     ibias = np.abs (ifreqs).max() + 4 + np.arange (5);
