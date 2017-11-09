@@ -114,7 +114,7 @@ def match (h1,h2,keys,delta):
     # Ensure binary output
     return True if answer else False;
 
-def group (hdrs, mtype, delta=300.0, Delta=300.0):
+def group (hdrs, mtype, delta=300.0, Delta=300.0, skip=False):
     '''
     Group the input headers into list of compatible files.
     A new group is started if:
@@ -141,8 +141,7 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0):
         # if different type, continue
         # and start new group
         if mtype not in h['FILETYPE']:
-            # log.info('Skip file %s'%fileinfo);
-            if groups[-1] != []:
+            if groups[-1] != [] and skip is False:
                 groups.append([]);
             continue;
 
