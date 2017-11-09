@@ -32,12 +32,14 @@ def loaddir (dirs):
         files = sorted (files);
 
         # Load log
+        hlog = [];
         fpkl = dir+'/mircx_hdrs.pkl';
         if os.path.isfile (fpkl):
-            log.info ('Load binary log %s'%fpkl);
-            hlog = pickle.load (open(fpkl, 'rb'));
-        else:
-            hlog = [];
+            try:
+                log.info ('Load binary log %s'%fpkl);
+                hlog = pickle.load (open(fpkl, 'rb'));
+            except:
+                log.info ('Failed to load...');
 
         # Load header
         hdrs_here = load (files, hlog=hlog);

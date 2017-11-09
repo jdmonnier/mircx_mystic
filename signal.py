@@ -80,3 +80,21 @@ def bootstrap (snr, gd):
 
     return (snr_b,gd_b);
 
+def dsp_projection (scale, freq, freq0, delta0, data):
+    '''
+    Project the DSP into a scaled theoretical model,
+    Return the merit function 1. - D.M / sqrt(D.D*M.M)
+    '''
+
+    # Scale the input frequencies
+    freq_s = freq * scale;
+    
+    # Compute the model of the DSP
+    model = np.sum (np.exp (- (freq_s[:,None] - freq0[None,:])**2 / delta0**2), axis=-1);
+
+    if data is None:
+        return model;
+
+    # Return the merit function from the normalised projection
+    weight = np.sqrt (np.sum (model * model) * np.sum (data * data));
+    return weight - 1.* np.sum (model*data);

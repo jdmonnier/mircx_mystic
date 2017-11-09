@@ -9,10 +9,11 @@ from astropy.modeling import models, fitting;
 
 from skimage.feature import register_translation;
 
-from scipy.fftpack import fft, ifft;
+from scipy import fftpack;
 from scipy.signal import medfilt;
 from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter;
+from scipy.optimize import least_squares;
 
 from . import log, files, headers, setup, oifits, signal;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
@@ -534,6 +535,119 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     
     plt.close("all");
     return hdulist;
+
+def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
+    '''
+    Compute the SPECCAL
+    '''
+    elog = log.trace ('compute_speccal');
+
+    # Check inputs
+    headers.check_input (hdrs,  required=1);
+
+    # Loop on files to compute their PSD
+    for ih,h in enumerate(hdrs):
+        f = hdrs[0]['ORIGNAME'];
+        
+        log.info ('Load PREPROC file %i over %i (%s)'%(ih+1,len(hdrs),f));
+        hdr = pyfits.getheader (f);
+        fringe = pyfits.getdata (f).copy();
+
+        # Remove the mean DC-shape
+        log.info ('Compute the mean DC-shape');
+        fringe_map = np.mean (fringe, axis=(0,1), keepdims=True);
+        fringe_map /= np.sum (fringe_map);
+
+        log.info ('Compute the mean DC-flux');
+        fringe_dc = np.sum (fringe, axis=(2,3), keepdims=True);
+
+        log.info ('Remove the DC');
+        fringe -= fringe_map * fringe_dc;
+        
+        # Coherence integration
+        log.info ('Coherent integration');
+        fringe = gaussian_filter (fringe,(0,ncoher,0,0),mode='constant',truncate=2.0);
+        nr,nf,ny,nx = fringe.shape;
+
+        # Define output
+        if ih == 0:
+            correl = np.zeros ((ny,nx*2-1));
+        
+        log.info ('Accumulate auto-correlation');
+        data = fringe.reshape (nr*nf,ny,nx);
+        for y in range(ny):
+            for s in range(nr*nf):
+                tmp = np.correlate (data[s,y,:],data[s,y,:],mode='full');
+                correl[y,:] += tmp;
+
+    # Build expected wavelength (should use some
+    # width of the spectra for lbd0)
+    lbd0,dlbd = setup.lbd0 (hdr);
+    lbd = (np.arange (ny) - ny/2.0) * dlbd + lbd0;
+
+    # Model for the pic position at lbd0
+    freq0 = np.abs (setup.base_freq (hdr));
+    delta0 = np.min (freq0) / 20;
+    
+    # Frequencies in pix-1
+    freq = 1.0 * np.arange (nfreq) / nfreq;
+
+    # Used dataset is restricted to interesting range
+    idmin = np.argmax (freq > 0.75*freq0.min());
+    idmax = np.argmax (freq > 1.25*freq0.max());
+
+    # Compute zero-padded DSP
+    log.info ('DSP with huge zero-padding %i'%nfreq);
+    dsp = np.abs (fftpack.fft (correl, n=nfreq, axis=-1, overwrite_x=False));
+
+    # Remove bias and normalise to the maximum in the interesting range
+    dsp -= np.median (dsp[:,idmax:], axis=-1, keepdims=True);
+    dsp /= np.max (dsp[:,idmin:idmax], axis=1, keepdims=True);
+
+    # Correlate each wavelength channel with a template
+    log.info ('Correlated DSP with model');
+    res = [];
+    for y in range (15):
+        s0 = lbd[y] / lbd0;
+        args = (freq[idmin:idmax],freq0,delta0,dsp[y,idmin:idmax]);
+        res.append (least_squares (signal.dsp_projection, s0, args=args, bounds=(0.8*s0,1.2*s0)));
+
+    # Get wavelengths
+    yfit = hdr[HMW+'FRINGE STARTY'] + np.arange (ny);
+    lbdfit = np.array([r.x[0]*lbd0 for r in res]);
+
+    log.info ('Figures');
+    
+    # Figures of DSP with model
+    fig,axes = plt.subplots (ny,sharex=True);
+    for y in range (ny):
+        ax = axes.flatten()[y];
+        ax.plot (freq,signal.dsp_projection (res[y].x[0], freq, freq0, delta0, None));
+        ax.plot (freq,dsp[y,:]);
+        ax.set_xlim (0,1.3*np.max(freq0));
+        ax.set_ylim (0,1.1);
+        ax.grid();
+    axes.flatten()[0].set_title ('Observed DSP (orange) and scaled template (blue)');
+    fig.savefig (output+'_dspmodel.png');
+
+    # Effective wavelength
+    fig,ax = plt.subplots ();
+    ax.plot (yfit,lbdfit * 1e6,'o-');
+    ax.plot (yfit,lbd * 1e6,'o-');
+    ax.set_ylabel ('lbd (um)');
+    ax.set_xlabel ('Detector line (python-def)');
+    ax.set_title ('Guess calib. (orange) and Fitted calib, (blue)');
+    ax.grid();
+    fig.savefig (output+'_lbd.png');
+
+    # DSP
+    fig,ax = plt.subplots (2,1);
+    ax[0].imshow (correl);
+    ax[1].plot (dsp[:,0:int(nfreq/2)].T);
+    fig.savefig (output+'_dsp.png');
+    
+    return dsp,freq,freq0;
+    
 
 def compute_rts (hdrs, bmaps, output='output_rts'):
     '''
