@@ -178,7 +178,7 @@ def compute_background (hdrs,output='output_bkg'):
     hdr.set (HMQ+'BKG_ERR MED',smed,'[adu] for frame nf/2');
     hdr.set (HMQ+'BKG_ERR STD',sstd,'[adu] for frame nf/2');
     
-    (smean,nmed,nstd) = sigma_clipped_stats (bkg_noise[idy-dy:idy+dy,idx-dx:idx+dx]);
+    (nmean,nmed,nstd) = sigma_clipped_stats (bkg_noise[idy-dy:idy+dy,idx-dx:idx+dx]);
     hdr.set (HMQ+'BKG_NOISE MED',round(nmed,5),'[adu] for first file');
     hdr.set (HMQ+'BKG_NOISE STD',round(nstd,5),'[adu] for first file');
 
@@ -210,15 +210,21 @@ def compute_background (hdrs,output='output_bkg'):
     # Figures
     log.info ('Figures');
 
-    # Images
+    # Images of mean
     fig,ax = plt.subplots (3,1);
     ax[0].imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std, interpolation='none');
-    ax[0].set_ylabel ('Mean');
+    ax[0].set_ylabel ('Mean (adu) +-5sig');
     ax[1].imshow (bkg_mean[idf,:,:], vmin=med-20*std, vmax=med+20*std, interpolation='none');
-    ax[1].set_ylabel ('Mean');
-    ax[2].imshow (bkg_std[idf,:,:], vmin=smed-20*sstd, vmax=smed+20*sstd, interpolation='none');
-    ax[2].set_ylabel ('Mean_err');
+    ax[1].set_ylabel ('Mean (adu) +-20sig');
     fig.savefig (output+'_mean.png');
+
+    # Images of noise
+    fig,ax = plt.subplots (2,1);
+    ax[0].imshow (bkg_noise[idf,:,:], vmin=nmed-5*nstd, vmax=nmed+5*nstd, interpolation='none');
+    ax[0].set_ylabel ('Noise (adu) +-5sig');
+    ax[1].imshow (bkg_noise[idf,:,:], vmin=nmed-20*nstd, vmax=nmed+20*nstd, interpolation='none');
+    ax[1].set_ylabel ('Noise (adu) +-20sig');
+    fig.savefig (output+'_noise.png');
 
     # Histograms of median
     fig,ax = plt.subplots (2,1);
@@ -230,7 +236,7 @@ def compute_background (hdrs,output='output_bkg'):
     ax[1].set_xlabel ("Value at frame nf/2 (adu)");
     ax[1].set_yscale ('log');
     ax[1].grid ();
-    fig.savefig (output+'_histo.png');
+    fig.savefig (output+'_histomean.png');
 
     # Histograms of noise
     fig,ax = plt.subplots (2,1);
