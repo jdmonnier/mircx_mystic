@@ -64,12 +64,16 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     for ih,h in enumerate(hdrs):
         f = h['ORIGNAME'];
         
+        # Load file
         log.info ('Load PREPROC file %i over %i (%s)'%(ih+1,len(hdrs),f));
         hdr = pyfits.getheader (f);
         fringe = pyfits.getdata (f).copy();
 
-        # Define output
+        # Verbose on data size
         nr,nf,ny,nx = fringe.shape;
+        log.info ('Data size'+str(fringe.shape));
+
+        # Define output
         if ih == 0:
             correl = np.zeros ((ny,nx*2-1));
             spectrum = np.zeros (ny);
@@ -240,21 +244,21 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     profile = np.mean (photo_map, axis=3, keepdims=True);
 
     # Remove edge of the profile
-    profile /= np.sum (profile,axis=-1, keepdims=True);
+    profile /= np.sum (profile,axis=-1, keepdims=True) + 1e-20;
     profile[profile<0.01] = 0.0;
 
     # Profile is normalised to be flux-conservative
     profile *= np.sum (profile,axis=-1, keepdims=True) / \
-               np.sum (profile**2,axis=-1, keepdims=True);
+               (np.sum (profile**2,axis=-1, keepdims=True)+1e-20);
     
     # Profile extraction
     fig,axes = plt.subplots (3,2);
     for b in range(6):
         ax = axes.flatten()[b];
         val = np.mean (profile[b,:,:,:,:],axis=(0,1,2));
-        ax.plot (val / np.mean (val), label='profile');
+        ax.plot (val / (np.mean (val)+1e-20), label='profile');
         val = np.mean (photo[b,:,:,:,:],axis=(0,1,2));
-        ax.plot (val / np.mean (val), label='photo');
+        ax.plot (val / (np.mean (val)+1e-20), label='photo');
         ax.legend(); ax.grid();
     fig.savefig (output+'_profile.png');
 
@@ -290,7 +294,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     # craps on the edges. treshold(ny)
     log.info ('Compute threshold');
     threshold = np.mean (medfilt (fringe_map,[1,1,1,1,11]), axis = (0,1,2,-1));
-    threshold /= np.max (medfilt (threshold,3));
+    threshold /= np.max (medfilt (threshold,3)) + 1e-20;
 
     log.info ('Apply threshold');
     threshold = threshold > 0.25;
@@ -304,13 +308,13 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     for b in range (6):
         ax = axes.flatten()[b];
         val = np.mean (upper, axis=(1,2));
-        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True);
+        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
         ax.plot (lbd*1e6,val[b,:],'--', label='upper');
         val = np.mean (lower, axis=(1,2));
-        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True);
+        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
         ax.plot (lbd*1e6,val[b,:], label='lower');
         val = np.mean (kappa, axis=(1,2));
-        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True);
+        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
         ax.plot (lbd*1e6,val[b,:], label='kappa');
         ax.legend(); ax.grid();
         ax.set_ylim ((0.1,1.5));
@@ -337,14 +341,14 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     # to be discussed
     log.info ('Temporal / Spectral averaging of photometry');
     spectra  = np.mean (photok, axis=(1,2), keepdims=True);
-    spectra /= np.sum (spectra, axis=3, keepdims=True);
+    spectra /= np.sum (spectra, axis=3, keepdims=True) + 1e-20;
     injection = np.sum (photok, axis=3, keepdims=True);
     photok = spectra*injection;
     
     # Compute flux in fringes
     log.info ('Compute dc in fringes');
     fringe_map  = medfilt (fringe_map, [1,1,1,1,11]);
-    fringe_map /= np.sum (fringe_map, axis=-1, keepdims=True);
+    fringe_map /= np.sum (fringe_map, axis=-1, keepdims=True) + 1e-20;
     
     cont = np.zeros ((nr,nf,ny,nx));
     for b in range(6):
@@ -426,19 +430,19 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     # Integrated spectra
     fig,ax = plt.subplots (2,1);
     val = np.mean (fringe,axis=(0,1,3));
-    val /= np.max (medfilt (val,3), keepdims=True);
+    val /= np.max (medfilt (val,3), keepdims=True) + 1e-20;
     ax[0].plot (lbd*1e6,val,'--', label='fringes and photo');
     val = np.mean (photo, axis=(1,2));
-    val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True);
+    val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
     ax[0].plot (lbd*1e6,val.T);
     ax[0].legend(); ax[0].grid();
     ax[0].set_ylabel ('normalized');
     
     val = np.mean (fringe,axis=(0,1,3));
-    val /= np.max (medfilt (val,3), keepdims=True);
+    val /= np.max (medfilt (val,3), keepdims=True) + 1e-20;
     ax[1].plot (lbd*1e6,val,'--', label='fringes and photo * kappa * map');
     val = np.mean (photok, axis=(1,2));
-    val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True);
+    val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
     ax[1].plot (lbd*1e6,val.T);
     ax[1].legend(); ax[1].grid();
     ax[1].set_ylabel ('normalized');

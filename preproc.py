@@ -188,17 +188,17 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Images of mean
     fig,ax = plt.subplots (3,1);
-    ax[0].imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std, interpolation='none');
+    ax[0].imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std, interpolation='nearest');
     ax[0].set_ylabel ('Mean (adu) +-5sig');
-    ax[1].imshow (bkg_mean[idf,:,:], vmin=med-20*std, vmax=med+20*std, interpolation='none');
+    ax[1].imshow (bkg_mean[idf,:,:], vmin=med-20*std, vmax=med+20*std, interpolation='nearest');
     ax[1].set_ylabel ('Mean (adu) +-20sig');
     fig.savefig (output+'_mean.png');
 
     # Images of noise
     fig,ax = plt.subplots (2,1);
-    ax[0].imshow (bkg_noise, vmin=nmed-5*nstd, vmax=nmed+5*nstd, interpolation='none');
+    ax[0].imshow (bkg_noise, vmin=nmed-5*nstd, vmax=nmed+5*nstd, interpolation='nearest');
     ax[0].set_ylabel ('Noise (adu) +-5sig');
-    ax[1].imshow (bkg_noise, vmin=nmed-20*nstd, vmax=nmed+20*nstd, interpolation='none');
+    ax[1].imshow (bkg_noise, vmin=nmed-20*nstd, vmax=nmed+20*nstd, interpolation='nearest');
     ax[1].set_ylabel ('Noise (adu) +-20sig');
     fig.savefig (output+'_noise.png');
 
@@ -342,27 +342,27 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     
     # Figures of photo
     fig,ax = plt.subplots(3,1);
-    ax[0].imshow (pmap, interpolation='none');
+    ax[0].imshow (pmap, interpolation='nearest');
     ax[1].plot (px, label='Data');
     ax[1].plot (x,pfit(x), label='Gaussian');
     ax[1].set_ylabel ('adu/pix/fr');
     ax[1].legend ();
-    ax[2].imshow (pmap[int(pyc-ns):int(pyc+ns+1),int(pxc-2):int(pxc+3)], interpolation='none');
+    ax[2].imshow (pmap[int(pyc-ns):int(pyc+ns+1),int(pxc-2):int(pxc+3)], interpolation='nearest');
     fig.savefig (output+'_pfit.png');
 
     # Figures of fringe
     fig,ax = plt.subplots(3,1);
-    ax[0].imshow (fmap, interpolation='none');
+    ax[0].imshow (fmap, interpolation='nearest');
     ax[1].plot (fx, label='Data');
     ax[1].plot (x,ffit(x), label='Gaussian');
     ax[1].set_ylabel ('adu/pix/fr');
     ax[1].legend ();
-    ax[2].imshow (fmap[int(fyc-ns):int(fyc+ns+1)+1,int(fxc-2*fxw):int(fxc+2*fxw)], interpolation='none');
+    ax[2].imshow (fmap[int(fyc-ns):int(fyc+ns+1)+1,int(fxc-2*fxw):int(fxc+2*fxw)], interpolation='nearest');
     fig.savefig (output+'_ffit.png');
 
     # Shifted spectra
     fig,ax = plt.subplots(2,1);
-    ax[0].imshow (cmean, interpolation='none');
+    ax[0].imshow (cmean, interpolation='nearest');
     ax[1].plot (f_spectra, label='fringe');
     ax[1].plot (p_spectra, label='photo');
     ax[1].plot (subpix_shift (p_spectra, -shifty), label='shifted photo');
@@ -472,8 +472,8 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
 
     # Fringe and photo mean
     fig,ax = plt.subplots(2,1);
-    ax[0].imshow (np.mean (fringe,axis=(0,1)), interpolation='none');
-    ax[1].imshow (np.swapaxes (np.mean (photos,axis=(1,2)), 0,1).reshape((ny,-1)), interpolation='none');
+    ax[0].imshow (np.mean (fringe,axis=(0,1)), interpolation='nearest');
+    ax[1].imshow (np.swapaxes (np.mean (photos,axis=(1,2)), 0,1).reshape((ny,-1)), interpolation='nearest');
     fig.savefig (output+'_mean.png');
 
     # Spectra

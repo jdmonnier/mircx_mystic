@@ -19,11 +19,19 @@ def getwidth (curve, threshold=None):
 
     # Find rising point
     f = np.argmax (curve > threshold) - 1;
-    first = f + (threshold - curve[f]) / (curve[f+1] - curve[f]);
+    if f == -1:
+        log.warning ('Width detected outside the spectrum');
+        first = 0;
+    else:
+        first = f + (threshold - curve[f]) / (curve[f+1] - curve[f]);
     
     # Find lowering point
     l = len(curve) - np.argmax (curve[::-1] > threshold) - 1;
-    last = l + (threshold - curve[l]) / (curve[l+1] - curve[l]);
+    if l == len(curve)-1:
+        log.warning ('Width detected outside the spectrum');
+        last = l;
+    else:
+        last = l + (threshold - curve[l]) / (curve[l+1] - curve[l]);
     
     return 0.5*(last+first), 0.5*(last-first)
 
