@@ -5,7 +5,7 @@ import os
 import glob
 import pickle
 
-from . import log, setup
+from . import log
 
 # Global shortcut
 HM  = 'HIERARCH MIRC ';
@@ -116,7 +116,7 @@ def match (h1,h2,keys,delta):
     # Ensure binary output
     return True if answer else False;
 
-def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True):
+def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
     '''
     Group the input headers into list of compatible files.
     A new group is started if:
@@ -131,7 +131,7 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True):
     mjd = -10e9;
 
     # Key used to define setup
-    keys = ['FILETYPE'] + setup.detector + setup.instrument;
+    keys = ['FILETYPE'] + keys;
 
     # Sort by time
     hdrs = sorted (hdrs,key=lambda h: h['MJD-OBS']);
@@ -172,7 +172,7 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True):
     groups = [g for g in groups if g != []];
     return groups;
 
-def assoc (h, allh, tag, keys, which='closest', required=0):
+def assoc (h, allh, tag, keys=[], which='closest', required=0):
     '''
     Search for headers with tag and matching criteria
     '''
@@ -205,7 +205,7 @@ def assoc (h, allh, tag, keys, which='closest', required=0):
             
     # Check required
     if len (out) < required:
-        log.warning ('Cannot find %i %s for %s'%(required,tag,h['ORIGNAME']))
+        log.warning ('Cannot find %i %s'%(required,tag))
     else:
         log.info ('Find %i %s'%(len(out),tag));
         

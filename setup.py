@@ -1,11 +1,17 @@
 import numpy as np;
 
 # Definition of setups
-global detector
-detector = ['NREADS','NLOOPS','NBIN','GAIN','CROPROWS','CROPCOLS','FRMPRST'];
+global detwin;
+detwin = ['NREADS','NLOOPS','NBIN','GAIN','CROPROWS','CROPCOLS'];
 
-global instrument
-instrument = ['FILTER1','FILTER2','CONF_NA'];
+global detmode;
+detmode = ['NREADS','NLOOPS','NBIN','GAIN','FRMPRST'];
+
+global insmode;
+insmode = ['FILTER1','FILTER2','CONF_NA'];
+
+global all;
+all = detwin + detmode + insmode;
 
 def nspec (hdr):
     '''
