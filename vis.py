@@ -62,7 +62,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
 
     # Loop on files to compute their PSD
     for ih,h in enumerate(hdrs):
-        f = hdrs[0]['ORIGNAME'];
+        f = h['ORIGNAME'];
         
         log.info ('Load PREPROC file %i over %i (%s)'%(ih+1,len(hdrs),f));
         hdr = pyfits.getheader (f);
@@ -100,7 +100,6 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
             for s in range(nr*nf):
                 tmp = np.correlate (data[s,y,:],data[s,y,:],mode='full');
                 correl[y,:] += tmp;
-
 
     # Get center of spectrum
     fyc,fyw = signal.getwidth (spectrum);
