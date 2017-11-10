@@ -98,7 +98,9 @@ if argopt.background != 'FALSE' or \
 if argopt.background != 'FALSE':
     
     # Group backgrounds
-    gps = mrx.headers.group (hdrs_raw, 'BACKGROUND', delta=argopt.delta, keys=setup.all);
+    gps = mrx.headers.group (hdrs_raw, 'BACKGROUND', delta=argopt.delta,
+                             keys=setup.detwin+setup.detmode+setup.insmode,
+                             continuous=argopt.cont);
     overwrite = (argopt.background == 'OVERWRITE');
 
     # Compute all backgrounds
@@ -133,7 +135,9 @@ if argopt.bmap != 'FALSE':
     hdrs_calib = mrx.headers.loaddir (argopt.outputDir);
     
     # Group all BEAMi
-    gps = mrx.headers.group (hdrs_raw, 'BEAM', delta=argopt.delta, keys=setup.all);
+    gps = mrx.headers.group (hdrs_raw, 'BEAM', delta=argopt.delta,
+                             keys=setup.detwin+setup.detmode+setup.insmode,
+                             continuous=argopt.cont);
     overwrite = (argopt.bmap == 'OVERWRITE');
 
     # Compute all 
@@ -150,7 +154,8 @@ if argopt.bmap != 'FALSE':
             log.setFile (output+'.log');
             
             bkg = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
-                                     keys=all, which='closest', required=1);
+                                     keys=setup.detwin+setup.detmode+setup.insmode,
+                                     which='closest', required=1);
             
             mrx.compute_beammap (gp[0:argopt.max_file], bkg, output=output);
             
@@ -171,7 +176,8 @@ if argopt.preproc != 'FALSE':
 
     # Group all DATA
     gps = mrx.headers.group (hdrs_raw, 'DATA', delta=argopt.delta, Delta=argopt.Delta,
-                             continuous=argopt.cont, keys=setup.all);
+                             keys=setup.detwin+setup.detmode+setup.insmode,
+                             continuous=argopt.cont);
     overwrite = (argopt.preproc == 'OVERWRITE');
 
     # Compute 
@@ -187,12 +193,14 @@ if argopt.preproc != 'FALSE':
             log.setFile (output+'.log');
                 
             bkg  = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
-                                     keys=setup.all, which='closest', required=1);
+                                     keys=setup.detwin+setup.detmode+setup.insmode,
+                                     which='closest', required=1);
 
             bmaps = [];
             for i in range(1,7):
                 tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MAP'%i,
-                                         keys=setup.detwin+setup.insmode, which='best', required=1);
+                                         keys=setup.detwin+setup.insmode,
+                                         which='best', required=1);
                 bmaps.extend(tmp);
             
             mrx.compute_preproc (gp[0:argopt.max_file], bkg, bmaps, output=output);
@@ -214,7 +222,7 @@ if argopt.speccal != 'FALSE':
 
     # Group all PREPROC
     gps = mrx.headers.group (hdrs_calib, 'PREPROC', delta=argopt.delta, Delta=argopt.Delta,
-                             continuous=argopt.cont, keys=setup.detwin+setup.insmode);
+                             keys=setup.detwin+setup.insmode+setup.fringewin, continuous=argopt.cont);
     overwrite = (argopt.speccal == 'OVERWRITE');
 
     # Compute 
@@ -247,7 +255,8 @@ if argopt.rts != 'FALSE':
     hdrs_calib = mrx.headers.loaddir (argopt.outputDir);
 
     # Group all DATA
-    gps = mrx.headers.group (hdrs_calib, 'DATA_PREPROC', delta=0, keys=setup.all);
+    gps = mrx.headers.group (hdrs_calib, 'DATA_PREPROC', delta=0,
+                             keys=setup.detwin+setup.detmode+setup.insmode+setup.fringewin);
     overwrite = (argopt.rts == 'OVERWRITE');
 
     # Compute 
@@ -263,12 +272,14 @@ if argopt.rts != 'FALSE':
             log.setFile (output+'.log');
 
             speccal = mrx.headers.assoc (gp[0], hdrs_calib, 'SPEC_CAL',
-                                         keys=setup.all, which='best', required=1);
+                                         keys=setup.detwin+setup.insmode+setup.fringewin,
+                                         which='best', required=1);
             
             bmaps = [];
             for i in range(1,7):
                 tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MAP'%i,
-                                         keys=setup.all, which='best', required=1);
+                                         keys=setup.detwin+setup.detmode+setup.insmode,
+                                         which='best', required=1);
                 bmaps.extend (tmp);
             
             mrx.compute_rts (gp, bmaps, speccal, output=output);
@@ -289,7 +300,8 @@ if argopt.vis != 'FALSE':
     hdrs_calib = mrx.headers.loaddir (argopt.outputDir);
 
     # Group all DATA
-    gps = mrx.headers.group (hdrs_calib, 'RTS', delta=0, keys=setup.all);
+    gps = mrx.headers.group (hdrs_calib, 'RTS', delta=0,
+                             keys=setup.detwin+setup.detmode+setup.insmode+setup.fringewin);
     overwrite = (argopt.vis == 'OVERWRITE');
 
     # Compute 

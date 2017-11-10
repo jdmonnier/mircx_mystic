@@ -1,5 +1,7 @@
 import numpy as np;
 
+from .headers import HM, HMQ, HMP, HMW, rep_nan;
+
 # Definition of setups
 global detwin;
 detwin = ['NREADS','NLOOPS','NBIN','GAIN','CROPROWS','CROPCOLS'];
@@ -10,8 +12,8 @@ detmode = ['NREADS','NLOOPS','NBIN','GAIN','FRMPRST'];
 global insmode;
 insmode = ['FILTER1','FILTER2','CONF_NA'];
 
-global all;
-all = detwin + detmode + insmode;
+global fringewin;
+fringewin = [HMW+'FRINGE STARTX', HMW+'FRINGE NX', HMW+'FRINGE STARTY', HMW+'FRINGE NY'];
 
 def nspec (hdr):
     '''
