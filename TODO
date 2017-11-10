@@ -1,4 +1,6 @@
-* Spectral calibration
+* Cascade
+
+It would be easier if the PREPROC would be truly static windows…
 
 * Preproc
 
@@ -16,8 +18,6 @@ Think on the dimensions...
 Better MJD, better INT_TIME, better UCOORD,VCOORD
 Compute errors on vis2 and t3phi with bootstraping
 
-Bispectrum is not coherent !
-
 * Wavelength calibration
 
 Think of setup.base_freq and setup.lbd0, to see if it make
@@ -25,10 +25,10 @@ sens to keep them in these units.
 setup.base_freq may be better defined pixel/lbd
 
 * Speed-up
+
+- save the PREPROC and RTS in float32 instead of float64.
+When reading them, we can convert them again in float64 with astype.
+
 - QC of dc is too long
 - Apply thresholding (force zeros) is too long
 
-
-[INFO   ] 2017-11-10T09:57:47: HIERARCH MIRC QC QUALITY = 1.733920e+10
-[INFO   ] 2017-11-10T09:57:57: HIERARCH MIRC QC QUALITY = 3.606752e+09
-[INFO   ] 2017-11-10T09:58:36: HIERARCH MIRC QC QUALITY = 3.467841e+10
