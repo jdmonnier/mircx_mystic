@@ -259,7 +259,6 @@ if argopt.rts != 'FALSE':
 
             mrx.log.setFile (output+'.log');
 
-            
             speccal = mrx.headers.assoc (gp[0], hdrs_calib, 'SPECCAL',
                                          keys, which='best', required=1);
             
@@ -267,7 +266,7 @@ if argopt.rts != 'FALSE':
             for i in range(1,7):
                 tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MAP'%i,
                                          keys, which='best', required=1);
-                bmaps.extend(tmp);
+                bmaps.extend (tmp);
             
             mrx.compute_rts (gp, bmaps, speccal, output=output);
 

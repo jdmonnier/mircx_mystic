@@ -97,4 +97,4 @@ def dsp_projection (scale, freq, freq0, delta0, data):
 
     # Return the merit function from the normalised projection
     weight = np.sqrt (np.sum (model * model) * np.sum (data * data));
-    return weight - 1.* np.sum (model*data);
+    return 1. - np.sum (model*data) / weight;

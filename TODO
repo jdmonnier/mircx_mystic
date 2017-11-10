@@ -28,3 +28,7 @@ setup.base_freq may be better defined pixel/lbd
 - QC of dc is too long
 - Apply thresholding (force zeros) is too long
 
+
+[INFO   ] 2017-11-10T09:57:47: HIERARCH MIRC QC QUALITY = 1.733920e+10
+[INFO   ] 2017-11-10T09:57:57: HIERARCH MIRC QC QUALITY = 3.606752e+09
+[INFO   ] 2017-11-10T09:58:36: HIERARCH MIRC QC QUALITY = 3.467841e+10
