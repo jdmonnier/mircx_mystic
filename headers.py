@@ -13,6 +13,11 @@ HMQ = 'HIERARCH MIRC QC ';
 HMP = 'HIERARCH MIRC PRO ';
 HMW = 'HIERARCH MIRC QC WIN ';
 
+def str2bool (s):
+    if s == True or s == 'TRUE': return True;
+    if s == False or s == 'FALSE': return False;
+    raise ValueError('Invalid boolean string');
+
 def loaddir (dirs):
     '''
     Load the headers of all files mircx*.fit* from
@@ -109,7 +114,7 @@ def match (h1,h2,keys,delta):
     answer = True;
     for k in keys:
         answer *= (h1[k] == h2[k]);
-            
+
     # Check time is close-by
     answer *= (np.abs(h1['MJD-OBS'] - h2['MJD-OBS'])*24.*3600 < delta);
 
@@ -142,7 +147,7 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
         
         # if different type, start new group and continue
         if mtype not in h['FILETYPE']:
-            if groups[-1] != [] and (continuous is False or continuous == 'FALSE'):
+            if groups[-1] != [] and str2bool(continuous):
                 groups.append([]);
             continue;
 
@@ -158,7 +163,7 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
             groups.append([h]);
             continue;
 
-        # If no match with last, we start new group
+        # If no match with first, we start new group
         if match (h,groups[-1][0],keys,Delta) is False:
             log.info('New group (integration) %s'%fileinfo);
             groups.append([h]);

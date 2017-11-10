@@ -98,7 +98,7 @@ if argopt.background != 'FALSE' or \
 if argopt.background != 'FALSE':
     
     # Group backgrounds
-    gps = mrx.headers.group (hdrs_raw, 'BACKGROUND', delta=argopt.delta,
+    gps = mrx.headers.group (hdrs_raw, 'BACKGROUND', delta=argopt.delta, Delta=argopt.Delta,
                              keys=setup.detwin+setup.detmode+setup.insmode,
                              continuous=argopt.cont);
     overwrite = (argopt.background == 'OVERWRITE');
@@ -135,7 +135,7 @@ if argopt.bmap != 'FALSE':
     hdrs_calib = mrx.headers.loaddir (argopt.outputDir);
     
     # Group all BEAMi
-    gps = mrx.headers.group (hdrs_raw, 'BEAM', delta=argopt.delta,
+    gps = mrx.headers.group (hdrs_raw, 'BEAM', delta=argopt.delta, Delta=argopt.Delta,
                              keys=setup.detwin+setup.detmode+setup.insmode,
                              continuous=argopt.cont);
     overwrite = (argopt.bmap == 'OVERWRITE');
@@ -222,7 +222,8 @@ if argopt.speccal != 'FALSE':
 
     # Group all PREPROC
     gps = mrx.headers.group (hdrs_calib, 'PREPROC', delta=argopt.delta, Delta=argopt.Delta,
-                             keys=setup.detwin+setup.insmode+setup.fringewin, continuous=argopt.cont);
+                             keys=setup.detwin+setup.insmode+setup.fringewin,
+                             continuous=argopt.cont);
     overwrite = (argopt.speccal == 'OVERWRITE');
 
     # Compute 
