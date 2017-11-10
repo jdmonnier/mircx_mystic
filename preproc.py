@@ -449,6 +449,11 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     # Extract fringe
     fringe = cube[:,:,fyc-ns:fyc+ns+1,fxc-fxw:fxc+fxw+1];
 
+    # Robust measure of mean flux in fringe
+    mean = np.mean (medfilt (np.mean (fringe, axis=(0,1,2), 11)));
+    hdr[HMW+'FRINGE MEAN'] = (mean,'[adu/pix/frame]');
+    log.info (HMW+'FRINGE MEAN = %f [adu/pix/frame]'%mean);
+
     # Same for photometries
     nr,nf,ny,nx = fringe.shape;
     photos = np.zeros ((6,nr,nf,ny,2*pxw+1));

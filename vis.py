@@ -225,6 +225,10 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     photo  = pyfits.getdata (f, 'PHOTOMETRY_PREPROC').copy();
     nr,nf,ny,nx = fringe.shape
 
+    # Some verbose
+    log.info ('fringe.shape = %s'%str(fringe.shape));
+    log.info ('mean(fringe) = %f adu/pix/frame'%np.mean(fringe,axis=(0,1,2,3)));
+
     # Get fringe and photo maps
     fringe_map, photo_map = extract_maps (hdr, bmaps);
 
@@ -296,8 +300,9 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     threshold = np.mean (medfilt (fringe_map,[1,1,1,1,11]), axis = (0,1,2,-1));
     threshold /= np.max (medfilt (threshold,3)) + 1e-20;
 
-    log.info ('Apply threshold');
+    log.info ('Apply threshold:');
     threshold = threshold > 0.25;
+    log.info (str(1*threshold));
     fringe[:,:,~threshold,:] = 0.0;
     photo[:,:,:,~threshold]  = 0.0;
     kappa[:,:,:,~threshold]  = 0.0;
@@ -359,7 +364,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     photodc_mean  = np.mean (cont,axis=(2,3));
     fringedc_mean = np.mean (fringe,axis=(2,3));
     hdr[HMQ+'DC MEAN'] = rep_nan (np.sum (fringedc_mean) / np.sum (photodc_mean));
-    
+
     poly_dc = np.polyfit (photodc_mean.flatten(), fringedc_mean.flatten(), 2);
     hdr[HMQ+'DC ORDER0'] = (poly_dc[0],'[adu] fit DC(photo)');
     hdr[HMQ+'DC ORDER1'] = (poly_dc[1],'[adu/adu] fit DC(photo)');
