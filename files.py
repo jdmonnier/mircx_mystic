@@ -65,7 +65,7 @@ def load_raw (hdrs, coaddRamp=False):
     If coaddRamp==True, the ramps inside each file are averaged together.
     Thus the resulting cube is of shape [nfile, nframes, ny, ny]    
     '''
-    log.info ('Load files in mode coaddRamp=%s'%str(coaddRamp));
+    log.info ('Load RAW files in mode coaddRamp=%s'%str(coaddRamp));
 
     # Build header
     hdr = hdrs[0].copy();
@@ -76,7 +76,7 @@ def load_raw (hdrs, coaddRamp=False):
     cube = [];
     for h in hdrs:
         fileinfo = h['ORIGNAME'] + ' (' +h['FILETYPE']+')';
-        log.info ('Load file %s'%fileinfo);
+        log.info ('Load %s'%fileinfo);
         hdulist = pyfits.open(h['ORIGNAME']);
 
         # Read compressed data. 

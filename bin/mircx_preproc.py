@@ -48,7 +48,7 @@ parser.add_argument ("--delta-time", dest="delta",default=300,type=float,
 parser.add_argument ("--Delta-time", dest="Delta",default=300,type=float,
                      help="maximum time between first and last files to be groupped (s)");
 
-parser.add_argument ("--skip", dest="skip",default='FALSE',
+parser.add_argument ("--continuous-time", dest="cont",default='TRUE',
                      choices=TrueFalse,
                      help="create a new group with different filetype interleaved");
 
@@ -64,9 +64,9 @@ parser.add_argument ("--preproc", dest="preproc",default='FALSE',
                      choices=TrueFalseOverwrite,
                      help="compute the PREPROC products");
 
-parser.add_argument ("--speccal", dest="speccal",default='FALSE',
+parser.add_argument ("--spec-cal", dest="speccal",default='FALSE',
                      choices=TrueFalseOverwrite,
-                     help="compute the SPECCAL products");
+                     help="compute the SPEC_CAL products");
 
 parser.add_argument ("--rts", dest="rts",default='FALSE',
                      choices=TrueFalseOverwrite,
@@ -87,7 +87,9 @@ argopt = parser.parse_args ();
 keys = mrx.setup.detector + mrx.setup.instrument;
 
 # Get all RAW files from current dir
-if argopt.background != 'FALSE' or argopt.preproc != 'FALSE':
+if argopt.background != 'FALSE' or \
+   argopt.bmap != 'FALSE' or \
+   argopt.preproc != 'FALSE':
     hdrs_raw = mrx.headers.loaddir ('./');
 
 #
@@ -169,7 +171,7 @@ if argopt.preproc != 'FALSE':
     hdrs_calib = mrx.headers.loaddir (argopt.outputDir);
 
     # Group all DATA
-    gps = mrx.headers.group (hdrs_raw, 'DATA', delta=argopt.delta, Delta=argopt.Delta, skip=argopt.skip);
+    gps = mrx.headers.group (hdrs_raw, 'DATA', delta=argopt.delta, Delta=argopt.Delta, continuous=argopt.cont);
     overwrite = (argopt.preproc == 'OVERWRITE');
 
     # Compute 
@@ -202,7 +204,7 @@ if argopt.preproc != 'FALSE':
             mrx.log.closeFile ();
 
 #
-# Compute SPECCAL
+# Compute SPEC_CAL
 #
 
 if argopt.speccal != 'FALSE':
@@ -211,13 +213,13 @@ if argopt.speccal != 'FALSE':
     hdrs_calib = mrx.headers.loaddir (argopt.outputDir);
 
     # Group all PREPROC
-    gps = mrx.headers.group (hdrs_calib, 'PREPROC', delta=argopt.delta, Delta=argopt.Delta, skip=argopt.skip);
+    gps = mrx.headers.group (hdrs_calib, 'PREPROC', delta=argopt.delta, Delta=argopt.Delta, continuous=argopt.cont);
     overwrite = (argopt.speccal == 'OVERWRITE');
 
     # Compute 
     for i,gp in enumerate(gps):
         try:
-            mrx.log.info ('Compute SPECCAL {0} over {1} '.format(i+1,len(gps)));
+            mrx.log.info ('Compute SPEC_CAL {0} over {1} '.format(i+1,len(gps)));
             
             output = mrx.files.output (argopt.outputDir, gp[0], 'speccal');
             if os.path.exists (output+'.fits') and overwrite is False:
@@ -229,7 +231,7 @@ if argopt.speccal != 'FALSE':
             mrx.compute_speccal (gp[0:argopt.max_file], output=output);
             
         except Exception as exc:
-            mrx.log.error ('Cannot compute SPECCAL: '+str(exc));
+            mrx.log.error ('Cannot compute SPEC_CAL: '+str(exc));
             if argopt.debug == 'TRUE': raise;
         finally:
             mrx.log.closeFile ();
@@ -259,7 +261,7 @@ if argopt.rts != 'FALSE':
 
             mrx.log.setFile (output+'.log');
 
-            speccal = mrx.headers.assoc (gp[0], hdrs_calib, 'SPECCAL',
+            speccal = mrx.headers.assoc (gp[0], hdrs_calib, 'SPEC_CAL',
                                          keys, which='best', required=1);
             
             bmaps = [];
