@@ -4,7 +4,7 @@ from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
 # Definition of setups
 global detwin;
-detwin = ['NREADS','NLOOPS','NBIN','GAIN','CROPROWS','CROPCOLS'];
+detwin = ['CROPROWS','CROPCOLS'];
 
 global detmode;
 detmode = ['NREADS','NLOOPS','NBIN','GAIN','FRMPRST'];
