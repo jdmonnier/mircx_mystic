@@ -520,9 +520,6 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     
     # Set files
     hdu0.header[HMP+'BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
-    hdu0.header[HMP+'FRINGE_MAP'] = bmaps[0]['ORIGNAME'];
-    for bmap in bmaps:
-        hdu0.header[HMP+bmap['FILETYPE']] = bmap['ORIGNAME'];
 
     # Second HDU with photometries
     hdu1 = pyfits.ImageHDU (photos);
@@ -645,11 +642,30 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     ax[0].imshow (correl);
     ax[1].plot (dsp[:,0:int(nfreq/2)].T);
     fig.savefig (output+'_dsp.png');
+
+    # File
+    log.info ('Create file');
+
+    # First HDU
+    hdu0 = pyfits.PrimaryHDU (lbdfit);
+    hdu0.header = hdr;
+    hdu0.header['FILETYPE'] = 'SPECCAL';
+    hdu0.header['BUNIT'] = 'm';
+
+    # Save input files
+    for h in hdrs:
+        npp = len (hdr['*MIRC PRO PREPROC*']);
+        hdr['HIERARCH MIRC PRO PREPROC%i'%(npp+1,)] = h['ORIGNAME'];
+
+    # Write file
+    hdulist = pyfits.HDUList ([hdu0]);
+    files.write (hdulist, output+'.fits');
     
-    return dsp,freq,freq0;
+    plt.close("all");
+    return hdulist;
     
 
-def compute_rts (hdrs, bmaps, output='output_rts'):
+def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     '''
     Compute the RTS
     '''
@@ -658,9 +674,10 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     # Check inputs
     headers.check_input (hdrs,  required=1, maximum=1);
     headers.check_input (bmaps, required=1, maximum=6);
-    f = hdrs[0]['ORIGNAME'];
+    headers.check_input (speccal, required=1, maximum=1);
 
     # Load DATA
+    f = hdrs[0]['ORIGNAME'];
     log.info ('Load PREPROC file (copy) %s'%f);
     hdr = pyfits.getheader (f);
     fringe = pyfits.getdata (f).copy();
@@ -669,13 +686,17 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
 
     # Get fringe and photo maps
     fringe_map, photo_map = extract_maps (hdr, bmaps);
-    
+
     # Compute the expected position of lbd0    
     fcy = np.mean ([h[HMW+'FRINGE CENTERY'] for h in bmaps]) - hdr[HMW+'FRINGE STARTY'];
     
     # Build wavelength
     lbd0,dlbd = setup.lbd0 (hdr);
-    lbd = (np.arange (ny) - fcy) * dlbd + lbd0;
+    
+    # Load the wavelength table
+    f = speccal[0]['ORIGNAME'];
+    log.info ('Load SPECCAL file %s'%f);
+    lbd = pyfits.getdata (f);
 
     # Define profile for optimal extraction of photometry
     # The same profile is used for all spectral channels
@@ -904,6 +925,11 @@ def compute_rts (hdrs, bmaps, output='output_rts'):
     hdu0.header = hdr;
     hdu0.header['FILETYPE'] = 'RTS';
     hdu0.header[HMP+'PREPROC'] = hdrs[0]['ORIGNAME'];
+
+    # Set the input calibration file
+    hdu0.header[HMP+'FRINGE_MAP'] = bmaps[0]['ORIGNAME'];
+    for bmap in bmaps:
+        hdu0.header[HMP+bmap['FILETYPE']] = bmap['ORIGNAME'];
 
     # Set DFT of fringes, bias, photometry and lbd
     hdu1 = pyfits.ImageHDU (base_dft.real);

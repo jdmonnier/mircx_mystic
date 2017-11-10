@@ -20,6 +20,11 @@ Bispectrum is not coherent !
 
 * Wavelength calibration
 
+Think of setup.base_freq and setup.lbd0, to see if it make
+sens to keep them in these units.
+setup.base_freq may be better defined pixel/lbd
+
 * Speed-up
 - QC of dc is too long
 - Apply thresholding (force zeros) is too long
+

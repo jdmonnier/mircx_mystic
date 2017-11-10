@@ -140,10 +140,9 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, skip=False):
     for h in hdrs:
         fileinfo = h['ORIGNAME'] + ' (' +h['FILETYPE']+')';
         
-        # if different type, continue
-        # and start new group
+        # if different type, start new group and continue
         if mtype not in h['FILETYPE']:
-            if groups[-1] != [] and skip is False:
+            if groups[-1] != [] and (skip is False or skip == 'FALSE'):
                 groups.append([]);
             continue;
 
