@@ -57,7 +57,7 @@ def write (hdulist,filename):
     
     hdulist.writeto (filename);
 
-def load_raw (hdrs, coaddRamp=False):
+def load_raw (hdrs, coaddRamp=False,removeBias=True):
     '''
     Load data and append into gigantic cube. The output cube is
     of shape: [nfile*nramp, nframes, ny, ny].
@@ -103,10 +103,11 @@ def load_raw (hdrs, coaddRamp=False):
         
         # Remove bias. Note that the median should be taken
         # with an odd number of samples, to be unbiased.
-        ids = np.append (np.arange(15), data.shape[-1] - np.arange(1,15));
-        bias = np.median (data[:,:,:,ids],axis=3);
-        bias = gaussian_filter (bias,[0,0,1]);
-        data = data - bias[:,:,:,None];
+        if removeBias is True:
+            ids = np.append (np.arange(15), data.shape[-1] - np.arange(1,15));
+            bias = np.median (data[:,:,:,ids],axis=3);
+            bias = gaussian_filter (bias,[0,0,1]);
+            data = data - bias[:,:,:,None];
 
         # Append ramps or co-add them
         hdr['HIERARCH MIRC QC NRAMP'] += data.shape[0];
@@ -120,8 +121,6 @@ def load_raw (hdrs, coaddRamp=False):
         nraw = len (hdr['*MIRC PRO RAW*']);
         hdr['HIERARCH MIRC PRO RAW%i'%(nraw+1,)] = h['ORIGNAME'];
         hdr['HIERARCH MIRC QC NFILE'] += 1;
-
-        
 
     # Convert to array
     log.info ('Convert to cube');

@@ -4,25 +4,41 @@ It would be easier if the PREPROC would be truly static windows…
 
 * Preproc
 
-Propagate the frame_numer
+Propagate the frame_numer and all counters
 Use a flat-field and bad pixel
-
-* Use the dark at the time of the RTS ?
-
-* Photometry extraction
-
-Think on the dimensions...
-
-* OIFITS
-
-Better MJD, better INT_TIME, better UCOORD,VCOORD
-Compute errors on vis2 and t3phi with bootstraping
 
 * Wavelength calibration
 
 Think of setup.base_freq and setup.lbd0, to see if it make
 sens to keep them in these units.
 setup.base_freq may be better defined pixel/lbd
+
+Ask John for absolute scale/wavelength.
+
+The detector has a PSD with a pic every 10 pixels (fft)
+Thus with period 32 = outputs
+
+* RTS
+
+Use the dark at the time of the RTS ?
+
+Photometry extraction:
+Think on the dimensions...
+
+DC: compute the DC residual in fringes
+and reproject it into the dc-shape.
+
+get more bias frequency.
+
+* VIS
+
+show pseudo PSD, with bias, in the compute_vis, so that one
+can see the electronic artifact including the coherent integration
+
+Better MJD, better INT_TIME, better UCOORD,VCOORD
+Compute errors on vis2 and t3phi with bootstraping
+
+Use morphological closing/opening to better deal with SNR curves.
 
 * Speed-up
 

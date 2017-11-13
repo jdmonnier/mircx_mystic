@@ -1,6 +1,7 @@
 import numpy as np;
 
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
+from . import log;
 
 # Definition of setups
 global detwin;
@@ -175,7 +176,7 @@ def base_uv (hdr):
             u[b] = -hdr['U_'+t[1]+'-'+t[0]];
             v[b] = -hdr['V_'+t[1]+'-'+t[0]];
         else:
-            raise ValueError('Cannot load UV from header');
+            log.warning ('Cannot read UV base %i (%s-%s) in header.'%(b,t[0],t[1]));
 
     # CHARA tel of the CHARA beams
     return u,v;

@@ -78,13 +78,13 @@ def load (files, hlog=[]):
             # Recover or read header
             try:
                 hdr = hlog[filesin.index (os.path.split (f)[1])];
-                log.info('Recover header %i over %i (%s)'%(fn,len(files),f));
+                log.info('Recover header %i over %i (%s)'%(fn+1,len(files),f));
             except:
                 if f[-7:] == 'fits.fz':
                     hdr = pyfits.getheader(f, 1);
                 else:
                     hdr = pyfits.getheader(f, 0);
-                log.info('Read header %i over %i (%s)'%(fn,len(files),f));
+                log.info('Read header %i over %i (%s)'%(fn+1,len(files),f));
 
             # Add file name
             hdr['ORIGNAME'] = f;

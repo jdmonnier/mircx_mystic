@@ -125,22 +125,22 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     idmin = np.argmax (freq > 0.75*freq0.min());
     idmax = np.argmax (freq > 1.25*freq0.max());
 
-    # Compute zero-padded DSP
-    log.info ('DSP with huge zero-padding %i'%nfreq);
-    dsp = np.abs (fftpack.fft (correl, n=nfreq, axis=-1, overwrite_x=False));
+    # Compute zero-padded PSD
+    log.info ('PSD with huge zero-padding %i'%nfreq);
+    psd = np.abs (fftpack.fft (correl, n=nfreq, axis=-1, overwrite_x=False));
 
     # Remove bias and normalise to the maximum in the interesting range
-    dsp -= np.median (dsp[:,idmax:], axis=-1, keepdims=True);
-    norm = np.max (dsp[:,idmin:idmax], axis=1, keepdims=True);
-    dsp /= norm;
+    psd -= np.median (psd[:,idmax:], axis=-1, keepdims=True);
+    norm = np.max (psd[:,idmin:idmax], axis=1, keepdims=True);
+    psd /= norm;
 
     # Correlate each wavelength channel with a template
-    log.info ('Correlated DSP with model');
+    log.info ('Correlated PSD with model');
     res = [];
     for y in range (ny):
         s0 = lbd[y] / lbd0;
-        args = (freq[idmin:idmax],freq0,delta0,dsp[y,idmin:idmax]);
-        res.append (least_squares (signal.dsp_projection, s0, args=args, bounds=(0.8*s0,1.2*s0)));
+        args = (freq[idmin:idmax],freq0,delta0,psd[y,idmin:idmax]);
+        res.append (least_squares (signal.psd_projection, s0, args=args, bounds=(0.8*s0,1.2*s0)));
         log.info ('Best merit 1-c=%.4f found at s/s0=%.4f'%(res[-1].fun[0],res[-1].x[0]/s0));
 
     # Get wavelengths
@@ -156,17 +156,17 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
 
     log.info ('Figures');
     
-    # Figures of DSP with model
+    # Figures of PSD with model
     fig,axes = plt.subplots (ny,sharex=True);
     for y in range (ny):
         ax = axes.flatten()[y];
-        ax.plot (freq,signal.dsp_projection (res[y].x[0], freq, freq0, delta0, None));
-        ax.plot (freq,dsp[y,:]);
+        ax.plot (freq,signal.psd_projection (res[y].x[0], freq, freq0, delta0, None));
+        ax.plot (freq,psd[y,:]);
         ax.set_xlim (0,1.3*np.max(freq0));
         ax.set_ylim (0,1.1);
         ax.grid();
-    axes.flatten()[0].set_title ('Observed DSP (orange) and scaled template (blue)');
-    fig.savefig (output+'_dspmodel.png');
+    axes.flatten()[0].set_title ('Observed PSD (orange) and scaled template (blue)');
+    fig.savefig (output+'_psdmodel.png');
 
     # Effective wavelength
     fig,ax = plt.subplots ();
@@ -179,11 +179,11 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     ax.grid();
     fig.savefig (output+'_lbd.png');
 
-    # DSP
+    # PSD
     fig,ax = plt.subplots (2,1);
     ax[0].imshow (correl);
-    ax[1].plot (dsp[:,0:int(nfreq/2)].T);
-    fig.savefig (output+'_dsp.png');
+    ax[1].plot (psd[:,0:int(nfreq/2)].T);
+    fig.savefig (output+'_psd.png');
 
     # File
     log.info ('Create file');
@@ -411,7 +411,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     base_dft[:,:,:,idx] = np.conj(base_dft[:,:,:,idx]);
     
     # DFT at bias frequencies
-    ibias = np.abs (ifreqs).max() + 4 + np.arange (5);
+    ibias = np.abs (ifreqs).max() + 4 + np.arange (24);
     bias_dft  = cf[:,:,:,ibias];
 
     # Compute unbiased PSD for plots (without coherent average
@@ -473,7 +473,6 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     hdu0.header[HMP+'PREPROC'] = hdrs[0]['ORIGNAME'];
 
     # Set the input calibration file
-    hdu0.header[HMP+'FRINGE_MAP'] = bmaps[0]['ORIGNAME'];
     for bmap in bmaps:
         hdu0.header[HMP+bmap['FILETYPE']] = bmap['ORIGNAME'];
 
@@ -539,11 +538,11 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
 
     # Do coherent integration
     log.info ('Coherent integration over %.1f frames'%ncoher);
-    hdr[HMQ+'NFRAME_COHER'] = (ncoher,'nb. of frames integrated coherently');
+    hdr[HMP+'NFRAME_COHER'] = (ncoher,'nb. of frames integrated coherently');
     base_dft = signal.gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
     bias_dft = signal.gaussian_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
     photo = gaussian_filter (photo,(0,ncoher,0,0),mode='constant',truncate=2.0);
-            
+
     # Compute group-delay in [m] and broad-band power
     log.info ('Compute GD');
     base_gd  = np.angle (np.sum (base_dft[:,:,1:,:] * np.conj (base_dft[:,:,:-1,:]), axis=2, keepdims=True));
@@ -621,6 +620,16 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
 
     # Figures
     log.info ('Figures');
+
+    # Pseudo PSD
+    fig,ax = plt.subplots (2,2, sharey='row',sharex='col');
+    ax[0,0].imshow (np.mean (np.abs(base_dft)**2, axis=(0,1)));
+    ax[0,1].imshow (np.mean (np.abs(bias_dft)**2, axis=(0,1)));
+    ax[1,0].plot (np.mean (np.abs(base_dft)**2, axis=(0,1)).T);
+    ax[1,1].plot (np.mean (np.abs(bias_dft)**2, axis=(0,1)).T);
+    ax[0,0].set_title ('Fringe frequencies');
+    ax[0,1].set_title ('Bias frequencies');
+    fig.savefig (output+'_psd.png');
     
     # SNR, GD and FLAGs
     fig,ax = plt.subplots (3,1);
