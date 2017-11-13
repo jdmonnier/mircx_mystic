@@ -354,10 +354,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     log.info ('Compute dc in fringes');
     fringe_map  = medfilt (fringe_map, [1,1,1,1,11]);
     fringe_map /= np.sum (fringe_map, axis=-1, keepdims=True) + 1e-20;
-    
-    cont = np.zeros ((nr,nf,ny,nx));
-    for b in range(6):
-        cont += photok[b,:,:,:,None] * fringe_map[b,:,:,:,:];
+    cont = np.einsum ('Brfy,Brfyx->rfyx', photok, fringe_map);
         
     # QC about the fringe dc
     log.info ('Compute QC about dc');
