@@ -29,13 +29,18 @@ logging.basicConfig (
      format="[%(color)s%(levelname)-7.7s"+RESET+"] %(asctime)s.%(msecs)03d: %(message)s",
      datefmt='%Y-%m-%dT%H:%M:%S');
 
-
 # Set a logfile
 def setFile (filename):
-    info ('Set logFile: '+filename);
     for h in logger.handlers:
         logger.removeHandler (h);
-    logfile = logging.FileHandler (filename, mode='w');
+
+    # Create logfile and set permission
+    info ('Set logFile: '+filename);
+    open (filename, 'w').close();
+    os.chmod (filename,0666);
+
+    # Set this file as log
+    logfile = logging.FileHandler (filename, mode='a');
     logfile.setLevel (logging.INFO);
     formatter = logging.Formatter ("[%(levelname)-7.7s] "
                                    "%(asctime)s.%(msecs)03d: %(message)s",

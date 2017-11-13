@@ -9,7 +9,7 @@ from scipy.ndimage import gaussian_filter
 import numpy as np
 import os
 
-from . import log, setup
+from . import log, setup, files
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 from .version import revision
 
@@ -168,7 +168,7 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     for b,ax in enumerate(axes.flatten()):
         ax.plot ( u_power[:,int(ny/2),b], l_power[:,int(ny/2),b], 'o');
         ax.grid();
-    fig.savefig (output+'_norm_power.png');
+    files.write (fig,output+'_norm_power.png');
 
     # Reset warning
     np.seterr (**old_np_setting);
@@ -259,7 +259,7 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     for t,ax in enumerate(axes.flatten()):
         ax.plot ( t_product.real[:,int(ny/2),t], t_product.imag[:,int(ny/2),t], 'o');
         ax.grid();
-    fig.savefig (output+'_bispec.png');
+    files.write (fig,output+'_bispec.png');
 
     # Reset warning
     np.seterr (**old_np_setting);

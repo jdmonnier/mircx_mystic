@@ -166,7 +166,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
         ax.set_ylim (0,1.1);
         ax.grid();
     axes.flatten()[0].set_title ('Observed PSD (orange) and scaled template (blue)');
-    fig.savefig (output+'_psdmodel.png');
+    files.write (fig,output+'_psdmodel.png');
 
     # Effective wavelength
     fig,ax = plt.subplots ();
@@ -177,13 +177,13 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     ax.set_title ('Guess calib. (orange) and Fitted calib, (blue)');
     ax.set_ylim (1.5,1.825);
     ax.grid();
-    fig.savefig (output+'_lbd.png');
+    files.write (fig,output+'_lbd.png');
 
     # PSD
     fig,ax = plt.subplots (2,1);
     ax[0].imshow (correl);
     ax[1].plot (psd[:,0:int(nfreq/2)].T);
-    fig.savefig (output+'_psd.png');
+    files.write (fig,output+'_psd.png');
 
     # File
     log.info ('Create file');
@@ -201,7 +201,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
 
     # Write file
     hdulist = pyfits.HDUList ([hdu0]);
-    files.write (hdulist, output+'.fits');
+    files.write (fig,hdulist, output+'.fits');
     
     plt.close ("all");
     return hdulist;
@@ -264,7 +264,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
         val = np.mean (photo[b,:,:,:,:],axis=(0,1,2));
         ax.plot (val / (np.mean (val)+1e-20), label='photo');
         ax.legend(); ax.grid();
-    fig.savefig (output+'_profile.png');
+    files.write (fig,output+'_profile.png');
 
     # Optimal extraction of photometry with profile
     log.info ('Extract photometry with profile');
@@ -324,14 +324,14 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
         ax.legend(); ax.grid();
         ax.set_ylim ((0.1,1.5));
         ax.set_ylabel ('normalized');
-    fig.savefig (output+'_kappa.png');
+    files.write (fig,output+'_kappa.png');
 
     # Use a supplementary kappa-matrix if provided
     
     # Kappa-matrix
     fig,ax = plt.subplots (1);
     ax.imshow (np.mean (kappa,axis=(1,2)));
-    fig.savefig (output+'_kappaimg.png');
+    files.write (fig,output+'_kappaimg.png');
 
     # kappa is defined so that photok is the
     # total number of adu in the fringe
@@ -427,7 +427,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     plt.plot (photodc_mean.flatten(),photodc_mean.flatten(),'-');
     ax.set_xlabel('fringe dc'); ax.set_ylabel('sum of photo');
     ax.grid();
-    fig.savefig (output+'_dccorr.png');
+    files.write (fig,output+'_dccorr.png');
 
     # Integrated spectra
     fig,ax = plt.subplots (2,1);
@@ -449,7 +449,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     ax[1].legend(); ax[1].grid();
     ax[1].set_ylabel ('normalized');
     ax[1].set_xlabel ('lbd (um)');
-    fig.savefig (output+'_spectra.png');
+    files.write (fig,output+'_spectra.png');
     
     # Power densities
     fig,ax = plt.subplots (2,1);
@@ -458,7 +458,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     ax[1].plot (np.mean (cf_upsd, axis=(0,1))[int(ny/2),:]);
     ax[1].set_xlim (0,cf_upsd.shape[-1]);
     ax[1].grid();
-    fig.savefig (output+'_psd.png');
+    files.write (fig,output+'_psd.png');
 
     # File
     log.info ('Create file');
@@ -501,7 +501,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     # Write file
     hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2,hdu3,hdu4,hdu5,hdu6]);
     files.write (hdulist, output+'.fits');
-    
+
     plt.close("all");
     return hdulist;
 
@@ -626,7 +626,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     ax[1,1].plot (np.mean (np.abs(bias_dft)**2, axis=(0,1)).T);
     ax[0,0].set_title ('Fringe frequencies');
     ax[0,1].set_title ('Bias frequencies');
-    fig.savefig (output+'_psd.png');
+    files.write (fig,output+'_psd.png');
     
     # SNR, GD and FLAGs
     fig,ax = plt.subplots (3,1);
@@ -638,7 +638,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     ax[2].imshow (np.mean (base_flag,axis=(1,2)).T);
     ax[2].grid(); ax[1].set_ylabel ('gdelay (um)');
     ax[2].set_xlabel ('flag');
-    fig.savefig (output+'_snr_gd.png');
+    files.write (fig,output+'_snr_gd.png');
 
     # File
     log.info ('Create file');

@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+import matplotlib
+
 from astropy.time import Time
 from astropy.io import fits as pyfits
 from astropy.stats import sigma_clipped_stats
@@ -21,6 +23,7 @@ def output (outputDir,hdr,suffix):
     # Build diretory if needed
     if not os.path.exists (outputDir):
         os.makedirs (outputDir);
+        os.chmod (outputDir, 0777);
         
     # Get filename 
     name = hdr['ORIGNAME'];
@@ -40,13 +43,22 @@ def output (outputDir,hdr,suffix):
 
 def write (hdulist,filename):
     '''
-    Write file.
+    Write file. The input shall be a hdulist or
+    a matplotlib figure handler.
     '''
+
+    # Use this function to save figure as well
+    if type(hdulist) is matplotlib.figure.Figure:
+        log.info ('Write %s'%filename);
+        hdulist.savefig (filename);
+        os.chmod (filename,0666);
+        return;
+    
     # Get header
     hdr = hdulist[0].header;
     
     fileinfo = filename + ' ('+hdr['FILETYPE']+')';
-    log.info ('Write file %s'%fileinfo);
+    log.info ('Write %s'%fileinfo);
 
     # Add the pipeline version
     hdr[HMP+'REV'] = (revision,'Version of mircx_pipeline');
@@ -54,8 +66,10 @@ def write (hdulist,filename):
     # Remove if existing
     if os.path.exists (filename):
         os.remove (filename);
-    
+
+    # Write and make it writtable to all
     hdulist.writeto (filename);
+    os.chmod (filename,0666);
 
 def load_raw (hdrs, coaddRamp=False,removeBias=True):
     '''
