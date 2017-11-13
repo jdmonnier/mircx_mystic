@@ -37,7 +37,7 @@ def setFile (filename):
     # Create logfile and set permission
     info ('Set logFile: '+filename);
     open (filename, 'w').close();
-    os.chmod (filename,0666);
+    os.chmod (filename,0o666);
 
     # Set this file as log
     logfile = logging.FileHandler (filename, mode='a');

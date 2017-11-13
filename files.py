@@ -23,7 +23,7 @@ def output (outputDir,hdr,suffix):
     # Build diretory if needed
     if not os.path.exists (outputDir):
         os.makedirs (outputDir);
-        os.chmod (outputDir, 0777);
+        os.chmod (outputDir, 0o777);
         
     # Get filename 
     name = hdr['ORIGNAME'];
@@ -51,7 +51,7 @@ def write (hdulist,filename):
     if type(hdulist) is matplotlib.figure.Figure:
         log.info ('Write %s'%filename);
         hdulist.savefig (filename);
-        os.chmod (filename,0666);
+        os.chmod (filename,0o666);
         return;
     
     # Get header
@@ -69,7 +69,7 @@ def write (hdulist,filename):
 
     # Write and make it writtable to all
     hdulist.writeto (filename);
-    os.chmod (filename,0666);
+    os.chmod (filename,0o666);
 
 def load_raw (hdrs, coaddRamp=False,removeBias=True):
     '''
