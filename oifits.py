@@ -159,6 +159,8 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     for b,name in enumerate (setup.base_name ()):
         val = rep_nan (vis2[int(ny/2),b]);
         hdr[HMQ+'VISS'+name+' MEAN'] = (val,'visibility at lbd0');
+        val = rep_nan (vis2err[int(ny/2),b]);
+        hdr[HMQ+'VISS'+name+' ERR'] = (val,'visibility at lbd0');
     
     # Correlation plot
     log.info ('Correlation plots');
@@ -248,6 +250,8 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     for t,name in enumerate (setup.triplet_name()):
         val = rep_nan (t3phi[int(ny/2),t])*180/np.pi;
         hdr[HMQ+'T3PHI'+name+' MEAN'] = (val,'[deg] tphi at lbd0');
+        val = rep_nan (t3phiErr[int(ny/2),t])*180/np.pi;
+        hdr[HMQ+'T3PHI'+name+' ERR'] = (val,'[deg] visibility at lbd0');
     
     # Correlation plot
     log.info ('Correlation plots');
