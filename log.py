@@ -26,7 +26,7 @@ logger = logging.getLogger ('mircx_pipeline');
 # Setup the configuration to log in the consol
 logging.basicConfig (
      level=logging.INFO,
-     format="[%(color)s%(levelname)-7.7s"+RESET+"] %(asctime)s: %(message)s",
+     format="[%(color)s%(levelname)-7.7s"+RESET+"] %(asctime)s.%(msecs)03d: %(message)s",
      datefmt='%Y-%m-%dT%H:%M:%S');
 
 
@@ -38,7 +38,7 @@ def setFile (filename):
     logfile = logging.FileHandler (filename, mode='w');
     logfile.setLevel (logging.INFO);
     formatter = logging.Formatter ("[%(levelname)-7.7s] "
-                                   "%(asctime)s: %(message)s",
+                                   "%(asctime)s.%(msecs)03d: %(message)s",
                                     datefmt='%Y-%m-%dT%H:%M:%S');
     logfile.setFormatter (formatter);
     logger.addHandler (logfile);
