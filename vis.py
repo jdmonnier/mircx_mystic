@@ -12,11 +12,15 @@ from skimage.feature import register_translation;
 from scipy import fftpack;
 from scipy.signal import medfilt;
 from scipy.ndimage.interpolation import shift as subpix_shift;
-from scipy.ndimage import gaussian_filter;
+from scipy.ndimage import gaussian_filter, uniform_filter;
 from scipy.optimize import least_squares;
 
 from . import log, files, headers, setup, oifits, signal, plot;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
+
+import matplotlib as mpl
+mpl.rcParams['image.interpolation'] = 'nearest';
+mpl.rcParams['axes.grid'] = True;
 
 def extract_maps (hdr, bmaps):
     '''
@@ -175,7 +179,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     ax.set_ylabel ('lbd (um)');
     ax.set_xlabel ('Detector line (python-def)');
     ax.set_title ('Guess calib. (orange) and Fitted calib, (blue)');
-    ax.set_ylim (1.5,1.825);
+    ax.set_ylim (1.45,1.85);
     ax.grid();
     files.write (fig,output+'_lbd.png');
 
@@ -248,8 +252,15 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     profile = np.mean (photo_map, axis=3, keepdims=True);
 
     # Remove edge of the profile
+    log.info ('Crop edges of profile');
     profile /= np.sum (profile,axis=-1, keepdims=True) + 1e-20;
-    profile[profile<0.01] = 0.0;
+    flag = profile > 0.25;
+    flag[:,:,:,:,1:]  += (profile[:,:,:,:,:-1] > 0.25);
+    flag[:,:,:,:,:-1] += (profile[:,:,:,:,1:] > 0.25);
+    profile[~flag] = 0.0;
+
+    
+    
 
     # Profile is normalised to be flux-conservative
     profile *= np.sum (profile,axis=-1, keepdims=True) / \
