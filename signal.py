@@ -2,7 +2,7 @@ import numpy as np;
 from scipy.ndimage import gaussian_filter;
 
 from . import log, files, headers, setup, oifits;
-    
+
 def gaussian_filter_cpx (input,sigma,**kwargs):
     ''' Gaussian filter of a complex array '''
     return gaussian_filter (input.real,sigma,**kwargs) + \

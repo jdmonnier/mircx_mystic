@@ -292,12 +292,13 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     init = models.Gaussian1D (amplitude=np.max(px), mean=np.argmax(px), stddev=1.);
     pfit  = fitting.LevMarLSQFitter()(init, x, px);
     pxc,pxw = pfit.mean.value,pfit.stddev.value;
-    log.info ('Photo fit: '+str(pfit));
 
-    log.info ('Found limit photo in spectral direction: %f %f'%(pyc,pyw));
-    log.info ('Found limit photo in spatial direction: %f %f'%(pxc,pxw));
+    log.info ('Max amplitude photo: %f adu/pix/frame'%(pfit.amplitude.value));
+    log.info ('Limit photo in spectral direction: %f %f'%(pyc,pyw));
+    log.info ('Limit photo in spatial direction: %f %f'%(pxc,pxw));
     
     # Add QC parameters for window
+    hdr[HMW+'PHOTO MAX']  = (pfit.amplitude.value,'[adu/pix/frame]');
     hdr[HMW+'PHOTO WIDTHX']  = (pxw,'[pix]');
     hdr[HMW+'PHOTO CENTERX'] = (pxc,'[pix] python-def');
     hdr[HMW+'PHOTO WIDTHY']  = (pyw,'[pix]');
@@ -310,14 +311,16 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     # Fit spatial of fringe with Gaussian
     fx  = np.mean (fmap[int(fyc-fyw):int(fyc+fyw),:], axis=0);
     init = models.Gaussian1D (amplitude=np.max(fx), mean=np.argmax(fx), stddev=50.);
-    ffit  = fitting.LevMarLSQFitter()(init, x, fx);
+    fitter = fitting.LevMarLSQFitter();
+    ffit = fitter (init, x, fx);
     fxc,fxw = ffit.mean.value,ffit.stddev.value;
-    log.info ('Fringe fit: '+str(ffit));
         
-    log.info ('Found limit fringe in spectral direction: %f %f'%(fyc,fyw));
-    log.info ('Found limit fringe in spatial direction: %f %f'%(fxc,fxw));
+    log.info ('Max amplitude fringe: %f adu/pix/frame'%(ffit.amplitude.value));
+    log.info ('Limit fringe in spectral direction: %f %f'%(fyc,fyw));
+    log.info ('Limit fringe in spatial direction: %f %f'%(fxc,fxw));
 
     # Add QC parameters for window
+    hdr[HMW+'FRINGE MAX']  = (ffit.amplitude.value,'[adu/pix/frame]');
     hdr[HMW+'FRINGE WIDTHX']  = (fxw,'[pix]');
     hdr[HMW+'FRINGE CENTERX'] = (fxc,'[pix] python-def');
     hdr[HMW+'FRINGE WIDTHY']  = (fyw,'[pix]');
