@@ -15,7 +15,7 @@ from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter;
 from scipy.optimize import least_squares;
 
-from . import log, files, headers, setup, oifits, signal;
+from . import log, files, headers, setup, oifits, signal, plot;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
 
@@ -42,7 +42,7 @@ def remove_badpixels (hdr, cube, bkg, output='output'):
     bkg_noise = np.mean (bkg_noise, (0,1));
     delta = bkg_noise - medfilt (bkg_noise, (3,3));
     stat = sigma_clipped_stats (delta);
-    thr_err = 5.0;
+    thr_err = 20.0;
     bad_err = np.abs(delta-stat[0])/stat[2] > thr_err;
 
     hdr[HMQ+'BADPIX ERR_THRESHOLD'] = (thr_err, 'threshold in sigma');
@@ -80,7 +80,7 @@ def remove_badpixels (hdr, cube, bkg, output='output'):
     ax[0].imshow (bad);
     ax[1].imshow (ref);
     ax[2].imshow (np.mean (cube, axis=(0,1)));
-    files.write (fig,output+'_rmbad.png');
+    files.write (fig, output+'_rmbad.png');
 
     return cube;
 
@@ -188,19 +188,19 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Images of mean
     fig,ax = plt.subplots (3,1);
-    ax[0].imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std, interpolation='nearest');
+    ax[0].imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std);
     ax[0].set_ylabel ('Mean (adu) +-5sig');
-    ax[1].imshow (bkg_mean[idf,:,:], vmin=med-20*std, vmax=med+20*std, interpolation='nearest');
+    ax[1].imshow (bkg_mean[idf,:,:], vmin=med-20*std, vmax=med+20*std);
     ax[1].set_ylabel ('Mean (adu) +-20sig');
-    files.write (fig,output+'_mean.png');
+    files.write (fig, output+'_mean.png');
 
     # Images of noise
     fig,ax = plt.subplots (2,1);
-    ax[0].imshow (bkg_noise, vmin=nmed-5*nstd, vmax=nmed+5*nstd, interpolation='nearest');
+    ax[0].imshow (bkg_noise, vmin=nmed-5*nstd, vmax=nmed+5*nstd);
     ax[0].set_ylabel ('Noise (adu) +-5sig');
-    ax[1].imshow (bkg_noise, vmin=nmed-20*nstd, vmax=nmed+20*nstd, interpolation='nearest');
+    ax[1].imshow (bkg_noise, vmin=nmed-20*nstd, vmax=nmed+20*nstd);
     ax[1].set_ylabel ('Noise (adu) +-20sig');
-    files.write (fig,output+'_noise.png');
+    files.write (fig, output+'_noise.png');
 
     # Histograms of median
     fig,ax = plt.subplots (2,1);
@@ -212,7 +212,7 @@ def compute_background (hdrs,output='output_bkg'):
     ax[1].set_xlabel ("Value at frame nf/2 (adu)");
     ax[1].set_yscale ('log');
     ax[1].grid ();
-    files.write (fig,output+'_histomean.png');
+    files.write (fig, output+'_histomean.png');
 
     # Histograms of noise
     fig,ax = plt.subplots (2,1);
@@ -224,14 +224,14 @@ def compute_background (hdrs,output='output_bkg'):
     ax[1].set_xlabel ("Value for first file");
     ax[1].set_yscale ('log');
     ax[1].grid ();
-    files.write (fig,output+'_histonoise.png');
+    files.write (fig, output+'_histonoise.png');
 
     # Ramp
     fig,ax = plt.subplots();
     ax.plot (np.median (bkg_mean,axis=(1,2)));
     ax.set_xlabel ("Frame");
     ax.set_ylabel ("Median of pixels (adu)");
-    files.write (fig,output+'_ramp.png');
+    files.write (fig, output+'_ramp.png');
 
     plt.close("all");
     return hdulist;
@@ -329,7 +329,8 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     f_spectra /= np.max (f_spectra);
 
     # Shift between photo and fringes in spectral direction
-    shifty = register_translation (p_spectra[:,None],f_spectra[:,None],upsample_factor=100)[0][0];
+    shifty = register_translation (p_spectra[:,None],f_spectra[:,None], \
+                                   upsample_factor=100)[0][0];
 
     # Set in header
     hdr[HMW+'PHOTO SHIFTY'] = (shifty,'[pix] shift of PHOTO versus FRINGE');
@@ -342,32 +343,32 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     
     # Figures of photo
     fig,ax = plt.subplots(3,1);
-    ax[0].imshow (pmap, interpolation='nearest');
+    ax[0].imshow (pmap);
     ax[1].plot (px, label='Data');
     ax[1].plot (x,pfit(x), label='Gaussian');
     ax[1].set_ylabel ('adu/pix/fr');
     ax[1].legend ();
-    ax[2].imshow (pmap[int(pyc-ns):int(pyc+ns+1),int(pxc-2):int(pxc+3)], interpolation='nearest');
-    files.write (fig,output+'_pfit.png');
+    ax[2].imshow (pmap[int(pyc-ns):int(pyc+ns+1),int(pxc-2):int(pxc+3)]);
+    files.write (fig, output+'_pfit.png');
 
     # Figures of fringe
     fig,ax = plt.subplots(3,1);
-    ax[0].imshow (fmap, interpolation='nearest');
+    ax[0].imshow (fmap);
     ax[1].plot (fx, label='Data');
     ax[1].plot (x,ffit(x), label='Gaussian');
     ax[1].set_ylabel ('adu/pix/fr');
     ax[1].legend ();
-    ax[2].imshow (fmap[int(fyc-ns):int(fyc+ns+1)+1,int(fxc-2*fxw):int(fxc+2*fxw)], interpolation='nearest');
-    files.write (fig,output+'_ffit.png');
+    ax[2].imshow (fmap[int(fyc-ns):int(fyc+ns+1)+1,int(fxc-2*fxw):int(fxc+2*fxw)]);
+    files.write (fig, output+'_ffit.png');
 
     # Shifted spectra
     fig,ax = plt.subplots(2,1);
-    ax[0].imshow (cmean, interpolation='nearest');
+    ax[0].imshow (cmean);
     ax[1].plot (f_spectra, label='fringe');
     ax[1].plot (p_spectra, label='photo');
     ax[1].plot (subpix_shift (p_spectra, -shifty), label='shifted photo');
     ax[1].legend ();
-    files.write (fig,output+'_cut.png');
+    files.write (fig, output+'_cut.png');
 
     # File
     log.info ('Create file');
@@ -477,9 +478,9 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
 
     # Fringe and photo mean
     fig,ax = plt.subplots(2,1);
-    ax[0].imshow (np.mean (fringe,axis=(0,1)), interpolation='nearest');
-    ax[1].imshow (np.swapaxes (np.mean (photos,axis=(1,2)), 0,1).reshape((ny,-1)), interpolation='nearest');
-    files.write (fig,output+'_mean.png');
+    ax[0].imshow (np.mean (fringe,axis=(0,1)));
+    ax[1].imshow (np.swapaxes (np.mean (photos,axis=(1,2)), 0,1).reshape((ny,-1)));
+    files.write (fig, output+'_mean.png');
 
     # Spectra
     fig,ax = plt.subplots();
@@ -487,13 +488,13 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     ax.plot (np.mean (photos, axis=(1,2,4)).T);
     ax.set_ylabel ('adu/pix/fr');
     ax.legend ();
-    files.write (fig,output+'_spectra.png');
+    files.write (fig, output+'_spectra.png');
     
     # File
     log.info ('Create file');
     
     # First HDU
-    hdu0 = pyfits.PrimaryHDU (fringe);
+    hdu0 = pyfits.PrimaryHDU (fringe.astype('float32'));
     hdu0.header = hdr;
     hdu0.header['BUNIT'] = 'ADU';
     hdu0.header['FILETYPE'] += '_PREPROC';
@@ -502,7 +503,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     hdu0.header[HMP+'BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
 
     # Second HDU with photometries
-    hdu1 = pyfits.ImageHDU (photos);
+    hdu1 = pyfits.ImageHDU (photos.astype('float32'));
     hdu1.header['BUNIT'] = 'ADU';
     hdu1.header['EXTNAME'] = 'PHOTOMETRY_PREPROC';
     

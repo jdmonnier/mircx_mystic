@@ -1,22 +1,23 @@
-import matplotlib.pyplot as plt
-from astropy.time import Time
-from astropy.io import fits as pyfits
-from astropy.stats import sigma_clipped_stats
+import matplotlib.pyplot as plt;
 
-from scipy.signal import medfilt;
-from scipy.ndimage import gaussian_filter
+from astropy.time import Time;
+from astropy.io import fits as pyfits;
+from astropy.stats import sigma_clipped_stats;
+from astropy import units as units
+from astropy.coordinates import SkyCoord
 
 import numpy as np
 import os
 
-from . import log, setup, files
+from . import log, setup, files, plot;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
-from .version import revision
-
-from astropy import units as units
-from astropy.coordinates import SkyCoord
+from .version import revision;
 
 def create (hdr,lbd):
+    '''
+    Create an OIFITS file handler (FITS) wit the 
+    OI_WAVELENGTH, OI_ARRAY and OI_TARGET.
+    '''
 
     # Create file
     hdu0 = pyfits.PrimaryHDU ([]);

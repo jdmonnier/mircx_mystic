@@ -1,7 +1,5 @@
 * Cascade
 
-Make all the written files rw by all
-
 It would be easier if the PREPROC would be truly static windows…
 
 * Preproc
@@ -30,13 +28,12 @@ Think on the dimensions...
 DC: compute the DC residual in fringes
 and reproject it into the dc-shape.
 
-get more bias frequency.
-
 * VIS
+
+Flatten the time ?
 
 Better MJD, better INT_TIME, better UCOORD,VCOORD
 Compute errors on vis2 and t3phi with bootstraping
-Add QC parameters
 
 Use morphological closing/opening to better deal with SNR curves.
 

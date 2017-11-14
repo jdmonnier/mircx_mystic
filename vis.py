@@ -15,7 +15,7 @@ from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter;
 from scipy.optimize import least_squares;
 
-from . import log, files, headers, setup, oifits, signal;
+from . import log, files, headers, setup, oifits, signal, plot;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
 def extract_maps (hdr, bmaps):
@@ -67,7 +67,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
         # Load file
         log.info ('Load PREPROC file %i over %i (%s)'%(ih+1,len(hdrs),f));
         hdr = pyfits.getheader (f);
-        fringe = pyfits.getdata (f).copy();
+        fringe = pyfits.getdata (f).astype(float);
 
         # Verbose on data size
         nr,nf,ny,nx = fringe.shape;
@@ -201,7 +201,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
 
     # Write file
     hdulist = pyfits.HDUList ([hdu0]);
-    files.write (fig,hdulist, output+'.fits');
+    files.write (hdulist, output+'.fits');
     
     plt.close ("all");
     return hdulist;
@@ -221,8 +221,8 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     f = hdrs[0]['ORIGNAME'];
     log.info ('Load PREPROC file (copy) %s'%f);
     hdr = pyfits.getheader (f);
-    fringe = pyfits.getdata (f).copy();
-    photo  = pyfits.getdata (f, 'PHOTOMETRY_PREPROC').copy();
+    fringe = pyfits.getdata (f).astype(float);
+    photo  = pyfits.getdata (f, 'PHOTOMETRY_PREPROC').astype(float);
     nr,nf,ny,nx = fringe.shape
 
     # Some verbose
@@ -474,23 +474,23 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
         hdu0.header[HMP+bmap['FILETYPE']] = bmap['ORIGNAME'];
 
     # Set DFT of fringes, bias, photometry and lbd
-    hdu1 = pyfits.ImageHDU (base_dft.real);
+    hdu1 = pyfits.ImageHDU (base_dft.real.astype('float32'));
     hdu1.header['EXTNAME'] = 'BASE_DFT_REAL';
     hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
     
-    hdu2 = pyfits.ImageHDU (base_dft.imag);
+    hdu2 = pyfits.ImageHDU (base_dft.imag.astype('float32'));
     hdu2.header['EXTNAME'] = 'BASE_DFT_IMAG';
     hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
     
-    hdu3 = pyfits.ImageHDU (bias_dft.real);
+    hdu3 = pyfits.ImageHDU (bias_dft.real.astype('float32'));
     hdu3.header['EXTNAME'] = 'BIAS_DFT_REAL';
     hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
     
-    hdu4 = pyfits.ImageHDU (bias_dft.imag);
+    hdu4 = pyfits.ImageHDU (bias_dft.imag.astype('float32'));
     hdu4.header['EXTNAME'] = 'BIAS_DFT_IMAG';
     hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
     
-    hdu5 = pyfits.ImageHDU (np.transpose (photo,axes=(1,2,3,0)));
+    hdu5 = pyfits.ImageHDU (np.transpose (photo,axes=(1,2,3,0)).astype('float32'));
     hdu5.header['EXTNAME'] = 'PHOTOMETRY';
     hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
 
@@ -518,12 +518,12 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     # Get data
     log.info ('Load RTS file %s'%f);
     hdr = pyfits.getheader (f);
-    base_dft  = pyfits.getdata (f, 'BASE_DFT_IMAG') * 1.j;
-    base_dft += pyfits.getdata (f, 'BASE_DFT_REAL');
-    bias_dft  = pyfits.getdata (f, 'BIAS_DFT_IMAG') * 1.j;
-    bias_dft += pyfits.getdata (f, 'BIAS_DFT_REAL');
-    photo     = pyfits.getdata (f, 'PHOTOMETRY');
-    lbd       = pyfits.getdata (f, 'WAVELENGTH');
+    base_dft  = pyfits.getdata (f, 'BASE_DFT_IMAG').astype(float) * 1.j;
+    base_dft += pyfits.getdata (f, 'BASE_DFT_REAL').astype(float);
+    bias_dft  = pyfits.getdata (f, 'BIAS_DFT_IMAG').astype(float) * 1.j;
+    bias_dft += pyfits.getdata (f, 'BIAS_DFT_REAL').astype(float);
+    photo     = pyfits.getdata (f, 'PHOTOMETRY').astype(float);
+    lbd       = pyfits.getdata (f, 'WAVELENGTH').astype(float);
 
     # Dimensions
     nr,nf,ny,nb = base_dft.shape;
