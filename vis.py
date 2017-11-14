@@ -18,10 +18,6 @@ from scipy.optimize import least_squares;
 from . import log, files, headers, setup, oifits, signal, plot;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
-import matplotlib as mpl
-mpl.rcParams['image.interpolation'] = 'nearest';
-mpl.rcParams['axes.grid'] = True;
-
 def extract_maps (hdr, bmaps):
     '''
     Load the maps from a sery of BEAM_MAP
@@ -168,7 +164,6 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
         ax.plot (freq,psd[y,:]);
         ax.set_xlim (0,1.3*np.max(freq0));
         ax.set_ylim (0,1.1);
-        ax.grid();
     axes.flatten()[0].set_title ('Observed PSD (orange) and scaled template (blue)');
     files.write (fig,output+'_psdmodel.png');
 
@@ -180,7 +175,6 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     ax.set_xlabel ('Detector line (python-def)');
     ax.set_title ('Guess calib. (orange) and Fitted calib, (blue)');
     ax.set_ylim (1.45,1.85);
-    ax.grid();
     files.write (fig,output+'_lbd.png');
 
     # PSD
@@ -259,9 +253,6 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     flag[:,:,:,:,:-1] += (profile[:,:,:,:,1:] > 0.25);
     profile[~flag] = 0.0;
 
-    
-    
-
     # Profile is normalised to be flux-conservative
     profile *= np.sum (profile,axis=-1, keepdims=True) / \
                (np.sum (profile**2,axis=-1, keepdims=True)+1e-20);
@@ -274,7 +265,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
         ax.plot (val / (np.mean (val)+1e-20), label='profile');
         val = np.mean (photo[b,:,:,:,:],axis=(0,1,2));
         ax.plot (val / (np.mean (val)+1e-20), label='photo');
-        ax.legend(); ax.grid();
+        ax.legend();
     files.write (fig,output+'_profile.png');
 
     # Optimal extraction of photometry with profile
@@ -332,7 +323,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
         val = np.mean (kappa, axis=(1,2));
         val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
         ax.plot (lbd*1e6,val[b,:], label='kappa');
-        ax.legend(); ax.grid();
+        ax.legend();
         ax.set_ylim ((0.1,1.5));
         ax.set_ylabel ('normalized');
     files.write (fig,output+'_kappa.png');
@@ -437,7 +428,6 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     plt.plot (photodc_mean.flatten(),np.poly1d(poly_dc)(photodc_mean.flatten()),'--');
     plt.plot (photodc_mean.flatten(),photodc_mean.flatten(),'-');
     ax.set_xlabel('fringe dc'); ax.set_ylabel('sum of photo');
-    ax.grid();
     files.write (fig,output+'_dccorr.png');
 
     # Integrated spectra
@@ -448,7 +438,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     val = np.mean (photo, axis=(1,2));
     val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
     ax[0].plot (lbd*1e6,val.T);
-    ax[0].legend(); ax[0].grid();
+    ax[0].legend();
     ax[0].set_ylabel ('normalized');
     
     val = np.mean (fringe,axis=(0,1,3));
@@ -457,7 +447,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     val = np.mean (photok, axis=(1,2));
     val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
     ax[1].plot (lbd*1e6,val.T);
-    ax[1].legend(); ax[1].grid();
+    ax[1].legend();
     ax[1].set_ylabel ('normalized');
     ax[1].set_xlabel ('lbd (um)');
     files.write (fig,output+'_spectra.png');
@@ -468,7 +458,6 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     for f in ifreqs: ax[0].axvline (np.abs(f), color='k', linestyle='--');
     ax[1].plot (np.mean (cf_upsd, axis=(0,1))[int(ny/2),:]);
     ax[1].set_xlim (0,cf_upsd.shape[-1]);
-    ax[1].grid();
     files.write (fig,output+'_psd.png');
 
     # File
@@ -642,12 +631,12 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     # SNR, GD and FLAGs
     fig,ax = plt.subplots (3,1,sharex=True);
     ax[0].plot (np.log10 (np.mean (base_snrbb,axis=(1,2))));
-    ax[0].grid(); ax[0].set_ylabel ('log10 (SNR_bb)');
+    ax[0].set_ylabel ('log10 (SNR_bb)');
     ax[1].plot (np.mean (base_gd,axis=(1,2)) * 1e6);
-    ax[1].grid(); ax[1].set_ylabel ('gdelay (um)');
+    ax[1].set_ylabel ('gdelay (um)');
     ax[1].set_xlabel ('ramp');
     ax[2].imshow (np.mean (base_flag,axis=(1,2)).T);
-    ax[2].grid(); ax[1].set_ylabel ('gdelay (um)');
+    ax[1].set_ylabel ('gdelay (um)');
     ax[2].set_xlabel ('flag');
     files.write (fig,output+'_snr_gd.png');
 

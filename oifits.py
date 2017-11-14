@@ -158,6 +158,10 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     
     # QC for VIS
     for b,name in enumerate (setup.base_name ()):
+        val = rep_nan (np.nanmean (u_power[:,int(ny/2),b]));
+        hdr[HMQ+'UPOWER'+name+' MEAN'] = (val,'unbiased power at lbd0');
+        val = rep_nan (np.nanstd (u_power[:,int(ny/2),b]));
+        hdr[HMQ+'UPOWER'+name+' STD'] = (val,'unbiased power at lbd0');
         val = rep_nan (vis2[int(ny/2),b]);
         hdr[HMQ+'VISS'+name+' MEAN'] = (val,'visibility at lbd0');
         val = rep_nan (vis2err[int(ny/2),b]);

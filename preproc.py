@@ -202,28 +202,42 @@ def compute_background (hdrs,output='output_bkg'):
     ax[1].set_ylabel ('Noise (adu) +-20sig');
     files.write (fig, output+'_noise.png');
 
+    # Images of error
+    fig,ax = plt.subplots (2,1);
+    ax[0].imshow (bkg_std, vmin=smed-5*sstd, vmax=nmed+5*sstd);
+    ax[0].set_ylabel ('Err (adu) +-5sig');
+    ax[1].imshow (bkg_std, vmin=smed-20*sstd, vmax=nmed+20*sstd);
+    ax[1].set_ylabel ('Err (adu) +-20sig');
+    files.write (fig, output+'_noise.png');
+    
     # Histograms of median
     fig,ax = plt.subplots (2,1);
     ax[0].hist (bkg_mean[idf,:,:].flatten(),bins=med+std*np.linspace(-10,10,50));
     ax[0].set_ylabel ("Number of pixels");
-    ax[0].grid ();
     ax[1].hist (bkg_mean[idf,:,:].flatten(),bins=med+std*np.linspace(-10,10,50));
     ax[1].set_ylabel ("Number of pixels");
     ax[1].set_xlabel ("Value at frame nf/2 (adu)");
     ax[1].set_yscale ('log');
-    ax[1].grid ();
     files.write (fig, output+'_histomean.png');
+
+    # Histograms of error
+    fig,ax = plt.subplots (2,1);
+    ax[0].hist (bkg_std.flatten(),bins=smed+sstd*np.linspace(-1.1,10,50));
+    ax[0].set_ylabel ("Number of pixels");
+    ax[1].hist (bkg_std.flatten(),bins=smed+sstd*np.linspace(-1.1,10,50));
+    ax[1].set_ylabel ("Number of pixels");
+    ax[1].set_xlabel ("RMS(file)/sqrt(nfile)");
+    ax[1].set_yscale ('log');
+    files.write (fig, output+'_histoerr.png');
 
     # Histograms of noise
     fig,ax = plt.subplots (2,1);
     ax[0].hist (bkg_noise.flatten(),bins=nmed+nstd*np.linspace(-1.1,10,50));
     ax[0].set_ylabel ("Number of pixels");
-    ax[0].grid ();
     ax[1].hist (bkg_noise.flatten(),bins=nmed+nstd*np.linspace(-1.1,10,50));
     ax[1].set_ylabel ("Number of pixels");
-    ax[1].set_xlabel ("Value for first file");
+    ax[1].set_xlabel ("RMS(frame) for first file");
     ax[1].set_yscale ('log');
-    ax[1].grid ();
     files.write (fig, output+'_histonoise.png');
 
     # Ramp

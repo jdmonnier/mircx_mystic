@@ -7,6 +7,8 @@ It would be easier if the PREPROC would be truly static windows…
 Propagate the frame_numer and all counters
 Use a flat-field and bad pixel
 
+Compute preproc per RAW file, to better allow selection.
+
 * Wavelength calibration
 
 Think of setup.base_freq and setup.lbd0, to see if it make
@@ -19,6 +21,9 @@ The detector has a PSD with a pic every 10 pixels (fft)
 Thus with period 32 = outputs
 
 * RTS
+
+Load several PREPROC into a single RTS ???
+Or load various RTS into a single VIS ???
 
 Use the dark at the time of the RTS ?
 
