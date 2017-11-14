@@ -337,7 +337,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
 
     # kappa is defined so that photok is the
     # total number of adu in the fringe
-    log.info ('Compute kappak');
+    log.info ('Compute photok');
     photok = photo * kappa;
 
     # Smooth photometry
@@ -357,7 +357,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     fringe_map  = medfilt (fringe_map, [1,1,1,1,11]);
     fringe_map /= np.sum (fringe_map, axis=-1, keepdims=True) + 1e-20;
     cont = np.einsum ('Brfy,Brfyx->rfyx', photok, fringe_map);
-        
+    
     # QC about the fringe dc
     log.info ('Compute QC about dc');
     photodc_mean  = np.mean (cont,axis=(2,3));
@@ -447,7 +447,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     val = np.mean (photok, axis=(1,2));
     val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
     ax[1].plot (lbd*1e6,val.T);
-    ax[1].legend();
+    ax[1].legend ();
     ax[1].set_ylabel ('normalized');
     ax[1].set_xlabel ('lbd (um)');
     files.write (fig,output+'_spectra.png');
@@ -490,7 +490,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     hdu4.header['EXTNAME'] = 'BIAS_DFT_IMAG';
     hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
     
-    hdu5 = pyfits.ImageHDU (np.transpose (photo,axes=(1,2,3,0)).astype('float32'));
+    hdu5 = pyfits.ImageHDU (np.transpose (photok,axes=(1,2,3,0)).astype('float32'));
     hdu5.header['EXTNAME'] = 'PHOTOMETRY';
     hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
 
@@ -556,7 +556,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     bias_powerbb = np.mean (np.abs (np.sum (bias_dft * phasor, axis=2,keepdims=True))**2,axis=-1,keepdims=True);
     
     # Broad-band SNR
-    base_snrbb = base_powerbb / bias_powerbb + 1;
+    base_snrbb = base_powerbb / bias_powerbb;
 
     # Compute power per spectral channels
     bias_power = np.mean (np.abs (bias_dft)**2,axis=-1,keepdims=True);
