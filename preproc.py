@@ -292,6 +292,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     init = models.Gaussian1D (amplitude=np.max(px), mean=np.argmax(px), stddev=1.);
     pfit  = fitting.LevMarLSQFitter()(init, x, px);
     pxc,pxw = pfit.mean.value,pfit.stddev.value;
+    log.info ('Photo fit: '+str(pfit));
 
     log.info ('Found limit photo in spectral direction: %f %f'%(pyc,pyw));
     log.info ('Found limit photo in spatial direction: %f %f'%(pxc,pxw));
@@ -311,6 +312,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     init = models.Gaussian1D (amplitude=np.max(fx), mean=np.argmax(fx), stddev=50.);
     ffit  = fitting.LevMarLSQFitter()(init, x, fx);
     fxc,fxw = ffit.mean.value,ffit.stddev.value;
+    log.info ('Fringe fit: '+str(ffit));
         
     log.info ('Found limit fringe in spectral direction: %f %f'%(fyc,fyw));
     log.info ('Found limit fringe in spatial direction: %f %f'%(fxc,fxw));
@@ -336,7 +338,8 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     hdr[HMW+'PHOTO SHIFTY'] = (shifty,'[pix] shift of PHOTO versus FRINGE');
 
     # Define quality flag
-    hdr[HMQ+'QUALITY'] = (np.max (fmap), 'quality of data');
+    log.info (HMQ+'QUALITY = %f'%ffit.amplitude.value);
+    hdr[HMQ+'QUALITY'] = (ffit.amplitude.value, 'quality of data');
 
     # Figures
     log.info ('Figures');
