@@ -450,6 +450,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     # Define the closest integer
     fxc = int(round(fxc0));
     fyc = int(round(fyc0));
+    log.info ('FRINGE CENTERX/Y = %f,%f'%(fxc,fyc));
 
     # Expected size on spatial and spectral direction are hardcoded 
     fxw = int(setup.fringe_widthx (hdr) / 2);
@@ -481,13 +482,14 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     for bmap in bmaps:
         if bmap == []: continue;
         log.info ('Use %s: %s'%(bmap['FILETYPE'],bmap['ORIGNAME']));
+        beam = int(bmap['FILETYPE'][4:5]) - 1;
         
         # Get the position of the photo spectra
         pxc = int(round(bmap['MIRC QC WIN PHOTO CENTERX']));
         pyc = int(round(bmap['MIRC QC WIN PHOTO CENTERY']));
+        log.info ('PHOTO%i CENTERX/Y = %f,%f'%(beam,pxc,pyc));
 
         # Set the required crop in header
-        beam = int(bmap['FILETYPE'][4:5]) - 1;
         hdr[HMW+'PHOTO%i STARTX'%(beam)] = (pxc-pxw, '[pix] python-def');
         hdr[HMW+'PHOTO%i STARTY'%(beam)] = (pyc-ns, '[pix] python-def');
         photos[beam,:,:,:,:] = cube[:,:,pyc-ns:pyc+ns+1,pxc-pxw:pxc+pxw+1];
