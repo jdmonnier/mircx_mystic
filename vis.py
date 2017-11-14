@@ -629,7 +629,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     files.write (fig,output+'_psd.png');
     
     # SNR, GD and FLAGs
-    fig,ax = plt.subplots (3,1);
+    fig,ax = plt.subplots (3,1,sharex=True);
     ax[0].plot (np.log10 (np.mean (base_snrbb,axis=(1,2))));
     ax[0].grid(); ax[0].set_ylabel ('log10 (SNR_bb)');
     ax[1].plot (np.mean (base_gd,axis=(1,2)) * 1e6);
