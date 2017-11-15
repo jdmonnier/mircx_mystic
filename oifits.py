@@ -162,6 +162,10 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
         hdr[HMQ+'UPOWER'+name+' MEAN'] = (val,'unbiased power at lbd0');
         val = rep_nan (np.nanstd (u_power[:,int(ny/2),b]));
         hdr[HMQ+'UPOWER'+name+' STD'] = (val,'unbiased power at lbd0');
+        val = rep_nan (np.nanmean (l_power[:,int(ny/2),b]));
+        hdr[HMQ+'LPOWER'+name+' MEAN'] = (val,'unbiased power at lbd0');
+        val = rep_nan (np.nanstd (l_power[:,int(ny/2),b]));
+        hdr[HMQ+'LPOWER'+name+' STD'] = (val,'unbiased power at lbd0');
         val = rep_nan (vis2[int(ny/2),b]);
         hdr[HMQ+'VISS'+name+' MEAN'] = (val,'visibility at lbd0');
         val = rep_nan (vis2err[int(ny/2),b]);
@@ -171,8 +175,7 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     log.info ('Correlation plots');
     fig,axes = plt.subplots (5,3);
     for b,ax in enumerate(axes.flatten()):
-        ax.plot ( u_power[:,int(ny/2),b], l_power[:,int(ny/2),b], 'o');
-        ax.grid();
+        ax.plot (l_power[:,int(ny/2),b], u_power[:,int(ny/2),b], 'o');
     files.write (fig,output+'_norm_power.png');
 
     # Reset warning
@@ -263,7 +266,6 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     fig,axes = plt.subplots (5,4);
     for t,ax in enumerate(axes.flatten()):
         ax.plot ( t_product.real[:,int(ny/2),t], t_product.imag[:,int(ny/2),t], 'o');
-        ax.grid();
     files.write (fig,output+'_bispec.png');
 
     # Reset warning

@@ -9,6 +9,9 @@ Use a flat-field and bad pixel
 
 Compute preproc per RAW file, to better allow selection.
 
+The interference removal create correlation between the photometric flux.
+This is not good for normalisation power.
+
 * Wavelength calibration
 
 Think of setup.base_freq and setup.lbd0, to see if it make
@@ -16,9 +19,6 @@ sens to keep them in these units.
 setup.base_freq may be better defined pixel/lbd
 
 Ask John for absolute scale/wavelength.
-
-The detector has a PSD with a pic every 10 pixels (fft)
-Thus with period 32 = outputs
 
 * RTS
 
@@ -32,6 +32,7 @@ Think on the dimensions...
 
 DC: compute the DC residual in fringes
 and reproject it into the dc-shape.
+Which frequency ??
 
 * VIS
 
@@ -45,9 +46,6 @@ Compute errors on vis2 and t3phi with bootstraping
 Use morphological closing/opening to better deal with SNR curves.
 
 * Speed-up
-
-- save the PREPROC and RTS in float32 instead of float64.
-When reading them, we can convert them again in float64 with astype.
 
 - QC of dc is too long
 - Apply thresholding (force zeros) is too long

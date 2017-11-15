@@ -343,7 +343,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     # total number of adu in the fringe
     log.info ('Compute photok');
     photok = photo * kappa;
-    photok0 = photok.copy();
+    photok0 = photok.copy ();
 
     # How to ensure the DC is fitted as well ?
     # Only on average over the file ? In real-time ?
@@ -393,17 +393,18 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     scale0 = 40. / np.abs (freqs * nx).max();
     ifreqs = np.round(freqs * scale0 * nx).astype(int);
 
-    # Compute DFT. The amplitude of the complex number
-    # correspond to the total adu in the fringe enveloppe
+    # Compute DFT. The amplitude of the complex number corresponds
+    # to the sum of the amplitude sum(A) of the oscillation A.cos(x)
+    # in the fringe enveloppe.
     model = np.zeros ((nx,nfq*2+1));
     cf = 0.j + np.zeros ((nr*nf,ny,nfq+1));
     for y in np.arange(ny):
         log.info ('Fit channel %i'%y);
-        amp = np.ones (nx) / nx;
+        amp = np.ones (nx);
         model[:,0] = amp;
         scale = lbd0 / lbd[y] / scale0;
-        model[:,1:nfq+1] = amp[:,None] * 2 * np.cos (2.*np.pi * x[:,None] * f[None,:] * scale);
-        model[:, nfq+1:] = amp[:,None] * 2 * np.sin (2.*np.pi * x[:,None] * f[None,:] * scale);
+        model[:,1:nfq+1] = amp[:,None] * 2. * np.cos (2.*np.pi * x[:,None] * f[None,:] * scale);
+        model[:, nfq+1:] = amp[:,None] * 2. * np.sin (2.*np.pi * x[:,None] * f[None,:] * scale);
         cfc = np.tensordot (model,fringe_hf[:,:,y,:],axes=([0],[2])).reshape((nx,nr*nf)).T;
         cf[:,y,0]  = cfc[:,0];
         cf[:,y,1:] = cfc[:,1:nfq+1] - 1.j * cfc[:,nfq+1:];
@@ -416,7 +417,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     # Take complex conjugated for negative frequencies
     idx = ifreqs < 0.0;
     base_dft[:,:,:,idx] = np.conj(base_dft[:,:,:,idx]);
-    
+
     # DFT at bias frequencies
     ibias = np.abs (ifreqs).max() + 4 + np.arange (24);
     bias_dft  = cf[:,:,:,ibias];
@@ -523,7 +524,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     plt.close("all");
     return hdulist;
 
-def compute_vis (hdrs, output='output_vis', ncoher=3.0):
+def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     '''
     Compute the VIS
     '''
@@ -584,10 +585,16 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     # Compute norm power
     log.info ('Compute norm power');
     bbeam = setup.base_beam ();
-    norm_power = photo[:,:,:,bbeam[:,0]] * photo[:,:,:,bbeam[:,1]];
+    norm_power = 4. * photo[:,:,:,bbeam[:,0]] * photo[:,:,:,bbeam[:,1]];
     
     # QC for power
-    log.info ('Compute QC for power');
+    log.info ('Compute QC for beam');
+    for t in range(6):
+        val = np.mean (photo[:,:,int(ny/2),t], axis=(0,1));
+        hdr[HMQ+'FLUX%i MEAN'%t] = (val,'flux at lbd0');
+        
+    # QC for power
+    log.info ('Compute QC for base');
     for b,name in enumerate (setup.base_name ()):
         val = np.mean (norm_power[:,:,int(ny/2),b], axis=(0,1));
         hdr[HMQ+'NORM'+name+' MEAN'] = (val,'Norm Power at lbd0');
@@ -616,7 +623,6 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     base_snr, base_gd = signal.bootstrap (base_snr, base_gd);
 
     # Define threshold for SNR
-    threshold = 0.0;
     log.info ('SNR selection > %.2f'%threshold);
     hdr[HMQ+'SNR_THRESHOLD'] = (threshold, 'to accept fringe');
     
