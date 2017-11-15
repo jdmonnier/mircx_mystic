@@ -339,6 +339,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     # total number of adu in the fringe
     log.info ('Compute photok');
     photok = photo * kappa;
+    photok0 = photok.astype('float32');
 
     # Smooth photometry
     log.info ('Smooth photometry by sigma=2 frames');
@@ -490,7 +491,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     hdu4.header['EXTNAME'] = 'BIAS_DFT_IMAG';
     hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
     
-    hdu5 = pyfits.ImageHDU (np.transpose (photok,axes=(1,2,3,0)).astype('float32'));
+    hdu5 = pyfits.ImageHDU (np.transpose (photok0,axes=(1,2,3,0)).astype('float32'));
     hdu5.header['EXTNAME'] = 'PHOTOMETRY';
     hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
 
@@ -591,8 +592,13 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     base_snr *= base_snr > 3.0;
     base_snr, base_gd = signal.bootstrap (base_snr, base_gd);
 
+    # Define threshold for SNR
+    threshold = 0.0;
+    log.info ('SNR selection > %.2f'%threshold);
+    hdr[HMQ+'SNR_THRESHOLD'] = (threshold, 'to accept fringe');
+    
     # Compute selection flag from averaged SNR over the ramp
-    base_flag = 1.0 * (np.mean (base_snr,axis=1,keepdims=True) > 3.0);
+    base_flag = 1.0 * (np.mean (base_snr,axis=1,keepdims=True) > threshold);
     base_flag[base_flag == 0.0] = np.nan;
 
     # Compute the time stamp of each ramp
