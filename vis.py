@@ -483,36 +483,37 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
 
     # Set DFT of fringes, bias, photometry and lbd
     hdu1 = pyfits.ImageHDU (base_dft.real.astype('float32'));
-    hdu1.header['EXTNAME'] = 'BASE_DFT_REAL';
-    hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
+    hdu1.header['EXTNAME'] = ('BASE_DFT_REAL','total flux in the fringe envelope');
+    hdu1.header['BUNIT'] = 'adu';
     hdu1.header['SHAPE'] = '(nr,nf,ny,nb)';
     
     hdu2 = pyfits.ImageHDU (base_dft.imag.astype('float32'));
-    hdu2.header['EXTNAME'] = 'BASE_DFT_IMAG';
-    hdu2.header['BUNIT'] = ('adu','adu in the fringe envelope');
+    hdu2.header['EXTNAME'] = ('BASE_DFT_IMAG','total flux in the fringe envelope');
+    hdu2.header['BUNIT'] = 'adu'
     hdu2.header['SHAPE'] = '(nr,nf,ny,nb)';
     
     hdu3 = pyfits.ImageHDU (bias_dft.real.astype('float32'));
-    hdu3.header['EXTNAME'] = 'BIAS_DFT_REAL';
-    hdu3.header['BUNIT'] = ('adu','adu in the fringe envelope');
+    hdu3.header['EXTNAME'] = ('BIAS_DFT_REAL','total flux in the fringe envelope');
+    hdu3.header['BUNIT'] = 'adu';
     hdu3.header['SHAPE'] = '(nr,nf,ny,nf)';
     
     hdu4 = pyfits.ImageHDU (bias_dft.imag.astype('float32'));
-    hdu4.header['EXTNAME'] = 'BIAS_DFT_IMAG';
-    hdu4.header['BUNIT'] = ('adu','adu in the fringe envelope');
+    hdu4.header['EXTNAME'] = ('BIAS_DFT_IMAG','total flux in the fringe envelope');
+    hdu4.header['BUNIT'] = 'adu';
     hdu4.header['SHAPE'] = '(nr,nf,ny,nf)';
     
     hdu5 = pyfits.ImageHDU (np.transpose (photok0,axes=(1,2,3,0)).astype('float32'));
-    hdu5.header['EXTNAME'] = 'PHOTOMETRY';
-    hdu5.header['BUNIT'] = ('adu','adu in the fringe');
+    hdu5.header['EXTNAME'] = ('PHOTOMETRY','total flux in the fringe envelope');
+    hdu5.header['BUNIT'] = 'adu'
     hdu5.header['SHAPE'] = '(nr,nf,ny,nt)';
     
     hdu6 = pyfits.ImageHDU (lbd);
-    hdu6.header['EXTNAME'] = 'WAVELENGTH';
+    hdu6.header['EXTNAME'] = ('WAVELENGTH','effective wavelength');
     hdu6.header['BUNIT'] = 'm';
+    hdu6.header['SHAPE'] = '(ny)';
 
     hdu7 = pyfits.ImageHDU (np.transpose (kappa,axes=(1,2,3,0)));
-    hdu7.header['EXTNAME'] = ('KAPPA','ratio fringe/photo');
+    hdu7.header['EXTNAME'] = ('KAPPA','ratio total_fringe/total_photo');
     hdu7.header['SHAPE'] = '(nr,nf,ny,nt)';
 
     # Write file
@@ -576,8 +577,9 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     base_snrbb = base_powerbb / bias_powerbb;
 
     # Compute power per spectral channels
-    bias_power = np.mean (np.abs (bias_dft)**2,axis=-1,keepdims=True);
-    base_power = np.abs (base_dft)**2; 
+    base_power = np.abs (base_dft)**2;
+    bias_power = np.abs (bias_dft)**2;
+    bias_power_mean = np.mean (bias_power,axis=-1,keepdims=True);
 
     # Compute norm power
     log.info ('Compute norm power');
@@ -629,7 +631,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
     hdulist = oifits.create (hdr, lbd);
 
     # Compute OI_VIS2
-    u_power = np.nanmean ((base_power - bias_power)*base_flag, axis=1);
+    u_power = np.nanmean ((base_power - bias_power_mean)*base_flag, axis=1);
     l_power = np.nanmean (norm_power*base_flag, axis=1);
 
     oifits.add_vis2 (hdulist, time, u_power, l_power, output=output);

@@ -167,18 +167,21 @@ def compute_background (hdrs,output='output_bkg'):
     hdu0.header = hdr;
 
     # Update header
-    hdu0.header['BUNIT'] = 'ADU';
     hdu0.header['FILETYPE'] = 'BACKGROUND_MEAN';
+    hdu0.header['BUNIT'] = 'adu/pixel/frame';
+    hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';
 
     # Create second HDU
     hdu1 = pyfits.ImageHDU (bkg_std[None,:,:,:]);
-    hdu1.header['BUNIT'] = 'ADU';
-    hdu1.header['EXTNAME'] = 'BACKGROUND_ERR';
+    hdu1.header['EXTNAME'] = ('BACKGROUND_ERR','uncertainty on background mean');
+    hdu1.header['BUNIT'] = 'adu/pixel/frame';
+    hdu1.header['SHAPE'] = '(nr,nf,ny,nx)';
 
     # Create third HDU
     hdu2 = pyfits.ImageHDU (bkg_noise[None,None,:,:]);
-    hdu2.header['BUNIT'] = 'ADU';
-    hdu2.header['EXTNAME'] = 'BACKGROUND_NOISE';
+    hdu2.header['EXTNAME'] = ('BACKGROUND_NOISE','pixel frame-to-frame noise');
+    hdu2.header['BUNIT'] = 'adu/pixel/frame';
+    hdu2.header['SHAPE'] = '(nr,nf,ny,nx)';
     
     # Write output file
     hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2]);
@@ -399,17 +402,23 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     hdu0 = pyfits.PrimaryHDU (cmean[None,None,:,:]);
     hdu0.header = hdr;
     hdu0.header['FILETYPE'] = hdrs[0]['FILETYPE']+'_MAP';
+    hdu0.header['BUNIT'] = ('adu/pixel/frame','mean over ramp and frame');
+    hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';
 
     # Set files
     hdu0.header[HMP+'BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
 
     # Second HDU
-    hdu1 = pyfits.ImageHDU (fmap);
-    hdu1.header['EXTNAME'] = 'FRINGE_MAP';
+    hdu1 = pyfits.ImageHDU (fmap[None,None,:,:]);
+    hdu1.header['EXTNAME'] = ('FRINGE_MAP','imprint of fringe flux');
+    hdu1.header['BUNIT'] = ('adu/pixel/frame','mean over ramp and frame');
+    hdu1.header['SHAPE'] = '(nr,nf,ny,nx)';
 
     # Third HDU
-    hdu2 = pyfits.ImageHDU (pmap);
-    hdu2.header['EXTNAME'] = 'PHOTOMETRY_MAP';
+    hdu2 = pyfits.ImageHDU (pmap[None,None,:,:]);
+    hdu2.header['EXTNAME'] = ('PHOTOMETRY_MAP','imprint of photometry flux');
+    hdu2.header['BUNIT'] = ('adu/pixel/frame','mean over ramp and frame');
+    hdu2.header['SHAPE'] = '(nr,nf,ny,nx)';
     
     # Write output file
     hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2]);
@@ -521,16 +530,18 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     # First HDU
     hdu0 = pyfits.PrimaryHDU (fringe.astype('float32'));
     hdu0.header = hdr;
-    hdu0.header['BUNIT'] = 'ADU';
+    hdu0.header['BUNIT'] = 'adu/pixel/frame';
     hdu0.header['FILETYPE'] += '_PREPROC';
+    hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';
     
     # Set files
     hdu0.header[HMP+'BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
 
     # Second HDU with photometries
     hdu1 = pyfits.ImageHDU (photos.astype('float32'));
-    hdu1.header['BUNIT'] = 'ADU';
+    hdu1.header['BUNIT'] = 'adu/pixel/frame';
     hdu1.header['EXTNAME'] = 'PHOTOMETRY_PREPROC';
+    hdu1.header['SHAPE'] = '(nt,nr,nf,ny,nx)';
     
     # Write file
     hdulist = pyfits.HDUList ([hdu0,hdu1]);
