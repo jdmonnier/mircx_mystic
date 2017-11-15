@@ -35,6 +35,8 @@ and reproject it into the dc-shape.
 
 * VIS
 
+Use the provided kappa to normalize the flux.
+
 Flatten the time ?
 
 Better MJD, better INT_TIME, better UCOORD,VCOORD

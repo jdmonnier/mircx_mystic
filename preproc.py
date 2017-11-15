@@ -125,6 +125,7 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Load files
     hdr,cube = files.load_raw (hdrs, coaddRamp=True);
+    log.info ('Data size: '+str(cube.shape));
 
     # Background mean
     log.info ('Compute mean and rms over input files');
@@ -264,13 +265,14 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     
     # Load files
     hdr,cube = files.load_raw (hdrs, coaddRamp=True);
+    log.info ('Data size: '+str(cube.shape));
     
     # Get dimensions
     nr,nf,ny,nx = cube.shape;
-    x  = np.arange (nx);
 
     # Number of spectral channels to extract on plots
     ns = int(setup.nspec (hdr)/2 + 0.5) + 1;
+    x  = np.arange (nx);
 
     # Remove background
     log.info ('Load background %s'%bkg[0]['ORIGNAME']);
@@ -432,6 +434,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
 
     # Load files
     hdr,cube = files.load_raw (hdrs);
+    log.info ('Data size: '+str(cube.shape));
 
     # Remove background
     log.info ('Load background %s'%bkg[0]['ORIGNAME']);

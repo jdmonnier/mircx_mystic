@@ -117,6 +117,8 @@ def load_raw (hdrs, coaddRamp=False,removeBias=True):
         
         # Remove bias. Note that the median should be taken
         # with an odd number of samples, to be unbiased.
+        # WARNING: because of median, the our best estimate of the bias
+        # is to +/-1nph (convolved by the effect of gaussian_filter)
         if removeBias is True:
             ids = np.append (np.arange(15), data.shape[-1] - np.arange(1,15));
             bias = np.median (data[:,:,:,ids],axis=3);
@@ -126,7 +128,7 @@ def load_raw (hdrs, coaddRamp=False,removeBias=True):
         # Append ramps or co-add them
         hdr['HIERARCH MIRC QC NRAMP'] += data.shape[0];
         if coaddRamp is True:
-            cube.append (np.mean (data,axis=0)[None,:,:,:]);
+            cube.append (np.mean (data,axis=0,keepdims=True));
         else:
             cube.append (data);
 

@@ -71,7 +71,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
 
         # Verbose on data size
         nr,nf,ny,nx = fringe.shape;
-        log.info ('Data size'+str(fringe.shape));
+        log.info ('Data size: '+str(fringe.shape));
 
         # Define output
         if ih == 0:
@@ -98,6 +98,9 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
         log.info ('Coherent integration');
         fringe = gaussian_filter (fringe,(0,ncoher,0,0),mode='constant',truncate=2.0);
 
+        # We accumulate the full-window auto-correlation
+        # instead of the FFT**2 because this allows to oversampled
+        # the integrated PSD after the incoherent integration.
         log.info ('Accumulate auto-correlation');
         data = fringe.reshape (nr*nf,ny,nx);
         for y in range(ny):
@@ -254,6 +257,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     profile[~flag] = 0.0;
 
     # Profile is normalised to be flux-conservative
+    # Maybe not good to have profile when photon-counting
     profile *= np.sum (profile,axis=-1, keepdims=True) / \
                (np.sum (profile**2,axis=-1, keepdims=True)+1e-20);
     
@@ -339,7 +343,10 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     # total number of adu in the fringe
     log.info ('Compute photok');
     photok = photo * kappa;
-    photok0 = photok.astype('float32');
+    photok0 = photok.copy();
+
+    # How to ensure the DC is fitted as well ?
+    # Only on average over the file ? In real-time ?
 
     # Smooth photometry
     log.info ('Smooth photometry by sigma=2 frames');
@@ -478,29 +485,38 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     hdu1 = pyfits.ImageHDU (base_dft.real.astype('float32'));
     hdu1.header['EXTNAME'] = 'BASE_DFT_REAL';
     hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
+    hdu1.header['SHAPE'] = '(nr,nf,ny,nb)';
     
     hdu2 = pyfits.ImageHDU (base_dft.imag.astype('float32'));
     hdu2.header['EXTNAME'] = 'BASE_DFT_IMAG';
-    hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
+    hdu2.header['BUNIT'] = ('adu','adu in the fringe envelope');
+    hdu2.header['SHAPE'] = '(nr,nf,ny,nb)';
     
     hdu3 = pyfits.ImageHDU (bias_dft.real.astype('float32'));
     hdu3.header['EXTNAME'] = 'BIAS_DFT_REAL';
-    hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
+    hdu3.header['BUNIT'] = ('adu','adu in the fringe envelope');
+    hdu3.header['SHAPE'] = '(nr,nf,ny,nf)';
     
     hdu4 = pyfits.ImageHDU (bias_dft.imag.astype('float32'));
     hdu4.header['EXTNAME'] = 'BIAS_DFT_IMAG';
-    hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
+    hdu4.header['BUNIT'] = ('adu','adu in the fringe envelope');
+    hdu4.header['SHAPE'] = '(nr,nf,ny,nf)';
     
     hdu5 = pyfits.ImageHDU (np.transpose (photok0,axes=(1,2,3,0)).astype('float32'));
     hdu5.header['EXTNAME'] = 'PHOTOMETRY';
-    hdu1.header['BUNIT'] = ('adu','adu in the fringe envelope');
-
+    hdu5.header['BUNIT'] = ('adu','adu in the fringe');
+    hdu5.header['SHAPE'] = '(nr,nf,ny,nt)';
+    
     hdu6 = pyfits.ImageHDU (lbd);
     hdu6.header['EXTNAME'] = 'WAVELENGTH';
     hdu6.header['BUNIT'] = 'm';
-        
+
+    hdu7 = pyfits.ImageHDU (np.transpose (kappa,axes=(1,2,3,0)));
+    hdu7.header['EXTNAME'] = ('KAPPA','ratio fringe/photo');
+    hdu7.header['SHAPE'] = '(nr,nf,ny,nt)';
+
     # Write file
-    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2,hdu3,hdu4,hdu5,hdu6]);
+    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2,hdu3,hdu4,hdu5,hdu6,hdu7]);
     files.write (hdulist, output+'.fits');
 
     plt.close("all");
@@ -528,7 +544,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
 
     # Dimensions
     nr,nf,ny,nb = base_dft.shape;
-    log.info ('Data size nramp=%i nframe=%i nlbd=%i nbase=%i'%base_dft.shape);
+    log.info ('Data size: '+str(base_dft.shape));
 
     # Compute lbd0 and dlbd
     lbd0 = np.mean (lbd);
@@ -581,8 +597,13 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0):
         hdr[HMQ+'SNR'+name+' MEAN'] = (val,'Broad-band SNR');
         val = np.std (base_snrbb[:,:,:,b]);
         hdr[HMQ+'SNR'+name+' STD'] = (val,'Broad-band SNR');
-    val = np.mean (bias_power[:,:,int(ny/2),:], axis=(0,1,-1));
-    hdr[HMQ+'BIAS MEAN'] = (val,'Bias Power at lbd0');
+
+    # QC for bias
+    log.info ('Compute QC for bias');
+    qc_power = np.mean (bias_power[:,:,int(ny/2),:], axis=(0,1));
+    hdr[HMQ+'BIASMEAN MEAN'] = (np.mean (qc_power),'Bias Power at lbd0');
+    hdr[HMQ+'BIASMEAN STD'] = (np.std (qc_power),'Bias Power at lbd0');
+    hdr[HMQ+'BIASMEAN MED'] = (np.median (qc_power),'Bias Power at lbd0');
 
     # Smooth SNR (should do the same for GD actually)
     log.info ('Smooth SNR over %.1f frames'%(ncoher*10));
