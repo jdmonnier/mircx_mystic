@@ -173,7 +173,9 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     
     # Correlation plot
     log.info ('Correlation plots');
-    fig,axes = plt.subplots (5,3);
+    fig,axes = plt.subplots (5,3, sharex=True, sharey=True);
+    plt.setp (axes.flat, aspect=1.0, adjustable='datalim');
+    
     for b,ax in enumerate(axes.flatten()):
         ax.plot (l_power[:,int(ny/2),b], u_power[:,int(ny/2),b], 'o');
     files.write (fig,output+'_norm_power.png');
@@ -252,7 +254,7 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     tbhdu.header['ARRNAME'] = 'CHARA';
     tbhdu.header['OI_REVN'] = 1;
     tbhdu.header['DATE-OBS'] = hdr['DATE-OBS'];
-    hdulist.append(tbhdu);
+    hdulist.append (tbhdu);
     
     # QC for T3
     for t,name in enumerate (setup.triplet_name()):
@@ -263,7 +265,9 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     
     # Correlation plot
     log.info ('Correlation plots');
-    fig,axes = plt.subplots (5,4);
+    fig,axes = plt.subplots (5,4,sharex=True,sharey=True);
+    plt.setp (axes.flat, aspect=1.0, adjustable='datalim');
+    
     for t,ax in enumerate(axes.flatten()):
         ax.plot ( t_product.real[:,int(ny/2),t], t_product.imag[:,int(ny/2),t], 'o');
     files.write (fig,output+'_bispec.png');
