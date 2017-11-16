@@ -18,6 +18,13 @@ def str2bool (s):
     if s == False or s == 'FALSE': return False;
     raise ValueError('Invalid boolean string');
 
+def summary (hdr):
+    '''
+    Return a short string to
+    summarize the header
+    '''
+    return '%.4f %i-%i-%i'%(hdr['MJD-OBS'],hdr['GAIN'],hdr['NLOOPS'],hdr['NREADS']);
+
 def loaddir (dirs):
     '''
     Load the headers of all files mircx*.fit* from

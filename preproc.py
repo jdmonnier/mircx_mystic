@@ -130,7 +130,7 @@ def compute_background (hdrs,output='output_bkg'):
     # Background mean
     log.info ('Compute mean and rms over input files');
     bkg_mean = np.mean (cube, axis=0);
-    bkg_std  = np.std (cube, axis=0) / np.sqrt (cube.shape[0]);
+    bkg_err  = np.std (cube, axis=0) / np.sqrt (cube.shape[0]);
 
     # Load all ramp of first file to measure readout noise
     __,cube = files.load_raw (hdrs[0:1], coaddRamp=False);
@@ -152,11 +152,11 @@ def compute_background (hdrs,output='output_bkg'):
     hdr.set (HMQ+'BKG_MEAN MED',med,'[adu] for frame nf/2');
     hdr.set (HMQ+'BKG_MEAN STD',std,'[adu] for frame nf/2');
 
-    (smean,smed,sstd) = sigma_clipped_stats (bkg_std[idf,idy-dy:idy+dy,idx-dx:idx+dx]);
-    log.info (HMQ+'BKG_ERR MED = %f'%smed);
-    log.info (HMQ+'BKG_ERR STD = %f'%sstd);
-    hdr.set (HMQ+'BKG_ERR MED',smed,'[adu] for frame nf/2');
-    hdr.set (HMQ+'BKG_ERR STD',sstd,'[adu] for frame nf/2');
+    (emean,emed,estd) = sigma_clipped_stats (bkg_err[idf,idy-dy:idy+dy,idx-dx:idx+dx]);
+    log.info (HMQ+'BKG_ERR MED = %f'%emed);
+    log.info (HMQ+'BKG_ERR STD = %f'%estd);
+    hdr.set (HMQ+'BKG_ERR MED',emed,'[adu] for frame nf/2');
+    hdr.set (HMQ+'BKG_ERR STD',estd,'[adu] for frame nf/2');
     
     (nmean,nmed,nstd) = sigma_clipped_stats (bkg_noise[idy-dy:idy+dy,idx-dx:idx+dx]);
     log.info (HMQ+'BKG_NOISE MED = %f'%nmed);
@@ -165,7 +165,7 @@ def compute_background (hdrs,output='output_bkg'):
     hdr.set (HMQ+'BKG_NOISE STD',round(nstd,5),'[adu] for first file');
 
     # Define quality flag
-    hdr[HMQ+'QUALITY'] = (1./(smed+1e-10), 'quality of data');
+    hdr[HMQ+'QUALITY'] = (1./(emed+1e-10), 'quality of data');
     
     # Create output HDU
     hdu0 = pyfits.PrimaryHDU (bkg_mean[None,:,:,:]);
@@ -177,7 +177,7 @@ def compute_background (hdrs,output='output_bkg'):
     hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';
 
     # Create second HDU
-    hdu1 = pyfits.ImageHDU (bkg_std[None,:,:,:]);
+    hdu1 = pyfits.ImageHDU (bkg_err[None,:,:,:]);
     hdu1.header['EXTNAME'] = ('BACKGROUND_ERR','uncertainty on background mean');
     hdu1.header['BUNIT'] = 'adu/pixel/frame';
     hdu1.header['SHAPE'] = '(nr,nf,ny,nx)';
@@ -197,6 +197,7 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Images of mean
     fig,ax = plt.subplots (2,1);
+    fig.suptitle (headers.summary (hdr));
     ax[0].imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std);
     ax[0].set_ylabel ('Mean (adu) +-5sig');
     ax[1].imshow (bkg_mean[idf,:,:], vmin=med-20*std, vmax=med+20*std);
@@ -205,22 +206,26 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Images of noise
     fig,ax = plt.subplots (2,1);
+    fig.suptitle (headers.summary (hdr));
     ax[0].imshow (bkg_noise, vmin=nmed-5*nstd, vmax=nmed+5*nstd);
     ax[0].set_ylabel ('Noise (adu) +-5sig');
     ax[1].imshow (bkg_noise, vmin=nmed-20*nstd, vmax=nmed+20*nstd);
     ax[1].set_ylabel ('Noise (adu) +-20sig');
+    fig.suptitle (headers.summary (hdr));
     files.write (fig, output+'_noise.png');
 
     # Images of error
     fig,ax = plt.subplots (2,1);
-    ax[0].imshow (bkg_std[idf,:,:], vmin=smed-5*sstd, vmax=nmed+5*sstd);
+    fig.suptitle (headers.summary (hdr));
+    ax[0].imshow (bkg_err[idf,:,:], vmin=emed-5*estd, vmax=emed+5*estd);
     ax[0].set_ylabel ('Err (adu) +-5sig');
-    ax[1].imshow (bkg_std[idf,:,:], vmin=smed-20*sstd, vmax=nmed+20*sstd);
+    ax[1].imshow (bkg_err[idf,:,:], vmin=emed-20*estd, vmax=emed+20*estd);
     ax[1].set_ylabel ('Err (adu) +-20sig');
     files.write (fig, output+'_err.png');
     
     # Histograms of median
     fig,ax = plt.subplots (2,1);
+    fig.suptitle (headers.summary (hdr));
     ax[0].hist (bkg_mean[idf,:,:].flatten(),bins=med+std*np.linspace(-10,20,50));
     ax[0].set_ylabel ("Number of pixels");
     ax[1].hist (bkg_mean[idf,:,:].flatten(),bins=med+std*np.linspace(-10,20,50));
@@ -231,9 +236,10 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Histograms of error
     fig,ax = plt.subplots (2,1);
-    ax[0].hist (bkg_std.flatten(),bins=smed+sstd*np.linspace(-10,20,50));
+    fig.suptitle (headers.summary (hdr));
+    ax[0].hist (bkg_err.flatten(),bins=emed+estd*np.linspace(-10,20,50));
     ax[0].set_ylabel ("Number of pixels");
-    ax[1].hist (bkg_std.flatten(),bins=smed+sstd*np.linspace(-10,20,50));
+    ax[1].hist (bkg_err.flatten(),bins=emed+estd*np.linspace(-10,20,50));
     ax[1].set_ylabel ("Number of pixels");
     ax[1].set_xlabel ("RMS(file)/sqrt(nfile)");
     ax[1].set_yscale ('log');
@@ -241,6 +247,7 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Histograms of noise
     fig,ax = plt.subplots (2,1);
+    fig.suptitle (headers.summary (hdr));
     ax[0].hist (bkg_noise.flatten(),bins=nmed+nstd*np.linspace(-10,20,50));
     ax[0].set_ylabel ("Number of pixels");
     ax[1].hist (bkg_noise.flatten(),bins=nmed+nstd*np.linspace(-10,20,50));
@@ -251,6 +258,7 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Ramp
     fig,ax = plt.subplots();
+    fig.suptitle (headers.summary (hdr));
     ax.plot (np.median (bkg_mean,axis=(1,2)));
     ax.set_xlabel ("Frame");
     ax.set_ylabel ("Median of pixels (adu)");
