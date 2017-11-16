@@ -39,7 +39,8 @@ def setFile (filename):
     open (filename, 'w').close();
     os.chmod (filename,0o666);
 
-    # Set this file as log
+    # Set this file as log (mode 'append')
+    # since file already exists
     logfile = logging.FileHandler (filename, mode='a');
     logfile.setLevel (logging.INFO);
     formatter = logging.Formatter ("[%(levelname)-7.7s] "
