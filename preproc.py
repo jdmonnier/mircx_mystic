@@ -141,21 +141,26 @@ def compute_background (hdrs,output='output_bkg'):
     
     # Select which one to plot
     nf,ny,nx = bkg_mean.shape;
-    dy,dx = 35,15;
-    idf = int(nf/2);
-    idx = int(nx/2);
-    idy = int(ny/2);
-    
+    dy,dx = 15,35;
+    idf,idy,idx = int(nf/2), int(ny/2), int(nx/2);
+    log.info ('Compute QC in box (%i,%i:%i,%i:%i)'%(idf,idy-dy,idy+dy,idx-dx,idx+dx));
+
     # Add QC parameters
     (mean,med,std) = sigma_clipped_stats (bkg_mean[idf,idy-dy:idy+dy,idx-dx:idx+dx]);
+    log.info (HMQ+'BKG_MEAN MED = %f'%med);
+    log.info (HMQ+'BKG_MEAN STD = %f'%std);
     hdr.set (HMQ+'BKG_MEAN MED',med,'[adu] for frame nf/2');
     hdr.set (HMQ+'BKG_MEAN STD',std,'[adu] for frame nf/2');
 
     (smean,smed,sstd) = sigma_clipped_stats (bkg_std[idf,idy-dy:idy+dy,idx-dx:idx+dx]);
+    log.info (HMQ+'BKG_ERR MED = %f'%smed);
+    log.info (HMQ+'BKG_ERR STD = %f'%sstd);
     hdr.set (HMQ+'BKG_ERR MED',smed,'[adu] for frame nf/2');
     hdr.set (HMQ+'BKG_ERR STD',sstd,'[adu] for frame nf/2');
     
     (nmean,nmed,nstd) = sigma_clipped_stats (bkg_noise[idy-dy:idy+dy,idx-dx:idx+dx]);
+    log.info (HMQ+'BKG_NOISE MED = %f'%nmed);
+    log.info (HMQ+'BKG_NOISE STD = %f'%nstd);
     hdr.set (HMQ+'BKG_NOISE MED',round(nmed,5),'[adu] for first file');
     hdr.set (HMQ+'BKG_NOISE STD',round(nstd,5),'[adu] for first file');
 
@@ -191,7 +196,7 @@ def compute_background (hdrs,output='output_bkg'):
     log.info ('Figures');
 
     # Images of mean
-    fig,ax = plt.subplots (3,1);
+    fig,ax = plt.subplots (2,1);
     ax[0].imshow (bkg_mean[idf,:,:], vmin=med-5*std, vmax=med+5*std);
     ax[0].set_ylabel ('Mean (adu) +-5sig');
     ax[1].imshow (bkg_mean[idf,:,:], vmin=med-20*std, vmax=med+20*std);
@@ -208,17 +213,17 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Images of error
     fig,ax = plt.subplots (2,1);
-    ax[0].imshow (bkg_std, vmin=smed-5*sstd, vmax=nmed+5*sstd);
+    ax[0].imshow (bkg_std[idf,:,:], vmin=smed-5*sstd, vmax=nmed+5*sstd);
     ax[0].set_ylabel ('Err (adu) +-5sig');
-    ax[1].imshow (bkg_std, vmin=smed-20*sstd, vmax=nmed+20*sstd);
+    ax[1].imshow (bkg_std[idf,:,:], vmin=smed-20*sstd, vmax=nmed+20*sstd);
     ax[1].set_ylabel ('Err (adu) +-20sig');
-    files.write (fig, output+'_noise.png');
+    files.write (fig, output+'_err.png');
     
     # Histograms of median
     fig,ax = plt.subplots (2,1);
-    ax[0].hist (bkg_mean[idf,:,:].flatten(),bins=med+std*np.linspace(-10,10,50));
+    ax[0].hist (bkg_mean[idf,:,:].flatten(),bins=med+std*np.linspace(-10,20,50));
     ax[0].set_ylabel ("Number of pixels");
-    ax[1].hist (bkg_mean[idf,:,:].flatten(),bins=med+std*np.linspace(-10,10,50));
+    ax[1].hist (bkg_mean[idf,:,:].flatten(),bins=med+std*np.linspace(-10,20,50));
     ax[1].set_ylabel ("Number of pixels");
     ax[1].set_xlabel ("Value at frame nf/2 (adu)");
     ax[1].set_yscale ('log');
@@ -226,9 +231,9 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Histograms of error
     fig,ax = plt.subplots (2,1);
-    ax[0].hist (bkg_std.flatten(),bins=smed+sstd*np.linspace(-1.1,10,50));
+    ax[0].hist (bkg_std.flatten(),bins=smed+sstd*np.linspace(-10,20,50));
     ax[0].set_ylabel ("Number of pixels");
-    ax[1].hist (bkg_std.flatten(),bins=smed+sstd*np.linspace(-1.1,10,50));
+    ax[1].hist (bkg_std.flatten(),bins=smed+sstd*np.linspace(-10,20,50));
     ax[1].set_ylabel ("Number of pixels");
     ax[1].set_xlabel ("RMS(file)/sqrt(nfile)");
     ax[1].set_yscale ('log');
@@ -236,9 +241,9 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Histograms of noise
     fig,ax = plt.subplots (2,1);
-    ax[0].hist (bkg_noise.flatten(),bins=nmed+nstd*np.linspace(-1.1,10,50));
+    ax[0].hist (bkg_noise.flatten(),bins=nmed+nstd*np.linspace(-10,20,50));
     ax[0].set_ylabel ("Number of pixels");
-    ax[1].hist (bkg_noise.flatten(),bins=nmed+nstd*np.linspace(-1.1,10,50));
+    ax[1].hist (bkg_noise.flatten(),bins=nmed+nstd*np.linspace(-10,20,50));
     ax[1].set_ylabel ("Number of pixels");
     ax[1].set_xlabel ("RMS(frame) for first file");
     ax[1].set_yscale ('log');
