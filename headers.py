@@ -1,9 +1,9 @@
 import numpy as np
+
 from astropy.io import fits as pyfits
 from astropy.time import Time
-import os
-import glob
-import pickle
+
+import os, glob, pickle, datetime
 
 from . import log
 
@@ -62,8 +62,14 @@ def loaddir (dirs):
 def load (files, hlog=[]):
     '''
     Load the headers of all input files. The following keywords
-    are added to each header: MJD-OBS and ORIGNAME.
+    are added to each header: MJD-OBS, MJD-LOAD and ORIGNAME.
     The output is a list of FITS headers.
+
+    The hlog is a list of already loaded headers. The function 
+    first search for the filename in this list (ORIGNAME). If the 
+    file is not in the list, or if its MJD-LOAD is past from the
+    last modification of the file, the header is loaded. The hlog
+    system allows to speed up the loading of large number of headers.
     '''
     elog = log.trace ('load');
     hdrs = []
@@ -75,13 +81,20 @@ def load (files, hlog=[]):
     for fn,f in enumerate (files):
         try:
             
-            # Recover or read header
+            # Recover header in hlog
             try:
+                # Look for it
                 hdr = hlog[filesin.index (os.path.split (f)[1])];
                 log.info('Recover header %i over %i (%s)'%(fn+1,len(files),f));
+                # Check if not modified since last loaded
+                tmod  = Time(os.path.getmtime(f),format='unix',scale='utc').mjd;
+                if (tmod > hdr['MJD-LOAD']): raise;
+            # Read header from file
             except:
+                # Read compressed file
                 if f[-7:] == 'fits.fz':
                     hdr = pyfits.getheader(f, 1);
+                # Read normal file
                 else:
                     hdr = pyfits.getheader(f, 0);
                 log.info('Read header %i over %i (%s)'%(fn+1,len(files),f));
@@ -91,7 +104,10 @@ def load (files, hlog=[]):
 
             # Add MJD-OBS
             t = Time(hdr['DATE-OBS'] + 'T'+ hdr['UTC-OBS'], format='isot', scale='utc');
-            hdr['MJD-OBS'] = t.mjd;
+            hdr['MJD-OBS'] = (t.mjd, '[mjd] Observing time (UTC)');
+
+            # Add the loading time
+            hdr['MJD-LOAD'] =  (Time.now().mjd, '[mjd] Last loading time (UTC)');
 
             # Append
             hdrs.append (hdr);
