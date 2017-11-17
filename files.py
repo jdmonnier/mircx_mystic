@@ -71,7 +71,7 @@ def write (hdulist,filename):
     hdulist.writeto (filename);
     os.chmod (filename,0o666);
 
-def load_raw (hdrs, coaddRamp=False,removeBias=True):
+def load_raw (hdrs, coaddRamp=False, removeBias=True, differentiate=True):
     '''
     Load data and append into gigantic cube. The output cube is
     of shape: [nfile*nramp, nframes, ny, ny].
@@ -113,7 +113,8 @@ def load_raw (hdrs, coaddRamp=False,removeBias=True):
         hdulist.close();
 
         # Take difference of consecutive frames
-        data = np.diff (data.astype('float'),axis=1)[:,0:-1,:,:];
+        if differentiate is True:
+            data = np.diff (data.astype('float'),axis=1)[:,0:-1,:,:];
         
         # Remove bias. Note that the median should be taken
         # with an odd number of samples, to be unbiased.
