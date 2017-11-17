@@ -369,6 +369,9 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     shifty = register_translation (p_spectra[:,None],f_spectra[:,None], \
                                    upsample_factor=100)[0][0];
 
+    # Compute shifted spectra
+    ps_spectra = subpix_shift (p_spectra, -shifty);
+
     # Set in header
     hdr[HMW+'PHOTO SHIFTY'] = (shifty,'[pix] shift of PHOTO versus FRINGE');
 
@@ -402,9 +405,9 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     # Shifted spectra
     fig,ax = plt.subplots(2,1);
     ax[0].imshow (cmean);
-    ax[1].plot (f_spectra, label='fringe');
-    ax[1].plot (p_spectra, label='photo');
-    ax[1].plot (subpix_shift (p_spectra, -shifty), label='shifted photo');
+    ax[1].plot (f_spectra / np.sum (f_spectra), label='fringe');
+    ax[1].plot (p_spectra / np.sum (p_spectra), label='photo');
+    ax[1].plot (ps_spectra / np.sum (ps_spectra), label='shifted photo');
     ax[1].legend ();
     files.write (fig, output+'_cut.png');
 
