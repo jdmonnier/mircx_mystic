@@ -471,7 +471,9 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     fig,ax = plt.subplots (2,1);
     fig.suptitle (headers.summary (hdr));
     ax[0].imshow (np.mean (cf_upsd, axis=(0,1)));
-    for f in ifreqs: ax[0].axvline (np.abs(f), color='k', linestyle='--');
+    for f in ifreqs: ax[0].axvline (np.abs(f), color='k', linestyle='--', alpha=0.5);
+    ax[0].axvline (np.abs(ibias[0]), color='r', linestyle='--', alpha=0.3);
+    ax[0].axvline (np.abs(ibias[-1]), color='r', linestyle='--', alpha=0.3);
     ax[1].plot (np.mean (cf_upsd, axis=(0,1))[int(ny/2),:]);
     ax[1].set_xlim (0,cf_upsd.shape[-1]);
     files.write (fig,output+'_psd.png');
