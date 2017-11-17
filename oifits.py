@@ -174,6 +174,7 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     # Correlation plot
     log.info ('Correlation plots');
     fig,axes = plt.subplots (5,3, sharex=True, sharey=True);
+    fig.suptitle (headers.summary (hdr));
     plt.setp (axes.flat, aspect=1.0, adjustable='datalim');
     
     for b,ax in enumerate(axes.flatten()):
@@ -266,6 +267,7 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     # Correlation plot
     log.info ('Correlation plots');
     fig,axes = plt.subplots (5,4,sharex=True,sharey=True);
+    fig.suptitle (headers.summary (hdr));
     plt.setp (axes.flat, aspect=1.0, adjustable='datalim');
     
     for t,ax in enumerate(axes.flatten()):

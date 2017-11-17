@@ -77,6 +77,7 @@ def remove_badpixels (hdr, cube, bkg, output='output'):
 
     # Figure
     fig,ax = plt.subplots (3,1);
+    fig.suptitle (headers.summary (hdr));
     ax[0].imshow (bad);
     ax[1].imshow (ref);
     ax[2].imshow (np.mean (cube, axis=(0,1)));
@@ -384,6 +385,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     
     # Figures of photo
     fig,ax = plt.subplots(3,1);
+    fig.suptitle (headers.summary (hdr));
     ax[0].imshow (pmap);
     ax[1].plot (px, label='Data');
     ax[1].plot (x,pfit(x), label='Gaussian');
@@ -394,6 +396,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
 
     # Figures of fringe
     fig,ax = plt.subplots(3,1);
+    fig.suptitle (headers.summary (hdr));
     ax[0].imshow (fmap);
     ax[1].plot (fx, label='Data');
     ax[1].plot (x,ffit(x), label='Gaussian');
@@ -404,6 +407,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
 
     # Shifted spectra
     fig,ax = plt.subplots(2,1);
+    fig.suptitle (headers.summary (hdr));
     ax[0].imshow (cmean);
     ax[1].plot (f_spectra / np.sum (f_spectra), label='fringe');
     ax[1].plot (p_spectra / np.sum (p_spectra), label='photo');
@@ -532,12 +536,14 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
 
     # Fringe and photo mean
     fig,ax = plt.subplots(2,1);
+    fig.suptitle (headers.summary (hdr));
     ax[0].imshow (np.mean (fringe,axis=(0,1)));
     ax[1].imshow (np.swapaxes (np.mean (photos,axis=(1,2)), 0,1).reshape((ny,-1)));
     files.write (fig, output+'_mean.png');
 
     # Spectra
     fig,ax = plt.subplots();
+    fig.suptitle (headers.summary (hdr));
     ax.plot (np.mean (fringe, axis=(0,1,3)), '--', label='fringes');
     ax.plot (np.mean (photos, axis=(1,2,4)).T);
     ax.set_ylabel ('adu/pix/fr');

@@ -1,3 +1,15 @@
+* Test data and food for thought
+
+Various gain, with several flux.
+BACKGROUND and BEAM, and ideally with MIRROR.
+
+I confirm not all the photometric beams have reflection.
+It is *only* beam 5. (2017Oct06/reduced_jb/*beam5*pfit.png)
+
+I confirm that the noise in increasing in the fringe window.
+This is almost invisible in the flux and err however.
+(2017Oct06/reduced_jb/*bkg_noise.png)
+
 * Cascade
 
 It would be easier if the PREPROC would be truly static windows…

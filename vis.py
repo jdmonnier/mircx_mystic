@@ -161,6 +161,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     
     # Figures of PSD with model
     fig,axes = plt.subplots (ny,sharex=True);
+    fig.suptitle (headers.summary (hdr));
     for y in range (ny):
         ax = axes.flatten()[y];
         ax.plot (freq,signal.psd_projection (res[y].x[0], freq, freq0, delta0, None));
@@ -172,6 +173,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
 
     # Effective wavelength
     fig,ax = plt.subplots ();
+    fig.suptitle (headers.summary (hdr));
     ax.plot (yfit,lbdfit * 1e6,'o-');
     ax.plot (yfit,lbd * 1e6,'o-');
     ax.set_ylabel ('lbd (um)');
@@ -182,6 +184,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
 
     # PSD
     fig,ax = plt.subplots (2,1);
+    fig.suptitle (headers.summary (hdr));
     ax[0].imshow (correl);
     ax[1].plot (psd[:,0:int(nfreq/2)].T);
     files.write (fig,output+'_psd.png');
@@ -263,6 +266,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     
     # Profile extraction
     fig,axes = plt.subplots (3,2);
+    fig.suptitle (headers.summary (hdr));
     for b in range(6):
         ax = axes.flatten()[b];
         val = np.mean (profile[b,:,:,:,:],axis=(0,1,2));
@@ -316,6 +320,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     # Kappa-matrix as spectrum
     log.info ('Plot kappa');
     fig,axes = plt.subplots (3,2);
+    fig.suptitle (headers.summary (hdr));
     for b in range (6):
         ax = axes.flatten()[b];
         val = np.mean (upper, axis=(1,2));
@@ -336,6 +341,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     
     # Kappa-matrix
     fig,ax = plt.subplots (1);
+    fig.suptitle (headers.summary (hdr));
     ax.imshow (np.mean (kappa,axis=(1,2)));
     files.write (fig,output+'_kappaimg.png');
 
@@ -432,6 +438,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     
     # Check dc
     fig,ax = plt.subplots ();
+    fig.suptitle (headers.summary (hdr));
     ax.hist2d (photodc_mean.flatten(), fringedc_mean.flatten(),
                bins=40, norm=mcolors.LogNorm());
     plt.plot (photodc_mean.flatten(),np.poly1d(poly_dc)(photodc_mean.flatten()),'--');
@@ -441,6 +448,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
 
     # Integrated spectra
     fig,ax = plt.subplots (2,1);
+    fig.suptitle (headers.summary (hdr));
     val = np.mean (fringe,axis=(0,1,3));
     val /= np.max (medfilt (val,3), keepdims=True) + 1e-20;
     ax[0].plot (lbd*1e6,val,'--', label='fringes and photo');
@@ -463,6 +471,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     
     # Power densities
     fig,ax = plt.subplots (2,1);
+    fig.suptitle (headers.summary (hdr));
     ax[0].imshow (np.mean (cf_upsd, axis=(0,1)));
     for f in ifreqs: ax[0].axvline (np.abs(f), color='k', linestyle='--');
     ax[1].plot (np.mean (cf_upsd, axis=(0,1))[int(ny/2),:]);
@@ -655,6 +664,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
 
     # Pseudo PSD
     fig,ax = plt.subplots (2,2, sharey='row',sharex='col');
+    fig.suptitle (headers.summary (hdr));
     ax[0,0].imshow (np.mean (np.abs(base_dft)**2, axis=(0,1)));
     ax[0,1].imshow (np.mean (np.abs(bias_dft)**2, axis=(0,1)));
     ax[1,0].plot (np.mean (np.abs(base_dft)**2, axis=(0,1)).T);
@@ -665,6 +675,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     
     # SNR, GD and FLAGs
     fig,ax = plt.subplots (3,1,sharex=True);
+    fig.suptitle (headers.summary (hdr));
     ax[0].plot (np.log10 (np.mean (base_snrbb,axis=(1,2))));
     ax[0].set_ylabel ('log10 (SNR_bb)');
     ax[1].plot (np.mean (base_gd,axis=(1,2)) * 1e6);
