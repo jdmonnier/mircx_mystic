@@ -499,10 +499,10 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     # Extract fringe
     fringe = cube[:,:,fyc-ns:fyc+ns+1,fxc-fxw:fxc+fxw+1];
 
-    # Robust measure of mean flux in fringe
-    mean = np.mean (medfilt (np.mean (fringe, axis=(0,1,2)), 11));
-    hdr[HMW+'FRINGE MEAN'] = (mean,'[adu/pix/frame]');
-    log.info (HMW+'FRINGE MEAN = %f [adu/pix/frame]'%mean);
+    # Robust measure of total flux in fringe
+    value = np.sum (medfilt (np.mean (fringe, axis=(0,1)), (1,11)));
+    hdr[HMW+'FRINGE MEAN'] = (value,'[adu/frame] total flux');
+    log.info ('FRINGE MEAN = %f [adu/frame]'%value);
 
     # Same for photometries
     nr,nf,ny,nx = fringe.shape;
@@ -522,7 +522,11 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
         hdr[HMW+'PHOTO%i STARTY'%(beam)] = (pyc-ns, '[pix] python-def');
         photos[beam,:,:,:,:] = cube[:,:,pyc-ns:pyc+ns+1,pxc-pxw:pxc+pxw+1];
         
-        
+        # Robust measure of max flux in photometry
+        value = np.sum (medfilt (np.mean (photos[beam,:,:,:,:], axis=(0,1)), (3,1)));
+        hdr[HMW+'PHOTO%i MEAN'%(beam)] = (value,'[adu/frame], total flux');
+        log.info ('PHOTO%i MEAN = %f [adu/frame]'%(beam,value));
+
     # Figures
     log.info ('Figures');
 
