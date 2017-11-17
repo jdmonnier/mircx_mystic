@@ -161,24 +161,22 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     
     # Figures of PSD with model
     fig,axes = plt.subplots (ny,sharex=True);
-    fig.suptitle (headers.summary (hdr));
+    fig.suptitle ('Observed PSD (orange) and scaled template (blue)');
     for y in range (ny):
         ax = axes.flatten()[y];
         ax.plot (freq,signal.psd_projection (res[y].x[0], freq, freq0, delta0, None));
         ax.plot (freq,psd[y,:]);
         ax.set_xlim (0,1.3*np.max(freq0));
         ax.set_ylim (0,1.1);
-    axes.flatten()[0].set_title ('Observed PSD (orange) and scaled template (blue)');
     files.write (fig,output+'_psdmodel.png');
 
     # Effective wavelength
     fig,ax = plt.subplots ();
-    fig.suptitle (headers.summary (hdr));
+    fig.suptitle ('Guess calib. (orange) and Fitted calib, (blue)');
     ax.plot (yfit,lbdfit * 1e6,'o-');
     ax.plot (yfit,lbd * 1e6,'o-');
     ax.set_ylabel ('lbd (um)');
     ax.set_xlabel ('Detector line (python-def)');
-    ax.set_title ('Guess calib. (orange) and Fitted calib, (blue)');
     ax.set_ylim (1.45,1.85);
     files.write (fig,output+'_lbd.png');
 
