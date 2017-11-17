@@ -310,14 +310,14 @@ if argopt.vis != 'FALSE':
         try:
             log.info ('Compute VIS {0} over {1} '.format(i+1,len(gps)));
             
-            for nc in [0,1,2,4,8,16,32,64]:
+            for nc in [1,3,9]:
                 output = mrx.files.output (argopt.outputDir, gp[0], 'vis')+'_c%04i'%int(nc*10);
                 if os.path.exists (output+'.fits') and overwrite is False:
                     log.info ('Product already exists');
                     continue;
 
                 log.setFile (output+'.log');
-                mrx.compute_vis (gp, output=output, ncoher=nc, threshold=0.0);
+                mrx.compute_vis (gp, output=output, ncoher=nc, threshold=3.0);
 
         except Exception as exc:
             log.error ('Cannot compute VIS: '+str(exc));
