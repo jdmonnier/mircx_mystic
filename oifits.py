@@ -9,7 +9,7 @@ from astropy.coordinates import SkyCoord
 import numpy as np
 import os
 
-from . import log, setup, files, plot;
+from . import log, setup, files, plot, headers;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 from .version import revision;
 
