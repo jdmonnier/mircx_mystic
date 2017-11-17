@@ -627,14 +627,14 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     log.info ('Smooth SNR over %.1f frames'%(ncoher*10));
     base_snr = gaussian_filter (base_snrbb, (0,ncoher*10,0,0));
 
-    # Bootstrap over baseline
-    base_snr *= base_snr > 3.0;
-    base_snr, base_gd = signal.bootstrap (base_snr, base_gd);
-
     # Define threshold for SNR
     log.info ('SNR selection > %.2f'%threshold);
     hdr[HMQ+'SNR_THRESHOLD'] = (threshold, 'to accept fringe');
     
+    # Bootstrap over baseline
+    base_snr *= base_snr > threshold;
+    base_snr, base_gd = signal.bootstrap (base_snr, base_gd);
+
     # Compute selection flag from averaged SNR over the ramp
     base_flag = 1.0 * (np.mean (base_snr,axis=1,keepdims=True) > threshold);
     base_flag[base_flag == 0.0] = np.nan;
@@ -674,7 +674,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     files.write (fig,output+'_psd.png');
     
     # SNR, GD and FLAGs
-    fig,ax = plt.subplots (3,1,sharex=True);
+    fig,ax = plt.subplots (3,1);
     fig.suptitle (headers.summary (hdr));
     ax[0].plot (np.log10 (np.mean (base_snrbb,axis=(1,2))));
     ax[0].set_ylabel ('log10 (SNR_bb)');
