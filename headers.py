@@ -23,7 +23,7 @@ def summary (hdr):
     Return a short string to
     summarize the header
     '''
-    value = '%i-%i-%i  %.4f %s'%(hdr.get('GAIN',0),hdr.get('NLOOPS',0),hdr.get('NREADS',0),
+    value = '%Gi-%Ni-%Ri  %.4f %s'%(hdr.get('GAIN',0),hdr.get('NLOOPS',0),hdr.get('NREADS',0),
                                  hdr.get('MJD-OBS',0.0),hdr.get('OBJECT','UNKNOWN'));
     return value;
 
