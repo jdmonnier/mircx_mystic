@@ -92,10 +92,10 @@ def load (files, hlog=[]):
             try:
                 # Look for it
                 hdr = hlog[filesin.index (os.path.split (f)[1])];
-                log.info('Recover header %i over %i (%s)'%(fn+1,len(files),f));
                 # Check if not modified since last loaded
                 tmod  = Time(os.path.getmtime(f),format='unix',scale='utc').mjd;
                 if (tmod > hdr['MJD-LOAD']): raise;
+                log.info('Recover header %i over %i (%s)'%(fn+1,len(files),f));
             # Read header from file
             except:
                 # Read compressed file
