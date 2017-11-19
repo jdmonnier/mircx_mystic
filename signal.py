@@ -37,7 +37,14 @@ def getwidth (curve, threshold=None):
 
 def bootstrap (snr, gd):
     '''
-    snr and gd shall be (...,nb)
+    Compute the best SNR and GD of each baseline when considering 
+    also the boostraping capability of the array.
+    snr and gd shall be of shape (...,nb)
+
+    TODO: think if we should weight by SNR, SNR**4... with the goal
+    to mosly propagate the 
+
+    Return (snr_b, gd_b) of same size, but including bootstrap.
     '''
     log.info ('Bootstrap baselines');
 
@@ -47,9 +54,9 @@ def bootstrap (snr, gd):
     gd  = gd.reshape ((-1,shape[-1]));
     ns,nb = gd.shape;
 
-    # Ensure no zero and non-nan
+    # Ensure no zero and no nan
     snr[~np.isfinite (snr)] = 0.0;
-    snr += 1e-5;
+    snr = np.maximum (snr,1e-5);
 
     log.info ('Compute OPD_TO_OPD');
     
@@ -78,7 +85,7 @@ def bootstrap (snr, gd):
 
     # Reform SNR from covariance
     snr_b = 1. / np.diagonal (cov_b, axis1=1, axis2=2);
-    snr_b[snr_b < 1e-3] = 0.0;
+    snr_b[snr_b < 1e-2] = 0.0;
     
     # Reshape
     snr = snr.reshape (shape);

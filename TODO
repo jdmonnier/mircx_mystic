@@ -3,12 +3,18 @@
 Various gain, with several flux.
 BACKGROUND and BEAM, and ideally with MIRROR.
 
+We can see the noise structure in the background.
+Gain 60 shall be favored.
+
 I confirm not all the photometric beams have reflection.
 It is *only* beam 5. (2017Oct06/reduced_jb/*beam5*pfit.png)
 
 I confirm that the noise in increasing in the fringe window.
 This is almost invisible in the flux and err however.
 (2017Oct06/reduced_jb/*bkg_noise.png)
+
+Longest channels (outside spectra) have decreasing effective wavelength.
+(2017Oct06/reduced_jb/*speccal*.png)
 
 * Cascade
 
@@ -22,7 +28,7 @@ Use a flat-field and bad pixel
 Compute preproc per RAW file, to better allow selection.
 
 The interference removal create correlation between the photometric flux.
-This is not good for normalisation power.
+This is *not* good for normalisation power.
 
 * Wavelength calibration
 
@@ -37,8 +43,6 @@ Ask John for absolute scale/wavelength.
 Load several PREPROC into a single RTS ???
 Or load various RTS into a single VIS ???
 
-Use the dark at the time of the RTS ?
-
 Photometry extraction:
 Think on the dimensions...
 
@@ -46,16 +50,27 @@ DC: compute the DC residual in fringes
 and reproject it into the dc-shape.
 Which frequency ??
 
+How to deal with the kappa ? Wouldn't the DC projection be sufficient
+if we assume the kappa is the same for all telescopes ?
+
 * VIS
+
+First do the longest SNR average (ramp).
+Then bootstrap, then perform the fringe selection
+
+Explore if SNR**4 in the boostraping matrix to favor the highest SNR only.
+
+Use morphological closing/opening to better deal with SNR curves.
 
 Deal with coherent integration as time quantities
 
 Flatten the time ?
 
+How to compute the error bars ?
+
 Better MJD, better INT_TIME, better UCOORD,VCOORD
 Compute errors on vis2 and t3phi with bootstraping
 
-Use morphological closing/opening to better deal with SNR curves.
 
 * Speed-up
 

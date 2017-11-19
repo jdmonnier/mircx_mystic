@@ -94,19 +94,6 @@ def create (hdr,lbd):
     
     return hdulist;
 
-def close_style (ax):
-    '''
-    Set the style for the plots
-    '''
-    ax.ticklabel_format (axis='both', style='sci', scilimits=(0,0));
-    ax.tick_params (axis='both', which='both', labelsize=5);
-    
-    ax.xaxis.offsetText.set_fontsize (5);
-    ax.yaxis.offsetText.set_fontsize (5);
-    
-    # ax.xaxis.offsetText.set_position ((0.5,0));
-    # ax.yaxis.offsetText.set_position ((0.5,0));
-
 def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     '''
     Compute the OI_VIS2 table from a sample of observations
@@ -186,28 +173,32 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     
     # Correlation plot
     log.info ('Correlation plots');
-    fig,axes = plt.subplots (5,3);
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.subplots_adjust (wspace=0.3, hspace=0.1);
     fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
     
     for b,ax in enumerate(axes.flatten()):
+        
         datax = l_power[:,int(ny/2),b];
         datay = u_power[:,int(ny/2),b];
-        ax.plot (datax, datay, '+', alpha=0.75, ms=4);
 
-        limx = np.nanmax (datax);
-        limy = np.nanmax (datay);
-        lim = np.maximum (limx, limy);
-        ax.set_xlim (-0.1*limx,1.1*limx);
-        ax.set_ylim (-0.1*limy,1.1*limy);
+        scalex = np.abs (np.nanmax (datax));
+        scaley = np.abs (np.nanmax (datay));
+        ax.plot (datax/scalex, datay/scalex, '+', alpha=0.75, ms=4);
+
+        ax.set_xlim (-0.1,1.1);
+        ax.set_ylim (-0.1*scaley/scalex,1.1*scaley/scalex);
+        plot.close_style (ax, scale=scalex);
         
-        close_style (ax);
         ax.plot ([0], [0], '+r', alpha=0.75, ms=4);
-        ax.plot ([0,2.*lim], [0,2.*lim*vis2[int(ny/2),b]],
-                  '-r', alpha=0.75);
-        ax.plot ([0,2.*lim], [0,2.*lim*(vis2+vis2err)[int(ny/2),b]],
-                  '--r', alpha=0.75);
-        ax.plot ([0,2.*lim], [0,2.*lim*(vis2-vis2err)[int(ny/2),b]],
-                  '--r', alpha=0.75);
+        ax.plot ([0,2.0], [0,2.*vis2[int(ny/2),b]],
+                  '-r', alpha=0.5);
+        ax.plot ([0,2.0], [0,2.*(vis2+vis2err)[int(ny/2),b]],
+                  '--r', alpha=0.5);
+        ax.plot ([0,2.0], [0,2.*(vis2-vis2err)[int(ny/2),b]],
+                  '--r', alpha=0.5);
 
     files.write (fig,output+'_norm_power.png');
 
@@ -296,28 +287,32 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     
     # Correlation plot
     log.info ('Correlation plots');
-    fig,axes = plt.subplots (5,4);
+    fig,axes = plt.subplots (5,4, sharex=True, sharey=True);
+    fig.subplots_adjust (wspace=0.2, hspace=0.1);
     fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
     
     for t,ax in enumerate(axes.flatten()):
         data = t_product[:,int(ny/2),t];
-        ax.plot (data.real, data.imag, '+', alpha=0.75, ms=4);
-
-        lim = 1.05*np.nanmax (np.abs (data));
-        ax.set_xlim (-lim, lim);
-        ax.set_ylim (-lim, lim);
-
-        close_style (ax);
+        scale = np.nanmax (np.abs (data));
+        
+        ax.plot (data.real/scale, data.imag/scale, '+', alpha=0.75, ms=4);
+        
+        ax.set_xlim (-1.05, +1.05);
+        ax.set_ylim (-1.05, +1.05);
+        plot.close_style (ax, scale=scale);
+        
         ax.plot ([0], [0], '+r', alpha=0.75, ms=4);
-        ax.plot ([0,2.*lim*np.cos(t3phi[int(ny/2),t])],
-                 [0,2.*lim*np.sin(t3phi[int(ny/2),t])],
-                 '-r', alpha=0.75);
-        ax.plot ([0,2.*lim*np.cos(t3phi+t3phiErr)[int(ny/2),t])],
-                 [0,2.*lim*np.sin(t3phi+t3phiErr[int(ny/2),t])],
-                 '--r', alpha=0.75);
-        ax.plot ([0,2.*lim*np.cos(t3phi-t3phiErr[int(ny/2),t])],
-                 [0,2.*lim*np.sin(t3phi-t3phiErr[int(ny/2),t])],
-                 '--r', alpha=0.75);
+        ax.plot ([0,2.*np.cos(t3phi[int(ny/2),t])], \
+                 [0,2.*np.sin(t3phi[int(ny/2),t])], \
+                 '-r', alpha=0.5);
+        ax.plot ([0,2.*np.cos((t3phi+t3phiErr)[int(ny/2),t])], \
+                 [0,2.*np.sin((t3phi+t3phiErr)[int(ny/2),t])], \
+                 '--r', alpha=0.5);
+        ax.plot ([0,2.*np.cos((t3phi-t3phiErr)[int(ny/2),t])], \
+                 [0,2.*np.sin((t3phi-t3phiErr)[int(ny/2),t])], \
+                 '--r', alpha=0.5);
 
     files.write (fig,output+'_bispec.png');
 

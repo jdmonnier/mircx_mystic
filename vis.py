@@ -584,7 +584,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     bias_powerbb = np.mean (np.abs (np.sum (bias_dft * phasor, axis=2,keepdims=True))**2,axis=-1,keepdims=True);
     
     # Broad-band SNR
-    base_snrbb = base_powerbb / bias_powerbb;
+    base_snr = base_powerbb / bias_powerbb;
 
     # Compute power per spectral channels
     base_power = np.abs (base_dft)**2;
@@ -611,9 +611,9 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
         hdr[HMQ+'POWER'+name+' MEAN'] = (val,'Fringe Power at lbd0');
         val = np.std (base_power[:,:,int(ny/2),b], axis=(0,1));
         hdr[HMQ+'POWER'+name+' STD'] = (val,'Fringe Power at lbd0');
-        val = np.mean (base_snrbb[:,:,:,b]);
+        val = np.mean (base_snr[:,:,:,b]);
         hdr[HMQ+'SNR'+name+' MEAN'] = (val,'Broad-band SNR');
-        val = np.std (base_snrbb[:,:,:,b]);
+        val = np.std (base_snr[:,:,:,b]);
         hdr[HMQ+'SNR'+name+' STD'] = (val,'Broad-band SNR');
 
     # QC for bias
@@ -623,20 +623,21 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     hdr[HMQ+'BIASMEAN STD'] = (np.std (qc_power),'Bias Power at lbd0');
     hdr[HMQ+'BIASMEAN MED'] = (np.median (qc_power),'Bias Power at lbd0');
 
-    # Smooth SNR (should do the same for GD actually)
-    log.info ('Smooth SNR over %.1f frames'%(ncoher*10));
-    base_snr = gaussian_filter (base_snrbb, (0,ncoher*10,0,0));
+    # Smooth SNR along the ramp
+    log.info ('Smooth SNR over one ramp');
+    base_snr = np.mean (base_snr,axis=1,keepdims=True);
+    base_gd  = np.mean (base_gd,axis=1,keepdims=True);
+
+    # Bootstrap over baseline
+    base_snr0 = base_snr.copy ();
+    base_snr, base_gd = signal.bootstrap (base_snr, base_gd);
 
     # Define threshold for SNR
     log.info ('SNR selection > %.2f'%threshold);
     hdr[HMQ+'SNR_THRESHOLD'] = (threshold, 'to accept fringe');
     
-    # Bootstrap over baseline
-    base_snr *= base_snr > threshold;
-    base_snr, base_gd = signal.bootstrap (base_snr, base_gd);
-
     # Compute selection flag from averaged SNR over the ramp
-    base_flag = 1.0 * (np.mean (base_snr,axis=1,keepdims=True) > threshold);
+    base_flag = 1.0 * (base_snr > threshold);
     base_flag[base_flag == 0.0] = np.nan;
 
     # Compute the time stamp of each ramp
@@ -673,10 +674,21 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     ax[0,1].set_title ('Bias frequencies');
     files.write (fig,output+'_psd.png');
     
+    # SNR
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+    d1 = np.log10 (np.mean (base_snr0,axis=(1,2)));
+    d2 = np.log10 (np.mean (base_snr,axis=(1,2)));
+    for b in range (15): axes.flatten()[b].plot (d1[:,b],'--');
+    for b in range (15): axes.flatten()[b].plot (d2[:,b]);
+    files.write (fig,output+'_snr.png');
+    
     # SNR, GD and FLAGs
     fig,ax = plt.subplots (3,1);
     fig.suptitle (headers.summary (hdr));
-    ax[0].plot (np.log10 (np.mean (base_snrbb,axis=(1,2))));
+    ax[0].plot (np.log10 (np.mean (base_snr,axis=(1,2))));
     ax[0].set_ylabel ('log10 (SNR_bb)');
     ax[1].plot (np.mean (base_gd,axis=(1,2)) * 1e6);
     ax[1].set_ylabel ('gdelay (um)');
