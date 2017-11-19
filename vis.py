@@ -681,6 +681,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     plot.compact (axes);
     d1 = np.log10 (np.mean (base_snr0,axis=(1,2)));
     d2 = np.log10 (np.mean (base_snr,axis=(1,2)));
+    for b in range (15): axes.flatten()[b].axhline (np.log10(threshold),color='r', alpha=0.2);
     for b in range (15): axes.flatten()[b].plot (d1[:,b],'--');
     for b in range (15): axes.flatten()[b].plot (d2[:,b]);
     files.write (fig,output+'_snr.png');
