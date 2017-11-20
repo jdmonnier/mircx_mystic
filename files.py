@@ -112,6 +112,9 @@ def load_raw (hdrs, coaddRamp=False, removeBias=True, differentiate=True):
         # Close file
         hdulist.close();
 
+        # TODO: deal with non-linearity, saturation
+        # static flat-field and bad-pixels.
+
         # Take difference of consecutive frames
         if differentiate is True:
             data = np.diff (data.astype('float'),axis=1)[:,0:-1,:,:];
