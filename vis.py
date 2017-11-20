@@ -271,7 +271,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
         ax.plot (val / (np.mean (val)+1e-20), label='profile');
         val = np.mean (photo[b,:,:,:,:],axis=(0,1,2));
         ax.plot (val / (np.mean (val)+1e-20), label='photo');
-        ax.legend();
+    axes[0,0].legend();
     files.write (fig,output+'_profile.png');
 
     # Optimal extraction of photometry with profile
@@ -330,9 +330,9 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
         val = np.mean (kappa, axis=(1,2));
         val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
         ax.plot (lbd*1e6,val[b,:], label='kappa');
-        ax.legend();
         ax.set_ylim ((0.1,1.5));
         ax.set_ylabel ('normalized');
+    axes[0,0].legend();
     files.write (fig,output+'_kappa.png');
 
     # Use a supplementary kappa-matrix if provided
@@ -377,6 +377,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     dc_ratio = np.sum (fringedc_mean) / np.sum (photodc_mean);
     hdr[HMQ+'DC MEAN'] = (rep_nan (dc_ratio), 'fringe/photo');
 
+    # QC with a linear fit including offset
     poly_dc = np.polyfit (photodc_mean.flatten(), fringedc_mean.flatten(), 1);
     hdr[HMQ+'DC ORDER0'] = (poly_dc[0],'[adu] fit DC(photo)');
     hdr[HMQ+'DC ORDER1'] = (poly_dc[1],'[adu/adu] fit DC(photo)');
@@ -386,15 +387,16 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     fig.suptitle (headers.summary (hdr));
     ax.hist2d (photodc_mean.flatten(), fringedc_mean.flatten(),
                bins=40, norm=mcolors.LogNorm());
-    plt.plot (photodc_mean.flatten(),np.poly1d(poly_dc)(photodc_mean.flatten()),'--');
-    plt.plot (photodc_mean.flatten(),photodc_mean.flatten(),'-');
+    ax.plot (photodc_mean.flatten(),photodc_mean.flatten(),'-',label='y=x');
+    ax.plot (photodc_mean.flatten(),photodc_mean.flatten() * dc_ratio,'--');
     ax.set_xlabel('fringe dc'); ax.set_ylabel('sum of photo');
+    ax.legend (loc=2);
     files.write (fig,output+'_dccorr.png');
 
     # Scale the photometry to the continuum
     log.info ('Scale the DC and photometries by 1/%.4f'%dc_ratio);
-    cont /= dc_ratio;
-    photok0 /= dc_ratio;
+    cont *= dc_ratio;
+    photok0 *= dc_ratio;
         
     # Subtract continuum
     log.info ('Subtract dc');
