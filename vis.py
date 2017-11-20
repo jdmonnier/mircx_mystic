@@ -570,15 +570,17 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
 
     # Compute group-delay in [m] and broad-band power
     log.info ('Compute GD');
+    scale_gd = 1. / ((1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi));
+    
     base_gd  = np.angle (np.sum (base_dft[:,:,1:,:] * np.conj (base_dft[:,:,:-1,:]), axis=2, keepdims=True));
-    base_gd /= (1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi);
+    base_gd *= scale_gd;
 
     phasor = np.exp (2.j*np.pi * base_gd / lbd[None,None,:,None]);
     base_powerbb = np.abs (np.sum (base_dft * phasor, axis=2, keepdims=True))**2;
 
     # Compute group-delay and broad-band power for bias
     bias_gd  = np.angle (np.sum (bias_dft[:,:,1:,:] * np.conj (bias_dft[:,:,:-1,:]), axis=2,keepdims=True));
-    bias_gd /= (1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi);
+    bias_gd *= scale_gd;
         
     phasor = np.exp (2.j*np.pi * bias_gd / lbd[None,None,:,None]);
     bias_powerbb = np.mean (np.abs (np.sum (bias_dft * phasor, axis=2,keepdims=True))**2,axis=-1,keepdims=True);
@@ -628,7 +630,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     base_snr = np.mean (base_snr,axis=1,keepdims=True);
     base_gd  = np.mean (base_gd,axis=1,keepdims=True);
 
-    # Bootstrap over baseline
+    # Bootstrap over baseline. Maybe the GD should be
+    # boostraped and averaged as a phasor
     base_snr0 = base_snr.copy ();
     base_snr, base_gd = signal.bootstrap (base_snr, base_gd);
 
@@ -639,6 +642,9 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     # Compute selection flag from averaged SNR over the ramp
     base_flag = 1.0 * (base_snr > threshold);
     base_flag[base_flag == 0.0] = np.nan;
+
+    # Morphological operation
+    log.info ('TODO: implement closing/opening');
 
     # Compute the time stamp of each ramp
     time = np.ones (base_dft.shape[0]) * hdr['MJD-OBS'];
@@ -682,9 +688,21 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     d1 = np.log10 (np.mean (base_snr0,axis=(1,2)));
     d2 = np.log10 (np.mean (base_snr,axis=(1,2)));
     for b in range (15): axes.flatten()[b].axhline (np.log10(threshold),color='r', alpha=0.2);
-    for b in range (15): axes.flatten()[b].plot (d1[:,b],'--');
     for b in range (15): axes.flatten()[b].plot (d2[:,b]);
+    for b in range (15): axes.flatten()[b].plot (d1[:,b],'--', alpha=0.5);
     files.write (fig,output+'_snr.png');
+
+    # GD
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+    d = np.mean (base_gd,axis=(1,2)) * 1e6;
+    for b in range (15):
+        lim = 1.05 * np.max (np.abs (d[:,b]));
+        axes.flatten()[b].plot (d[:,b]);
+        axes.flatten()[b].set_ylim (-lim,+lim);
+    files.write (fig,output+'_gd.png');
     
     # SNR, GD and FLAGs
     fig,ax = plt.subplots (3,1);

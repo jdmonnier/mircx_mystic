@@ -190,7 +190,7 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
 
         ax.set_xlim (-0.1,1.1);
         ax.set_ylim (-0.1*scaley/scalex,1.1*scaley/scalex);
-        plot.close_style (ax, scale=scalex);
+        plot.scale (ax, scalex);
         
         ax.plot ([0], [0], '+r', alpha=0.75, ms=4);
         ax.plot ([0,2.0], [0,2.*vis2[int(ny/2),b]],
@@ -301,7 +301,7 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
         
         ax.set_xlim (-1.05, +1.05);
         ax.set_ylim (-1.05, +1.05);
-        plot.close_style (ax, scale=scale);
+        plot.scale (ax, scale);
         
         ax.plot ([0], [0], '+r', alpha=0.75, ms=4);
         ax.plot ([0,2.*np.cos(t3phi[int(ny/2),t])], \

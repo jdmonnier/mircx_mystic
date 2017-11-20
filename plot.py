@@ -7,16 +7,14 @@ mpl.rcParams['legend.framealpha'] = 0.5;
 
 from . import setup;
 
-def close_style (ax, scale=None):
+def scale (ax, scale):
     '''
-    Set the style for the plots
+    Write a scale
     '''
-    # Write the scale
-    if scale is not None:
-        scale = '%.1e'%(scale);
-        ax.text (0.02, 0.92, scale, transform=ax.transAxes,
-                horizontalalignment='left',
-                verticalalignment='top',fontsize=5);
+    scale = '%.1e'%(scale);
+    ax.text (0.02, 0.92, scale, transform=ax.transAxes,
+             horizontalalignment='left',
+             verticalalignment='top',fontsize=5);
 
 def compact (axes):
     '''
@@ -38,7 +36,9 @@ def base_name (axes):
     
     for i in range (n):
         ax = axes.flatten()[i];
-        ax.text (0.98, 0.92, names[i],
+        ax.text (0.99, 0.95, names[i],
                 transform = ax.transAxes,
                 horizontalalignment = 'right',
-                verticalalignment = 'top',fontsize=7);
+                verticalalignment = 'top',fontsize=7,
+                bbox={'facecolor':'white', 'alpha':0.9,
+                      'pad':1, 'edgecolor':'none'});

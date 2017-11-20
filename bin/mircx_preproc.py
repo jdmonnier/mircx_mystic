@@ -317,7 +317,7 @@ if argopt.vis != 'FALSE':
                     continue;
 
                 log.setFile (output+'.log');
-                mrx.compute_vis (gp, output=output, ncoher=nc, threshold=3.0);
+                mrx.compute_vis (gp, output=output, ncoher=nc, threshold=2.5);
 
         except Exception as exc:
             log.error ('Cannot compute VIS: '+str(exc));

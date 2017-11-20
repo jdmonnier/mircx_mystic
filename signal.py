@@ -48,6 +48,9 @@ def bootstrap (snr, gd):
     '''
     log.info ('Bootstrap baselines');
 
+    # User a power to implement a type of min/max of SNR
+    power = 4.0;
+
     # Reshape
     shape = snr.shape;
     snr = snr.reshape ((-1,shape[-1]));
@@ -56,7 +59,8 @@ def bootstrap (snr, gd):
 
     # Ensure no zero and no nan
     snr[~np.isfinite (snr)] = 0.0;
-    snr = np.maximum (snr,1e-5);
+    snr = np.maximum (snr,1e-1);
+    snr = np.minimum (snr,1e3);
 
     log.info ('Compute OPD_TO_OPD');
     
@@ -65,10 +69,10 @@ def bootstrap (snr, gd):
     
     # OPD_TO_OPL = (OPL_TO_OPD^T.snr.OPL_TO_OPD)^-1 . OPL_TO_OPD^T.W_OPD
     # o is output OPL
-    JtW = np.einsum ('tb,sb->stb',OPL_TO_OPD.T,snr);
+    JtW = np.einsum ('tb,sb->stb',OPL_TO_OPD.T,snr**power);
     JtWJ = np.einsum ('stb,bo->sto',JtW,OPL_TO_OPD);
 
-    JtWJ_inv = np.array([ np.linalg.pinv (JtWJ[s]) for s in range(ns)]); # 'sot'
+    JtWJ_inv = np.array([ np.linalg.pinv (JtWJ[s]) for s in range(ns)]);# 'sot'
     OPD_TO_OPL = np.einsum ('sot,stb->sob', JtWJ_inv, JtW);
 
     # OPD_TO_OPD = OPL_TO_OPD.OPD_TO_OPL  (m is output OPD)
@@ -80,11 +84,11 @@ def bootstrap (snr, gd):
     gd_b = np.einsum ('smb,sb->sm',OPD_TO_OPD,gd);
 
     # Cm = OPD_TO_OPD . C_OPD . OPD_TO_OPD^T
-    OPD_TO_OPD_W = np.einsum ('smb,sb->smb',OPD_TO_OPD,1./snr);
+    OPD_TO_OPD_W = np.einsum ('smb,sb->smb',OPD_TO_OPD,snr**-power);
     cov_b = np.einsum ('smb,snb->smn',OPD_TO_OPD_W, OPD_TO_OPD);
 
     # Reform SNR from covariance
-    snr_b = 1. / np.diagonal (cov_b, axis1=1, axis2=2);
+    snr_b = np.diagonal (cov_b, axis1=1, axis2=2)**-(1./power);
     snr_b[snr_b < 1e-2] = 0.0;
     
     # Reshape
