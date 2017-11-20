@@ -311,7 +311,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
 
     # Plot fringe ramp
     log.info ('Plot fringe ramp');
-    fig,axes = plt.subplots ();
+    fig,ax = plt.subplots ();
     fig.suptitle (headers.summary (hdr));
     ax.plot (np.mean (fringe, axis=(0,3)));
     ax.set_ylabel ('Mean fringe flux (adu)');
