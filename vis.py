@@ -231,6 +231,11 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     log.info ('fringe.shape = %s'%str(fringe.shape));
     log.info ('mean(fringe) = %f adu/pix/frame'%np.mean(fringe,axis=(0,1,2,3)));
 
+    # Saturation checks
+    fsat  = 1.0 * np.sum (np.mean (np.sum (fringe,axis=1),axis=0)>40000) / (ny*nx);
+    log.info (HMQ+'FRAC_SAT = %.3f'%rep_nan (fsat));
+    hdr[HMQ+'FRAC_SAT'] = (rep_nan (fsat), 'fraction of saturated pixel');
+
     # Get fringe and photo maps
     fringe_map, photo_map = extract_maps (hdr, bmaps);
 
@@ -291,6 +296,27 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     log.info ('Register photo');
     for b in range(6):
         photo[b,:,:,:] = subpix_shift (photo[b,:,:,:], [0,0,-shifty[b]]);
+
+    # Plot photometry versus time
+    log.info ('Plot photometry');
+    fig,axes = plt.subplots (3,2,sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.compact (axes);
+    for b in range (6):
+        data = np.mean (photo[b,:,:,:], axis=(1,2));
+        ax = axes.flatten()[b];
+        ax.plot (data);
+        ax.set_ylim (np.minimum (np.min (data), 0.0));
+    files.write (fig,output+'_photo.png');
+
+    # Plot fringe ramp
+    log.info ('Plot fringe ramp');
+    fig,axes = plt.subplots ();
+    fig.suptitle (headers.summary (hdr));
+    ax.plot (np.mean (fringe, axis=(0,3)));
+    ax.set_ylabel ('Mean fringe flux (adu)');
+    ax.set_xlabel ('Frame in ramp');
+    files.write (fig,output+'_fringeramp.png');
 
     # Build kappa from the bmaps.
     # kappa(nb,nr,nf,ny)
@@ -387,9 +413,9 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     fig.suptitle (headers.summary (hdr));
     ax.hist2d (photodc_mean.flatten(), fringedc_mean.flatten(),
                bins=40, norm=mcolors.LogNorm());
-    ax.plot (photodc_mean.flatten(),photodc_mean.flatten(),'-',label='y=x');
-    ax.plot (photodc_mean.flatten(),photodc_mean.flatten() * dc_ratio,'--');
-    ax.set_xlabel('fringe dc'); ax.set_ylabel('sum of photo');
+    ax.plot (photodc_mean.flatten(),photodc_mean.flatten(),'-',label='y = x');
+    ax.plot (photodc_mean.flatten(),photodc_mean.flatten() * dc_ratio,label='y = a.x');
+    ax.set_xlabel('fringe dc'); ax.set_ylabel('sum of photo * kappa');
     ax.legend (loc=2);
     files.write (fig,output+'_dccorr.png');
 
