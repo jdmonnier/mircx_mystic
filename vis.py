@@ -374,12 +374,27 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     log.info ('Compute QC about dc');
     photodc_mean  = np.mean (cont,axis=(2,3));
     fringedc_mean = np.mean (fringe,axis=(2,3));
-    hdr[HMQ+'DC MEAN'] = rep_nan (np.sum (fringedc_mean) / np.sum (photodc_mean));
+    dc_ratio = np.sum (fringedc_mean) / np.sum (photodc_mean);
+    hdr[HMQ+'DC MEAN'] = (rep_nan (dc_ratio), 'fringe/photo');
 
-    poly_dc = np.polyfit (photodc_mean.flatten(), fringedc_mean.flatten(), 2);
+    poly_dc = np.polyfit (photodc_mean.flatten(), fringedc_mean.flatten(), 1);
     hdr[HMQ+'DC ORDER0'] = (poly_dc[0],'[adu] fit DC(photo)');
     hdr[HMQ+'DC ORDER1'] = (poly_dc[1],'[adu/adu] fit DC(photo)');
-    hdr[HMQ+'DC ORDER2'] = (poly_dc[2],'[adu/adu2] fit DC(photo)');
+
+    # Check dc
+    fig,ax = plt.subplots ();
+    fig.suptitle (headers.summary (hdr));
+    ax.hist2d (photodc_mean.flatten(), fringedc_mean.flatten(),
+               bins=40, norm=mcolors.LogNorm());
+    plt.plot (photodc_mean.flatten(),np.poly1d(poly_dc)(photodc_mean.flatten()),'--');
+    plt.plot (photodc_mean.flatten(),photodc_mean.flatten(),'-');
+    ax.set_xlabel('fringe dc'); ax.set_ylabel('sum of photo');
+    files.write (fig,output+'_dccorr.png');
+
+    # Scale the photometry to the continuum
+    log.info ('Scale the DC and photometries by 1/%.4f'%dc_ratio);
+    cont /= dc_ratio;
+    photok0 /= dc_ratio;
         
     # Subtract continuum
     log.info ('Subtract dc');
@@ -395,7 +410,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     # into integer pixels (max freq in 40)
     freqs = setup.base_freq (hdr);
     scale0 = 40. / np.abs (freqs * nx).max();
-    ifreqs = np.round(freqs * scale0 * nx).astype(int);
+    ifreqs = np.round (freqs * scale0 * nx).astype(int);
 
     # Compute DFT. The amplitude of the complex number corresponds
     # to the sum of the amplitude sum(A) of the oscillation A.cos(x)
@@ -433,16 +448,6 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
 
     # Figures
     log.info ('Figures');
-    
-    # Check dc
-    fig,ax = plt.subplots ();
-    fig.suptitle (headers.summary (hdr));
-    ax.hist2d (photodc_mean.flatten(), fringedc_mean.flatten(),
-               bins=40, norm=mcolors.LogNorm());
-    plt.plot (photodc_mean.flatten(),np.poly1d(poly_dc)(photodc_mean.flatten()),'--');
-    plt.plot (photodc_mean.flatten(),photodc_mean.flatten(),'-');
-    ax.set_xlabel('fringe dc'); ax.set_ylabel('sum of photo');
-    files.write (fig,output+'_dccorr.png');
 
     # Integrated spectra
     fig,ax = plt.subplots (2,1);
