@@ -415,7 +415,8 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
                bins=40, norm=mcolors.LogNorm());
     ax.plot (photodc_mean.flatten(),photodc_mean.flatten(),'-',label='y = x');
     ax.plot (photodc_mean.flatten(),photodc_mean.flatten() * dc_ratio,label='y = a.x');
-    ax.set_xlabel('fringe dc'); ax.set_ylabel('sum of photo * kappa');
+    ax.set_ylabel('fringe dc');
+    ax.set_xlabel('sum of photo * kappa');
     ax.legend (loc=2);
     files.write (fig,output+'_dccorr.png');
 
