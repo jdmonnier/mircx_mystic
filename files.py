@@ -142,7 +142,8 @@ def load_raw (hdrs, coaddRamp=False, removeBias=True, differentiate=True):
         hdr['HIERARCH MIRC PRO RAW%i'%(nraw+1,)] = h['ORIGNAME'];
         hdr['HIERARCH MIRC QC NFILE'] += 1;
 
-    # Convert to array
+    # Convert to array -- FIXME: deal with case
+    # with different nramp in each file
     log.info ('Convert to cube');
     cube = np.array(cube);
 
