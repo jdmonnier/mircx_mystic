@@ -114,6 +114,9 @@ def load_raw (hdrs, coaddRamp=False, removeBias=True, differentiate=True):
 
         # TODO: deal with non-linearity, saturation
         # static flat-field and bad-pixels.
+        # frameSat = np.sum (data[:,:,5:-5,5:-5] > 60000, axis=(2,3));
+        # plt.plot (frameSat.flatten());
+        # plt.show ();
 
         # Take difference of consecutive frames
         if differentiate is True:
@@ -121,7 +124,7 @@ def load_raw (hdrs, coaddRamp=False, removeBias=True, differentiate=True):
         
         # Remove bias. Note that the median should be taken
         # with an odd number of samples, to be unbiased.
-        # WARNING: because of median, the our best estimate of the bias
+        # WARNING: because of median, our best estimate of the bias
         # is to +/-1nph (convolved by the effect of gaussian_filter)
         if removeBias is True:
             ids = np.append (np.arange(15), data.shape[-1] - np.arange(1,15));
@@ -142,14 +145,19 @@ def load_raw (hdrs, coaddRamp=False, removeBias=True, differentiate=True):
         hdr['HIERARCH MIRC PRO RAW%i'%(nraw+1,)] = h['ORIGNAME'];
         hdr['HIERARCH MIRC QC NFILE'] += 1;
 
-    # Convert to array
-    log.info ('Convert to cube');
-    cube = np.array(cube);
+    # Allocate memory
+    log.info ('Allocate memory');
+    shape = cube[0].shape;
+    nramp = sum ([c.shape[0] for c in cube]);
+    cubenp = np.zeros ((nramp,shape[1],shape[2],shape[3]));
 
-    # Concatenate all files into a single sequence
-    log.info ('Reshape cube');
-    (a,b,c,d,e) = cube.shape;
-    cube.shape = (a*b,c,d,e);
+    # Set data in cube, and free initial memory in its way
+    log.info ('Set data in cube');
+    ramp = 0;
+    for c in range (len(cube)):
+        cubenp[ramp:ramp+cube[c].shape[0],:,:,:] = cube[c];
+        ramp += cube[c].shape[0];
+        cube[c] = None;
 
     plt.close('all');
-    return hdr,cube;
+    return hdr,cubenp;
