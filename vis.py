@@ -666,7 +666,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     # Bootstrap over baseline. Maybe the GD should be
     # boostraped and averaged as a phasor
     base_snr0 = base_snr.copy ();
-    base_snr, base_gd = signal.bootstrap (base_snr, base_gd);
+    base_gd0 = base_gd.copy ();
+    base_snr, base_gd = signal.bootstrap_triangles (base_snr, base_gd);
 
     # Define threshold for SNR
     log.info ('SNR selection > %.2f'%threshold);
@@ -718,11 +719,11 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     fig.suptitle (headers.summary (hdr));
     plot.base_name (axes);
     plot.compact (axes);
-    d1 = np.log10 (np.mean (base_snr0,axis=(1,2)));
-    d2 = np.log10 (np.mean (base_snr,axis=(1,2)));
+    d0 = np.log10 (np.mean (base_snr0,axis=(1,2)));
+    d1 = np.log10 (np.mean (base_snr,axis=(1,2)));
     for b in range (15): axes.flatten()[b].axhline (np.log10(threshold),color='r', alpha=0.2);
-    for b in range (15): axes.flatten()[b].plot (d2[:,b]);
-    for b in range (15): axes.flatten()[b].plot (d1[:,b],'--', alpha=0.5);
+    for b in range (15): axes.flatten()[b].plot (d1[:,b]);
+    for b in range (15): axes.flatten()[b].plot (d0[:,b],'--', alpha=0.5);
     files.write (fig,output+'_snr.png');
 
     # GD
@@ -730,10 +731,12 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     fig.suptitle (headers.summary (hdr));
     plot.base_name (axes);
     plot.compact (axes);
-    d = np.mean (base_gd,axis=(1,2)) * 1e6;
+    d0 = np.mean (base_gd0,axis=(1,2)) * 1e6;
+    d1 = np.mean (base_gd,axis=(1,2)) * 1e6;
     for b in range (15):
-        lim = 1.05 * np.max (np.abs (d[:,b]));
-        axes.flatten()[b].plot (d[:,b]);
+        lim = 1.05 * np.max (np.abs (d0[:,b]));
+        axes.flatten()[b].plot (d1[:,b]);
+        axes.flatten()[b].plot (d0[:,b],'--', alpha=0.5);
         axes.flatten()[b].set_ylim (-lim,+lim);
     files.write (fig,output+'_gd.png');
     

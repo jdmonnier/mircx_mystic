@@ -35,18 +35,15 @@ def getwidth (curve, threshold=None):
     
     return 0.5*(last+first), 0.5*(last-first)
 
-def bootstrap (snr, gd):
+def bootstrap_matrix (snr, gd):
     '''
     Compute the best SNR and GD of each baseline when considering 
     also the boostraping capability of the array.
     snr and gd shall be of shape (...,nb)
 
-    TODO: think if we should weight by SNR, SNR**4... with the goal
-    to mosly propagate the 
-
     Return (snr_b, gd_b) of same size, but including bootstrap.
     '''
-    log.info ('Bootstrap baselines');
+    log.info ('Bootstrap baselines with linear matrix');
 
     # User a power to implement a type of min/max of SNR
     power = 4.0;
@@ -97,6 +94,55 @@ def bootstrap (snr, gd):
     snr_b = snr_b.reshape (shape);
     gd_b  = gd_b.reshape (shape);
 
+    return (snr_b,gd_b);
+
+def bootstrap_triangles (snr,gd):
+    '''
+    Compute the best SNR and GD of each baseline when considering 
+    also the boostraping capability of the array.
+    snr and gd shall be of shape (...,nb)
+
+    Return (snr_b, gd_b) of same size, but including bootstrap.
+    '''
+
+    log.info ('Bootstrap baselines with triangles');
+
+    # Reshape
+    shape = snr.shape;
+    snr = snr.reshape ((-1,shape[-1]));
+    gd  = gd.reshape ((-1,shape[-1]));
+    ns,nb = gd.shape;
+
+    # Ensure no zero and no nan
+    snr[~np.isfinite (snr)] = 0.0;
+    snr = np.maximum (snr,1e-1);
+    snr = np.minimum (snr,1e3);
+    
+    # Create output
+    gd_b  = gd.copy ();
+    snr_b = snr.copy ();
+
+    # Sign of baseline in triangles
+    sign = np.array ([1.0,1.0,-1.0]);
+
+    # Loop several time over triplet to also
+    # get the baseline tracked by quadruplets.
+    for i in range (7):
+        for tri in setup.triplet_base ():
+            for s in range (ns):
+                i0,i1,i2 = np.argsort (snr_b[s,tri]);
+                # Set SNR as the worst of the two best
+                snr_b[s,tri[i0]] = snr_b[s,tri[i1]];
+                # Set the GD as the sum of the two best
+                mgd = gd_b[s,tri[i1]] * sign[i1] + gd_b[s,tri[i2]] * sign[i2];
+                gd_b[s,tri[i0]] = - mgd * sign[i0];
+                
+    # Reshape
+    snr = snr.reshape (shape);
+    gd  = gd.reshape (shape);
+    snr_b = snr_b.reshape (shape);
+    gd_b  = gd_b.reshape (shape);
+    
     return (snr_b,gd_b);
 
 def psd_projection (scale, freq, freq0, delta0, data):
