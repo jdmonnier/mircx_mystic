@@ -14,6 +14,7 @@ from scipy.signal import medfilt;
 from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter, uniform_filter;
 from scipy.optimize import least_squares;
+from scipy.ndimage.morphology import binary_closing, binary_opening;
 
 from . import log, files, headers, setup, oifits, signal, plot;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
@@ -670,16 +671,27 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     base_gd0 = base_gd.copy ();
     base_snr, base_gd = signal.bootstrap_triangles (base_snr, base_gd);
 
-    # Define threshold for SNR
+    # Compute selection flag from averaged SNR over the ramp
     log.info ('SNR selection > %.2f'%threshold);
     hdr[HMQ+'SNR_THRESHOLD'] = (threshold, 'to accept fringe');
-    
-    # Compute selection flag from averaged SNR over the ramp
     base_flag = 1.0 * (base_snr > threshold);
-    base_flag[base_flag == 0.0] = np.nan;
 
     # Morphological operation
-    log.info ('TODO: implement closing/opening');
+    log.info ('Closing/opening of selection');
+    structure = np.ones ((2,1,1,1));
+
+    base_flag0 = base_flag.copy ();
+    base_flag = binary_closing (base_flag, structure=structure);
+    base_flag = binary_opening (base_flag, structure=structure);
+
+    # Plot this fringe selection
+    fig,axes = plt.subplots (2,1);
+    axes[0].imshow (base_flag0[:,0,0,:].T);
+    axes[1].imshow (base_flag[:,0,0,:].T);
+    files.write (fig,output+'_morpho.png');
+
+    # Replace 0 by nan to perform nanmean and nanstd
+    base_flag[base_flag == 0.0] = np.nan;
 
     # Compute the time stamp of each ramp
     time = np.ones (base_dft.shape[0]) * hdr['MJD-OBS'];
