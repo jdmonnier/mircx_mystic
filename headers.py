@@ -111,9 +111,16 @@ def load (files, hlog=[]):
             # Add file name
             hdr['ORIGNAME'] = f;
 
-            # Add MJD-OBS
-            t = Time(hdr['DATE-OBS'] + 'T'+ hdr['UTC-OBS'], format='isot', scale='utc');
-            hdr['MJD-OBS'] = (t.mjd, '[mjd] Observing time (UTC)');
+            # Compute MJD-OBS
+            mjd = Time(hdr['DATE-OBS'] + 'T'+ hdr['UTC-OBS'], format='isot', scale='utc').mjd;
+
+            # Check MJD-OBS
+            if mjd%1 == 0:
+                log.warning ('UTC-OBS is zero, use unix time instead');
+                mjd = hdr['TIME_S'],format='unix').mjd;
+
+            # Set in header
+            hdr['MJD-OBS'] = (mjd, '[mjd] Observing time (UTC)');
 
             # Add the loading time
             hdr['MJD-LOAD'] =  (Time.now().mjd, '[mjd] Last loading time (UTC)');
