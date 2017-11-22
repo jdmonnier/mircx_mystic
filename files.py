@@ -124,6 +124,9 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
         else:
             data = hdulist[0].data;
 
+        # Convert to float
+        data = data.astype ('float32');
+
         # Close file
         hdulist.close();
 
@@ -149,7 +152,7 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
 
         # Take difference of consecutive frames
         if differentiate is True:
-            data = np.diff (data.astype('float'),axis=1)[:,0:-1,:,:];
+            data = np.diff (data,axis=1)[:,0:-1,:,:];
         
         # Remove bias. Note that the median should be taken
         # with an odd number of samples, to be unbiased.
@@ -187,7 +190,7 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
     log.info ('Allocate memory');
     shape = cube[0].shape;
     nramp = sum ([c.shape[0] for c in cube]);
-    cubenp = np.zeros ((nramp,shape[1],shape[2],shape[3]));
+    cubenp = np.zeros ((nramp,shape[1],shape[2],shape[3]),dtype='float32');
 
     # Set data in cube, and free initial memory in its way
     log.info ('Set data in cube');
