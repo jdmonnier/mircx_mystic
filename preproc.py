@@ -280,26 +280,26 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     headers.check_input (hdrs, required=1);
     headers.check_input (bkg, required=1, maximum=1);
     
-    # Load files
-    hdr,cube = files.load_raw (hdrs, coaddRamp=True);
-    log.info ('Data size: '+str(cube.shape));
-    
-    # Get dimensions
-    nr,nf,ny,nx = cube.shape;
-
-    # Number of spectral channels to extract on plots
-    ns = int(setup.nspec (hdr)/2 + 0.5) + 1;
-    x  = np.arange (nx);
-
-    # Remove background
+    # Load background
     log.info ('Load background %s'%bkg[0]['ORIGNAME']);
-    cube -= pyfits.getdata (bkg[0]['ORIGNAME'],0);
+    bkg_cube = pyfits.getdata (bkg[0]['ORIGNAME'],0);
+    
+    # Load files
+    hdr,cube = files.load_raw (hdrs, coaddRamp=True, background=bkg_cube);
+    log.info ('Data size: '+str(cube.shape));
 
     # Remove bad pixels
     cube = remove_badpixels (hdr, cube, bkg, output=output);
     
     # Check background subtraction in empty region
     check_empty_window (cube, hdr);
+
+    # Get dimensions
+    nr,nf,ny,nx = cube.shape;
+
+    # Number of spectral channels to extract on plots
+    ns = int(setup.nspec (hdr)/2 + 0.5) + 1;
+    x  = np.arange (nx);
 
     # Compute the sum
     log.info ('Compute mean over ramps and frames');
@@ -426,7 +426,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';
 
     # Set files
-    hdu0.header[HMP+'BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
+    hdu0.header[HMP+'BACKGROUND_MEAN'] = os.path.basename (bkg[0]['ORIGNAME']);
 
     # Second HDU
     hdu1 = pyfits.ImageHDU (fmap[None,None,:,:]);
@@ -461,13 +461,13 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     headers.check_input (bkg,   required=1, maximum=1);
     headers.check_input (bmaps, required=1, maximum=6);
 
-    # Load files
-    hdr,cube = files.load_raw (hdrs);
-    log.info ('Data size: '+str(cube.shape));
-
-    # Remove background
+    # Load background
     log.info ('Load background %s'%bkg[0]['ORIGNAME']);
-    cube -= pyfits.getdata (bkg[0]['ORIGNAME'],0);
+    bkg_cube = pyfits.getdata (bkg[0]['ORIGNAME'],0);
+    
+    # Load files
+    hdr,cube = files.load_raw (hdrs, background=bkg_cube);
+    log.info ('Data size: '+str(cube.shape));
 
     # Remove bad pixels
     cube = remove_badpixels (hdr, cube, bkg, output=output);
@@ -561,7 +561,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';
     
     # Set files
-    hdu0.header[HMP+'BACKGROUND_MEAN'] = bkg[0]['ORIGNAME'];
+    hdu0.header[HMP+'BACKGROUND_MEAN'] = os.path.basename (bkg[0]['ORIGNAME']);
 
     # Second HDU with photometries
     hdu1 = pyfits.ImageHDU (photos.astype('float32'));

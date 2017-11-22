@@ -520,11 +520,11 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     hdu0 = pyfits.PrimaryHDU ([]);
     hdu0.header = hdr;
     hdu0.header['FILETYPE'] = 'RTS';
-    hdu0.header[HMP+'PREPROC'] = hdrs[0]['ORIGNAME'];
+    hdu0.header[HMP+'PREPROC'] = os.path.basename (hdrs[0]['ORIGNAME']);
 
     # Set the input calibration file
     for bmap in bmaps:
-        hdu0.header[HMP+bmap['FILETYPE']] = bmap['ORIGNAME'];
+        hdu0.header[HMP+bmap['FILETYPE']] = os.path.basename (bmap['ORIGNAME']);
 
     # Set DFT of fringes, bias, photometry and lbd
     hdu1 = pyfits.ImageHDU (base_dft.real.astype('float32'));
@@ -771,7 +771,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
 
     # First HDU
     hdulist[0].header['FILETYPE'] = 'VIS';
-    hdulist[0].header[HMP+'RTS'] = hdrs[0]['ORIGNAME'];
+    hdulist[0].header[HMP+'RTS'] = os.path.basename (hdrs[0]['ORIGNAME']);
     
     # Write file
     files.write (hdulist, output+'.fits');

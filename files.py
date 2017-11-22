@@ -71,11 +71,25 @@ def write (hdulist,filename):
     hdulist.writeto (filename);
     os.chmod (filename,0o666);
 
-def load_raw (hdrs, coaddRamp=False, removeBias=True, differentiate=True):
+def load_raw (hdrs, checkSaturation=True, differentiate=True,
+              removeBias=True, background=None, coaddRamp=False);
+              
     '''
     Load data and append into gigantic cube. The output cube is
     of shape: [nfile*nramp, nframes, ny, ny].
-    
+
+    If checkSaturation==True, the frame with >10 saturated pixels in
+    the middle of the fringe window (read from header) are set to zero.
+
+    If differentiate==True, the consecutive frames of a ramp are
+    subtracted together.
+
+    If removeBias==True, the detector bias interference is removed
+    by using the median of the edges columns.
+
+    If background is not None, thus background cube is subtracted
+    from the data.
+
     If coaddRamp==True, the ramps inside each file are averaged together.
     Thus the resulting cube is of shape [nfile, nframes, ny, ny]    
     '''
@@ -83,8 +97,9 @@ def load_raw (hdrs, coaddRamp=False, removeBias=True, differentiate=True):
 
     # Build header
     hdr = hdrs[0].copy();
-    hdr['HIERARCH MIRC QC NRAMP'] = (0,'Total number of ramp loaded');
-    hdr['HIERARCH MIRC QC NFILE'] = (0,'Total number of files loaded');
+    hdr[HMQ+'NFILE'] = (0,'total number of files loaded');
+    hdr[HMQ+'NRAMP'] = (0,'total number of ramp loaded');
+    hdr[HMQ+'NSAT']  = (0,'total number of saturated ramps');
     hdr['BZERO'] = 0;
     
     cube = [];
@@ -112,11 +127,25 @@ def load_raw (hdrs, coaddRamp=False, removeBias=True, differentiate=True):
         # Close file
         hdulist.close();
 
+        # Guessed fringe window
+        nr,nf,ny,nx = data.shape;
+        ys = ny - hdr['FR_ROW2'];
+        ye = ny - hdr['FR_ROW1'];
+        xc = int(nx - (hdr['FR_COL2'] + hdr['FR_COL1'])/2);
+        xs = xc - 10;
+        xe = xc + 10;
+
+        # Frame is declared saturated if more than 10 pixels in
+        # the center of the fringes are near saturation. flag is 0
+        # if no saturation, or the id of the first saturated frame
+        if checkSaturation is True:
+            flag = np.sum (data[:,:,ys:ye,xs:xs]>60000, axis=(2,3));
+            flag = np.argmax (flag > 10, axis=1);
+            nsat = np.sum (flag>0);
+            hdr[HMQ+'NSAT'] += nsat;
+
         # TODO: deal with non-linearity, saturation
         # static flat-field and bad-pixels.
-        # frameSat = np.sum (data[:,:,5:-5,5:-5] > 60000, axis=(2,3));
-        # plt.plot (frameSat.flatten());
-        # plt.show ();
 
         # Take difference of consecutive frames
         if differentiate is True:
@@ -132,18 +161,27 @@ def load_raw (hdrs, coaddRamp=False, removeBias=True, differentiate=True):
             bias = gaussian_filter (bias,[0,0,1]);
             data = data - bias[:,:,:,None];
 
-        # Append ramps or co-add them
-        hdr['HIERARCH MIRC QC NRAMP'] += data.shape[0];
-        if coaddRamp is True:
-            cube.append (np.mean (data,axis=0,keepdims=True));
-        else:
-            cube.append (data);
+        if background is not None:
+            data -= background;
 
-        # Add this RAW file in hdr (not that the * matching
-        # requires to avoid the HIERARCH)
+        # Set the saturation fringes to zero
+        if checkSaturation is True:
+            for r in range(data.shape[0]):
+                if flag[r] != 0:
+                    data[r,flag[r]-3:,:,:] = 0.0;
+
+        # Add this RAW file in hdr
         nraw = len (hdr['*MIRC PRO RAW*']);
-        hdr['HIERARCH MIRC PRO RAW%i'%(nraw+1,)] = h['ORIGNAME'];
+        hdr['HIERARCH MIRC PRO RAW%i'%(nraw+1,)] = os.path.basename (h['ORIGNAME']);
         hdr['HIERARCH MIRC QC NFILE'] += 1;
+        hdr['HIERARCH MIRC QC NRAMP'] += data.shape[0];
+
+        # Co-add ramp if required
+        if coaddRamp is True:
+            data = np.mean (data,axis=0,keepdims=True);
+        
+        # Append the data in the final cube
+        cube.append (data);
 
     # Allocate memory
     log.info ('Allocate memory');
@@ -158,6 +196,11 @@ def load_raw (hdrs, coaddRamp=False, removeBias=True, differentiate=True):
         cubenp[ramp:ramp+cube[c].shape[0],:,:,:] = cube[c];
         ramp += cube[c].shape[0];
         cube[c] = None;
+
+    # Some verbose
+    log.info ('Number of files loaded = %i'%hdr[HMQ+'NFILE']);
+    log.info ('Number of ramp loaded = %i'%hdr[HMQ+'NRAMP']);
+    log.info ('Number of saturated ramps = %i'%hdr[HMQ+'NSAT']);
 
     plt.close('all');
     return hdr,cubenp;
