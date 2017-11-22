@@ -1,8 +1,5 @@
 from timeit import default_timer as timer
-import time
-import sys
-import os
-import logging
+import time, sys, os, logging, psutil;
 
 # Load colors
 try:
@@ -26,7 +23,8 @@ logger = logging.getLogger ('mircx_pipeline');
 # Setup the configuration to log in the consol
 logging.basicConfig (
      level=logging.INFO,
-     format="[%(color)s%(levelname)-7.7s"+RESET+"] %(asctime)s.%(msecs)03d: %(message)s",
+     # format="[%(color)s%(levelname)-7.7s"+RESET+"] %(asctime)s.%(msecs)03d: %(message)s",
+     format="[%(color)s%(levelname)-7.7s"+RESET+"] %(asctime)s.%(msecs)03d [%(memory)s]: %(message)s",
      datefmt='%Y-%m-%dT%H:%M:%S');
 
 # Set a logfile
@@ -54,28 +52,41 @@ def closeFile ():
     for h in logger.handlers:
         logger.removeHandler (h);
 
+# Get memory usage in usefull string
+def memory ():
+    value = psutil.Process(os.getpid()).memory_info().rss;
+    if value >= 1e8: return '%5.2fG'%(value/1e9);
+    if value >= 1e5: return '%5.2fM'%(value/1e6);
+    return '%5.2fk'%(value/1e3);
+
 # Logging function
 def info(msg):
-    logger.info (msg, extra={'color':BLUE});
+    mem = memory ();
+    logger.info (msg, extra={'color':BLUE,'memory':mem});
 
 def warning(msg):
-    logger.warning (msg, extra={'color':MAGENTA});
+    mem = memory ();
+    logger.warning (msg, extra={'color':MAGENTA,'memory':mem});
 
 def error(msg):
-    logger.error (msg, extra={'color':RED});
+    mem = memory ();
+    logger.error (msg, extra={'color':RED,'memory':mem});
 
 def debug(msg):
-    logger.debug (debug, extra={'color':RESET});
+    mem = memory ();
+    logger.debug (debug, extra={'color':RESET,'memory':mem});
     
-# Trace function (measure time until killed)
+# Trace class (measure time until killed)
 class trace:
     def __init__(self, funcname):
-        logger.info('Start '+funcname,extra={'color':GREEN});
+        mem = memory ();
+        logger.info('Start '+funcname,extra={'color':GREEN,'memory':mem});
         self.funcname = funcname;
         self.stime = timer();
 
     def __del__(self):
         if self.stime is not None and self.funcname is not None:
+            mem = memory ();
             msg = 'End '+self.funcname+' in %.2fs'%(timer()-self.stime);
-            logger.info (msg,extra={'color':GREEN});
+            logger.info (msg,extra={'color':GREEN,'memory':mem});
         
