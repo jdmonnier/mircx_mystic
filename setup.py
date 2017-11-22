@@ -42,16 +42,18 @@ def lbd0 (hdr):
     Return lbd0,deltaLbd depending
     on instrument setup
     '''
-    lbd0,dlbd = (1.65e-6,21.e-9);
+    lbd0,dlbd = (1.60736e-06,21.e-9);
     return lbd0,dlbd;
     
 def beam_freq (hdr):
     '''
     Return the fiber position in the v-groove
-    in fringe/pixel at lbd0
+    in fringe/pixel at lbd0. The scale factor
+    is given by the geometry of the combiner:
+    scale = lbd0 / (20 * 250e-6 / 0.375) / 24e-6
     '''
     # Scaling in pix/fringe at highest spatial frequency
-    # and for central wavelength defined as lbd0
+    # and for wavelength defined as lbd0
     scale = 5.023;
     # Fiber position in v-groove
     tmp = np.array([9,3,1,21,14,18]) * 1.0 - 1.0;
