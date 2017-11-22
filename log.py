@@ -23,12 +23,14 @@ logger = logging.getLogger ('mircx_pipeline');
 # Setup the configuration to log in the consol
 logging.basicConfig (
      level=logging.INFO,
-     # format="[%(color)s%(levelname)-7.7s"+RESET+"] %(asctime)s.%(msecs)03d: %(message)s",
      format="[%(color)s%(levelname)-7.7s"+RESET+"] %(asctime)s.%(msecs)03d [%(memory)s]: %(message)s",
      datefmt='%Y-%m-%dT%H:%M:%S');
 
-# Set a logfile
 def setFile (filename):
+    '''
+    Set a log file. The file is ensured
+    to be writable by all group.
+    '''
     for h in logger.handlers:
         logger.removeHandler (h);
 
@@ -42,24 +44,29 @@ def setFile (filename):
     logfile = logging.FileHandler (filename, mode='a');
     logfile.setLevel (logging.INFO);
     formatter = logging.Formatter ("[%(levelname)-7.7s] "
-                                   "%(asctime)s.%(msecs)03d: %(message)s",
+                                   "%(asctime)s.%(msecs)03d [%(memory)s]: %(message)s",
                                     datefmt='%Y-%m-%dT%H:%M:%S');
     logfile.setFormatter (formatter);
     logger.addHandler (logfile);
 
-# Stop logging in files
 def closeFile ():
+    '''
+    Stop logging in files
+    '''
     for h in logger.handlers:
         logger.removeHandler (h);
 
-# Get memory usage in usefull string
 def memory ():
+    '''
+    Get memory usage of the process, in
+    human readble string
+    '''
     value = psutil.Process(os.getpid()).memory_info().rss;
     if value >= 1e8: return '%5.2fG'%(value/1e9);
     if value >= 1e5: return '%5.2fM'%(value/1e6);
     return '%5.2fk'%(value/1e3);
 
-# Logging function
+# Logging functions
 def info(msg):
     mem = memory ();
     logger.info (msg, extra={'color':BLUE,'memory':mem});

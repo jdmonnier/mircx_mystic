@@ -117,7 +117,7 @@ def load (files, hlog=[]):
             # Check MJD-OBS
             if mjd%1 == 0:
                 log.warning ('UTC-OBS is zero, use unix time instead');
-                mjd = hdr['TIME_S'],format='unix').mjd;
+                mjd = Time(hdr['TIME_S'],format='unix').mjd;
 
             # Set in header
             hdr['MJD-OBS'] = (mjd, '[mjd] Observing time (UTC)');
