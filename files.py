@@ -72,7 +72,7 @@ def write (hdulist,filename):
     os.chmod (filename,0o666);
 
 def load_raw (hdrs, checkSaturation=True, differentiate=True,
-              removeBias=True, background=None, coaddRamp=False);
+              removeBias=True, background=None, coaddRamp=False):
               
     '''
     Load data and append into gigantic cube. The output cube is
