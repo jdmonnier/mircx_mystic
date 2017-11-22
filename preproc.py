@@ -141,7 +141,7 @@ def compute_background (hdrs,output='output_bkg'):
     log.info ('Compute rms over ramp/frame of first file');
     bkg_noise = np.std (cube[:,3:-3,:,:], axis=(0,1));
     
-    # Select which one to plot
+    # Select the region for the QC parameters
     nf,ny,nx = bkg_mean.shape;
     dy,dx = 15,35;
     idf,idy,idx = int(nf/2), int(ny/2), int(nx/2);
@@ -149,20 +149,20 @@ def compute_background (hdrs,output='output_bkg'):
 
     # Add QC parameters
     (mean,med,std) = sigma_clipped_stats (bkg_mean[idf,idy-dy:idy+dy,idx-dx:idx+dx]);
-    log.info (HMQ+'BKG_MEAN MED = %f'%med);
-    log.info (HMQ+'BKG_MEAN STD = %f'%std);
+    log.info ('BKG_MEAN MED = %f'%med);
+    log.info ('BKG_MEAN STD = %f'%std);
     hdr.set (HMQ+'BKG_MEAN MED',med,'[adu] for frame nf/2');
     hdr.set (HMQ+'BKG_MEAN STD',std,'[adu] for frame nf/2');
 
     (emean,emed,estd) = sigma_clipped_stats (bkg_err[idf,idy-dy:idy+dy,idx-dx:idx+dx]);
-    log.info (HMQ+'BKG_ERR MED = %f'%emed);
-    log.info (HMQ+'BKG_ERR STD = %f'%estd);
+    log.info ('BKG_ERR MED = %f'%emed);
+    log.info ('BKG_ERR STD = %f'%estd);
     hdr.set (HMQ+'BKG_ERR MED',emed,'[adu] for frame nf/2');
     hdr.set (HMQ+'BKG_ERR STD',estd,'[adu] for frame nf/2');
     
     (nmean,nmed,nstd) = sigma_clipped_stats (bkg_noise[idy-dy:idy+dy,idx-dx:idx+dx]);
-    log.info (HMQ+'BKG_NOISE MED = %f'%nmed);
-    log.info (HMQ+'BKG_NOISE STD = %f'%nstd);
+    log.info ('BKG_NOISE MED = %f'%nmed);
+    log.info ('BKG_NOISE STD = %f'%nstd);
     hdr.set (HMQ+'BKG_NOISE MED',round(nmed,5),'[adu] for first file');
     hdr.set (HMQ+'BKG_NOISE STD',round(nstd,5),'[adu] for first file');
 
@@ -266,7 +266,7 @@ def compute_background (hdrs,output='output_bkg'):
     ax.set_ylabel ("Median of pixels (adu)");
     files.write (fig, output+'_ramp.png');
 
-    plt.close("all");
+    plt.close ("all");
     return hdulist;
 
 def compute_beammap (hdrs,bkg,output='output_beammap'):
