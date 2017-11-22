@@ -73,7 +73,6 @@ def write (hdulist,filename):
 
 def load_raw (hdrs, checkSaturation=True, differentiate=True,
               removeBias=True, background=None, coaddRamp=False):
-              
     '''
     Load data and append into gigantic cube. The output cube is
     of shape: [nfile*nramp, nframes, ny, ny].
@@ -147,7 +146,7 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
             nsat = np.sum (flag>0);
             hdr[HMQ+'NSAT'] += nsat;
 
-        # TODO: deal with non-linearity, saturation
+        # TODO: deal with non-linearity,
         # static flat-field and bad-pixels.
 
         # Take difference of consecutive frames
