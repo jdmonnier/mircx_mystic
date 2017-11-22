@@ -483,7 +483,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     # Define the closest integer
     fxc = int(round(fxc0));
     fyc = int(round(fyc0));
-    log.info ('FRINGE CENTERX/Y = %f,%f'%(fxc,fyc));
+    log.info ('FRINGE CENTERX/Y = %i,%i'%(fxc,fyc));
 
     # Expected size on spatial and spectral direction are hardcoded 
     fxw = int(setup.fringe_widthx (hdr) / 2);
@@ -507,7 +507,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     # Robust measure of total flux in fringe
     value = np.sum (medfilt (np.mean (fringe, axis=(0,1)), (1,11)));
     hdr[HMW+'FRINGE MEAN'] = (value,'[adu/frame] total flux');
-    log.info ('FRINGE MEAN = %f [adu/frame]'%value);
+    log.info ('FRINGE MEAN = %.2f [adu/frame]'%value);
 
     # Same for photometries
     nr,nf,ny,nx = fringe.shape;
@@ -520,7 +520,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
         # Get the position of the photo spectra
         pxc = int(round(bmap['MIRC QC WIN PHOTO CENTERX']));
         pyc = int(round(bmap['MIRC QC WIN PHOTO CENTERY']));
-        log.info ('PHOTO%i CENTERX/Y = %f,%f'%(beam,pxc,pyc));
+        log.info ('PHOTO%i CENTERX/Y = %i,%i'%(beam,pxc,pyc));
 
         # Set the required crop in header
         hdr[HMW+'PHOTO%i STARTX'%(beam)] = (pxc-pxw, '[pix] python-def');
@@ -530,7 +530,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
         # Robust measure of max flux in photometry
         value = np.sum (medfilt (np.mean (photos[beam,:,:,:,:], axis=(0,1)), (3,1)));
         hdr[HMW+'PHOTO%i MEAN'%(beam)] = (value,'[adu/frame], total flux');
-        log.info ('PHOTO%i MEAN = %f [adu/frame]'%(beam,value));
+        log.info ('PHOTO%i MEAN = %.2f [adu/frame]'%(beam,value));
 
     # Figures
     log.info ('Figures');

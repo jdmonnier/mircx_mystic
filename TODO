@@ -61,9 +61,7 @@ How to compute the error bars ?
 Better MJD, better INT_TIME, better UCOORD,VCOORD
 Compute errors on vis2 and t3phi with bootstraping
 
-
 * Speed-up
 
 - QC of dc is too long
 - Apply thresholding (force zeros) is too long
-
