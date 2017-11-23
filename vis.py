@@ -178,7 +178,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     ax.plot (yfit,lbd * 1e6,'o-');
     ax.set_ylabel ('lbd (um)');
     ax.set_xlabel ('Detector line (python-def)');
-    ax.set_ylim (1.45,1.85);
+    ax.set_ylim (1.45,1.8);
     files.write (fig,output+'_lbd.png');
 
     # PSD
