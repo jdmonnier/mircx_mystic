@@ -75,6 +75,13 @@ def warning(msg):
     mem = memory ();
     logger.warning (msg, extra={'color':MAGENTA,'memory':mem});
 
+def check(flag,msg):
+    mem = memory ();
+    if flag:
+        logger.warning (msg, extra={'color':MAGENTA,'memory':mem});
+    else:
+        logger.info (msg, extra={'color':BLUE,'memory':mem});
+
 def error(msg):
     mem = memory ();
     logger.error (msg, extra={'color':RED,'memory':mem});
