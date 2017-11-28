@@ -98,7 +98,7 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
     hdr = hdrs[0].copy();
     hdr[HMQ+'NFILE'] = (0,'total number of files loaded');
     hdr[HMQ+'NRAMP'] = (0,'total number of ramp loaded');
-    hdr[HMQ+'NSAT']  = (0,'total number of saturated ramps');
+    hdr[HMQ+'NSAT']  = (0,'total number of saturated frames');
     hdr['BZERO'] = 0;
     
     cube = [];
@@ -141,9 +141,9 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
         # the center of the fringes are near saturation. flag is 0
         # if no saturation, or the id of the first saturated frame
         if checkSaturation is True:
-            flag = np.sum (data[:,:,ys:ye,xs:xs]>60000, axis=(2,3));
+            flag = np.sum (data[:,:,ys:ye,xs:xe]>60000, axis=(2,3));
             flag = np.argmax (flag > 10, axis=1);
-            nsat = np.sum (flag>0);
+            nsat = np.sum ( (flag.flatten() > 0) * (nf - flag.flatten()));
             hdr[HMQ+'NSAT'] += nsat;
 
         # TODO: deal with non-linearity,
@@ -200,9 +200,16 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
         cube[c] = None;
 
     # Some verbose
+    nr,nf,ny,nx = cubenp.shape;
     log.info ('Number of files loaded = %i'%hdr[HMQ+'NFILE']);
     log.info ('Number of ramp loaded = %i'%hdr[HMQ+'NRAMP']);
-    log.info ('Number of saturated ramps = %i'%hdr[HMQ+'NSAT']);
+    log.info ('Number of frames loaded = %i'%(nr*nf));
+    log.info ('Number of saturated frames = %i'%hdr[HMQ+'NSAT']);
+
+    # Fraction of saturation
+    fsat = 1.0 * hdr[HMQ+'NSAT'] / (nr*nf);
+    log.check (fsat,'Fraction of saturated frames = %.3f'%fsat);
+    hdr[HMQ+'FSAT']  = (fsat,'fraction of saturated frames');
 
     plt.close('all');
     return hdr,cubenp;
