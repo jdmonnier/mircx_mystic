@@ -16,6 +16,7 @@ from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter, uniform_filter;
 from scipy.optimize import least_squares;
 from scipy.ndimage.morphology import binary_closing, binary_opening;
+from scipy.ndimage.morphology import binary_dilation;
 
 from . import log, files, headers, setup, oifits, signal, plot;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
@@ -383,6 +384,15 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     # Smooth photometry
     log.info ('Smooth photometry by sigma=2 frames');
     photok = gaussian_filter (photok,(0,0,2,0));
+
+    # Deal saturation in the smoothing
+    log.info ('Deal with saturation in the filtering');
+    issat = (np.sum (fringe,axis=(2,3)) == 0);
+    issat = binary_dilation (issat,structure=np.ones((1,11)));
+    fringe  *= ~issat[:,:,None,None];
+    photok  *= ~issat[None,:,:,None];
+    photok0 *= ~issat[None,:,:,None];
+    photo   *= ~issat[None,:,:,None];
 
     # Temporal / Spectral averaging of photometry
     # to be discussed
