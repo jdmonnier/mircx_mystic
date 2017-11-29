@@ -211,7 +211,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     plt.close ("all");
     return hdulist;
 
-def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
+def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
     '''
     Compute the RTS
     '''
@@ -378,21 +378,15 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts'):
     photok = photo * kappa;
     photok0 = photok.copy ();
 
-    # How to ensure the DC is fitted as well ?
-    # Only on average over the file ? In real-time ?
-
     # Smooth photometry
-    log.info ('Smooth photometry by sigma=2 frames');
-    photok = gaussian_filter (photok,(0,0,2,0));
+    log.info ('Smooth photometry by sigma=%i frames'%nsmooth);
+    photok = gaussian_filter (photok,(0,0,nsmooth,0),mode='nearest');
 
-    # Deal saturation in the smoothing
+    # Warning because of saturation
     log.info ('Deal with saturation in the filtering');
-    issat = (np.sum (fringe,axis=(2,3)) == 0);
-    issat = binary_dilation (issat,structure=np.ones((1,11)));
-    fringe  *= ~issat[:,:,None,None];
-    photok  *= ~issat[None,:,:,None];
-    photok0 *= ~issat[None,:,:,None];
-    photo   *= ~issat[None,:,:,None];
+    isok  = 1.0 * (np.sum (fringe,axis=(2,3)) != 0);
+    trans = gaussian_filter (isok,(0,nsmooth),mode='nearest');
+    photok *= isok[None,:,:,None] / np.maximum (trans[None,:,:,None],1e-10);
 
     # Temporal / Spectral averaging of photometry
     # to be discussed
