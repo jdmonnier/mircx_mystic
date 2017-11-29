@@ -679,15 +679,15 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     # Compute selection flag from averaged SNR over the ramp
     log.info ('SNR selection > %.2f'%threshold);
     hdr[HMQ+'SNR_THRESHOLD'] = (threshold, 'to accept fringe');
-    base_flag = 1.0 * (base_snr > threshold);
+    base_flag = 1. * (base_snr > threshold);
 
     # Morphological operation
     log.info ('Closing/opening of selection');
     structure = np.ones ((2,1,1,1));
 
     base_flag0 = base_flag.copy ();
-    base_flag = binary_closing (base_flag, structure=structure);
-    base_flag = binary_opening (base_flag, structure=structure);
+    base_flag = 1.0 * binary_closing (base_flag, structure=structure);
+    base_flag = 1.0 * binary_opening (base_flag, structure=structure);
 
     # Plot this fringe selection
     fig,axes = plt.subplots (2,1);
@@ -707,7 +707,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     # Compute OI_VIS2
     u_power = np.nanmean ((base_power - bias_power_mean)*base_flag, axis=1);
     l_power = np.nanmean (norm_power*base_flag, axis=1);
-
+    
     oifits.add_vis2 (hdulist, time, u_power, l_power, output=output);
 
     # Compute OI_T3

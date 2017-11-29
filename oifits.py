@@ -158,6 +158,7 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     
     # QC for VIS
     for b,name in enumerate (setup.base_name ()):
+        hdr[HMQ+'REJECTED'+name] = (1.0*(ns - nvalid[int(ny/2),b])/ns,'fraction of rejected');
         val = rep_nan (np.nanmean (u_power[:,int(ny/2),b]));
         hdr[HMQ+'UPOWER'+name+' MEAN'] = (val,'unbiased power at lbd0');
         val = rep_nan (np.nanstd (u_power[:,int(ny/2),b]));
@@ -280,6 +281,7 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     
     # QC for T3
     for t,name in enumerate (setup.triplet_name()):
+        hdr[HMQ+'REJECTED'+name] = (1.0*(ns - nvalid[int(ny/2),t])/ns,'fraction of rejected');
         val = rep_nan (t3phi[int(ny/2),t])*180/np.pi;
         hdr[HMQ+'T3PHI'+name+' MEAN'] = (val,'[deg] tphi at lbd0');
         val = rep_nan (t3phiErr[int(ny/2),t])*180/np.pi;
