@@ -647,15 +647,15 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     # QC for power
     log.info ('Compute QC for base');
     for b,name in enumerate (setup.base_name ()):
-        val = np.mean (norm_power[:,:,int(ny/2),b], axis=(0,1));
+        val = rep_nan (np.mean (norm_power[:,:,int(ny/2),b], axis=(0,1)));
         hdr[HMQ+'NORM'+name+' MEAN'] = (val,'Norm Power at lbd0');
-        val = np.mean (base_power[:,:,int(ny/2),b], axis=(0,1));
+        val = rep_nan (np.mean (base_power[:,:,int(ny/2),b], axis=(0,1)));
         hdr[HMQ+'POWER'+name+' MEAN'] = (val,'Fringe Power at lbd0');
-        val = np.std (base_power[:,:,int(ny/2),b], axis=(0,1));
+        val = rep_nan (np.std (base_power[:,:,int(ny/2),b], axis=(0,1)));
         hdr[HMQ+'POWER'+name+' STD'] = (val,'Fringe Power at lbd0');
-        val = np.mean (base_snr[:,:,:,b]);
+        val = rep_nan (np.mean (base_snr[:,:,:,b]));
         hdr[HMQ+'SNR'+name+' MEAN'] = (val,'Broad-band SNR');
-        val = np.std (base_snr[:,:,:,b]);
+        val = rep_nan (np.std (base_snr[:,:,:,b]));
         hdr[HMQ+'SNR'+name+' STD'] = (val,'Broad-band SNR');
 
     # QC for bias
