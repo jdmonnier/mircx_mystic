@@ -112,14 +112,23 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     valid = np.isfinite (u_power) * np.isfinite (l_power);
     nvalid = np.nansum (1. * valid, axis=0);
 
-    # Compute mean
-    vis2 = np.nanmean (u_power, axis=0) / np.nanmean (l_power, axis=0);
+    # Compute bootstrap sample
+    boot = np.random.random ((ns,20)) * ns;
+    boot[:,0] = range (ns);
 
-    # Compute err
-    vis2err = np.sqrt (np.nanvar (u_power, axis=0) / np.nanmean (u_power, axis=0)**2 + \
-                       np.nanvar (l_power, axis=0) / np.nanmean (l_power, axis=0)**2) * vis2;
-                       
-    vis2err /= np.sqrt (nvalid);
+    # # Compute mean
+    # vis2 = np.nanmean (u_power, axis=0) / np.nanmean (l_power, axis=0);
+    # 
+    # # Compute err
+    # vis2err = np.sqrt (np.nanvar (u_power, axis=0) / np.nanmean (u_power, axis=0)**2 + \
+    #                    np.nanvar (l_power, axis=0) / np.nanmean (l_power, axis=0)**2) * vis2;
+    #                    
+    # vis2err /= np.sqrt (nvalid);
+
+    # Compute mean
+    vis2 = np.nanmean (u_power[boot,:,:], axis=0) / np.nanmean (l_power[boot,:,:], axis=0);
+    vis2err = np.nanstd (vis2, axis=0);
+    vis2 = vis2[0,:,:];
     
     # Construct mjd[ns,ny,nb]
     mjd = mjd0[:,None,None] * np.ones (valid.shape);
@@ -134,7 +143,7 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     time = mjd * 0.0;
     staindex = setup.beam_index(hdr)[setup.base_beam()];
     ucoord, vcoord = setup.base_uv (hdr);
-    flag = ~np.isfinite (vis2);
+    flag = ~np.isfinite (vis2) + ~np.isfinite (vis2err);
 
     tbhdu = pyfits.BinTableHDU.from_columns ([\
              pyfits.Column (name='TARGET_ID', format='I', array=target_id), \
@@ -228,13 +237,24 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     valid = np.isfinite (t_product) * np.isfinite (t_norm);
     nvalid = np.nansum (1. * valid, axis=0);
 
+    # Compute bootstrap sample
+    boot = np.random.random ((ns,20)) * ns;
+    boot[:,0] = range (ns);
+
     # Compute mean phase
-    t3phi = np.angle (np.nanmean (t_product, axis=0));
-    t3phiErr = t3phi * 0.0;
+    # t3phi = np.angle (np.nanmean (t_product, axis=0));
+    # t3phiErr = t3phi * 0.0;
+    t3phi = np.angle (np.nanmean (t_product[boot,:,:], axis=0));
+    t3phiErr = np.nanstd (t3phi, axis=0);
+    t3phi = t3phi[0,:,:];
 
     # Compute mean norm
-    t3amp = np.abs (np.nanmean (t_product, axis=0)) / np.nanmean (t_norm, axis=0);
-    t3ampErr = t3amp * 0.0;
+    # t3amp = np.abs (np.nanmean (t_product, axis=0)) / np.nanmean (t_norm, axis=0);
+    # t3amp    = 0.0;
+    # t3ampErr = t3amp * 0;
+    t3amp = np.abs (np.nanmean (t_product[boot,:,:], axis=0)) / np.nanmean (t_norm[boot,:,:], axis=0);
+    t3ampErr = np.nanstd (t3amp, axis=0);
+    t3amp = t3amp[0,:,:];
     
     # Construct mjd[ns,ny,nb]
     mjd = mjd0[:,None,None] * np.ones (valid.shape);
@@ -253,7 +273,7 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     v1coord = vcoord[setup.triplet_base()[:,0]];
     u2coord = ucoord[setup.triplet_base()[:,1]];
     v2coord = vcoord[setup.triplet_base()[:,1]];
-    flag = ~np.isfinite (t3phi);
+    flag = ~np.isfinite (t3phi) + ~np.isfinite (t3phiErr);
     
     tbhdu = pyfits.BinTableHDU.from_columns ([\
              pyfits.Column (name='TARGET_ID', format='I', array=target_id), \
