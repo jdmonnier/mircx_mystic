@@ -1,8 +1,14 @@
 import numpy as np;
+
+import scipy;
 from scipy.ndimage import gaussian_filter;
 
 from . import log, files, headers, setup, oifits;
 
+def airy (x):
+    ''' Airy function, with its zero at x = 1.22'''
+    return 2.*scipy.special.jn (1,np.pi*x) / (np.pi*x);
+    
 def gaussian_filter_cpx (input,sigma,**kwargs):
     ''' Gaussian filter of a complex array '''
     return gaussian_filter (input.real,sigma,**kwargs) + \
