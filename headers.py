@@ -268,5 +268,53 @@ def check_input (hdrs, required=1, maximum=100000):
         raise ValueError ('Too many input');
 
 def rep_nan (val,*rep):
+    ''' Replace nan by value'''
     if not rep: rep = 0.0;
     return val if np.isfinite (val) else rep;
+
+def parse_argopt_catalog (input):
+    '''
+    Parse the syntax 'NAME1,d1,e1;NAME2,d2,e2;...'
+    '''    
+    catalog = [];
+    for cal in [i for i in input.split(';') if i != '']:
+        cal = [i for i in cal.split(',') if i != ''];
+        if len (cal) != 3: raise (ValueError('Wrong syntax for calibrators'));
+        catalog.append ([cal[0],float(cal[1]),float(cal[2])]);
+    
+    return catalog;
+    
+
+def set_sci_cal (hdrs, catalog):
+    '''
+    Spread the headers from SCI and CAL according to the 
+    entries defined in catalog. Catalog should be of the
+    form [("NAME1",diam1,err1),("NAME2",diam2,err2),...]
+    '''
+    
+    try:
+        for c in catalog:
+            if len (c) != 3: raise;
+            log.info ('%s defined as CALIB with d = %.3f +- %.3fmas'%(c[0],c[1],c[2]));
+    except:
+        log.error ('Calibrators not specified correclty');
+        raise (ValueError);
+
+    # Get values
+    name,diam,err = list (map(list, zip(*catalog)));
+
+    # Loop on input headers
+    scis, cals = [], [];
+    for h in hdrs:
+        if h['FILETYPE'] != 'VIS':
+            continue;
+        
+        if h['OBJECT'] not in name:
+            log.info ('%s (%s) -> VIS_SCI'%(h['ORIGNAME'],h['OBJECT']));
+            h['FILETYPE'] += '_SCI';
+        else:
+            log.info ('%s (%s) -> VIS_CAL'%(h['ORIGNAME'],h['OBJECT']));
+            idx = name.index (h['OBJECT']);
+            h['FILETYPE'] += '_CAL';
+            h[HMP+'CALIB DIAM'] = (diam[idx],'[mas] diameter');
+            h[HMP+'CALIB DIAMERR'] = (err[idx],'[mas] diameter uncertainty');

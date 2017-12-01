@@ -78,6 +78,13 @@ parser.add_argument ("--vis", dest="vis",default='FALSE',
                      choices=TrueFalseOverwrite,
                      help="compute the VIS products");
 
+parser.add_argument ("--vis-calibrated", dest="viscalib",default='FALSE',
+                     choices=TrueFalseOverwrite,
+                     help="compute the VIS_CALIBRATED products");
+
+parser.add_argument ("--calibrators", dest="calibrators",default='[("NAME",diam,err)]',
+                     type=str, help="list of calibration star with diameters");
+
 #
 # Initialisation
 #
@@ -326,4 +333,45 @@ if argopt.vis != 'FALSE':
             log.closeFile ();
             
                                     
+#
+# Compute VIS_CALIBRATED
+#
+
+if argopt.viscalib != 'FALSE':
+
+    # Read all calibration products, keep only the VIS
+    hdrs = mrx.headers.loaddir (argopt.outputDir);
+
+    # Get SCI and CAL from input catalog
+    catalog = mrx.headers.parse_argopt_catalog (argopt.calibrators);
+    mrx.headers.set_sci_cal (hdrs, catalog);
+
+    # Group all DATA
+    gps = mrx.headers.group (hdrs, 'VIS_SCI', delta=0,
+                             keys=setup.detwin+setup.detmode+setup.insmode+setup.fringewin+setup.visparam);
+    overwrite = (argopt.viscalib == 'OVERWRITE');
+    
+    # Compute 
+    for i,gp in enumerate (gps):
+        try:
+            log.info ('Compute VIS_CALIBRATED {0} over {1} '.format(i+1,len(gps)));
+            
+            output = mrx.files.output (argopt.outputDir, gp[0], 'viscalib');
+            if os.path.exists (output+'.fits') and overwrite is False:
+                log.info ('Product already exists');
+                continue;
+
+            log.setFile (output+'.log');
+
+            cals = mrx.headers.assoc (gp[0], hdrs, 'VIS_CAL', which='all',
+                                      keys=setup.detwin+setup.insmode+setup.fringewin);
+            
+            mrx.compute_viscalib (gp, cals, output=output);
+
+        except Exception as exc:
+            log.error ('Cannot compute VIS_CALIBRATED: '+str(exc));
+            if argopt.debug == 'TRUE': raise;
+        finally:
+            log.closeFile ();
+
 

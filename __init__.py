@@ -17,6 +17,9 @@ from .vis import compute_speccal
 from .vis import compute_rts
 from .vis import compute_vis
 
+# High levels routines to calibrate
+from .viscalib import compute_viscalib
+
 # Revision number
 from .version import revision, info
 info();
