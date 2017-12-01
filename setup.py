@@ -16,6 +16,9 @@ insmode = ['FILTER1','FILTER2','CONF_NA'];
 global fringewin;
 fringewin = [HMW+'FRINGE STARTX', HMW+'FRINGE NX', HMW+'FRINGE STARTY', HMW+'FRINGE NY'];
 
+global visparam;
+visparam = [HMP+'NFRAME_COHER'];
+
 def nspec (hdr):
     '''
     Return the expected number of spectral
@@ -179,6 +182,9 @@ def base_uv (hdr):
             v[b] = -hdr['V_'+t[1]+'-'+t[0]];
         else:
             log.warning ('Cannot read UV base %i (%s-%s) in header.'%(b,t[0],t[1]));
+            
+        if u[b] == v[b]:
+            log.warning ('ucoord == vcoord base %i (%s-%s) in header.'%(b,t[0],t[1]));
 
     # CHARA tel of the CHARA beams
     return u,v;
