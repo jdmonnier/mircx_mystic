@@ -627,6 +627,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     
     # Broad-band SNR
     base_snr = base_powerbb / bias_powerbb;
+    base_snr[~np.isfinite (base_snr)] = 0.0;
 
     # Compute power per spectral channels
     base_power = np.abs (base_dft)**2;
@@ -759,17 +760,17 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     files.write (fig,output+'_gd.png');
     
     # SNR, GD and FLAGs
-    fig,ax = plt.subplots (3,1);
-    fig.suptitle (headers.summary (hdr));
-    ax[0].plot (np.log10 (np.mean (base_snr,axis=(1,2))));
-    ax[0].set_ylabel ('log10 (SNR_bb)');
-    ax[1].plot (np.mean (base_gd,axis=(1,2)) * 1e6);
-    ax[1].set_ylabel ('gdelay (um)');
-    ax[1].set_xlabel ('ramp');
-    ax[2].imshow (np.mean (base_flag,axis=(1,2)).T);
-    ax[1].set_ylabel ('gdelay (um)');
-    ax[2].set_xlabel ('flag');
-    files.write (fig,output+'_snr_gd.png');
+    # fig,ax = plt.subplots (3,1);
+    # fig.suptitle (headers.summary (hdr));
+    # ax[0].plot (np.log10 (np.mean (base_snr,axis=(1,2))));
+    # ax[0].set_ylabel ('log10 (SNR_bb)');
+    # ax[1].plot (np.mean (base_gd,axis=(1,2)) * 1e6);
+    # ax[1].set_ylabel ('gdelay (um)');
+    # ax[1].set_xlabel ('ramp');
+    # ax[2].imshow (np.mean (base_flag,axis=(1,2)).T);
+    # ax[1].set_ylabel ('gdelay (um)');
+    # ax[2].set_xlabel ('flag');
+    # files.write (fig,output+'_snr_gd.png');
 
     # File
     log.info ('Create file');
