@@ -88,7 +88,7 @@ def error(msg):
 
 def debug(msg):
     mem = memory ();
-    logger.debug (debug, extra={'color':RESET,'memory':mem});
+    logger.debug (debug, extra={'color':RED,'memory':mem});
     
 # Trace class (measure time until killed)
 class trace:
