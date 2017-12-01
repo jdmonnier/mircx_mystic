@@ -134,6 +134,8 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     time = mjd * 0.0;
     staindex = setup.beam_index(hdr)[setup.base_beam()];
     ucoord, vcoord = setup.base_uv (hdr);
+    
+    # Flag data
     flag = ~np.isfinite (vis2) + ~np.isfinite (vis2err);
 
     tbhdu = pyfits.BinTableHDU.from_columns ([\
@@ -259,6 +261,8 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     v1coord = vcoord[setup.triplet_base()[:,0]];
     u2coord = ucoord[setup.triplet_base()[:,1]];
     v2coord = vcoord[setup.triplet_base()[:,1]];
+
+    # Flag data
     flag = ~np.isfinite (t3phi) + ~np.isfinite (t3phiErr);
     
     tbhdu = pyfits.BinTableHDU.from_columns ([\
