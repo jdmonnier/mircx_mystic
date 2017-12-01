@@ -116,16 +116,7 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     boot = np.random.random ((ns,20)) * ns;
     boot[:,0] = range (ns);
 
-    # # Compute mean
-    # vis2 = np.nanmean (u_power, axis=0) / np.nanmean (l_power, axis=0);
-    # 
-    # # Compute err
-    # vis2err = np.sqrt (np.nanvar (u_power, axis=0) / np.nanmean (u_power, axis=0)**2 + \
-    #                    np.nanvar (l_power, axis=0) / np.nanmean (l_power, axis=0)**2) * vis2;
-    #                    
-    # vis2err /= np.sqrt (nvalid);
-
-    # Compute mean
+    # Compute mean vis2
     vis2 = np.nanmean (u_power[boot,:,:], axis=0) / np.nanmean (l_power[boot,:,:], axis=0);
     vis2err = np.nanstd (vis2, axis=0);
     vis2 = vis2[0,:,:];
@@ -242,16 +233,11 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     boot[:,0] = range (ns);
 
     # Compute mean phase
-    # t3phi = np.angle (np.nanmean (t_product, axis=0));
-    # t3phiErr = t3phi * 0.0;
     t3phi = np.angle (np.nanmean (t_product[boot,:,:], axis=0));
     t3phiErr = np.nanstd (t3phi, axis=0);
     t3phi = t3phi[0,:,:];
 
     # Compute mean norm
-    # t3amp = np.abs (np.nanmean (t_product, axis=0)) / np.nanmean (t_norm, axis=0);
-    # t3amp    = 0.0;
-    # t3ampErr = t3amp * 0;
     t3amp = np.abs (np.nanmean (t_product[boot,:,:], axis=0)) / np.nanmean (t_norm[boot,:,:], axis=0);
     t3ampErr = np.nanstd (t3amp, axis=0);
     t3amp = t3amp[0,:,:];
