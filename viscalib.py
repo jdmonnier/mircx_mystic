@@ -40,8 +40,9 @@ def tf_time_weight (hdus, hdutf, delta):
         val = np.array ([h[o[0]].data[o[1]] for h in hdutf]);
         err = np.array ([h[o[0]].data[o[2]] for h in hdutf]);
 
-        # Set nan to flagged data
-        flg = np.array([h[o[0]].data['FLAG'] for h in hdutf]);
+        # Set nan to flagged data and to data without error
+        flg  = np.array([h[o[0]].data['FLAG'] for h in hdutf]);
+        flg += ~np.isfinite (val) + ~np.isfinite (err) + (err<=0);
         val[flg] = np.nan;
         err[flg] = np.nan;
 
@@ -62,7 +63,7 @@ def tf_time_weight (hdus, hdutf, delta):
         hdutfs[o[0]].data[o[1]] = tf;
         hdutfs[o[0]].data['FLAG'] += ~np.isfinite (tf);
             
-    return hdus;
+    return hdutfs;
 
 def tf_divide (hdus, hdutf):
     '''
@@ -86,6 +87,8 @@ def tf_divide (hdus, hdutf):
         else:
             hdusc[o[0]].data[o[1]] /= hdutf[o[0]].data[o[1]];
             hdusc[o[0]].data[o[2]] /= hdutf[o[0]].data[o[1]];
+            
+        hdusc[o[0]].data['FLAG'] += ~np.isfinite (hdusc[o[0]].data[o[1]]);
 
     return hdusc;
 
@@ -128,10 +131,10 @@ def compute_viscalib (hdrs, calibs, output='output_viscalib', delta=0.05):
         hdutf.append (hdulist);
 
     # Read data
-    f = hdrs[0]['ORIGNAME'];
+    hdr = hdrs[0];
     
-    log.info ('Load SCI %s'%(f));
-    hdus = pyfits.open (f);
+    log.info ('Load SCI %s'%(hdr['ORIGNAME']));
+    hdus = pyfits.open (hdr['ORIGNAME']);
 
     # Compute interpolation at the time of science
     hdutfs = tf_time_weight (hdus, hdutf, delta);
@@ -141,11 +144,48 @@ def compute_viscalib (hdrs, calibs, output='output_viscalib', delta=0.05):
 
     log.info ('Figures');
 
+    # VIS2
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+    for b in range (15):
+        ax = axes.flatten()[b];
+        x  = [h['OI_VIS2'].data['MJD'][b] for h in hdutf];
+        y  = [h['OI_VIS2'].data['VIS2DATA'][b,6] for h in hdutf];
+        dy = [h['OI_VIS2'].data['VIS2ERR'][b,6] for h in hdutf];
+        ax.errorbar (x,y,fmt='o',yerr=dy);
+        x  = hdutfs['OI_VIS2'].data['MJD'][b];
+        y  = hdutfs['OI_VIS2'].data['VIS2DATA'][b,6];
+        dy = hdutfs['OI_VIS2'].data['VIS2ERR'][b,6];
+        ax.errorbar (x,y,fmt='o',yerr=dy,color='g');
+    
+    files.write (fig,output+'_vis2.png');
+
+    # T3PHI
+    fig,axes = plt.subplots (5,4, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+    for b in range (20):
+        ax = axes.flatten()[b];
+        x  = [h['OI_T3'].data['MJD'][b] for h in hdutf];
+        y  = [h['OI_T3'].data['T3PHI'][b,6] for h in hdutf];
+        dy = [h['OI_T3'].data['T3PHIERR'][b,6] for h in hdutf];
+        ax.errorbar (x,y,fmt='o',yerr=dy);
+        x  = hdutfs['OI_T3'].data['MJD'][b];
+        y  = hdutfs['OI_T3'].data['T3PHI'][b,6];
+        dy = hdutfs['OI_T3'].data['T3PHIERR'][b,6];
+        ax.errorbar (x,y,fmt='o',yerr=dy,color='g');
+    
+    files.write (fig,output+'_t3phi.png');
+    
+
     log.info ('Create file');
     
     # First HDU
     hdulist[0].header['FILETYPE'] = 'VIS_CALIBRATED';
-    hdulist[0].header[HMP+'VIS_SCI'] = os.path.basename (f);
+    hdulist[0].header[HMP+'VIS_SCI'] = os.path.basename (hdr['ORIGNAME']);
     hdulist[0].header[HMP+'DELTA_INTERP'] = (delta,'[days] delta for weighted interpolation');
 
     # Write file
