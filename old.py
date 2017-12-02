@@ -196,3 +196,78 @@ def triplet_beam ():
                      
                          ]);
     return tmp;
+
+
+
+#    # Load the sciences
+#    hdusci = [];
+#    for sci in scis:
+#        log.info ('Load SCI %s'%(sci['ORIGNAME']));
+#        hdusci.append (pyfits.open (sci['ORIGNAME']));
+#
+#    # Compute the TF for each science
+#    hdutfs = tfs_time_weight (hdusci, hdutf, delta);
+#
+#    # Loop on science to calibrate and write results
+#    for hdus,hduc in zip (hdusci,hdutfs):
+#
+#        # Calibrate
+#        hdulist = tf_divide (hdus, hduc);
+#    
+#        # Write file
+#        output = files.output (outputDir,sci,'viscal');
+#        files.write (hdulist, output+'.fits');
+
+
+
+def tfs_time_weight (hdus, hdutf, delta):
+    '''
+    Compute a Transfer function file with
+    time weighted interpolation.
+
+    delta is in [days]
+    '''
+    log.info ('Interpolate %i TF with time_weight'%len(hdutf));
+
+    # Copy VIS_SCI to build VIS_TF
+    hdutfs = [];
+    for hdu in hdus:
+        hdutfs.append (pyfits.HDUList([h.copy() for h in hdu]));
+        hdutfs[-1][0].header['FILETYPE'] = 'VIS_SCI_TF';
+
+    obs = [['OI_VIS2','VIS2DATA','VIS2ERR',False],
+           ['OI_T3','T3AMP','T3AMPERR',False],
+           ['OI_T3','T3PHI','T3PHIERR',True]];
+
+    for o in obs:
+
+        # Get calibration data
+        mjd = np.array ([h[o[0]].data['MJD'] for h in hdutf]);
+        val = np.array ([h[o[0]].data[o[1]] for h in hdutf]);
+        err = np.array ([h[o[0]].data[o[2]] for h in hdutf]);
+
+        # Set nan to flagged data and to data without error
+        flg  = np.array([h[o[0]].data['FLAG'] for h in hdutf]);
+        flg += ~np.isfinite (val) + ~np.isfinite (err) + (err<=0);
+        val[flg] = np.nan;
+        err[flg] = np.nan;
+
+        # Replace by phasor
+        if o[3] is True: val = phasor (val);
+
+        # Loop on observations
+        for hdu in hdutfs:
+            
+            # Compute the weighted mean
+            mjd0 = hdu[o[0]].data['MJD'];
+            weight = np.exp (-(mjd0[None,:,None]-mjd[:,:,None])**2/delta**2) / err**2;
+            tf = np.nansum (val * weight, axis=0) / np.nansum (weight, axis=0);
+
+            # Replace by phasor
+            if o[3] is True: tf = np.angle (tf, deg=True);
+
+            # Set data
+            hdu[o[0]].data[o[1]] = tf;
+            hdu[o[0]].data['FLAG'] += ~np.isfinite (tf);
+            
+    return hdutfs;

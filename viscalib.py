@@ -18,9 +18,8 @@ def wrap (val):
 
 def tf_time_weight (hdus, hdutf, delta):
     '''
-    Compute a Transfer function file with
-    time weighted interpolation.
-
+    Average the Transfer function at the time of a science
+    observation with time weighted interpolation.
     delta is in [days]
     '''
     log.info ('Interpolate %i TF with time_weight'%len(hdutf));
@@ -70,7 +69,6 @@ def tf_divide (hdus, hdutf):
     Calibrate a SCI by a TF (which may come from the
     interpoloation of many TF).
     '''
-    log.info ('Calibrate');
 
     # Copy VIS_SCI to build VIS_CALIBRATED
     hdusc = pyfits.HDUList([hdu.copy() for hdu in hdus]);
@@ -92,12 +90,23 @@ def tf_divide (hdus, hdutf):
 
     return hdusc;
     
-def compute_viscalib (hdrs, calibs, delta=0.05, output='output_viscalib'):
+def compute_all_viscalib (hdrs, catalog, delta=0.05,
+                          outputDir='viscal/', overwrite=True):
+    '''
+    Cross-calibrate the VIS in hdrs. The choice of SCI and CAL, and the diameter
+    of the calibration stars, are specified with the catalog. Catalog should be
+    of the form [('name1',diam1,err1),('name2',diam2,err2),...] where the diam
+    and err are in [mas].
+    '''
+    elog = log.trace ('compute_all_viscal');
 
     headers.check_input (hdrs, required=1);
-    headers.check_input (calibs, required=1);
+
+    # Get VIS_SCI and VIS_CAL from input catalog
+    scis, calibs = headers.get_sci_cal (hdrs, catalog);
     
-    # Compute transfert functions
+    # List of measured Transfert Functions
+    # (VIS_CAL / diameter)
     hdutf = [];
     for calib in calibs:
         f = calib['ORIGNAME'];
@@ -119,35 +128,44 @@ def compute_viscalib (hdrs, calibs, delta=0.05, output='output_viscalib'):
         hdulist['OI_VIS2'].data['VIS2DATA'] /= v2;
         hdulist['OI_VIS2'].data['VIS2ERR'] /= v2;
 
-        # These are not VIS_CAL_TF
+        # These are VIS_CAL_TF
         hdulist[0].header['FILETYPE'] = 'VIS_CAL_TF';
         hdutf.append (hdulist);
 
-    # Loop on VIS_SCI
-    hdutfs = [];
-    for hdr in hdrs:
+    # Loop on VIS_SCI to calibrate them
+    hdusci, hdutfs = [], [];
+    for sci in scis:
     
-        log.info ('Load SCI %s'%(hdr['ORIGNAME']));
-        hdus = pyfits.open (hdr['ORIGNAME']);
+        log.info ('Load SCI %s'%(sci['ORIGNAME']));
+        hdus = pyfits.open (sci['ORIGNAME']);
 
+        # Define output name
+        output = files.output (outputDir,sci,'viscal');
+        
         # Compute interpolation at the time of science and divide
         hdutfsi = tf_time_weight (hdus, hdutf, delta);
         hdulist = tf_divide (hdus, hdutfsi);
 
         # First HDU
         hdulist[0].header['FILETYPE'] = 'VIS_CALIBRATED';
-        hdulist[0].header[HMP+'VIS_SCI'] = os.path.basename (hdr['ORIGNAME']);
+        hdulist[0].header[HMP+'VIS_SCI'] = os.path.basename (sci['ORIGNAME']);
         hdulist[0].header[HMP+'DELTA_INTERP'] = (delta,'[days] delta for weighted interpolation');
 
         # Write file
         files.write (hdulist, output+'.fits');
+
+        # TODO: figure for this observation
+
+        # Append VIS_SCI and VIS_SCI_TF, to allow a plot
+        # of a trend over the night for this setup
+        hdusci.append (hdus);
         hdutfs.append (hdutfsi);
-    
-    log.info ('Figures');
+        
+    log.info ('Figures for the trends');
 
     # VIS2
     fig,axes = plt.subplots (5,3, sharex=True);
-    fig.suptitle (headers.summary (hdr));
+    # fig.suptitle (headers.summary (sci));
     plot.base_name (axes);
     plot.compact (axes);
     for b in range (15):
@@ -155,17 +173,21 @@ def compute_viscalib (hdrs, calibs, delta=0.05, output='output_viscalib'):
         x  = [h['OI_VIS2'].data['MJD'][b] for h in hdutf];
         y  = [h['OI_VIS2'].data['VIS2DATA'][b,6] for h in hdutf];
         dy = [h['OI_VIS2'].data['VIS2ERR'][b,6] for h in hdutf];
-        ax.errorbar (x,y,fmt='o',yerr=dy);
+        ax.errorbar (x,y,fmt='o',yerr=dy,color='k',ms=1);
         x  = [h['OI_VIS2'].data['MJD'][b] for h in hdutfs];
         y  = [h['OI_VIS2'].data['VIS2DATA'][b,6] for h in hdutfs];
         dy = [h['OI_VIS2'].data['VIS2ERR'][b,6] for h in hdutfs];
-        ax.errorbar (x,y,fmt='o',yerr=dy,color='g');
+        ax.errorbar (x,y,fmt='o',yerr=dy,color='k',ms=1,alpha=0.25);
+        x  = [h['OI_VIS2'].data['MJD'][b] for h in hdusci];
+        y  = [h['OI_VIS2'].data['VIS2DATA'][b,6] for h in hdusci];
+        dy = [h['OI_VIS2'].data['VIS2ERR'][b,6] for h in hdusci];
+        ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
     
     files.write (fig,output+'_vis2.png');
 
     # T3PHI
     fig,axes = plt.subplots (5,4, sharex=True);
-    fig.suptitle (headers.summary (hdr));
+    # fig.suptitle (headers.summary (hdr));
     plot.base_name (axes);
     plot.compact (axes);
     for b in range (20):
@@ -173,17 +195,21 @@ def compute_viscalib (hdrs, calibs, delta=0.05, output='output_viscalib'):
         x  = [h['OI_T3'].data['MJD'][b] for h in hdutf];
         y  = [h['OI_T3'].data['T3PHI'][b,6] for h in hdutf];
         dy = [h['OI_T3'].data['T3PHIERR'][b,6] for h in hdutf];
-        ax.errorbar (x,y,fmt='o',yerr=dy);
+        ax.errorbar (x,y,fmt='o',yerr=dy,color='k',ms=1);
         x  = [h['OI_T3'].data['MJD'][b] for h in hdutfs];
         y  = [h['OI_T3'].data['T3PHI'][b,6] for h in hdutfs];
         dy = [h['OI_T3'].data['T3PHIERR'][b,6] for h in hdutfs];
-        ax.errorbar (x,y,fmt='o',yerr=dy,color='g');
+        ax.errorbar (x,y,fmt='o',yerr=dy,color='k',ms=1,alpha=0.25);
+        x  = [h['OI_T3'].data['MJD'][b] for h in hdusci];
+        y  = [h['OI_T3'].data['T3PHI'][b,6] for h in hdusci];
+        dy = [h['OI_T3'].data['T3PHIERR'][b,6] for h in hdusci];
+        ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
     
     files.write (fig,output+'_t3phi.png');
     
     # T3AMP
     fig,axes = plt.subplots (5,4, sharex=True);
-    fig.suptitle (headers.summary (hdr));
+    # fig.suptitle (headers.summary (hdr));
     plot.base_name (axes);
     plot.compact (axes);
     for b in range (20):
@@ -191,11 +217,15 @@ def compute_viscalib (hdrs, calibs, delta=0.05, output='output_viscalib'):
         x  = [h['OI_T3'].data['MJD'][b] for h in hdutf];
         y  = [h['OI_T3'].data['T3AMP'][b,6] for h in hdutf];
         dy = [h['OI_T3'].data['T3AMPERR'][b,6] for h in hdutf];
-        ax.errorbar (x,y,fmt='o',yerr=dy);
+        ax.errorbar (x,y,fmt='o',yerr=dy,color='k',ms=1);
         x  = [h['OI_T3'].data['MJD'][b] for h in hdutfs];
         y  = [h['OI_T3'].data['T3AMP'][b,6] for h in hdutfs];
         dy = [h['OI_T3'].data['T3AMPERR'][b,6] for h in hdutfs];
-        ax.errorbar (x,y,fmt='o',yerr=dy,color='g');
+        ax.errorbar (x,y,fmt='o',yerr=dy,color='k',ms=1,alpha=0.25);
+        x  = [h['OI_T3'].data['MJD'][b] for h in hdusci];
+        y  = [h['OI_T3'].data['T3AMP'][b,6] for h in hdusci];
+        dy = [h['OI_T3'].data['T3AMPERR'][b,6] for h in hdusci];
+        ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
     
     files.write (fig,output+'_t3amp.png');
     

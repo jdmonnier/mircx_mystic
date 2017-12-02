@@ -65,3 +65,10 @@ Compute errors on vis2 and t3phi with bootstraping
 
 - QC of dc is too long
 - Apply thresholding (force zeros) is too long
+
+* VISCAL
+
+Decide if we merge all the calibration of the same setup into a single routine.
+With a single figure per setup...
+
+

@@ -142,7 +142,7 @@ if argopt.bmap != 'FALSE':
     hdrs_calib = mrx.headers.loaddir (argopt.outputDir);
     
     # Group all BEAMi
-    gps = mrx.headers.group (hdrs_raw, 'BEAM', delta=argopt.delta, Delta=argopt.Delta,
+    gps = mrx.headers.group (hdrs_raw, 'BEAM.*', delta=argopt.delta, Delta=argopt.Delta,
                              keys=setup.detwin+setup.detmode+setup.insmode,
                              continuous=argopt.cont);
     overwrite = (argopt.bmap == 'OVERWRITE');
@@ -343,23 +343,20 @@ if argopt.viscalib != 'FALSE':
     # Read all calibration products, keep only the VIS
     hdrs = mrx.headers.loaddir (argopt.outputDir);
 
-    # Set SCI and CAL from input catalog
-    catalog = mrx.headers.parse_argopt_catalog (argopt.calibrators);
-    mrx.headers.set_sci_cal (hdrs, catalog);
-
-    # Get all data
+    # Group all VIS by calibratable setup
     keys = setup.detwin+setup.insmode+setup.fringewin+setup.visparam;
-    gps = mrx.headers.group (hdrs, 'VIS_SCI', delta=1e9, Delta=1e9, keys=keys, continuous=False);
+    gps = mrx.headers.group (hdrs, 'VIS', delta=1e9, Delta=1e9, keys=keys, continuous=False);
+
+    # Parse input catalog
+    catalog = mrx.headers.parse_argopt_catalog (argopt.calibrators);
 
     # Compute 
     for i,gp in enumerate (gps):
         try:
-            log.info ('Calibrate setup {0} over {1} '.format(i+1,len(gps)));
+            log.info ('Calibrate setup {0} over {1} '.format(i+1,len(gps)));            
             log.setFile (argopt.outputDir+'/calibration_setup%i.log'%i);
             
-            keys = setup.detwin+setup.insmode+setup.fringewin+setup.visparam;
-            cals = mrx.headers.assoc (gp[0], hdrs, 'VIS_CAL', which='all', keys=keys);
-            mrx.compute_viscalib (gp, cals);
+            mrx.compute_all_viscalib (gp, catalog, outputDir=argopt.outputDir);
 
         except Exception as exc:
             log.error ('Cannot calibrate setup: '+str(exc));

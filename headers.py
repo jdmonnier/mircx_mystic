@@ -3,7 +3,7 @@ import numpy as np
 from astropy.io import fits as pyfits
 from astropy.time import Time
 
-import os, glob, pickle, datetime
+import os, glob, pickle, datetime, re
 
 from . import log
 
@@ -162,13 +162,16 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
     - the time distance is larger than delta.
     The output is a list of list.
     '''
-    elog = log.trace('group_headers');
+    elog = log.trace ('group_headers');
     
     groups = [[]];
     mjd = -10e9;
 
     # Key used to define setup
     keys = ['FILETYPE'] + keys;
+
+    # Define the regular expression to match file type
+    regex = re.compile ('^'+mtype+'$');
 
     # Sort by time
     hdrs = sorted (hdrs,key=lambda h: h['MJD-OBS']);
@@ -178,8 +181,8 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
         fileinfo = h['ORIGNAME'] + ' (' +h['FILETYPE']+')';
         
         # if different type, start new group and continue
-        if mtype not in h['FILETYPE']:
-            if groups[-1] != [] and str2bool(continuous):
+        if bool (re.match (regex, h['FILETYPE'])) is False:
+            if groups[-1] != [] and str2bool (continuous):
                 groups.append([]);
             continue;
 
@@ -285,7 +288,7 @@ def parse_argopt_catalog (input):
     return catalog;
     
 
-def set_sci_cal (hdrs, catalog):
+def get_sci_cal (hdrs, catalog):
     '''
     Spread the headers from SCI and CAL according to the 
     entries defined in catalog. Catalog should be of the
@@ -312,9 +315,13 @@ def set_sci_cal (hdrs, catalog):
         if h['OBJECT'] not in name:
             log.info ('%s (%s) -> VIS_SCI'%(h['ORIGNAME'],h['OBJECT']));
             h['FILETYPE'] += '_SCI';
+            scis.append (h);
         else:
             log.info ('%s (%s) -> VIS_CAL'%(h['ORIGNAME'],h['OBJECT']));
             idx = name.index (h['OBJECT']);
             h['FILETYPE'] += '_CAL';
             h[HMP+'CALIB DIAM'] = (diam[idx],'[mas] diameter');
             h[HMP+'CALIB DIAMERR'] = (err[idx],'[mas] diameter uncertainty');
+            cals.append (h);
+
+    return scis,cals;
