@@ -154,8 +154,22 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         # Write file
         files.write (hdulist, output+'.fits');
 
-        # TODO: figure for this observation
-
+        log.info ('Figures');
+    
+        # VIS2
+        fig,axes = plt.subplots ();
+        fig.suptitle (headers.summary (sci));
+        x  = np.sqrt (hdulist['OI_VIS2'].data['UCOORD']**2 + hdulist['OI_VIS2'].data['VCOORD']**2)[:,None] / hdulist['OI_WAVELENGTH'].data['EFF_WAVE'][None,:];
+        y  = hdulist['OI_VIS2'].data['VIS2DATA'];
+        dy = hdulist['OI_VIS2'].data['VIS2ERR'];
+        for b in range (15):
+            axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o',ms=1);
+        axes.set_ylim (-0.1,1.2);
+        axes.set_xlim (0);
+        axes.set_xlabel ('sp. freq. (Mlbd)');
+        axes.set_ylabel ('vis2');
+        files.write (fig,output+'_vis2.png');
+         
         # Append VIS_SCI and VIS_SCI_TF, to allow a plot
         # of a trend over the night for this setup
         hdusci.append (hdus);
@@ -183,7 +197,7 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         dy = [h['OI_VIS2'].data['VIS2ERR'][b,6] for h in hdusci];
         ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
     
-    files.write (fig,output+'_vis2.png');
+    files.write (fig,output+'_all_vis2.png');
 
     # T3PHI
     fig,axes = plt.subplots (5,4, sharex=True);
@@ -205,7 +219,7 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         dy = [h['OI_T3'].data['T3PHIERR'][b,6] for h in hdusci];
         ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
     
-    files.write (fig,output+'_t3phi.png');
+    files.write (fig,output+'_all_t3phi.png');
     
     # T3AMP
     fig,axes = plt.subplots (5,4, sharex=True);
@@ -227,7 +241,7 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         dy = [h['OI_T3'].data['T3AMPERR'][b,6] for h in hdusci];
         ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
     
-    files.write (fig,output+'_t3amp.png');
+    files.write (fig,output+'_all_t3amp.png');
     
     plt.close ("all");
     return hdulist;

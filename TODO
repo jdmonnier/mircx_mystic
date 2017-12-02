@@ -27,18 +27,9 @@ Compute preproc per RAW file, to better allow selection.
 The interference removal create correlation between the photometric flux.
 This is *not* good for normalisation power.
 
-* Wavelength calibration
-
-Think of setup.base_freq and setup.lbd0, to see if it make
-sens to keep them in these units.
-setup.base_freq may be better defined pixel/lbd
-
-Ask John for absolute scale/wavelength.
-
 * RTS
 
-Load several PREPROC into a single RTS ???
-Or load various RTS into a single VIS ???
+Or load various RTS into a single VIS.
 
 Photometry extraction:
 Think on the dimensions...
@@ -56,10 +47,7 @@ Then bootstrap, then perform the fringe selection
 Deal with coherent integration as time quantities
 Flatten the time ?
 
-How to compute the error bars ?
-
 Better MJD, better INT_TIME, better UCOORD,VCOORD
-Compute errors on vis2 and t3phi with bootstraping
 
 * Speed-up
 
@@ -68,7 +56,6 @@ Compute errors on vis2 and t3phi with bootstraping
 
 * VISCAL
 
-Decide if we merge all the calibration of the same setup into a single routine.
-With a single figure per setup...
-
+Propagate uncertainties on transfer function
+and calibrated product.
 
