@@ -277,14 +277,19 @@ def rep_nan (val,*rep):
 
 def parse_argopt_catalog (input):
     '''
-    Parse the syntax 'NAME1,d1,e1;NAME2,d2,e2;...'
+    Parse the syntax 'NAME1,d1,e1,NAME2,d2,e2,...'
     '''    
+
+    # Check it is a multiple of 3
+    values = [i for i in input.split(',') if i != ''];
+    if float(len (values) / 3).is_integer() is False:
+        raise (ValueError('Wrong syntax for calibrators'));
+
+    # Parse each star
     catalog = [];
-    for cal in [i for i in input.split(';') if i != '']:
-        cal = [i for i in cal.split(',') if i != ''];
-        if len (cal) != 3: raise (ValueError('Wrong syntax for calibrators'));
-        catalog.append ([cal[0],float(cal[1]),float(cal[2])]);
-    
+    for star in map(list,zip(*[iter(values)]*3)):
+        catalog.append ([star[0],float(star[1]),float(star[2])]);
+
     return catalog;
     
 
@@ -294,7 +299,7 @@ def get_sci_cal (hdrs, catalog):
     entries defined in catalog. Catalog should be of the
     form [("NAME1",diam1,err1),("NAME2",diam2,err2),...]
     '''
-    
+
     try:
         for c in catalog:
             if len (c) != 3: raise;

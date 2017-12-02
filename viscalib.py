@@ -15,12 +15,24 @@ def phasor (val):
 def wrap (val):
     return np.angle (np.exp (2.j * np.pi * val / 360), deg=True);
 
+def get_spfreq (hdulist,name):
+    '''
+    Return the spatial frequency B/lbd in [rad-1]
+    '''
+    u = hdulist[name].data['UCOORD'];
+    v = hdulist[name].data['VCOORD'];
+    lbd = hdulist['OI_WAVELENGTH'].data['EFF_WAVE'];
+    return np.sqrt (u**2 + v**2)[:,None] / lbd[None,:];
 
 def tf_time_weight (hdus, hdutf, delta):
     '''
-    Average the Transfer function at the time of a science
-    observation with time weighted interpolation.
+    Average the Transfer Functions in hdutf (a list of
+    fits handlers) at the time of a science
+    observation (hdus) with time weighted interpolation.
     delta is in [days]
+    The function assumes the baselines are ordered the same way.
+
+    Return the VIS_SCI_TF, as a FITS handler.
     '''
     log.info ('Interpolate %i TF with time_weight'%len(hdutf));
 
@@ -66,8 +78,11 @@ def tf_time_weight (hdus, hdutf, delta):
 
 def tf_divide (hdus, hdutf):
     '''
-    Calibrate a SCI by a TF (which may come from the
-    interpoloation of many TF).
+    Calibrate the SCI hdus (a FITS handler) by the TF hdutf (another
+    FITS handler). The TF which may come from the averaging of many TF.
+    The function assumes the baselines are ordered the same way.
+
+    Return the calibrated VIS_CALIBRATED (a FITS handler).
     '''
 
     # Copy VIS_SCI to build VIS_CALIBRATED
@@ -96,7 +111,7 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
     Cross-calibrate the VIS in hdrs. The choice of SCI and CAL, and the diameter
     of the calibration stars, are specified with the catalog. Catalog should be
     of the form [('name1',diam1,err1),('name2',diam2,err2),...] where the diam
-    and err are in [mas].
+    and err are in [mas]. The input hdrs shall be a list of FITS headers.
     '''
     elog = log.trace ('compute_all_viscal');
 
@@ -118,13 +133,9 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         diam = calib[HMP+'CALIB DIAM'] * 4.84813681109536e-09;
         diamErr = calib[HMP+'CALIB DIAMERR'] * 4.84813681109536e-09;
 
-        # Get spatial frequencies in [rad-1]
-        lbd = hdulist['OI_WAVELENGTH'].data['EFF_WAVE'];
-        fu = hdulist['OI_VIS2'].data['UCOORD'][:,None] / lbd[None,:];
-        fv = hdulist['OI_VIS2'].data['VCOORD'][:,None] / lbd[None,:];
-
         # Compute the TF
-        v2 = signal.airy (diam * np.sqrt(fu*fu+fv*fv))**2;
+        spf = get_spfreq (hdulist,'OI_VIS2');
+        v2 = signal.airy (diam * spf)**2;
         hdulist['OI_VIS2'].data['VIS2DATA'] /= v2;
         hdulist['OI_VIS2'].data['VIS2ERR'] /= v2;
 
@@ -149,17 +160,15 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         # First HDU
         hdulist[0].header['FILETYPE'] = 'VIS_CALIBRATED';
         hdulist[0].header[HMP+'VIS_SCI'] = os.path.basename (sci['ORIGNAME']);
-        hdulist[0].header[HMP+'DELTA_INTERP'] = (delta,'[days] delta for weighted interpolation');
+        hdulist[0].header[HMP+'DELTA_INTERP'] = (delta,'[days] delta for interpolation');
 
         # Write file
         files.write (hdulist, output+'.fits');
-
-        log.info ('Figures');
     
         # VIS2
         fig,axes = plt.subplots ();
         fig.suptitle (headers.summary (sci));
-        x  = np.sqrt (hdulist['OI_VIS2'].data['UCOORD']**2 + hdulist['OI_VIS2'].data['VCOORD']**2)[:,None] / hdulist['OI_WAVELENGTH'].data['EFF_WAVE'][None,:];
+        x  = get_spfreq (hdulist,'OI_VIS2');
         y  = hdulist['OI_VIS2'].data['VIS2DATA'];
         dy = hdulist['OI_VIS2'].data['VIS2ERR'];
         for b in range (15):
@@ -244,4 +253,3 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
     files.write (fig,output+'_all_t3amp.png');
     
     plt.close ("all");
-    return hdulist;

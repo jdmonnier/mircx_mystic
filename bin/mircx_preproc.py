@@ -82,7 +82,7 @@ parser.add_argument ("--vis-calibrated", dest="viscalib",default='FALSE',
                      choices=TrueFalseOverwrite,
                      help="compute the VIS_CALIBRATED products");
 
-parser.add_argument ("--calibrators", dest="calibrators",default='[("NAME",diam,err)]',
+parser.add_argument ("--calibrators", dest="calibrators",default='name,diam,err',
                      type=str, help="list of calibration star with diameters");
 
 #
