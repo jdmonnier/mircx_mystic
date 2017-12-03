@@ -165,6 +165,11 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         # Write file
         files.write (hdulist, output+'.fits');
     
+        # Append VIS_SCI and VIS_SCI_TF, to allow a plot
+        # of a trend over the night for this setup
+        hdusci.append (hdus);
+        hdutfs.append (hdutfsi);
+        
         # VIS2
         fig,axes = plt.subplots ();
         fig.suptitle (headers.summary (sci));
@@ -179,10 +184,8 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         axes.set_ylabel ('vis2');
         files.write (fig,output+'_vis2.png');
          
-        # Append VIS_SCI and VIS_SCI_TF, to allow a plot
-        # of a trend over the night for this setup
-        hdusci.append (hdus);
-        hdutfs.append (hdutfsi);
+        plt.close ("all");
+        
         
     log.info ('Figures for the trends');
 
