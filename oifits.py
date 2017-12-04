@@ -113,7 +113,7 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     nvalid = np.nansum (1. * valid, axis=0);
 
     # Compute bootstrap sample
-    boot = np.random.random ((ns,20)) * ns;
+    boot = (np.random.random ((ns,20)) * ns).astype(int);
     boot[:,0] = range (ns);
 
     # # Compute mean
@@ -238,7 +238,7 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     nvalid = np.nansum (1. * valid, axis=0);
 
     # Compute bootstrap sample
-    boot = np.random.random ((ns,20)) * ns;
+    boot = (np.random.random ((ns,20)) * ns).astype(int);
     boot[:,0] = range (ns);
 
     # Compute mean phase
