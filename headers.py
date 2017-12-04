@@ -3,7 +3,7 @@ import numpy as np
 from astropy.io import fits as pyfits
 from astropy.time import Time
 
-import os, glob, pickle, datetime
+import os, glob, pickle, datetime, re
 
 from . import log
 
@@ -162,13 +162,16 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
     - the time distance is larger than delta.
     The output is a list of list.
     '''
-    elog = log.trace('group_headers');
+    elog = log.trace ('group_headers');
     
     groups = [[]];
     mjd = -10e9;
 
     # Key used to define setup
     keys = ['FILETYPE'] + keys;
+
+    # Define the regular expression to match file type
+    regex = re.compile ('^'+mtype+'$');
 
     # Sort by time
     hdrs = sorted (hdrs,key=lambda h: h['MJD-OBS']);
@@ -178,8 +181,8 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
         fileinfo = h['ORIGNAME'] + ' (' +h['FILETYPE']+')';
         
         # if different type, start new group and continue
-        if mtype not in h['FILETYPE']:
-            if groups[-1] != [] and str2bool(continuous):
+        if bool (re.match (regex, h['FILETYPE'])) is False:
+            if groups[-1] != [] and str2bool (continuous):
                 groups.append([]);
             continue;
 
@@ -274,24 +277,29 @@ def rep_nan (val,*rep):
 
 def parse_argopt_catalog (input):
     '''
-    Parse the syntax 'NAME1,d1,e1;NAME2,d2,e2;...'
+    Parse the syntax 'NAME1,d1,e1,NAME2,d2,e2,...'
     '''    
+
+    # Check it is a multiple of 3
+    values = [i for i in input.split(',') if i != ''];
+    if float(len (values) / 3).is_integer() is False:
+        raise (ValueError('Wrong syntax for calibrators'));
+
+    # Parse each star
     catalog = [];
-    for cal in [i for i in input.split(';') if i != '']:
-        cal = [i for i in cal.split(',') if i != ''];
-        if len (cal) != 3: raise (ValueError('Wrong syntax for calibrators'));
-        catalog.append ([cal[0],float(cal[1]),float(cal[2])]);
-    
+    for star in map(list,zip(*[iter(values)]*3)):
+        catalog.append ([star[0],float(star[1]),float(star[2])]);
+
     return catalog;
     
 
-def set_sci_cal (hdrs, catalog):
+def get_sci_cal (hdrs, catalog):
     '''
     Spread the headers from SCI and CAL according to the 
     entries defined in catalog. Catalog should be of the
     form [("NAME1",diam1,err1),("NAME2",diam2,err2),...]
     '''
-    
+
     try:
         for c in catalog:
             if len (c) != 3: raise;
@@ -312,9 +320,13 @@ def set_sci_cal (hdrs, catalog):
         if h['OBJECT'] not in name:
             log.info ('%s (%s) -> VIS_SCI'%(h['ORIGNAME'],h['OBJECT']));
             h['FILETYPE'] += '_SCI';
+            scis.append (h);
         else:
             log.info ('%s (%s) -> VIS_CAL'%(h['ORIGNAME'],h['OBJECT']));
             idx = name.index (h['OBJECT']);
             h['FILETYPE'] += '_CAL';
             h[HMP+'CALIB DIAM'] = (diam[idx],'[mas] diameter');
             h[HMP+'CALIB DIAMERR'] = (err[idx],'[mas] diameter uncertainty');
+            cals.append (h);
+
+    return scis,cals;

@@ -82,7 +82,7 @@ parser.add_argument ("--vis-calibrated", dest="viscalib",default='FALSE',
                      choices=TrueFalseOverwrite,
                      help="compute the VIS_CALIBRATED products");
 
-parser.add_argument ("--calibrators", dest="calibrators",default='[("NAME",diam,err)]',
+parser.add_argument ("--calibrators", dest="calibrators",default='name,diam,err',
                      type=str, help="list of calibration star with diameters");
 
 #
@@ -142,7 +142,7 @@ if argopt.bmap != 'FALSE':
     hdrs_calib = mrx.headers.loaddir (argopt.outputDir);
     
     # Group all BEAMi
-    gps = mrx.headers.group (hdrs_raw, 'BEAM', delta=argopt.delta, Delta=argopt.Delta,
+    gps = mrx.headers.group (hdrs_raw, 'BEAM.*', delta=argopt.delta, Delta=argopt.Delta,
                              keys=setup.detwin+setup.detmode+setup.insmode,
                              continuous=argopt.cont);
     overwrite = (argopt.bmap == 'OVERWRITE');
@@ -338,38 +338,28 @@ if argopt.vis != 'FALSE':
 #
 
 if argopt.viscalib != 'FALSE':
+    overwrite = (argopt.viscalib == 'OVERWRITE');
 
     # Read all calibration products, keep only the VIS
     hdrs = mrx.headers.loaddir (argopt.outputDir);
 
-    # Get SCI and CAL from input catalog
-    catalog = mrx.headers.parse_argopt_catalog (argopt.calibrators);
-    mrx.headers.set_sci_cal (hdrs, catalog);
+    # Group all VIS by calibratable setup
+    keys = setup.detwin+setup.insmode+setup.fringewin+setup.visparam;
+    gps = mrx.headers.group (hdrs, 'VIS', delta=1e9, Delta=1e9, keys=keys, continuous=False);
 
-    # Group all DATA
-    gps = mrx.headers.group (hdrs, 'VIS_SCI', delta=0,
-                             keys=setup.detwin+setup.detmode+setup.insmode+setup.fringewin+setup.visparam);
-    overwrite = (argopt.viscalib == 'OVERWRITE');
-    
+    # Parse input catalog
+    catalog = mrx.headers.parse_argopt_catalog (argopt.calibrators);
+
     # Compute 
     for i,gp in enumerate (gps):
         try:
-            log.info ('Compute VIS_CALIBRATED {0} over {1} '.format(i+1,len(gps)));
+            log.info ('Calibrate setup {0} over {1} '.format(i+1,len(gps)));            
+            log.setFile (argopt.outputDir+'/calibration_setup%i.log'%i);
             
-            output = mrx.files.output (argopt.outputDir, gp[0], 'viscalib');
-            if os.path.exists (output+'.fits') and overwrite is False:
-                log.info ('Product already exists');
-                continue;
-
-            log.setFile (output+'.log');
-
-            cals = mrx.headers.assoc (gp[0], hdrs, 'VIS_CAL', which='all',
-                                      keys=setup.detwin+setup.insmode+setup.fringewin);
-            
-            mrx.compute_viscalib (gp, cals, output=output);
+            mrx.compute_all_viscalib (gp, catalog, outputDir=argopt.outputDir);
 
         except Exception as exc:
-            log.error ('Cannot compute VIS_CALIBRATED: '+str(exc));
+            log.error ('Cannot calibrate setup: '+str(exc));
             if argopt.debug == 'TRUE': raise;
         finally:
             log.closeFile ();
