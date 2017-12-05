@@ -645,6 +645,10 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     bias_power = np.abs (bias_dft)**2;
     bias_power_mean = np.mean (bias_power,axis=-1,keepdims=True);
 
+    # We may want to implement a spectro-temporal
+    # smoothing of the photometry, to help the
+    # edge channels
+
     # Compute norm power
     log.info ('Compute norm power');
     bbeam = setup.base_beam ();

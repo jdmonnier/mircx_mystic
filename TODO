@@ -36,6 +36,9 @@ Think on the dimensions...
 
 Which frequency to retroject the DC residual ??
 
+Shall we retroproject the DC residual for
+each wavelength independently ??
+
 How to deal with the kappa ? Wouldn't the DC projection be sufficient
 if we assume the kappa is the same for all telescopes ?
 
