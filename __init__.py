@@ -3,7 +3,7 @@ Module to reduce the MIRCX data
 """
 
 # General modules
-from . import headers, setup, files, batch, oifits, signal
+from . import headers, setup, files, oifits, signal
 
 # High levels routines to process RAW
 # data into BEAMMAP and PREPROC
