@@ -92,6 +92,9 @@ parser.add_argument ("--calibrators", dest="calibrators",default='name,diam,err'
 # Parse argument
 argopt = parser.parse_args ();
 
+# Verbose
+elog = log.trace ('mircx_preproc');
+
 # Get all RAW files from current dir
 if argopt.background != 'FALSE' or \
    argopt.bmap != 'FALSE' or \
