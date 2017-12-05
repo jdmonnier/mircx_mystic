@@ -91,6 +91,9 @@ parser.add_argument ("--calibrators", dest="calibrators",default='name,diam,err'
 # Parse argument
 argopt = parser.parse_args ();
 
+# Verbose
+elog = log.trace ('mircx_reduce');
+
 #
 # Compute BACKGROUND_MEAN
 #
