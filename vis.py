@@ -378,6 +378,23 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
     photok = photo * kappa;
     photok0 = photok.copy ();
 
+    # QC about the fringe dc
+    log.info ('Compute fringedc / photok');
+    photok_sum = np.sum (photok,axis=(0,3));
+    fringe_sum = np.sum (fringe,axis=(2,3));
+    dc_ratio = np.sum (fringe_sum) / np.sum (photok_sum);
+    hdr[HMQ+'DC MEAN'] = (rep_nan (dc_ratio), 'fringe/photo');
+
+    # Scale the photometry to the fringe DC. FIXME: this is done
+    # for all wavelength together, not per-wavelength.
+    log.info ('Scale the photometries by %.4f'%dc_ratio);
+    photok *= dc_ratio;
+
+    # We save this estimation of the photometry
+    # for the further visibility normalisation
+    log.info ('Save photometry for normalisation');
+    photok0 = photok.copy();
+
     # Smooth photometry
     log.info ('Smooth photometry by sigma=%i frames'%nsmooth);
     photok = gaussian_filter (photok,(0,0,nsmooth,0),mode='nearest');
@@ -395,41 +412,27 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
     spectra /= np.sum (spectra, axis=3, keepdims=True) + 1e-20;
     injection = np.sum (photok, axis=3, keepdims=True);
     photok = spectra*injection;
-    
-    # Compute flux in fringes
+     
+    # Compute flux in fringes. fringe_map is normalised
     log.info ('Compute dc in fringes');
     fringe_map  = medfilt (fringe_map, [1,1,1,1,11]);
     fringe_map /= np.sum (fringe_map, axis=-1, keepdims=True) + 1e-20;
     cont = np.einsum ('Brfy,Brfyx->rfyx', photok, fringe_map);
-    
-    # QC about the fringe dc
-    log.info ('Compute QC about dc');
-    photodc_mean  = np.mean (cont,axis=(2,3));
-    fringedc_mean = np.mean (fringe,axis=(2,3));
-    dc_ratio = np.sum (fringedc_mean) / np.sum (photodc_mean);
-    hdr[HMQ+'DC MEAN'] = (rep_nan (dc_ratio), 'fringe/photo');
-
-    # QC with a linear fit including offset
-    poly_dc = np.polyfit (photodc_mean.flatten(), fringedc_mean.flatten(), 1);
-    hdr[HMQ+'DC ORDER0'] = (poly_dc[0],'[adu] fit DC(photo)');
-    hdr[HMQ+'DC ORDER1'] = (poly_dc[1],'[adu/adu] fit DC(photo)');
 
     # Check dc
+    log.info ('Figure of DC in fringes');
     fig,ax = plt.subplots ();
     fig.suptitle (headers.summary (hdr));
-    ax.hist2d (photodc_mean.flatten(), fringedc_mean.flatten(),
+    cont_mean = np.mean (cont,axis=(2,3));
+    fringe_mean = np.mean (fringe,axis=(2,3));
+    ax.hist2d (cont_mean.flatten(), fringe_mean.flatten(),
                bins=40, norm=mcolors.LogNorm());
-    ax.plot (photodc_mean.flatten(),photodc_mean.flatten(),'-',label='y = x');
-    ax.plot (photodc_mean.flatten(),photodc_mean.flatten() * dc_ratio,label='y = a.x');
+    xvalues = np.array ([np.min (cont_mean), np.max (cont_mean)]);
+    ax.plot (xvalues,xvalues,'g-',label='y = x');
     ax.set_ylabel('fringe dc');
-    ax.set_xlabel('sum of photo * kappa');
+    ax.set_xlabel('sum of photo * kappa * map');
     ax.legend (loc=2);
     files.write (fig,output+'_dccorr.png');
-
-    # Scale the photometry to the continuum
-    log.info ('Scale the DC and photometries by 1/%.4f'%dc_ratio);
-    cont *= dc_ratio;
-    photok0 *= dc_ratio;
         
     # Subtract continuum
     log.info ('Subtract dc');
