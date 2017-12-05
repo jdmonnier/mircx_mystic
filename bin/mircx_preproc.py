@@ -320,7 +320,7 @@ if argopt.vis != 'FALSE':
         try:
             log.info ('Compute VIS {0} over {1} '.format(i+1,len(gps)));
             
-            for nc in [1,3,9]:
+            for nc in [1]:
                 output = mrx.files.output (argopt.outputDir, gp[0], 'vis')+'_c%04i'%int(nc*10);
                 if os.path.exists (output+'.fits') and overwrite is False:
                     log.info ('Product already exists');
