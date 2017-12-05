@@ -433,10 +433,15 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
     ax.set_xlabel('sum of photo * kappa * map');
     ax.legend (loc=2);
     files.write (fig,output+'_dccorr.png');
-        
+
+    # Save integrated spectra before
+    # subtracting the continuum
+    fringe_spectra = np.mean (fringe,axis=(0,1,3));
+
     # Subtract continuum
     log.info ('Subtract dc');
-    fringe_hf = fringe - cont;
+    fringe -= cont;
+    cont = [];
 
     # Model (x,f)
     log.info ('Model of data');
@@ -462,7 +467,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
         scale = lbd0 / lbd[y] / scale0;
         model[:,1:nfq+1] = amp[:,None] * 2. * np.cos (2.*np.pi * x[:,None] * f[None,:] * scale);
         model[:, nfq+1:] = amp[:,None] * 2. * np.sin (2.*np.pi * x[:,None] * f[None,:] * scale);
-        cfc = np.tensordot (model,fringe_hf[:,:,y,:],axes=([0],[2])).reshape((nx,nr*nf)).T;
+        cfc = np.tensordot (model,fringe[:,:,y,:],axes=([0],[2])).reshape((nx,nr*nf)).T;
         cf[:,y,0]  = cfc[:,0];
         cf[:,y,1:] = cfc[:,1:nfq+1] - 1.j * cfc[:,nfq+1:];
     cf.shape = (nr,nf,ny,nfq+1);
@@ -490,22 +495,25 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
     # Integrated spectra
     fig,ax = plt.subplots (2,1);
     fig.suptitle (headers.summary (hdr));
-    val = np.mean (fringe,axis=(0,1,3));
+    val = fringe_spectra;
     val /= np.max (medfilt (val,3), keepdims=True) + 1e-20;
-    ax[0].plot (lbd*1e6,val,'--', label='fringes and photo');
+    ax[0].plot (lbd*1e6,val,':', lw=5, label='fringes and photo');
     val = np.mean (photo, axis=(1,2));
     val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
-    ax[0].plot (lbd*1e6,val.T);
-    ax[0].legend();
+    ax[0].plot (lbd*1e6,val.T,alpha=0.5);
+    ax[0].legend(loc=4);
     ax[0].set_ylabel ('normalized');
     
-    val = np.mean (fringe,axis=(0,1,3));
+    val = fringe_spectra;
     val /= np.max (medfilt (val,3), keepdims=True) + 1e-20;
-    ax[1].plot (lbd*1e6,val,'--', label='fringes and photo * kappa * map');
-    val = np.mean (photok, axis=(1,2));
+    ax[1].plot (lbd*1e6,val,':', lw=5, label='fringes and photo * kappa');
+    val = np.mean (photok0,axis=(0,1,2));
+    val /= np.max (medfilt (val,3), keepdims=True) + 1e-20;
+    ax[1].plot (lbd*1e6,val,'--', lw=5);
+    val = np.mean (photok0, axis=(1,2));
     val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
-    ax[1].plot (lbd*1e6,val.T);
-    ax[1].legend ();
+    ax[1].plot (lbd*1e6,val.T,alpha=0.5);
+    ax[1].legend (loc=4);
     ax[1].set_ylabel ('normalized');
     ax[1].set_xlabel ('lbd (um)');
     files.write (fig,output+'_spectra.png');
