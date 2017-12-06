@@ -53,27 +53,27 @@ parser.add_argument ("--vis-calibrated-dir", dest="viscalib_dir",default='./visc
                      help="output directories");
 
 
-parser.add_argument ("--background", dest="background",default='FALSE',
+parser.add_argument ("--background", dest="background",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the BACKGROUND products");
 
-parser.add_argument ("--beam-map", dest="bmap",default='FALSE',
+parser.add_argument ("--beam-map", dest="bmap",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the BEAM_MAP products");
 
-parser.add_argument ("--preproc", dest="preproc",default='FALSE',
+parser.add_argument ("--preproc", dest="preproc",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the PREPROC products");
 
-parser.add_argument ("--spec-cal", dest="speccal",default='FALSE',
+parser.add_argument ("--spec-cal", dest="speccal",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the SPEC_CAL products");
 
-parser.add_argument ("--rts", dest="rts",default='FALSE',
+parser.add_argument ("--rts", dest="rts",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the RTS products");
 
-parser.add_argument ("--vis", dest="vis",default='FALSE',
+parser.add_argument ("--vis", dest="vis",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the VIS products");
 
