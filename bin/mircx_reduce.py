@@ -16,14 +16,19 @@ from mircx_pipeline import log, setup;
 description = \
 """
 description:
-  Run the mircx test pipeline
+  Run the mircx test pipeline. Shall be ran in the directory
+  of the RAW data. The data format shall be .fits and/or .fits.fz
+  The format .fits.gz is not supported.
+
+  By default, outputs are written in directories preproc/ vis/
+  and viscalib/
 """
 
 epilog = \
 """
 examples:
   cd /path/to/my/data/
-  mirx_preproc.py --background=FALSE
+  mirx_reduce.py
 """
 
 parser = argparse.ArgumentParser (description=description, epilog=epilog,
@@ -39,6 +44,7 @@ parser.add_argument ("--debug", dest="debug",default='FALSE',
 parser.add_argument ("--max-file", dest="max_file",default=3000,type=int,
                      help="maximum number of file to load to build "
                           "product (speed-up for tests)");
+
 
 parser.add_argument ("--preproc-dir", dest="preproc_dir",default='./preproc/',type=str,
                      help="output directories");
@@ -81,7 +87,8 @@ parser.add_argument ("--vis-calibrated", dest="viscalib",default='FALSE',
                      choices=TrueFalseOverwrite,
                      help="compute the VIS_CALIBRATED products");
 
-parser.add_argument ("--calibrators", dest="calibrators",default='name,diam,err',
+
+parser.add_argument ("--calibrators", dest="calibrators",default='name1,diam,err,name2,diam,err',
                      type=str, help="list of calibration star with diameters");
 
 #
@@ -105,7 +112,7 @@ if argopt.background != 'FALSE':
     hdrs = hdrs_raw = mrx.headers.loaddir ('./');
     
     # Group backgrounds
-    keys = setup.detwin+setup.detmode+setup.insmode;
+    keys = setup.detwin + setup.detmode + setup.insmode;
     gps = mrx.headers.group (hdrs, 'BACKGROUND', keys=keys,
                              delta=300, Delta=3600,
                              continuous=True);
@@ -142,7 +149,7 @@ if argopt.bmap != 'FALSE':
     hdrs_calib = mrx.headers.loaddir (argopt.preproc_dir);
     
     # Group all BEAMi
-    keys = setup.detwin+setup.detmode+setup.insmode;
+    keys = setup.detwin + setup.detmode + setup.insmode;
     gps = mrx.headers.group (hdrs, 'BEAM.*', keys=keys,
                              delta=300, Delta=3600,
                              continuous=True);
@@ -160,8 +167,8 @@ if argopt.bmap != 'FALSE':
             
             log.setFile (output+'.log');
 
-            # Associate background
-            keys = setup.detwin+setup.detmode+setup.insmode;
+            # Associate BACKGROUND
+            keys = setup.detwin + setup.detmode + setup.insmode;
             bkg = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
                                      keys=keys, which='closest', required=1);
             
@@ -185,7 +192,7 @@ if argopt.preproc != 'FALSE':
     hdrs_calib = mrx.headers.loaddir (argopt.preproc_dir);
 
     # Group all DATA
-    keys = setup.detwin+setup.detmode+setup.insmode;
+    keys = setup.detwin + setup.detmode + setup.insmode;
     gps = mrx.headers.group (hdrs, 'DATA', keys=keys,
                              delta=300, Delta=120,
                              continuous=True);
@@ -202,15 +209,15 @@ if argopt.preproc != 'FALSE':
 
             log.setFile (output+'.log');
 
-            # Associate background
-            keys = setup.detwin+setup.detmode+setup.insmode;
+            # Associate BACKGROUND
+            keys = setup.detwin + setup.detmode + setup.insmode;
             bkg  = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
                                      keys=keys, which='closest', required=1);
 
-            # Associate beam map
+            # Associate BEAM_MAP (best of the night)
             bmaps = [];
             for i in range(1,7):
-                keys = setup.detwin+setup.insmode;
+                keys = setup.detwin + setup.insmode;
                 tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MAP'%i,
                                          keys=keys, which='best', required=1);
                 bmaps.extend (tmp);
@@ -234,7 +241,7 @@ if argopt.speccal != 'FALSE':
     hdrs = mrx.headers.loaddir (argopt.preproc_dir);
 
     # Group all PREPROC together
-    keys = setup.detwin+setup.insmode+setup.fringewin;
+    keys = setup.detwin + setup.insmode + setup.fringewin;
     gps = mrx.headers.group (hdrs, 'DATA_PREPROC', keys=keys,
                              delta=1e20, Delta=1e20,
                              continuous=False);
@@ -270,7 +277,7 @@ if argopt.rts != 'FALSE':
     hdrs = mrx.headers.loaddir (argopt.preproc_dir);
 
     # Group all DATA
-    keys = setup.detwin+setup.detmode+setup.insmode+setup.fringewin;
+    keys = setup.detwin + setup.detmode + setup.insmode + setup.fringewin;
     gps = mrx.headers.group (hdrs, 'DATA_PREPROC', delta=0, keys=keys);
 
     # Compute 
@@ -286,27 +293,27 @@ if argopt.rts != 'FALSE':
             log.setFile (output+'.log');
 
             # Associate SPEC_CAL
-            keys = setup.detwin+setup.insmode+setup.fringewin;
+            keys = setup.detwin + setup.insmode + setup.fringewin;
             speccal = mrx.headers.assoc (gp[0], hdrs, 'SPEC_CAL', keys=keys,
                                          which='best', required=1);
             
-            # Associate BEAM_MAP (best in this setup)
-            bmaps = [];
+            # Associate PROFILE (best BEAM_MAP in this setup)
+            profiles = [];
             for i in range(1,7):
-                keys = setup.detwin+setup.detmode+setup.insmode;
+                keys = setup.detwin + setup.detmode + setup.insmode;
                 tmp = mrx.headers.assoc (gp[0], hdrs, 'BEAM%i_MAP'%i,
                                          keys=keys, which='best', required=1);
-                bmaps.extend (tmp);
+                profiles.extend (tmp);
 
-            # Associate KAPPA (closest in time)
+            # Associate KAPPA (closest BEAM_MAP in time, in this setup)
             kappas = [];
             for i in range(1,7):
-                keys = setup.detwin+setup.detmode+setup.insmode;
+                keys = setup.detwin + setup.detmode + setup.insmode;
                 tmp = mrx.headers.assoc (gp[0], hdrs, 'BEAM%i_MAP'%i,
                                          keys=keys, which='closest', required=1);
                 kappas.extend (tmp);
                 
-            mrx.compute_rts (gp, bmaps, kappas, speccal, output=output);
+            mrx.compute_rts (gp, profiles, kappas, speccal, output=output);
 
         except Exception as exc:
             log.error ('Cannot compute RTS: '+str(exc));
@@ -325,7 +332,7 @@ if argopt.vis != 'FALSE':
     hdrs = mrx.headers.loaddir (argopt.rts_dir);
 
     # Group all DATA
-    keys = setup.detwin+setup.detmode+setup.insmode+setup.fringewin;
+    keys = setup.detwin + setup.detmode + setup.insmode + setup.fringewin;
     gps = mrx.headers.group (hdrs, 'RTS', delta=0, keys=keys);
 
     # Compute 
@@ -360,7 +367,7 @@ if argopt.viscalib != 'FALSE':
     hdrs = mrx.headers.loaddir (argopt.vis_dir);
 
     # Group all VIS by calibratable setup
-    keys = setup.detwin+setup.insmode+setup.fringewin+setup.visparam;
+    keys = setup.detwin + setup.insmode + setup.fringewin + setup.visparam;
     gps = mrx.headers.group (hdrs, 'VIS', delta=1e9, Delta=1e9,
                              keys=keys, continuous=False);
 
@@ -371,9 +378,9 @@ if argopt.viscalib != 'FALSE':
     for i,gp in enumerate (gps):
         try:
             log.info ('Calibrate setup {0} over {1} '.format(i+1,len(gps)));            
-            log.setFile (argopt.viscal_dir+'/calibration_setup%i.log'%i);
+            log.setFile (argopt.viscalib_dir+'/calibration_setup%i.log'%i);
             
-            mrx.compute_all_viscalib (gp, catalog, outputDir=argopt.viscal_dir);
+            mrx.compute_all_viscalib (gp, catalog, outputDir=argopt.viscalib_dir);
 
         except Exception as exc:
             log.error ('Cannot calibrate setup: '+str(exc));
