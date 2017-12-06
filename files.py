@@ -15,15 +15,24 @@ from . import log
 from .headers import HM, HMQ, HMP, HMW;
 from .version import revision
 
+def ensure_dir (outputDir):
+    '''
+    Build directory if needed. Set permission
+    to all so that directory can be deleted by
+    others (in orthanc for instance).
+    '''
+    if not os.path.exists (outputDir):
+        log.info ('Create directory: %s'%outputDir);
+        os.makedirs (outputDir);
+        os.chmod (outputDir, 0o777);
+
 def output (outputDir,hdr,suffix):
     '''
     Return a string like: ./outputDir/mircx00550_suffix
     '''
     
     # Build diretory if needed
-    if not os.path.exists (outputDir):
-        os.makedirs (outputDir);
-        os.chmod (outputDir, 0o777);
+    ensure_dir (outputDir);
         
     # Get filename 
     name = hdr['ORIGNAME'];
