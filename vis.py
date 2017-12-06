@@ -210,7 +210,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     plt.close ("all");
     return hdulist;
     
-def compute_rts (hdrs, bmaps, kappas, speccal, output='output_rts', nsmooth=2):
+def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', nsmooth=2):
     '''
     Compute the RTS
     '''
@@ -218,7 +218,7 @@ def compute_rts (hdrs, bmaps, kappas, speccal, output='output_rts', nsmooth=2):
 
     # Check inputs
     headers.check_input (hdrs,  required=1, maximum=1);
-    headers.check_input (bmaps, required=1, maximum=6);
+    headers.check_input (profiles, required=1, maximum=6);
     headers.check_input (kappas, required=1, maximum=6);
     headers.check_input (speccal, required=1, maximum=1);
 
@@ -246,7 +246,7 @@ def compute_rts (hdrs, bmaps, kappas, speccal, output='output_rts', nsmooth=2):
 
     # Get fringe and photo maps
     log.info ('Read data for photometric and fringe profiles');
-    fringe_map, photo_map = extract_maps (hdr, bmaps);
+    fringe_map, photo_map = extract_maps (hdr, profiles);
     
     # Define profile for optimal extraction of photometry
     # The same profile is used for all spectral channels
@@ -320,7 +320,7 @@ def compute_rts (hdrs, bmaps, kappas, speccal, output='output_rts', nsmooth=2):
     log.info ('Read data for kappa matrix');
     fringe_kappa, photo_kappa = extract_maps (hdr, kappas);
     
-    # Build kappa from the bmaps.
+    # Build kappa from input data.
     # kappa(nb,nr,nf,ny)
     log.info ('Build kappa-matrix with profile, filtering and registration');
     upper = np.sum (medfilt (fringe_kappa,[1,1,1,1,11]), axis=-1);
@@ -541,8 +541,14 @@ def compute_rts (hdrs, bmaps, kappas, speccal, output='output_rts', nsmooth=2):
     hdu0.header[HMP+'PREPROC'] = os.path.basename (hdrs[0]['ORIGNAME']);
 
     # Set the input calibration file
-    for bmap in bmaps:
-        hdu0.header[HMP+bmap['FILETYPE']] = os.path.basename (bmap['ORIGNAME']);
+    for pro in profiles:
+        name = pro['FILETYPE'].split('_')[0]+'_PROFILE';
+        hdu0.header[HMP+name] = os.path.basename (pro['ORIGNAME']);
+
+    # Set the input calibration file
+    for kap in kappas:
+        name = kap['FILETYPE'].split('_')[0]+'_KAPPA';
+        hdu0.header[HMP+name] = os.path.basename (kap['ORIGNAME']);
 
     # Set DFT of fringes, bias, photometry and lbd
     hdu1 = pyfits.ImageHDU (base_dft.real.astype('float32'));
@@ -775,19 +781,6 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
         axes.flatten()[b].plot (d0[:,b],'--', alpha=0.5);
         axes.flatten()[b].set_ylim (-lim,+lim);
     files.write (fig,output+'_gd.png');
-    
-    # SNR, GD and FLAGs
-    # fig,ax = plt.subplots (3,1);
-    # fig.suptitle (headers.summary (hdr));
-    # ax[0].plot (np.log10 (np.mean (base_snr,axis=(1,2))));
-    # ax[0].set_ylabel ('log10 (SNR_bb)');
-    # ax[1].plot (np.mean (base_gd,axis=(1,2)) * 1e6);
-    # ax[1].set_ylabel ('gdelay (um)');
-    # ax[1].set_xlabel ('ramp');
-    # ax[2].imshow (np.mean (base_flag,axis=(1,2)).T);
-    # ax[1].set_ylabel ('gdelay (um)');
-    # ax[2].set_xlabel ('flag');
-    # files.write (fig,output+'_snr_gd.png');
 
     # File
     log.info ('Create file');

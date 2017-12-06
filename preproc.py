@@ -564,6 +564,10 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     # Set files
     hdu0.header[HMP+'BACKGROUND_MEAN'] = os.path.basename (bkg[0]['ORIGNAME']);
 
+    # Set the input calibration file
+    for bm in bmaps:
+        hdu0.header[HMP+bm['FILETYPE']] = os.path.basename (bm['ORIGNAME']);
+
     # Second HDU with photometries
     hdu1 = pyfits.ImageHDU (photos.astype('float32'));
     hdu1.header['BUNIT'] = 'adu/pixel/frame';
