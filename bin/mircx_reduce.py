@@ -377,10 +377,15 @@ if argopt.viscalib != 'FALSE':
     # Compute 
     for i,gp in enumerate (gps):
         try:
-            log.info ('Calibrate setup {0} over {1} '.format(i+1,len(gps)));            
+            log.info ('Calibrate setup {0} over {1} '.format(i+1,len(gps)));
+
+            # Create output directory and set log
+            mrx.files.ensure_dir (argopt.viscalib_dir);
             log.setFile (argopt.viscalib_dir+'/calibration_setup%i.log'%i);
             
-            mrx.compute_all_viscalib (gp, catalog, outputDir=argopt.viscalib_dir);
+            outputSetup = 'calibration_setup%i'%i;
+            mrx.compute_all_viscalib (gp, catalog, outputDir=argopt.viscalib_dir,
+                                      outputSetup=outputSetup);
 
         except Exception as exc:
             log.error ('Cannot calibrate setup: '+str(exc));
