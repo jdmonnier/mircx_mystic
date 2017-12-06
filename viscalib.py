@@ -106,7 +106,9 @@ def tf_divide (hdus, hdutf):
     return hdusc;
     
 def compute_all_viscalib (hdrs, catalog, delta=0.05,
-                          outputDir='viscal/', overwrite=True):
+                          outputDir='viscal/',
+                          outputSetup='calibration_setup',
+                          overwrite=True):
     '''
     Cross-calibrate the VIS in hdrs. The choice of SCI and CAL, and the diameter
     of the calibration stars, are specified with the catalog. Catalog should be
@@ -209,7 +211,7 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         dy = [h['OI_VIS2'].data['VIS2ERR'][b,6] for h in hdusci];
         ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
     
-    files.write (fig,output+'_all_vis2.png');
+    files.write (fig,outputSetup+'_vis2.png');
 
     # T3PHI
     fig,axes = plt.subplots (5,4, sharex=True);
@@ -231,7 +233,7 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         dy = [h['OI_T3'].data['T3PHIERR'][b,6] for h in hdusci];
         ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
     
-    files.write (fig,output+'_all_t3phi.png');
+    files.write (fig,outputSetup+'_t3phi.png');
     
     # T3AMP
     fig,axes = plt.subplots (5,4, sharex=True);
@@ -253,6 +255,6 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         dy = [h['OI_T3'].data['T3AMPERR'][b,6] for h in hdusci];
         ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
     
-    files.write (fig,output+'_all_t3amp.png');
+    files.write (fig,outputSetup+'_t3amp.png');
     
     plt.close ("all");
