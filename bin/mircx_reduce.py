@@ -290,15 +290,23 @@ if argopt.rts != 'FALSE':
             speccal = mrx.headers.assoc (gp[0], hdrs, 'SPEC_CAL', keys=keys,
                                          which='best', required=1);
             
-            # Associate BEAM_MAP
+            # Associate BEAM_MAP (best in this setup)
             bmaps = [];
             for i in range(1,7):
                 keys = setup.detwin+setup.detmode+setup.insmode;
                 tmp = mrx.headers.assoc (gp[0], hdrs, 'BEAM%i_MAP'%i,
                                          keys=keys, which='best', required=1);
                 bmaps.extend (tmp);
-            
-            mrx.compute_rts (gp, bmaps, speccal, output=output);
+
+            # Associate KAPPA (closest in time)
+            kappas = [];
+            for i in range(1,7):
+                keys = setup.detwin+setup.detmode+setup.insmode;
+                tmp = mrx.headers.assoc (gp[0], hdrs, 'BEAM%i_MAP'%i,
+                                         keys=keys, which='closest', required=1);
+                kappas.extend (tmp);
+                
+            mrx.compute_rts (gp, bmaps, kappas, speccal, output=output);
 
         except Exception as exc:
             log.error ('Cannot compute RTS: '+str(exc));

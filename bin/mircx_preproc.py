@@ -206,13 +206,14 @@ if argopt.preproc != 'FALSE':
                                      keys=setup.detwin+setup.detmode+setup.insmode,
                                      which='closest', required=1);
 
+            # Associate MAP
             bmaps = [];
             for i in range(1,7):
                 tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MAP'%i,
                                          keys=setup.detwin+setup.insmode,
                                          which='best', required=1);
                 bmaps.extend(tmp);
-            
+
             mrx.compute_preproc (gp[0:argopt.max_file], bkg, bmaps, output=output);
             
         except Exception as exc:
@@ -285,7 +286,8 @@ if argopt.rts != 'FALSE':
             speccal = mrx.headers.assoc (gp[0], hdrs_calib, 'SPEC_CAL',
                                          keys=setup.detwin+setup.insmode+setup.fringewin,
                                          which='best', required=1);
-            
+
+            # Associate MAP (best in this setup)
             bmaps = [];
             for i in range(1,7):
                 tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MAP'%i,
@@ -293,7 +295,15 @@ if argopt.rts != 'FALSE':
                                          which='best', required=1);
                 bmaps.extend (tmp);
             
-            mrx.compute_rts (gp, bmaps, speccal, output=output);
+            # Associate KAPPA (closest in time)
+            kappas = [];
+            for i in range(1,7):
+                keys = setup.detwin+setup.detmode+setup.insmode;
+                tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MAP'%i,
+                                         keys=keys, which='closest', required=1);
+                kappas.extend (tmp);
+                
+            mrx.compute_rts (gp, bmaps, kappas, speccal, output=output);
 
         except Exception as exc:
             log.error ('Cannot compute RTS: '+str(exc));
