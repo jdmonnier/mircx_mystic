@@ -115,8 +115,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     fyc,fyw = signal.getwidth (spectrum);
     log.info ('Expect center of spectrum (lbd0) on %f'%fyc);
 
-    # Build expected wavelength (should use some
-    # width of the spectra for lbd0)
+    # Build expected wavelength table
     lbd0,dlbd = setup.lbd0 (hdr);
     lbd = (np.arange (ny) - fyc) * dlbd + lbd0;
 
@@ -210,8 +209,8 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     
     plt.close ("all");
     return hdulist;
-
-def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
+    
+def compute_rts (hdrs, bmaps, kappas, speccal, output='output_rts', nsmooth=2):
     '''
     Compute the RTS
     '''
@@ -220,6 +219,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
     # Check inputs
     headers.check_input (hdrs,  required=1, maximum=1);
     headers.check_input (bmaps, required=1, maximum=6);
+    headers.check_input (kappas, required=1, maximum=6);
     headers.check_input (speccal, required=1, maximum=1);
 
     # Load DATA
@@ -239,26 +239,21 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
     log.info (HMQ+'FRAC_SAT = %.3f'%rep_nan (fsat));
     hdr[HMQ+'FRAC_SAT'] = (rep_nan (fsat), 'fraction of saturated pixel');
 
-    # Get fringe and photo maps
-    fringe_map, photo_map = extract_maps (hdr, bmaps);
-
-    # Compute the expected position of lbd0    
-    fcy = np.mean ([h[HMW+'FRINGE CENTERY'] for h in bmaps]) - hdr[HMW+'FRINGE STARTY'];
-    
-    # Build wavelength
-    lbd0,dlbd = setup.lbd0 (hdr);
-    
     # Load the wavelength table
     f = speccal[0]['ORIGNAME'];
     log.info ('Load SPEC_CAL file %s'%f);
     lbd = pyfits.getdata (f);
 
+    # Get fringe and photo maps
+    log.info ('Read data for photometric and fringe profiles');
+    fringe_map, photo_map = extract_maps (hdr, bmaps);
+    
     # Define profile for optimal extraction of photometry
     # The same profile is used for all spectral channels
+    log.info ('Compute profile');
     profile = np.mean (photo_map, axis=3, keepdims=True);
 
     # Remove edge of the profile
-    log.info ('Crop edges of profile');
     profile /= np.sum (profile,axis=-1, keepdims=True) + 1e-20;
     flag = profile > 0.25;
     flag[:,:,:,:,1:]  += (profile[:,:,:,:,:-1] > 0.25);
@@ -270,7 +265,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
     profile *= np.sum (profile,axis=-1, keepdims=True) / \
                (np.sum (profile**2,axis=-1, keepdims=True)+1e-20);
     
-    # Profile extraction
+    # Plot the profile and compare to data
     fig,axes = plt.subplots (3,2);
     fig.suptitle (headers.summary (hdr));
     for b in range(6):
@@ -287,7 +282,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
     photo = np.sum (photo * profile, axis=-1);
 
     # Shift between photo and fringes in spectral direction
-    log.info ('Register photometry to fringe');
+    log.info ('Compute spectral offsets in beam_map');
     shifty = np.zeros (6);
     upper = np.sum (medfilt (fringe_map,[1,1,1,1,11]), axis=(1,2,4));
     lower = np.sum (medfilt (photo_map,[1,1,1,1,1]) * profile, axis=(1,2,4));
@@ -296,7 +291,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
                                               upsample_factor=100)[0][0];
 
     # Re-align photometry (all with the same)
-    log.info ('Register photo');
+    log.info ('Register photometry to fringe');
     for b in range(6):
         photo[b,:,:,:] = subpix_shift (photo[b,:,:,:], [0,0,-shifty[b]]);
 
@@ -312,7 +307,7 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
         ax.set_ylim (np.minimum (np.min (data), 0.0));
     files.write (fig,output+'_photo.png');
 
-    # Plot fringe ramp
+    # Plot ramp of flux in fringe
     log.info ('Plot fringe ramp');
     fig,ax = plt.subplots ();
     fig.suptitle (headers.summary (hdr));
@@ -321,24 +316,29 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
     ax.set_xlabel ('Frame in ramp');
     files.write (fig,output+'_fringeramp.png');
 
+    # Get data for kappa_matrix
+    log.info ('Read data for kappa matrix');
+    fringe_kappa, photo_kappa = extract_maps (hdr, kappas);
+    
     # Build kappa from the bmaps.
     # kappa(nb,nr,nf,ny)
     log.info ('Build kappa-matrix with profile, filtering and registration');
-    upper = np.sum (medfilt (fringe_map,[1,1,1,1,11]), axis=-1);
-    lower = np.sum (medfilt (photo_map,[1,1,1,1,1]) * profile, axis=-1);
+    upper = np.sum (medfilt (fringe_kappa,[1,1,1,1,11]), axis=-1);
+    lower = np.sum (medfilt (photo_kappa,[1,1,1,1,1]) * profile, axis=-1);
     for b in range(6):
         lower[b,:,:,:] = subpix_shift (lower[b,:,:,:], [0,0,-shifty[b]]);
 
     kappa = upper / (lower + 1e-20);
 
     # Filter the kappa-matrix and the data to avoid
-    # craps on the edges. treshold(ny)
+    # craps on the edges. treshold(ny) is defined
+    # based on fringe_map 
     log.info ('Compute threshold');
     threshold = np.mean (medfilt (fringe_map,[1,1,1,1,11]), axis = (0,1,2,-1));
     threshold /= np.max (medfilt (threshold,3)) + 1e-20;
+    threshold = threshold > 0.25;
 
     log.info ('Apply threshold:');
-    threshold = threshold > 0.25;
     log.info (str(1*threshold));
     fringe[:,:,~threshold,:] = 0.0;
     photo[:,:,:,~threshold]  = 0.0;
@@ -364,8 +364,6 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
     axes[0,0].legend();
     files.write (fig,output+'_kappa.png');
 
-    # Use a supplementary kappa-matrix if provided
-    
     # Kappa-matrix
     fig,ax = plt.subplots (1);
     fig.suptitle (headers.summary (hdr));
@@ -449,9 +447,13 @@ def compute_rts (hdrs, bmaps, speccal, output='output_rts', nsmooth=2):
     x = 1. * np.arange(nx) / nx;
     f = 1. * np.arange(1,nfq+1);
 
-    # Scale to ensure the frequencies fall
-    # into integer pixels (max freq in 40)
+    # fres is the spatial frequency at the
+    # reference wavelength lbd0
+    lbd0,dlbd = setup.lbd0 (hdr);
     freqs = setup.base_freq (hdr);
+    
+    # Scale to ensure the frequencies fall
+    # into integer pixels (max freq is 40)
     scale0 = 40. / np.abs (freqs * nx).max();
     ifreqs = np.round (freqs * scale0 * nx).astype(int);
 
