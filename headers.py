@@ -41,6 +41,10 @@ def loaddir (dirs):
     # Load all dirs
     hdrs = [];
     for dir in dirs:
+        if os.path.isdir (dir) is False:
+            log.info ('Skip directory (does not exist): '+dir);
+            continue;
+        
         log.info ('Load directory: '+dir);
         files = glob.glob (dir+'/mircx*.fit*');
         files = sorted (files);
