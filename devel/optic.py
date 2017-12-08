@@ -40,11 +40,13 @@ class setup (list):
             s.y -= y0 - 300;
     
 class object:
-    def __init__(self,x=0,f=100,d=100,y=0):
+    def __init__(self,x=0,f=100,d=100,y=0,n1=1.5,n2=1.55):
         self.x = x;
-        self.y = y + 25;
+        self.y = y;
         self.f = f;
         self.d = d;
+        self.n1 = n1;
+        self.n2 = n2;
 
 class lens(object):
     def tostr (self):
@@ -75,7 +77,7 @@ class screen(object):
 
 class radian(object):
     def tostr(self):
-        out = '{"type":"radiant","x":%i,"y":%i,"p":0.5}'%(self.x,self.y);
+        out = '{"type":"radiant","x":%i,"y":%i,"p":0.9}'%(self.x,self.y);
         return out;
 
 class beam(object):
@@ -84,7 +86,23 @@ class beam(object):
         out  = '{"type":"parallel",';
         out += '"p1":{"type":1,"x":%i,"y":%i,"exist":true},'%(self.x+dx/2,self.y+self.d/2);
         out += '"p2":{"type":1,"x":%i,"y":%i,"exist":true}'%(self.x-dx/2,self.y-self.d/2);
-        out += ',"p":0.5}';
+        out += ',"p":0.9}';
+        return out;
+
+class prism(object):
+    def tostr(self):
+        x = (self.x - self.d/2, self.x + self.d/2, self.x + self.d/2, self.x - self.d/2);
+        y = (self.y - self.d/2, self.y - self.d/2, self.y + self.d/2, self.y + self.d/2);
+        out  = '{"type":"refractor","path":[';
+        out += '{"x":%i,"y":%i,"arc":false},'%(x[0],y[0]);
+        out += '{"x":%i,"y":%i,"arc":false},'%(x[1],y[1]);
+        out += '{"x":%i,"y":%i,"arc":false}'%(x[3],y[3]);
+        out += '],"notDone":false,"p":%.4f},'%self.n1;
+        out += '{"type":"refractor","path":[';
+        out += '{"x":%i,"y":%i,"arc":false},'%(x[1],y[1]);
+        out += '{"x":%i,"y":%i,"arc":false},'%(x[2],y[2]);
+        out += '{"x":%i,"y":%i,"arc":false}'%(x[3],y[3]);
+        out += '],"notDone":false,"p":%.4f}'%self.n2;
         return out;
 
 def slit (x=0,d=10,fn=6):
@@ -96,6 +114,6 @@ def slit (x=0,d=10,fn=6):
     b = beam (x=x0+10,d=2.*d,f=np.inf);
     return [l1,l2,b];
 
-def camera (xd=0.0, dd=8.64, xp=36.9, dp=9.5):
+def camera (xd=0.0, dd=7.68, xp=36.9, dp=9.5):
     ''' Define the CRED array and pupil '''
-    return [opt.screen (x=xd,d=dd), opt.stop (x=xp,d=dp)];
+    return [screen (x=xd,d=dd), stop (x=xp,d=dp)];
