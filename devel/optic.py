@@ -95,3 +95,7 @@ def slit (x=0,d=10,fn=6):
     l2 = lens (x=x0,y=-d/2,d=d,f=f0);
     b = beam (x=x0+10,d=2.*d,f=np.inf);
     return [l1,l2,b];
+
+def camera (xd=0.0, dd=8.64, xp=36.9, dp=9.5):
+    ''' Define the CRED array and pupil '''
+    return [opt.screen (x=xd,d=dd), opt.stop (x=xp,d=dp)];
