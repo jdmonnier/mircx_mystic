@@ -1,15 +1,8 @@
 import numpy as np;
 import os;
 
-'''
-TODO
-specify the prism with an angle
-instead of indices. Ensure its x-direction
-does not scale with y.
-'''
-
 #
-# Inidividual objects
+# Individual objects
 #
     
 class object:
@@ -27,6 +20,13 @@ class object:
         c = setup([b]) if hasattr(b, '__iter__') is False else b;
         return setup ([self]) + b;
 
+    def rescale (self,xs,ys):
+        self.x *= xs;
+        self.f *= xs;
+        self.y *= ys;
+        self.d *= ys;
+        self.fn *= float(xs) / float(ys);
+    
 class lens(object):
     def tostr (self):
         out  = '{"type":"lens"';
@@ -96,6 +96,39 @@ class prism(object):
         out += '],"notDone":false,"p":%.4f}'%self.n2;
         return out;
 
+class splitter(object):
+    def tostr(self):
+        d = self.d;
+        x = (self.x-d/2-1, self.x-d/2+1, self.x+d/2+1, self.x+d/2-1);
+        d = np.abs (self.d);
+        y = (self.y-d/2, self.y-d/2, self.y+d/2, self.y+d/2);
+        out  = '{"type":"refractor","path":[';
+        out += '{"x":%.3f,"y":%.3f,"arc":false},'%(x[0],y[0]);
+        out += '{"x":%.3f,"y":%.3f,"arc":false},'%(x[1],y[1]);
+        out += '{"x":%.3f,"y":%.3f,"arc":false},'%(x[2],y[2]);
+        out += '{"x":%.3f,"y":%.3f,"arc":false}'%(x[3],y[3]);
+        out += '],"notDone":false,"p":3.0}';
+        return out;
+
+    def rescale(self,xs,ys):
+        if xs != ys: raise ValueError('Cannot rescale xs!=ys');
+        object.rescale (self,xs=xs,ys=ys);
+
+class mirror(object):
+    def tostr(self):
+        d = self.d;
+        y = (self.y-d/2,self.y+d/2);
+        d = self.d / self.fn;
+        x = (self.x-d/2,self.x+d/2);
+        out  = '{"type":"mirror",';
+        out += '"p1":{"type":1,"x":%.3f,"y":%.3f,"exist":true},'%(x[0],y[0]);
+        out += '"p2":{"type":1,"x":%.3f,"y":%.3f,"exist":true}}'%(x[1],y[1]);
+        return out;
+
+    def rescale(self,xs,ys):
+        if xs != ys: raise ValueError('Cannot rescale xs!=ys');
+        object.rescale (self,xs=xs,ys=ys);
+    
 #
 # Complexe setup, made of several objects
 #
@@ -129,24 +162,19 @@ class setup (list):
         return out;
     
     def rescale (self,xs=1.0,ys=1.0):
-        for s in self:
-            s.x *= xs;
-            s.f *= xs;
-            s.y *= ys;
-            s.d *= ys;
-            s.fn *= float(xs) / float(ys);
+        for s in self: s.rescale (xs,ys);
 
     def move (self,xm=0,ym=0):
         for s in self:
             s.x += xm;
             s.y += ym;
             
-    def recenter (self):
-        x0 = np.mean ([s.x for s in self]);
-        y0 = np.mean ([s.y for s in self]);
+    def recenter (self,xc=None,yc=None):
+        if xc is None: xc = np.mean ([s.x for s in self]);
+        if yc is None: yc = np.mean ([s.y for s in self]);
         for s in self:
-            s.x -= x0 - 600;
-            s.y -= y0 - 300;
+            s.x -= xc - 500;
+            s.y -= yc - 400;
 
 def slit (x=0,d=10,fn=6):
     ''' Define a slit'''
