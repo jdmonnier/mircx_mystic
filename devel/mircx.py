@@ -1,6 +1,6 @@
 from mircx_pipeline.devel import optic as opt;
 
-import copy;
+import copy, os;
 import numpy as np;
 
 '''
@@ -49,17 +49,17 @@ spatial += opt.splitter (x=375+60, d=10, fn=1.0);
 spatial += opt.mirror (x=375+60, y=-25, d=10, fn=1.0);
 spatial += opt.lens (x=375+7,y=-25,d=10,f=32.);
 spatial += opt.mirror (x=375-15, y=-25, d=10, fn=-1.0);
-spatial += opt.mirror (x=375-15, y=+3, d=3, fn=-1.0);
+spatial += opt.mirror (x=375-15, y=+3, d=3.5, fn=-1.0);
 
 # Move spectral
 spectral.move (ym=+30);
     
 # Rescale and recenter
 full = spatial + spectral;
-full.rescale (ys=10,xs=10);
-full.recenter (xc=(375-20)*10,yc=0);
+full.rescale (ys=100,xs=100);
+full.recenter (xc=(375-20)*0,yc=0);
 
 # Write
 i = (i+1)%2 if 'i' in locals() else 0;
-full.tostr ('mircx%i.lens'%i);
+full.tostr (os.getenv('HOME')+'/mircx%i.lens'%i);
 
