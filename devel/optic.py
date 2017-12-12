@@ -128,7 +128,35 @@ class mirror(object):
     def rescale(self,xs,ys):
         if xs != ys: raise ValueError('Cannot rescale xs!=ys');
         object.rescale (self,xs=xs,ys=ys);
+
+class mulens(object):
+
+    def tostr(self):
+        self.roc = 0.5 * self.d * self.fn;
+        self.sag = self.roc - np.sqrt (self.roc**2 - (self.d/2)**2);
+        x = (self.x, self.x+self.f, self.x+self.f+self.sag, self.x+self.f, self.x);
+        y = (self.y-self.d/2, self.y-self.d/2, self.y, self.y+self.d/2, self.y+self.d/2);
+        out  = '{"type":"refractor","path":[';
+        out += '{"x":%.3f,"y":%.3f,"arc":false},'%(x[0],y[0]);
+        out += '{"x":%.3f,"y":%.3f,"arc":false},'%(x[1],y[1]);
+        out += '{"x":%.3f,"y":%.3f,"arc":true},'%(x[2],y[2]);
+        out += '{"x":%.3f,"y":%.3f,"arc":false},'%(x[3],y[3]);
+        out += '{"x":%.3f,"y":%.3f,"arc":false}'%(x[4],y[4]);
+        out += '],"notDone":false,"p":%.3f}'%self.n1;
+        return out;
     
+    def rescale(self,xs,ys):
+        if xs != ys: raise ValueError('Cannot rescale xs!=ys');
+        object.rescale (self,xs=xs,ys=ys);
+
+class ruler(object):
+    def tostr(self):
+        x = (self.x,self.x+2.*self.d*self.fn);
+        y = (self.y-self.d/2, self.y+self.d/2);
+        out  = '{"type":"ruler",';
+        out += '"p1":{"type":1,"x":%.3f,"y":%.3f,"exist":true},'%(x[0],y[0]);
+        out += '"p2":{"type":1,"x":%.3f,"y":%.3f,"exist":true}}'%(x[1],y[1]);
+        return out;
 #
 # Complexe setup, made of several objects
 #

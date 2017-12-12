@@ -9,13 +9,13 @@ import numpy as np;
 
 full  = opt.setup ();
 
-# T=1mm, R = 900um, n1=3.43
+# Pitch=180um, Spacing=0mm, Thick=1mm, ROC=900um, n1=3.43
 # for y in [-180,0,180]:
 #     full += opt.lens (y=y, x=-100, d=50,f=100);
 #     full += opt.beam (y=y, x=-120, d=-50,fn=np.inf);
 #     full += opt.mulens (y=y, d=180,f=1000,fn=10,n1=3.43);
 
-# T=500um, R = 213um, n1=1.43
+# Pitch=180um, Spacing=0um, Thick=500um, ROC=213um, n1=1.43
 # for y in [-180,0,180]:
 #     full += opt.lens (y=y, x=-100, d=50,f=100);
 #     full += opt.beam (y=y, x=-120, d=-50,fn=np.inf);
