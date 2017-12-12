@@ -46,17 +46,23 @@ parser.add_argument ("--max-file", dest="max_file",default=3000,type=int,
                           "product (speed-up for tests)");
 
 
+parser.add_argument ("--raw-dir", dest="raw_dir",default='./',type=str,
+                     help="directory of raw data");
+
+parser.add_argument ("--reduced-dir", dest="reduced_dir",default='./',type=str,
+                     help="directory of reduced data");
+
 parser.add_argument ("--preproc-dir", dest="preproc_dir",default='./preproc/',type=str,
-                     help="output directories");
+                     help="sub-directory of intermediate products");
 
 parser.add_argument ("--rts-dir", dest="rts_dir",default='./rts/',type=str,
-                     help="output directories");
+                     help="sub-directory of intermediate products");
 
 parser.add_argument ("--vis-dir", dest="vis_dir",default='./vis/',type=str,
-                     help="output directories");
+                     help="sub-directory of intermediate products");
 
 parser.add_argument ("--vis-calibrated-dir", dest="viscalib_dir",default='./viscalib/',type=str,
-                     help="output directories");
+                     help="sub-directory of intermediate products");
 
 
 parser.add_argument ("--background", dest="background",default='TRUE',
