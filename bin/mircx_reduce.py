@@ -49,20 +49,17 @@ parser.add_argument ("--max-file", dest="max_file",default=3000,type=int,
 parser.add_argument ("--raw-dir", dest="raw_dir",default='./',type=str,
                      help="directory of raw data");
 
-parser.add_argument ("--reduced-dir", dest="reduced_dir",default='./',type=str,
-                     help="directory of reduced data");
-
 parser.add_argument ("--preproc-dir", dest="preproc_dir",default='./preproc/',type=str,
-                     help="sub-directory of intermediate products");
+                     help="directory of intermediate products");
 
 parser.add_argument ("--rts-dir", dest="rts_dir",default='./rts/',type=str,
-                     help="sub-directory of intermediate products");
+                     help="directory of intermediate products");
 
 parser.add_argument ("--vis-dir", dest="vis_dir",default='./vis/',type=str,
-                     help="sub-directory of intermediate products");
+                     help="directory of intermediate products");
 
 parser.add_argument ("--vis-calibrated-dir", dest="viscalib_dir",default='./viscalib/',type=str,
-                     help="sub-directory of intermediate products");
+                     help="directory of intermediate products");
 
 
 parser.add_argument ("--background", dest="background",default='TRUE',
@@ -115,7 +112,7 @@ if argopt.background != 'FALSE':
     overwrite = (argopt.background == 'OVERWRITE');
 
     # List inputs
-    hdrs = hdrs_raw = mrx.headers.loaddir ('./');
+    hdrs = hdrs_raw = mrx.headers.loaddir (argopt.raw_dir);
     
     # Group backgrounds
     keys = setup.detwin + setup.detmode + setup.insmode;
@@ -151,7 +148,7 @@ if argopt.bmap != 'FALSE':
     overwrite = (argopt.bmap == 'OVERWRITE');
         
     # List inputs
-    hdrs = mrx.headers.loaddir ('./');
+    hdrs = mrx.headers.loaddir (argopt.raw_dir);
     hdrs_calib = mrx.headers.loaddir (argopt.preproc_dir);
     
     # Group all BEAMi
@@ -194,7 +191,7 @@ if argopt.preproc != 'FALSE':
     overwrite = (argopt.preproc == 'OVERWRITE');
 
     # List inputs
-    hdrs = mrx.headers.loaddir ('./');
+    hdrs = mrx.headers.loaddir (argopt.raw_dir);
     hdrs_calib = mrx.headers.loaddir (argopt.preproc_dir);
 
     # Group all DATA
