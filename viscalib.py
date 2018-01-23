@@ -211,7 +211,7 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         dy = [h['OI_VIS2'].data['VIS2ERR'][b,6] for h in hdusci];
         ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
     
-    files.write (fig,outputSetup+'_vis2.png');
+    files.write (fig,outputDir+'/'+outputSetup+'_vis2.png');
 
     # T3PHI
     fig,axes = plt.subplots (5,4, sharex=True);
@@ -233,7 +233,7 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         dy = [h['OI_T3'].data['T3PHIERR'][b,6] for h in hdusci];
         ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
     
-    files.write (fig,outputSetup+'_t3phi.png');
+    files.write (fig,outputDir+'/'+outputSetup+'_t3phi.png');
     
     # T3AMP
     fig,axes = plt.subplots (5,4, sharex=True);
@@ -255,6 +255,6 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         dy = [h['OI_T3'].data['T3AMPERR'][b,6] for h in hdusci];
         ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
     
-    files.write (fig,outputSetup+'_t3amp.png');
+    files.write (fig,outputDir+'/'+outputSetup+'_t3amp.png');
     
     plt.close ("all");
