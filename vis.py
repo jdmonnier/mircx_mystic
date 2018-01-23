@@ -201,7 +201,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     # Save input files
     for h in hdrs:
         npp = len (hdr['*MIRC PRO PREPROC*']);
-        hdr['HIERARCH MIRC PRO PREPROC%i'%(npp+1,)] = h['ORIGNAME'];
+        hdr['HIERARCH MIRC PRO PREPROC%i'%(npp+1,)] = h['ORIGNAME'][-50:];
 
     # Write file
     hdulist = pyfits.HDUList ([hdu0]);
@@ -538,17 +538,17 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', nsmooth=2
     hdu0 = pyfits.PrimaryHDU ([]);
     hdu0.header = hdr;
     hdu0.header['FILETYPE'] = 'RTS';
-    hdu0.header[HMP+'PREPROC'] = os.path.basename (hdrs[0]['ORIGNAME']);
+    hdu0.header[HMP+'PREPROC'] = os.path.basename (hdrs[0]['ORIGNAME'])[-50:];
 
     # Set the input calibration file
     for pro in profiles:
         name = pro['FILETYPE'].split('_')[0]+'_PROFILE';
-        hdu0.header[HMP+name] = os.path.basename (pro['ORIGNAME']);
+        hdu0.header[HMP+name] = os.path.basename (pro['ORIGNAME'])[-50:];
 
     # Set the input calibration file
     for kap in kappas:
         name = kap['FILETYPE'].split('_')[0]+'_KAPPA';
-        hdu0.header[HMP+name] = os.path.basename (kap['ORIGNAME']);
+        hdu0.header[HMP+name] = os.path.basename (kap['ORIGNAME'])[-50:];
 
     # Set DFT of fringes, bias, photometry and lbd
     hdu1 = pyfits.ImageHDU (base_dft.real.astype('float32'));
@@ -787,7 +787,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
 
     # First HDU
     hdulist[0].header['FILETYPE'] = 'VIS';
-    hdulist[0].header[HMP+'RTS'] = os.path.basename (hdrs[0]['ORIGNAME']);
+    hdulist[0].header[HMP+'RTS'] = os.path.basename (hdrs[0]['ORIGNAME'])[-50:];
     
     # Write file
     files.write (hdulist, output+'.fits');

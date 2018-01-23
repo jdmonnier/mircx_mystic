@@ -427,7 +427,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';
 
     # Set files
-    hdu0.header[HMP+'BACKGROUND_MEAN'] = os.path.basename (bkg[0]['ORIGNAME']);
+    hdu0.header[HMP+'BACKGROUND_MEAN'] = os.path.basename (bkg[0]['ORIGNAME'])[-40:];
 
     # Second HDU
     hdu1 = pyfits.ImageHDU (fmap[None,None,:,:]);
@@ -562,11 +562,11 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';
     
     # Set files
-    hdu0.header[HMP+'BACKGROUND_MEAN'] = os.path.basename (bkg[0]['ORIGNAME']);
+    hdu0.header[HMP+'BACKGROUND_MEAN'] = os.path.basename (bkg[0]['ORIGNAME'])[-40:];
 
     # Set the input calibration file
     for bm in bmaps:
-        hdu0.header[HMP+bm['FILETYPE']] = os.path.basename (bm['ORIGNAME']);
+        hdu0.header[HMP+bm['FILETYPE']] = os.path.basename (bm['ORIGNAME'])[-50:];
 
     # Second HDU with photometries
     hdu1 = pyfits.ImageHDU (photos.astype('float32'));

@@ -282,7 +282,9 @@ def rep_nan (val,*rep):
 def parse_argopt_catalog (input):
     '''
     Parse the syntax 'NAME1,d1,e1,NAME2,d2,e2,...'
-    '''    
+    '''
+    if input == 'name1,diam,err,name2,diam,err':
+        raise (ValueError('No calibrators specified'));
 
     # Check it is a multiple of 3
     values = [i for i in input.split(',') if i != ''];

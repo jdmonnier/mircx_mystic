@@ -183,7 +183,7 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
 
         # Add this RAW file in hdr
         nraw = len (hdr['*MIRC PRO RAW*']);
-        hdr['HIERARCH MIRC PRO RAW%i'%(nraw+1,)] = os.path.basename (h['ORIGNAME']);
+        hdr['HIERARCH MIRC PRO RAW%i'%(nraw+1,)] = os.path.basename (h['ORIGNAME'])[-50:];
         hdr['HIERARCH MIRC QC NFILE'] += 1;
         hdr['HIERARCH MIRC QC NRAMP'] += data.shape[0];
 
