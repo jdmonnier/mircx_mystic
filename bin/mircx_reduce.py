@@ -94,6 +94,12 @@ parser.add_argument ("--vis-calibrated", dest="viscalib",default='FALSE',
 parser.add_argument ("--calibrators", dest="calibrators",default='name1,diam,err,name2,diam,err',
                      type=str, help="list of calibration star with diameters");
 
+parser.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
+                    default=2.0, help="SNR threshold for fringe selection");
+
+parser.add_argument ("--ncoherent", dest="ncoherent", type=float,
+                    default=1.0, help="number of frames (can be fractional) for coherent integration");
+
 #
 # Initialisation
 #
@@ -343,14 +349,14 @@ if argopt.vis != 'FALSE':
         try:
             log.info ('Compute VIS {0} over {1} '.format(i+1,len(gps)));
             
-            for nc in [1]:
+            for nc in [argopt.ncoherent]:
                 output = mrx.files.output (argopt.vis_dir, gp[0], 'vis')+'_c%04i'%int(nc*10);
                 if os.path.exists (output+'.fits') and overwrite is False:
                     log.info ('Product already exists');
                     continue;
 
                 log.setFile (output+'.log');
-                mrx.compute_vis (gp, output=output, ncoher=nc, threshold=2.0);
+                mrx.compute_vis (gp, output=output, ncoher=nc, threshold=argopt.snr_threshold);
 
         except Exception as exc:
             log.error ('Cannot compute VIS: '+str(exc));
