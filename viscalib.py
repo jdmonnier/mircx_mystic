@@ -210,6 +210,10 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         y  = [h['OI_VIS2'].data['VIS2DATA'][b,6] for h in hdusci];
         dy = [h['OI_VIS2'].data['VIS2ERR'][b,6] for h in hdusci];
         ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
+
+        # Force limits
+        ylim = ax.get_ylim ();
+        ax.set_ylim (np.maximum (ylim[0],0),np.minimum (ylim[1],1.1));
     
     files.write (fig,outputDir+'/'+outputSetup+'_vis2.png');
 
