@@ -37,7 +37,7 @@ def base_name (axes, bstart=None, tstart=None):
     if bstart is not None:
         names = setup.base_name ()[bstart:bstart+n];
     elif tstart is not None:
-        setup.triplet_name ()[tstart:tstart+n];
+        names = setup.triplet_name ()[tstart:tstart+n];
     else:
         names = setup.base_name () if n == 15 else setup.triplet_name ();
     
