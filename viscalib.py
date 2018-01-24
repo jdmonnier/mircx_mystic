@@ -191,41 +191,16 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         
     log.info ('Figures for the trends');
 
-#     # VIS2
-#     fig,axes = plt.subplots (5,3, sharex=True);
-#     # fig.suptitle (headers.summary (sci));
-#     plot.base_name (axes);
-#     plot.compact (axes);
-#     for b in range (15):
-#         ax = axes.flatten()[b];
-#         x  = [h['OI_VIS2'].data['MJD'][b] for h in hdutf];
-#         y  = [h['OI_VIS2'].data['VIS2DATA'][b,6] for h in hdutf];
-#         dy = [h['OI_VIS2'].data['VIS2ERR'][b,6] for h in hdutf];
-#         ax.errorbar (x,y,fmt='o',yerr=dy,color='k',ms=1);
-#         x  = [h['OI_VIS2'].data['MJD'][b] for h in hdutfs];
-#         y  = [h['OI_VIS2'].data['VIS2DATA'][b,6] for h in hdutfs];
-#         dy = [h['OI_VIS2'].data['VIS2ERR'][b,6] for h in hdutfs];
-#         ax.errorbar (x,y,fmt='o',yerr=dy,color='k',ms=1,alpha=0.25);
-#         x  = [h['OI_VIS2'].data['MJD'][b] for h in hdusci];
-#         y  = [h['OI_VIS2'].data['VIS2DATA'][b,6] for h in hdusci];
-#         dy = [h['OI_VIS2'].data['VIS2ERR'][b,6] for h in hdusci];
-#         ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
-# 
-#         # Force limits
-#         ylim = ax.get_ylim ();
-#         ax.set_ylim (np.maximum (ylim[0],0),np.minimum (ylim[1],1.1));
-#     
-#     files.write (fig,outputDir+'/'+outputSetup+'_vis2.png');
-#
-
     # VIS2
-    for f in range (3):
-        fig,axes = plt.subplots (5,3, sharex=True);
-        plot.base_name (axes);
+    for f in range (5):
+        fig,axes = plt.subplots (3,1, sharex=True);
+        plot.base_name (axes, bstart=f*3);
         plot.compact (axes);
-        for bb in range (5):
+        plt.subplots_adjust(hspace=0.03);
+
+        for bb in range (3):
             ax = axes.flatten()[bb];
-            b = f*5+bb;
+            b = f*3+bb;
             x  = [h['OI_VIS2'].data['MJD'][b] for h in hdutf];
             y  = [h['OI_VIS2'].data['VIS2DATA'][b,6] for h in hdutf];
             dy = [h['OI_VIS2'].data['VIS2ERR'][b,6] for h in hdutf];
@@ -246,26 +221,29 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         files.write (fig,outputDir+'/'+outputSetup+'_vis2_%i.png'%(f));
     
     # T3PHI
-    fig,axes = plt.subplots (5,4, sharex=True);
-    # fig.suptitle (headers.summary (hdr));
-    plot.base_name (axes);
-    plot.compact (axes);
-    for b in range (20):
-        ax = axes.flatten()[b];
-        x  = [h['OI_T3'].data['MJD'][b] for h in hdutf];
-        y  = [h['OI_T3'].data['T3PHI'][b,6] for h in hdutf];
-        dy = [h['OI_T3'].data['T3PHIERR'][b,6] for h in hdutf];
-        ax.errorbar (x,y,fmt='o',yerr=dy,color='k',ms=1);
-        x  = [h['OI_T3'].data['MJD'][b] for h in hdutfs];
-        y  = [h['OI_T3'].data['T3PHI'][b,6] for h in hdutfs];
-        dy = [h['OI_T3'].data['T3PHIERR'][b,6] for h in hdutfs];
-        ax.errorbar (x,y,fmt='o',yerr=dy,color='k',ms=1,alpha=0.25);
-        x  = [h['OI_T3'].data['MJD'][b] for h in hdusci];
-        y  = [h['OI_T3'].data['T3PHI'][b,6] for h in hdusci];
-        dy = [h['OI_T3'].data['T3PHIERR'][b,6] for h in hdusci];
-        ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
-    
-    files.write (fig,outputDir+'/'+outputSetup+'_t3phi.png');
+    for f in range (5):
+        fig,axes = plt.subplots (4,1, sharex=True);
+        plot.base_name (axes, tstart=f*4);
+        plot.compact (axes);
+        plt.subplots_adjust(hspace=0.03);
+
+        for bb in range (4):
+            b = f*4+bb;
+            ax = axes.flatten()[bb];
+            x  = [h['OI_T3'].data['MJD'][b] for h in hdutf];
+            y  = [h['OI_T3'].data['T3PHI'][b,6] for h in hdutf];
+            dy = [h['OI_T3'].data['T3PHIERR'][b,6] for h in hdutf];
+            ax.errorbar (x,y,fmt='o',yerr=dy,color='k',ms=1);
+            x  = [h['OI_T3'].data['MJD'][b] for h in hdutfs];
+            y  = [h['OI_T3'].data['T3PHI'][b,6] for h in hdutfs];
+            dy = [h['OI_T3'].data['T3PHIERR'][b,6] for h in hdutfs];
+            ax.errorbar (x,y,fmt='o',yerr=dy,color='k',ms=1,alpha=0.25);
+            x  = [h['OI_T3'].data['MJD'][b] for h in hdusci];
+            y  = [h['OI_T3'].data['T3PHI'][b,6] for h in hdusci];
+            dy = [h['OI_T3'].data['T3PHIERR'][b,6] for h in hdusci];
+            ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
+            
+        files.write (fig,outputDir+'/'+outputSetup+'_t3phi_%i.png'%f);
     
     # T3AMP
     fig,axes = plt.subplots (5,4, sharex=True);
