@@ -27,12 +27,19 @@ def compact (axes):
         ax.ticklabel_format (axis='both', style='plain');
         ax.tick_params (axis='both', which='both', labelsize=5);
 
-def base_name (axes):
+def base_name (axes, bstart=None, tstart=None):
     '''
     Set the names
     '''
     n = len(axes.flatten());
-    names = setup.base_name () if n == 15 else setup.triplet_name ();
+
+    # Get the names
+    if bstart is not None:
+        names = setup.base_name ()[bstart:bstart+n];
+    elif tstart is not None:
+        setup.triplet_name ()[tstart:tstart+n];
+    else:
+        names = setup.base_name () if n == 15 else setup.triplet_name ();
     
     for i in range (n):
         ax = axes.flatten()[i];
