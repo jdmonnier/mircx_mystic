@@ -46,9 +46,10 @@ def tf_time_weight (hdus, hdutf, delta):
            ['OI_T3','T3AMP','T3AMPERR',False],
            ['OI_T3','T3PHI','T3PHIERR',True]];
 
+    # Loop on observables
     for o in obs:
 
-        # Get calibration data
+        # Get TF data
         mjd = np.array ([h[o[0]].data['MJD'] for h in hdutf]);
         val = np.array ([h[o[0]].data[o[1]] for h in hdutf]);
         err = np.array ([h[o[0]].data[o[2]] for h in hdutf]);
@@ -59,22 +60,53 @@ def tf_time_weight (hdus, hdutf, delta):
         val[flg] = np.nan;
         err[flg] = np.nan;
 
+        # Don't give added advantage for <2% percent error
+        #  or 0.1deg for phase, Idea from John Monnier
+        if o[3] is True:  we = np.maximum (err, 0.1)**-2;
+        if o[3] is False: we = np.maximum (np.abs(0.02*val)+1e-10, 0.1)**-2;
+
         # Replace by phasor
         if o[3] is True: val = phasor (val);
 
         # When we want to interpolate
         mjd0 = hdus[o[0]].data['MJD'];
 
-        # Compute the weighted mean
-        weight = np.exp (-(mjd0[None,:,None]-mjd[:,:,None])**2/delta**2) / err**2;
-        tf = np.nansum (val * weight, axis=0) / np.nansum (weight, axis=0);
+        # Compute the weights at science time
+        ws = np.exp (-(mjd0[None,:,None]-mjd[:,:,None])**2/delta**2);
 
-        # Replace by phasor
+        # Compute the weighted mean
+        tf = np.nansum (val * ws * we, axis=0) / np.nansum (ws * we, axis=0);
+        
+        # Compute the model at TF time
+        wtf = np.exp (-(mjd[None,:,None]-mjd[:,:,None])**2/delta**2);
+        model = np.nansum (wtf * we * val, axis=0) / np.nansum (wtf * we, axis=0);
+        
+        # Compute the residuals
+        if o[3] is False:  
+            res = tf - model;
+        else:
+            res = np.angle (tf * np.conj (model), deg=True);
+
+        # Compute the variance of residual and chi2
+        varm = np.nansum (ws * we, axis=0)**-1;
+        chi2 = np.nansum (res**2 * we * ws, axis=0) / np.nansum (ws, axis=0);
+
+        # Compute errors of interpolated TF
+        # Increase error because of dispersion, non-standar:
+        # error = sqrt(chi2 * variance * correctif)
+        # Because of last therm, if chi2>>1, this tends to:
+        # error = RMS(x)
+        chi2  = np.maximum (chi2, 1.0);
+        tfErr = np.sqrt (chi2 * varm * np.sum (ws, axis=0)**(1.-1./chi2**2));
+
+        # Replace TF by phasor if needed
         if o[3] is True: tf = np.angle (tf, deg=True);
 
-        # Set data
+        # Set data and error
         hdutfs[o[0]].data[o[1]] = tf;
+        hdutfs[o[0]].data[o[2]] = tfErr;
         hdutfs[o[0]].data['FLAG'] += ~np.isfinite (tf);
+
             
     return hdutfs;
 
