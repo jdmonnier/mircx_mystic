@@ -330,3 +330,10 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
 
     # Reset warning
     np.seterr (**old_np_setting);
+
+
+def getdata (hdus,ext,names):
+    '''
+    '''
+    return [np.array([h[ext].data[n] for h in hdus]) for n in names];
+

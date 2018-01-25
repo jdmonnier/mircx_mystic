@@ -7,6 +7,23 @@ mpl.rcParams['legend.framealpha'] = 0.5;
 
 from . import setup;
 
+def arrays (nf1,nf2,naxes1,naxes2):
+    '''
+    Create an array of figure with subplots
+    '''
+    axes = [[None]*nf1]*nf2;
+    figs = [[None]*nf1]*nf2;
+
+    for c in range (nf2):
+        for f in range (nf1):
+            print ('Create figure %i %i'%(c,f));
+            fig,ax = plt.subplots (naxes1,naxes2, sharex=True);
+            axes[c][f] = ax.flatten();
+            figs[c][f] = fig;
+
+    return figs, axes;
+            
+
 def scale (ax, scale):
     '''
     Write a scale

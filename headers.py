@@ -25,8 +25,19 @@ def summary (hdr):
     '''
     value = 'G%i-L%i-R%i  %.4f %s'%(hdr.get('GAIN',0),hdr.get('NLOOPS',0),hdr.get('NREADS',0),
                                  hdr.get('MJD-OBS',0.0),hdr.get('OBJECT','unknown'));
+
+    if 'HIERARCH MIRC PRO NFRAME_COHER' in hdr:
+        value += ' NCOHER=%.2f'%(hdr.get('HIERARCH MIRC PRO NFRAME_COHER',0.0));
+
     return value;
 
+def setup (hdr, params):
+    '''
+    Return the setup as string
+    '''
+    value = ' / '.join([str(hdr.get(p,'--')) for p in params]);
+    return value;
+    
 def loaddir (dirs):
     '''
     Load the headers of all files mircx*.fit* from
