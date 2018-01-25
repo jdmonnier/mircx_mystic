@@ -1,5 +1,6 @@
 import numpy as np;
 import os;
+import copy;
 
 from astropy.io import fits as pyfits
 
@@ -129,11 +130,21 @@ def tf_divide (hdus, hdutf):
 
     for o in obs:
         if o[3] is True:
+            # Correct phase from TF
             hdusc[o[0]].data[o[1]] -= hdutf[o[0]].data[o[1]];
             hdusc[o[0]].data[o[1]]  = wrap (hdusc[o[0]].data[o[1]]);
+            # Add errors
+            hdusc[o[0]].data[o[2]] = np.sqrt (hdusc[o[0]].data[o[2]]**2 + hdutf[o[0]].data[o[2]]**2);
         else:
-            hdusc[o[0]].data[o[1]] /= hdutf[o[0]].data[o[1]];
-            hdusc[o[0]].data[o[2]] /= hdutf[o[0]].data[o[1]];
+            # Get values
+            ampRaw = copy.copy (hdusc[o[0]].data[o[1]]);
+            ampTf  = copy.copy (hdutf[o[0]].data[o[1]]);
+            dampRaw = copy.copy (hdusc[o[0]].data[o[2]]);
+            dampTfi = copy.copy (hdutf[o[0]].data[o[2]]);
+            # Set errors and value
+            ampCal = Raw / Tf;
+            hdusc[o[0]].data[o[1]] = ampCal;
+            hdusc[o[0]].data[o[2]] = ampCal * np.sqrt ((dampRaw/ampRaw)**2 + (dampTfi/ampTfi)**2);
             
         hdusc[o[0]].data['FLAG'] += ~np.isfinite (hdusc[o[0]].data[o[1]]);
 
