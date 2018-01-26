@@ -63,8 +63,9 @@ def tf_time_weight (hdus, hdutf, delta):
 
         # Don't give added advantage for <2% percent error
         #  or 0.1deg for phase, Idea from John Monnier
+        # FIXME: to be done for vis2
         if o[3] is True:  we = np.maximum (err, 0.1)**-2;
-        if o[3] is False: we = np.maximum (np.abs(0.02*val)+1e-10, 0.1)**-2;
+        if o[3] is False: we = np.maximum (err, np.abs (0.02*val)+1e-4)**-2;
 
         # Replace by phasor
         if o[3] is True: val = phasor (val);
@@ -72,15 +73,15 @@ def tf_time_weight (hdus, hdutf, delta):
         # When we want to interpolate
         mjd0 = hdus[o[0]].data['MJD'];
 
-        # Compute the weights at science time
+        # Compute the weights at science time (ntf,nb,nc)
         ws = np.exp (-(mjd0[None,:,None]-mjd[:,:,None])**2/delta**2);
 
-        # Compute the weighted mean
+        # Compute the weighted mean (nb,nc)
         tf = np.nansum (val * ws * we, axis=0) / np.nansum (ws * we, axis=0);
         
-        # Compute the model at TF time
-        wtf = np.exp (-(mjd[None,:,None]-mjd[:,:,None])**2/delta**2);
-        model = np.nansum (wtf * we * val, axis=0) / np.nansum (wtf * we, axis=0);
+        # Compute the model at TF times (ntf, nb, nc)
+        wtf = np.exp (-(mjd[None,:,:,None]-mjd[:,None,:,None])**2/delta**2);
+        model = np.nansum (wtf * we[:,None,:,:] * val[:,None,:,:], axis=0) / np.nansum (wtf * we[:,None,:,:], axis=0);
         
         # Compute the residuals
         if o[3] is False:  
@@ -92,13 +93,12 @@ def tf_time_weight (hdus, hdutf, delta):
         varm = np.nansum (ws * we, axis=0)**-1;
         chi2 = np.nansum (res**2 * we * ws, axis=0) / np.nansum (ws, axis=0);
 
-        # Compute errors of interpolated TF
-        # Increase error because of dispersion, non-standar:
+        # Compute errors of interpolated TF (non-standard):
         # error = sqrt(chi2 * variance * correctif)
         # Because of last therm, if chi2>>1, this tends to:
-        # error = RMS(x)
+        # error = RMS(tf)
         chi2  = np.maximum (chi2, 1.0);
-        tfErr = np.sqrt (chi2 * varm * np.sum (ws, axis=0)**(1.-1./chi2**2));
+        tfErr = np.sqrt (chi2 * varm * np.nansum (ws, axis=0)**(1.-1./chi2**2));
 
         # Replace TF by phasor if needed
         if o[3] is True: tf = np.angle (tf, deg=True);
@@ -137,14 +137,14 @@ def tf_divide (hdus, hdutf):
             hdusc[o[0]].data[o[2]] = np.sqrt (hdusc[o[0]].data[o[2]]**2 + hdutf[o[0]].data[o[2]]**2);
         else:
             # Get values
-            ampRaw = copy.copy (hdusc[o[0]].data[o[1]]);
-            ampTf  = copy.copy (hdutf[o[0]].data[o[1]]);
-            dampRaw = copy.copy (hdusc[o[0]].data[o[2]]);
-            dampTfi = copy.copy (hdutf[o[0]].data[o[2]]);
+            Raw = copy.copy (hdusc[o[0]].data[o[1]]);
+            Tfi = copy.copy (hdutf[o[0]].data[o[1]]);
+            dRaw = copy.copy (hdusc[o[0]].data[o[2]]);
+            dTfi = copy.copy (hdutf[o[0]].data[o[2]]);
             # Set errors and value
-            ampCal = Raw / Tf;
-            hdusc[o[0]].data[o[1]] = ampCal;
-            hdusc[o[0]].data[o[2]] = ampCal * np.sqrt ((dampRaw/ampRaw)**2 + (dampTfi/ampTfi)**2);
+            Cal = Raw / Tfi;
+            hdusc[o[0]].data[o[1]] = Cal;
+            hdusc[o[0]].data[o[2]] = Cal * np.sqrt ((dRaw/Raw)**2 + (dTfi/Tfi)**2);
             
         hdusc[o[0]].data['FLAG'] += ~np.isfinite (hdusc[o[0]].data[o[1]]);
 
