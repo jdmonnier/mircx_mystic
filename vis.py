@@ -210,7 +210,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     plt.close ("all");
     return hdulist;
     
-def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', nsmooth=2):
+def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2):
     '''
     Compute the RTS
     '''
@@ -394,13 +394,13 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', nsmooth=2
     photok0 = photok.copy();
 
     # Smooth photometry
-    log.info ('Smooth photometry by sigma=%i frames'%nsmooth);
-    photok = gaussian_filter (photok,(0,0,nsmooth,0),mode='nearest');
+    log.info ('Smooth photometry by sigma=%i frames'%psmooth);
+    photok = gaussian_filter (photok,(0,0,psmooth,0),mode='constant');
 
     # Warning because of saturation
     log.info ('Deal with saturation in the filtering');
     isok  = 1.0 * (np.sum (fringe,axis=(2,3)) != 0);
-    trans = gaussian_filter (isok,(0,nsmooth),mode='nearest');
+    trans = gaussian_filter (isok,(0,psmooth),mode='constant');
     photok *= isok[None,:,:,None] / np.maximum (trans[None,:,:,None],1e-10);
 
     # Temporal / Spectral averaging of photometry
@@ -592,7 +592,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', nsmooth=2
     plt.close("all");
     return hdulist;
 
-def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
+def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=True):
     '''
     Compute the VIS
     '''
@@ -620,11 +620,30 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     lbd0 = np.mean (lbd);
     dlbd = np.mean (np.diff (lbd));
 
+    # Do spectro-temporal averaging of photometry
+    if avgphot is True:
+        log.info ('Do spectro-temporal averaging of photometry');
+        hdr[HMP+'AVGPHOT'] = (True,'spectro-temporal averaging of photometry');
+        
+        for b in range (6):
+            # Compute the matrix with mean, slope
+            spectrum = np.mean (photo[:,:,:,b], axis=(0,1));
+            M = np.array ([spectrum, spectrum * (lbd - lbd0)*1e6]);
+            # Invert system 
+            ms = np.einsum ('rfy,ys->rfs', photo[:,:,:,b], np.linalg.pinv (M));
+            photo[:,:,:,b] = np.einsum ('rfs,sy->rfy',ms,M);
+    else:
+        log.info ('No spectro-temporal averaging of photometry');
+        hdr[HMP+'AVGPHOT'] = (False,'spectro-temporal averaging of photometry');
+        
     # Do coherent integration
     log.info ('Coherent integration over %.1f frames'%ncoher);
     hdr[HMP+'NFRAME_COHER'] = (ncoher,'nb. of frames integrated coherently');
     base_dft = signal.gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
     bias_dft = signal.gaussian_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
+
+    # Smooth photometry over the same amount (be be discussed)
+    log.info ('Smoothing of photometry over %.1f frames'%ncoher);
     photo = gaussian_filter (photo,(0,ncoher,0,0),mode='constant',truncate=2.0);
 
     # Compute group-delay in [m] and broad-band power
@@ -652,10 +671,6 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     base_power = np.abs (base_dft)**2;
     bias_power = np.abs (bias_dft)**2;
     bias_power_mean = np.mean (bias_power,axis=-1,keepdims=True);
-
-    # We may want to implement a spectro-temporal
-    # smoothing of the photometry, to help the
-    # edge channels
 
     # Compute norm power
     log.info ('Compute norm power');
@@ -782,6 +797,17 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
         axes.flatten()[b].set_ylim (-lim,+lim);
     files.write (fig,output+'_gd.png');
 
+    # SNR versus GD
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+    d0 = np.mean (base_gd0,axis=(1,2)) * 1e6;
+    d1 = np.mean (base_snr,axis=(1,2)) * 1e6;
+    for b in range (15):
+        axes.flatten()[b].plot (d0[:,b], d1[:,b]);
+    files.write (fig,output+'_snrgd.png');
+    
     # File
     log.info ('Create file');
 
