@@ -374,7 +374,6 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', nsmooth=2
     # total number of adu in the fringe
     log.info ('Compute photok');
     photok = photo * kappa;
-    photok0 = photok.copy ();
 
     # QC about the fringe dc
     log.info ('Compute fringedc / photok');
@@ -404,7 +403,8 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', nsmooth=2
     photok *= isok[None,:,:,None] / np.maximum (trans[None,:,:,None],1e-10);
 
     # Temporal / Spectral averaging of photometry
-    # to be discussed
+    # to be discussed (note that this is only for the
+    # continuum removal, not for normalisation)
     log.info ('Temporal / Spectral averaging of photometry');
     spectra  = np.mean (photok, axis=(1,2), keepdims=True);
     spectra /= np.sum (spectra, axis=3, keepdims=True) + 1e-20;
@@ -625,7 +625,12 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0):
     hdr[HMP+'NFRAME_COHER'] = (ncoher,'nb. of frames integrated coherently');
     base_dft = signal.gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
     bias_dft = signal.gaussian_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
+
+    # Smooth photometry by the same amout (FIXME: shall be different)
     photo = gaussian_filter (photo,(0,ncoher,0,0),mode='constant',truncate=2.0);
+
+    # Temporal/Spectral averaging of photometry
+    # to be discussed
 
     # Compute group-delay in [m] and broad-band power
     log.info ('Compute GD');
