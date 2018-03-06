@@ -73,7 +73,16 @@ def create (hdr,lbd):
     staindex = range (1,7);
     telname = ['S1','S2','E1','E2','W1','W2'];
     staname = telname;
-    staxyz = np.array([[hdr['HIERARCH CHARA '+t+'_BASELINE_'+c] for c in 'XYZ'] for t in telname]);
+
+    # Check if staxyz in in header
+    statxyz = np.zeros ((6,3));
+    for i,c in enumerate('XYZ'):
+        for j,t in enumerate(telname):
+            name = 'HIERARCH CHARA '+t+'_BASELINE_'+c;
+            if name in hdr:
+                staxyz[j,i] = hdr[name];
+            else
+                log.warning ('Missing keyword (replace by 0.0): '+name);
     
     tbhdu = pyfits.BinTableHDU.from_columns ([\
              pyfits.Column (name='TEL_NAME',  format='A16', array=telname), \

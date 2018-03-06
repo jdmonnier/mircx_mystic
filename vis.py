@@ -305,6 +305,8 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
         ax = axes.flatten()[b];
         ax.plot (data);
         ax.set_ylim (np.minimum (np.min (data), 0.0));
+    ax.set_ylabel ('Xchan flux (adu)');
+    ax.set_xlabel ('Ramp #');
     files.write (fig,output+'_photo.png');
 
     # Plot ramp of flux in fringe
