@@ -126,6 +126,12 @@ def load (files, hlog=[]):
             # Add file name
             hdr['ORIGNAME'] = f;
 
+            # Reformat DATE-OBS MM/DD/YYYY -> YYYY-MM-DD
+            if '/' in hdr['DATE-OBS']:
+                hdr['DATE-OBS'] = hdr['DATE-OBS'][6:10] + '-' + \
+                  hdr['DATE-OBS'][0:2] + '-' + \
+                  hdr['DATE-OBS'][3:5];
+
             # Compute MJD-OBS
             mjd = Time(hdr['DATE-OBS'] + 'T'+ hdr['UTC-OBS'], format='isot', scale='utc').mjd;
 
