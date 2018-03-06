@@ -810,7 +810,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     d0 = np.mean (base_gd0,axis=(1,2)) * 1e6;
     d1 = np.mean (base_snr,axis=(1,2)) * 1e6;
     for b in range (15):
-        axes.flatten()[b].plot (d0[:,b], d1[:,b]);
+        axes.flatten()[b].plot (d0[:,b], d1[:,b],'+');
     files.write (fig,output+'_snrgd.png');
     
     # File
