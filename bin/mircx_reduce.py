@@ -98,7 +98,7 @@ parser.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
                     default=2.0, help="SNR threshold for fringe selection");
 
 parser.add_argument ("--ncoherent", dest="ncoherent", type=float,
-                    default=1.0, help="number of frames (can be fractional) for coherent integration");
+                    default=2.0, help="number of frames (can be fractional) for coherent integration");
 
 #
 # Initialisation
