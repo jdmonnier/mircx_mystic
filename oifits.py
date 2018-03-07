@@ -27,8 +27,8 @@ def create (hdr,lbd):
     # Create OI_WAVELENGTH table
     dlbd = lbd * 0 + np.mean (np.diff(lbd));
     tbhdu = pyfits.BinTableHDU.from_columns ( \
-            [pyfits.Column (name='EFF_WAVE', format='E1', array=lbd, unit='m'), \
-             pyfits.Column (name='EFF_BAND', format='E1', array=dlbd, unit='m')]);
+            [pyfits.Column (name='EFF_WAVE', format='1E', array=lbd, unit='m'), \
+             pyfits.Column (name='EFF_BAND', format='1E', array=dlbd, unit='m')]);
 
     tbhdu.header['EXTNAME'] = 'OI_WAVELENGTH';
     tbhdu.header['INSNAME'] = 'MIRCX';
