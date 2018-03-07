@@ -465,7 +465,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     model = np.zeros ((nx,nfq*2+1));
     cf = 0.j + np.zeros ((nr*nf,ny,nfq+1));
     for y in np.arange(ny):
-        log.info ('Fit channel %i'%y);
+        log.info ('Project channel %i'%y);
         amp = np.ones (nx);
         model[:,0] = amp;
         scale = lbd0 / lbd[y] / scale0;
@@ -566,12 +566,12 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     hdu3 = pyfits.ImageHDU (bias_dft.real.astype('float32'));
     hdu3.header['EXTNAME'] = ('BIAS_DFT_REAL','total flux in the fringe envelope');
     hdu3.header['BUNIT'] = 'adu';
-    hdu3.header['SHAPE'] = '(nr,nf,ny,nf)';
+    hdu3.header['SHAPE'] = '(nr,nf,ny,nbias)';
     
     hdu4 = pyfits.ImageHDU (bias_dft.imag.astype('float32'));
     hdu4.header['EXTNAME'] = ('BIAS_DFT_IMAG','total flux in the fringe envelope');
     hdu4.header['BUNIT'] = 'adu';
-    hdu4.header['SHAPE'] = '(nr,nf,ny,nf)';
+    hdu4.header['SHAPE'] = '(nr,nf,ny,nbias)';
     
     hdu5 = pyfits.ImageHDU (np.transpose (photok0,axes=(1,2,3,0)).astype('float32'));
     hdu5.header['EXTNAME'] = ('PHOTOMETRY','total flux in the fringe envelope');
@@ -619,8 +619,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     log.info ('Data size: '+str(base_dft.shape));
 
     # Compute lbd0 and dlbd
-    lbd0 = np.mean (lbd);
-    dlbd = np.mean (np.diff (lbd));
+    lbd0 = np.mean (lbd[4:-4]);
+    dlbd = np.mean (np.diff (lbd[4:-4]));
 
     # Do spectro-temporal averaging of photometry
     if avgphot is True:
@@ -651,22 +651,67 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     # Temporal/Spectral averaging of photometry
     # to be discussed
 
-    # Compute group-delay in [m] and broad-band power
+    # Compute FFT for display, average over frames in ramp
+    nscan = 128;
+    base_fft  = np.fft.fftshift (np.fft.fft (base_dft, n=nscan, axis=2), axes=2);
+    base_scan = np.mean (np.abs(base_fft),axis=1, keepdims=True);
+
+    bias_fft  = np.fft.fftshift (np.fft.fft (bias_dft, n=nscan, axis=2), axes=2);
+    bias_scan = np.mean (np.abs(bias_fft),axis=1, keepdims=True);
+
+    # Plot the 'opd-scan'
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+    for i,ax in enumerate (axes.flatten()): ax.imshow (base_scan[:,0,:,i].T);
+    files.write (fig,output+'_base_trend.png');
+
+    # Plot the 'opd-scan'
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+    for i,ax in enumerate (axes.flatten()): ax.imshow (bias_scan[:,0,:,i].T);
+    files.write (fig,output+'_bias_trend.png');
+
     log.info ('Compute GD');
-    scale_gd = 1. / ((1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi));
+
+    # Compute SNR and GD from this opd-scan
+    base_powerbb    = np.max (base_scan, axis=2, keepdims=True);
+    base_powerbb_np = base_scan[:,:,int(nscan/2),:][:,:,None,:];
+    # bias_powerbb    = np.median (base_scan, axis=2, keepdims=True);
+
+    # TODO
+    log.warning ('TODO: get noise power on bias frequencies');
+    bias_powerbb = np.mean (np.max (bias_scan, axis=2, keepdims=True), axis=-1, keepdims=True);
     
-    base_gd  = np.angle (np.sum (base_dft[:,:,1:,:] * np.conj (base_dft[:,:,:-1,:]), axis=2, keepdims=True));
-    base_gd *= scale_gd;
+    # Scale for gd
+    scale_gd = 1. / (lbd0**-1 - (lbd0+dlbd)**-1) / nscan;
+    base_gd  = (np.argmax (base_scan, axis=2)[:,:,None,:] - int(nscan/2)) * scale_gd;
 
-    phasor = np.exp (2.j*np.pi * base_gd / lbd[None,None,:,None]);
-    base_powerbb = np.abs (np.sum (base_dft * phasor, axis=2, keepdims=True))**2;
-
-    # Compute group-delay and broad-band power for bias
-    bias_gd  = np.angle (np.sum (bias_dft[:,:,1:,:] * np.conj (bias_dft[:,:,:-1,:]), axis=2,keepdims=True));
-    bias_gd *= scale_gd;
-        
-    phasor = np.exp (2.j*np.pi * bias_gd / lbd[None,None,:,None]);
-    bias_powerbb = np.mean (np.abs (np.sum (bias_dft * phasor, axis=2,keepdims=True))**2,axis=-1,keepdims=True);
+#    # Compute bandwidth
+#    log.info ('Compute GD');
+#    scale_gd = 1. / ( (1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi));
+#
+#    # Compute group-delay in [m] and broad-band power
+#    base_gd  = np.angle (np.sum (base_dft[:,:,1:,:] * np.conj (base_dft[:,:,:-1,:]), axis=2, keepdims=True));
+#    phasor = np.exp (-1.j * np.arange(17)[None,None,:,None] * base_gd);
+#
+#    base_gd *= scale_gd;
+#    # phasor = np.exp (2.j*np.pi * base_gd / lbd[None,None,:,None]);
+#    base_powerbb    = np.abs (np.sum (base_dft * phasor, axis=2, keepdims=True))**2;
+#
+#    log.warning ('Test with no phasor');
+#    base_powerbb_np = np.abs (np.sum (base_dft, axis=2, keepdims=True))**2;
+#
+#    # Compute group-delay and broad-band power for bias
+#    bias_gd  = np.angle (np.sum (bias_dft[:,:,1:,:] * np.conj (bias_dft[:,:,:-1,:]), axis=2,keepdims=True));
+#    phasor = np.exp (-1.j * np.arange(17)[None,None,:,None] * bias_gd);
+#
+#    bias_gd *= scale_gd;
+#    # phasor = np.exp (2.j*np.pi * bias_gd / lbd[None,None,:,None]);
+#    bias_powerbb = np.mean (np.abs (np.sum (bias_dft * phasor, axis=2,keepdims=True))**2,axis=-1,keepdims=True);
     
     # Broad-band SNR
     base_snr = base_powerbb / bias_powerbb;
@@ -807,11 +852,25 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     fig.suptitle (headers.summary (hdr));
     plot.base_name (axes);
     plot.compact (axes);
-    d0 = np.mean (base_gd0,axis=(1,2)) * 1e6;
-    d1 = np.mean (base_snr,axis=(1,2)) * 1e6;
+    d0 = np.mean (base_gd,axis=(1,2)) * 1e6;
+    d1 = np.mean (base_snr0,axis=(1,2));
     for b in range (15):
+        axes.flatten()[b].axhline (threshold,color='r', alpha=0.2);
         axes.flatten()[b].plot (d0[:,b], d1[:,b],'+');
     files.write (fig,output+'_snrgd.png');
+    
+    # POWER versus GD
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+    d0 = np.mean (base_gd,axis=(1,2)) * 1e6;
+    d1 = np.mean (base_powerbb,axis=(1,2));
+    d2 = np.mean (base_powerbb_np,axis=(1,2));
+    for b in range (15):
+        axes.flatten()[b].plot (d0[:,b], d1[:,b],'+');
+        axes.flatten()[b].plot (d0[:,b], d2[:,b],'+r',alpha=0.5);
+    files.write (fig,output+'_powergd.png');
     
     # File
     log.info ('Create file');
