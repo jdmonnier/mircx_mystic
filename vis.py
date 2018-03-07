@@ -446,8 +446,9 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     # Model (x,f)
     log.info ('Model of data');
     nfq = int(nx/2);
-    x = 1. * np.arange(nx) / nx;
     f = 1. * np.arange(1,nfq+1);
+    x = 1. * np.arange(nx) / nx;
+    x -= np.mean (x);
 
     # fres is the spatial frequency at the
     # reference wavelength lbd0
@@ -465,7 +466,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     model = np.zeros ((nx,nfq*2+1));
     cf = 0.j + np.zeros ((nr*nf,ny,nfq+1));
     for y in np.arange(ny):
-        log.info ('Project channel %i'%y);
+        log.info ('Project channel %i (centered)'%y);
         amp = np.ones (nx);
         model[:,0] = amp;
         scale = lbd0 / lbd[y] / scale0;
@@ -651,6 +652,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     # Temporal/Spectral averaging of photometry
     # to be discussed
 
+    log.info ('Compute 2d FFT');
+
     # Compute FFT for display, average over frames in ramp
     nscan = 128;
     base_fft  = np.fft.fftshift (np.fft.fft (base_dft, n=nscan, axis=2), axes=2);
@@ -667,7 +670,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     for i,ax in enumerate (axes.flatten()): ax.imshow (base_scan[:,0,:,i].T);
     files.write (fig,output+'_base_trend.png');
 
-    # Plot the 'opd-scan'
+    # Plot the trend
     fig,axes = plt.subplots (5,3, sharex=True);
     fig.suptitle (headers.summary (hdr));
     plot.base_name (axes);
@@ -689,6 +692,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     # Scale for gd
     scale_gd = 1. / (lbd0**-1 - (lbd0+dlbd)**-1) / nscan;
     base_gd  = (np.argmax (base_scan, axis=2)[:,:,None,:] - int(nscan/2)) * scale_gd;
+    gd_range = scale_gd * nscan / 2;
 
 #    # Compute bandwidth
 #    log.info ('Compute GD');
@@ -770,6 +774,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     hdr[HMQ+'SNR_THRESHOLD'] = (threshold, 'to accept fringe');
     base_flag = 1. * (base_snr > threshold);
 
+    # TODO: Add selection on mean flux in ramp, gd...
+
     # Morphological operation
     log.info ('Closing/opening of selection');
     structure = np.ones ((2,1,1,1));
@@ -840,8 +846,9 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     plot.compact (axes);
     d0 = np.mean (base_gd0,axis=(1,2)) * 1e6;
     d1 = np.mean (base_gd,axis=(1,2)) * 1e6;
+    lim = 1.05 * gd_range * 1e6;
     for b in range (15):
-        lim = 1.05 * np.max (np.abs (d0[:,b]));
+        # lim = 1.05 * np.max (np.abs (d0[:,b]));
         axes.flatten()[b].plot (d1[:,b]);
         axes.flatten()[b].plot (d0[:,b],'--', alpha=0.5);
         axes.flatten()[b].set_ylim (-lim,+lim);
@@ -854,9 +861,11 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     plot.compact (axes);
     d0 = np.mean (base_gd,axis=(1,2)) * 1e6;
     d1 = np.mean (base_snr0,axis=(1,2));
+    lim = 1.05 * gd_range * 1e6;
     for b in range (15):
         axes.flatten()[b].axhline (threshold,color='r', alpha=0.2);
         axes.flatten()[b].plot (d0[:,b], d1[:,b],'+');
+        axes.flatten()[b].set_xlim (-lim,+lim);
     files.write (fig,output+'_snrgd.png');
     
     # POWER versus GD
@@ -867,9 +876,11 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     d0 = np.mean (base_gd,axis=(1,2)) * 1e6;
     d1 = np.mean (base_powerbb,axis=(1,2));
     d2 = np.mean (base_powerbb_np,axis=(1,2));
+    lim = 1.05 * gd_range * 1e6;
     for b in range (15):
         axes.flatten()[b].plot (d0[:,b], d1[:,b],'+');
         axes.flatten()[b].plot (d0[:,b], d2[:,b],'+r',alpha=0.5);
+        axes.flatten()[b].set_xlim (-lim,+lim);
     files.write (fig,output+'_powergd.png');
     
     # File
