@@ -623,6 +623,9 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     lbd0 = np.mean (lbd[4:-4]);
     dlbd = np.mean (np.diff (lbd[4:-4]));
 
+    # Coherence length
+    coherence_length = lbd0**2 / dlbd;
+
     # Do spectro-temporal averaging of photometry
     if avgphot is True:
         log.info ('Do spectro-temporal averaging of photometry');
@@ -683,11 +686,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     # Compute SNR and GD from this opd-scan
     base_powerbb    = np.max (base_scan, axis=2, keepdims=True);
     base_powerbb_np = base_scan[:,:,int(nscan/2),:][:,:,None,:];
-    # bias_powerbb    = np.median (base_scan, axis=2, keepdims=True);
-
-    # TODO
-    log.warning ('TODO: get noise power on bias frequencies');
-    bias_powerbb = np.mean (np.max (bias_scan, axis=2, keepdims=True), axis=-1, keepdims=True);
+    # bias_powerbb  = np.median (base_scan, axis=2, keepdims=True);
+    bias_powerbb    = np.mean (np.max (bias_scan, axis=2, keepdims=True), axis=-1, keepdims=True);
     
     # Scale for gd
     scale_gd = 1. / (lbd0**-1 - (lbd0+dlbd)**-1) / nscan;
@@ -730,7 +730,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     log.info ('Compute norm power');
     bbeam = setup.base_beam ();
     norm_power = 4. * photo[:,:,:,bbeam[:,0]] * photo[:,:,:,bbeam[:,1]];
-    
+
     # QC for power
     log.info ('Compute QC for beam');
     for t in range(6):
@@ -769,10 +769,18 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     base_gd0 = base_gd.copy ();
     base_snr, base_gd = signal.bootstrap_triangles (base_snr, base_gd);
 
+    # Reduce norm power far from white-fringe
+    log.info ('Apply coherence envelope of %.1f um'%(coherence_length*1e6));
+    attenuation = np.exp (-(np.pi * base_gd / coherence_length)**2)**2
+    norm_power *= attenuation;
+
     # Compute selection flag from averaged SNR over the ramp
     log.info ('SNR selection > %.2f'%threshold);
     hdr[HMQ+'SNR_THRESHOLD'] = (threshold, 'to accept fringe');
-    base_flag = 1. * (base_snr > threshold);
+    base_flag  = 1. * (base_snr > threshold);
+
+    log.info ('GD selection: enveloppe > 0.1');
+    base_flag *= (attenuation > 0.1);
 
     # TODO: Add selection on mean flux in ramp, gd...
 
