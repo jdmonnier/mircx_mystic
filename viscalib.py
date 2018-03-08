@@ -103,15 +103,23 @@ def tf_time_weight (hdus, hdutf, delta):
         # Replace TF by phasor if needed
         if o[3] is True: tf = np.angle (tf, deg=True);
 
+        # Ensure error is positive
+        tfErr = np.maximum (tfErr, 0.0);
+
         # Set data and error
         hdutfs[o[0]].data[o[1]] = tf;
         hdutfs[o[0]].data[o[2]] = tfErr;
 
-        # Flag 
+        # Flag inconsistent
         hdutfs[o[0]].data['FLAG'] += ~np.isfinite (tf);
         hdutfs[o[0]].data['FLAG'] += ~np.isfinite (tfErr);
-        hdutfs[o[0]].data['FLAG'] += tfErr < 0.0;
+        hdutfs[o[0]].data['FLAG'] += tfErr <= 0.0;
 
+        # Flag huge errors
+        if o[3] is True: 
+            hdutfs[o[0]].data['FLAG'] += (tfErr > 60);
+        else:
+            hdutfs[o[0]].data['FLAG'] += (tfErr > 0.4);
             
     return hdutfs;
 
@@ -149,8 +157,17 @@ def tf_divide (hdus, hdutf):
             Cal = Raw / Tfi;
             hdusc[o[0]].data[o[1]] = Cal;
             hdusc[o[0]].data[o[2]] = Cal * np.sqrt ((dRaw/Raw)**2 + (dTfi/Tfi)**2);
-            
+
+        # flag
         hdusc[o[0]].data['FLAG'] += ~np.isfinite (hdusc[o[0]].data[o[1]]);
+        hdusc[o[0]].data['FLAG'] += ~np.isfinite (hdusc[o[0]].data[o[2]]);
+        hdusc[o[0]].data['FLAG'] += hdusc[o[0]].data[o[2]] <= 0.0;
+
+        # Flag huge errors
+        if o[3] is True: 
+            hdusc[o[0]].data['FLAG'] += (hdusc[o[0]].data[o[2]] > 60);
+        else:
+            hdusc[o[0]].data['FLAG'] += (hdusc[o[0]].data[o[2]] > 0.4);
 
     return hdusc;
     
