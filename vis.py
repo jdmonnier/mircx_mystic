@@ -681,41 +681,26 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     for i,ax in enumerate (axes.flatten()): ax.imshow (bias_scan[:,0,:,i].T);
     files.write (fig,output+'_bias_trend.png');
 
-    log.info ('Compute GD');
+    log.info ('Compute SNR (alternate)');
 
     # Compute SNR and GD from this opd-scan
-    base_powerbb    = np.max (base_scan, axis=2, keepdims=True);
+    # base_powerbb    = np.max (base_scan, axis=2, keepdims=True);
+    # base_powerbb_np = base_scan[:,:,int(nscan/2),:][:,:,None,:];
+    # bias_powerbb    = np.mean (np.max (bias_scan, axis=2, keepdims=True), axis=-1, keepdims=True);
+
+    # Alternate SNR, whose statistic is independent of averaging
+    base_scan -= np.median (base_scan, axis=2, keepdims=True);
+    bias_scan -= np.median (bias_scan, axis=2, keepdims=True);
     base_powerbb_np = base_scan[:,:,int(nscan/2),:][:,:,None,:];
-    # bias_powerbb  = np.median (base_scan, axis=2, keepdims=True);
+    base_powerbb    = np.max (base_scan, axis=2, keepdims=True);
     bias_powerbb    = np.mean (np.max (bias_scan, axis=2, keepdims=True), axis=-1, keepdims=True);
-    
+
+    log.info ('Compute GD');
+
     # Scale for gd
     scale_gd = 1. / (lbd0**-1 - (lbd0+dlbd)**-1) / nscan;
     base_gd  = (np.argmax (base_scan, axis=2)[:,:,None,:] - int(nscan/2)) * scale_gd;
     gd_range = scale_gd * nscan / 2;
-
-#    # Compute bandwidth
-#    log.info ('Compute GD');
-#    scale_gd = 1. / ( (1./(lbd0) - 1./(lbd0+dlbd)) * (2*np.pi));
-#
-#    # Compute group-delay in [m] and broad-band power
-#    base_gd  = np.angle (np.sum (base_dft[:,:,1:,:] * np.conj (base_dft[:,:,:-1,:]), axis=2, keepdims=True));
-#    phasor = np.exp (-1.j * np.arange(17)[None,None,:,None] * base_gd);
-#
-#    base_gd *= scale_gd;
-#    # phasor = np.exp (2.j*np.pi * base_gd / lbd[None,None,:,None]);
-#    base_powerbb    = np.abs (np.sum (base_dft * phasor, axis=2, keepdims=True))**2;
-#
-#    log.warning ('Test with no phasor');
-#    base_powerbb_np = np.abs (np.sum (base_dft, axis=2, keepdims=True))**2;
-#
-#    # Compute group-delay and broad-band power for bias
-#    bias_gd  = np.angle (np.sum (bias_dft[:,:,1:,:] * np.conj (bias_dft[:,:,:-1,:]), axis=2,keepdims=True));
-#    phasor = np.exp (-1.j * np.arange(17)[None,None,:,None] * bias_gd);
-#
-#    bias_gd *= scale_gd;
-#    # phasor = np.exp (2.j*np.pi * bias_gd / lbd[None,None,:,None]);
-#    bias_powerbb = np.mean (np.abs (np.sum (bias_dft * phasor, axis=2,keepdims=True))**2,axis=-1,keepdims=True);
     
     # Broad-band SNR
     base_snr = base_powerbb / bias_powerbb;
@@ -758,15 +743,21 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     hdr[HMQ+'BIASMEAN STD'] = (np.std (qc_power),'Bias Power at lbd0');
     hdr[HMQ+'BIASMEAN MED'] = (np.median (qc_power),'Bias Power at lbd0');
 
-    # Smooth SNR along the ramp
+    # Smooth SNR along the ramp (if not done yet)
     log.info ('Smooth SNR over one ramp');
     base_snr = np.mean (base_snr,axis=1,keepdims=True);
     base_gd  = np.mean (base_gd,axis=1,keepdims=True);
 
-    # Bootstrap over baseline. Maybe the GD should be
-    # boostraped and averaged as a phasor
+    # Copy before bootstrap
     base_snr0 = base_snr.copy ();
     base_gd0 = base_gd.copy ();
+
+    # Smooth SNR
+    log.info ('Stabilize SNR over over few ramps');
+    base_snr = gaussian_filter (base_snr,(3,0,0,0),mode='constant',truncate=2.0);
+
+    # Bootstrap over baseline. Maybe the GD should be
+    # boostraped and averaged as a phasor
     base_snr, base_gd = signal.bootstrap_triangles (base_snr, base_gd);
 
     # Reduce norm power far from white-fringe
@@ -779,8 +770,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     hdr[HMQ+'SNR_THRESHOLD'] = (threshold, 'to accept fringe');
     base_flag  = 1. * (base_snr > threshold);
 
-    log.info ('GD selection: enveloppe > 0.1');
-    base_flag *= (attenuation > 0.1);
+    log.info ('GD selection: enveloppe > 0.2');
+    base_flag *= (attenuation > 0.2);
 
     # TODO: Add selection on mean flux in ramp, gd...
 
