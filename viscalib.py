@@ -97,7 +97,7 @@ def tf_time_weight (hdus, hdutf, delta):
         # error = sqrt(chi2 * variance * correctif)
         # Because of last therm, if chi2>>1, this tends to:
         # error = RMS(tf)
-        chi2  = np.maximum (chi2, 1.0);
+        chi2  = np.maximum (chi2, 1.01);
         tfErr = np.sqrt (chi2 * varm * np.nansum (ws, axis=0)**(1.-1./chi2**2));
 
         # Replace TF by phasor if needed
@@ -106,7 +106,11 @@ def tf_time_weight (hdus, hdutf, delta):
         # Set data and error
         hdutfs[o[0]].data[o[1]] = tf;
         hdutfs[o[0]].data[o[2]] = tfErr;
+
+        # Flag 
         hdutfs[o[0]].data['FLAG'] += ~np.isfinite (tf);
+        hdutfs[o[0]].data['FLAG'] += ~np.isfinite (tfErr);
+        hdutfs[o[0]].data['FLAG'] += tfErr < 0.0;
 
             
     return hdutfs;
