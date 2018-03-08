@@ -762,8 +762,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
 
     # Reduce norm power far from white-fringe
     log.info ('Apply coherence envelope of %.1f um'%(coherence_length*1e6));
-    attenuation = np.exp (-(np.pi * base_gd / coherence_length)**2)**2
-    norm_power *= attenuation;
+    attenuation = np.exp (-(np.pi * base_gd / coherence_length)**2);
+    norm_power *= attenuation**2;
 
     # Compute selection flag from averaged SNR over the ramp
     log.info ('SNR selection > %.2f'%threshold);
@@ -771,7 +771,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     base_flag  = 1. * (base_snr > threshold);
 
     log.info ('GD selection: enveloppe > 0.2');
-    base_flag *= (attenuation > 0.2);
+    base_flag *= (attenuation**2 > 0.2);
 
     # TODO: Add selection on mean flux in ramp, gd...
 
@@ -806,9 +806,16 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
 
     # Compute OI_T3
     t_cpx = (base_dft*base_flag)[:,:,:,setup.triplet_base()];
-    t_cpx = np.nanmean (t_cpx[:,:,:,:,0] * t_cpx[:,:,:,:,1] * np.conj (t_cpx[:,:,:,:,2]), axis=1);
+    t_cpx = t_cpx[:,:,:,:,0] * t_cpx[:,:,:,:,1] * np.conj (t_cpx[:,:,:,:,2]);
+
     t_norm = photo[:,:,:,setup.triplet_beam()];
-    t_norm = np.nanmean (t_norm[:,:,:,:,0] * t_norm[:,:,:,:,1] * t_norm[:,:,:,:,2], axis=1);
+    t_norm = t_norm[:,:,:,:,0] * t_norm[:,:,:,:,1] * t_norm[:,:,:,:,2];
+
+    t_att  = attenuation[:,:,:,setup.triplet_base()];
+    t_att  = t_att[:,:,:,:,0] * t_att[:,:,:,:,1] * t_att[:,:,:,:,2];
+
+    t_cpx = np.nanmean (t_cpx, axis=1);
+    t_norm = np.nanmean (t_norm * t_att, axis=1);
 
     oifits.add_t3 (hdulist, time, t_cpx, t_norm, output=output);
 
