@@ -126,6 +126,11 @@ def load (files, hlog=[]):
             # Add file name
             hdr['ORIGNAME'] = f;
 
+            # Check change of card
+            if 'ENDFR' in hdr:
+                log.warning ('Old data with ENDFR');
+                hdr.rename_keyword ('ENDFR','LASTFR');
+
             # Reformat DATE-OBS MM/DD/YYYY -> YYYY-MM-DD
             if '/' in hdr['DATE-OBS']:
                 hdr['DATE-OBS'] = hdr['DATE-OBS'][6:10] + '-' + \
