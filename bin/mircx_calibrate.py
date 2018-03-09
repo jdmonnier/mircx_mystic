@@ -65,6 +65,12 @@ parser.add_argument ("--calibrators", dest="calibrators",default='name1,diam,err
 parser.add_argument ("--delta-tf", dest="delta_tf",default=0.05,
                      type=float, help="interpolation time in [days]");
 
+parser.add_argument ("--lbd-min", dest="lbd_min",default=1.5,
+                     type=float, help="minimum wavelenght [um]");
+
+parser.add_argument ("--lbd-max", dest="lbd_max",default=1.72,
+                     type=float, help="maximum wavelenght [um]");
+
 #
 # Initialisation
 #
@@ -105,7 +111,9 @@ if argopt.viscalib != 'FALSE':
             outputSetup = 'calibration_setup%i'%i;
             mrx.compute_all_viscalib (gp, catalog, outputDir=argopt.viscalib_dir,
                                       outputSetup=outputSetup,
-                                      deltaTf=argopt.delta_tf);
+                                      deltaTf=argopt.delta_tf,
+                                      lbdMin=argopt.lbd_min,
+                                      lbdMax=argopt.lbd_max);
 
         except Exception as exc:
             log.error ('Cannot calibrate setup: '+str(exc));

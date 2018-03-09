@@ -175,6 +175,7 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
                           outputDir='viscal/',
                           outputSetup='calibration_setup',
                           overwrite=True,
+                          lbdMin=1.0, lbdMax=2.0,
                           keys=visparam):
     '''
     Cross-calibrate the VIS in hdrs. The choice of SCI and CAL, and the diameter
@@ -225,6 +226,12 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         # Compute interpolation at the time of science and divide
         hdutfsi = tf_time_weight (hdus, hdutf, deltaTf);
         hdulist = tf_divide (hdus, hdutfsi);
+
+        # Ignore wavelengths
+        lbd = hdulist['OI_WAVELENGTH'].data['EFF_WAVE'] * 1e6;
+        flag = (lbd < lbdMin) + (lbd > lbdMax);
+        hdulist['OI_VIS2'].data['FLAG'] += flag[None,:];
+        hdulist['OI_T3'].data['FLAG'] += flag[None,:];
 
         # First HDU
         hdulist[0].header['FILETYPE'] = 'VIS_CALIBRATED';
