@@ -185,7 +185,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     # PSD
     fig,ax = plt.subplots (2,1);
     fig.suptitle (headers.summary (hdr));
-    ax[0].imshow (correl);
+    ax[0].imshow (correl,aspect='auto');
     ax[1].plot (psd[:,0:int(nfreq/2)].T);
     files.write (fig,output+'_psd.png');
 
@@ -526,7 +526,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     # Power densities
     fig,ax = plt.subplots (2,1);
     fig.suptitle (headers.summary (hdr));
-    ax[0].imshow (np.mean (cf_upsd, axis=(0,1)));
+    ax[0].imshow (np.mean (cf_upsd, axis=(0,1)),aspect='auto');
     for f in ifreqs: ax[0].axvline (np.abs(f), color='k', linestyle='--', alpha=0.5);
     ax[0].axvline (np.abs(ibias[0]), color='r', linestyle='--', alpha=0.3);
     ax[0].axvline (np.abs(ibias[-1]), color='r', linestyle='--', alpha=0.3);
@@ -655,10 +655,10 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     # Temporal/Spectral averaging of photometry
     # to be discussed
 
-    log.info ('Compute 2d FFT');
+    nscan = 64;
+    log.info ('Compute 2d FFT (nscan=%i)'%nscan);
 
     # Compute FFT for display, average over frames in ramp
-    nscan = 128;
     base_fft  = np.fft.fftshift (np.fft.fft (base_dft, n=nscan, axis=2), axes=2);
     base_scan = np.mean (np.abs(base_fft),axis=1, keepdims=True);
 
@@ -670,7 +670,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     fig.suptitle (headers.summary (hdr));
     plot.base_name (axes);
     plot.compact (axes);
-    for i,ax in enumerate (axes.flatten()): ax.imshow (base_scan[:,0,:,i].T);
+    for i,ax in enumerate (axes.flatten()): ax.imshow (base_scan[:,0,:,i].T,aspect='auto');
     files.write (fig,output+'_base_trend.png');
 
     # Plot the trend
@@ -678,7 +678,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     fig.suptitle (headers.summary (hdr));
     plot.base_name (axes);
     plot.compact (axes);
-    for i,ax in enumerate (axes.flatten()): ax.imshow (bias_scan[:,0,:,i].T);
+    for i,ax in enumerate (axes.flatten()): ax.imshow (bias_scan[:,0,:,i].T,aspect='auto');
     files.write (fig,output+'_bias_trend.png');
 
     log.info ('Compute SNR (alternate)');
@@ -785,8 +785,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
 
     # Plot this fringe selection
     fig,axes = plt.subplots (2,1);
-    axes[0].imshow (base_flag0[:,0,0,:].T);
-    axes[1].imshow (base_flag[:,0,0,:].T);
+    axes[0].imshow (base_flag0[:,0,0,:].T,aspect='auto');
+    axes[1].imshow (base_flag[:,0,0,:].T,aspect='auto');
     files.write (fig,output+'_morpho.png');
 
     # Replace 0 by nan to perform nanmean and nanstd
@@ -825,8 +825,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     # Pseudo PSD
     fig,ax = plt.subplots (2,2, sharey='row',sharex='col');
     fig.suptitle (headers.summary (hdr));
-    ax[0,0].imshow (np.mean (np.abs(base_dft)**2, axis=(0,1)));
-    ax[0,1].imshow (np.mean (np.abs(bias_dft)**2, axis=(0,1)));
+    ax[0,0].imshow (np.mean (np.abs(base_dft)**2, axis=(0,1)),aspect='auto');
+    ax[0,1].imshow (np.mean (np.abs(bias_dft)**2, axis=(0,1)),aspect='auto');
     ax[1,0].plot (np.mean (np.abs(base_dft)**2, axis=(0,1)).T);
     ax[1,1].plot (np.mean (np.abs(bias_dft)**2, axis=(0,1)).T);
     ax[0,0].set_title ('Fringe frequencies');
