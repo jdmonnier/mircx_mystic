@@ -44,20 +44,23 @@ def compact (axes):
         ax.ticklabel_format (axis='both', style='plain');
         ax.tick_params (axis='both', which='both', labelsize=5);
 
-def base_name (axes, bstart=None, tstart=None):
+def base_name (axes, bstart=None, tstart=None, names=None):
     '''
-    Set the names
+    Set the names of the bases (or triplet) in axes of plot
+    bstart: label only bases bstart:bstart+len(axes))
+    tstart: label only bases tstart:tstart+len(axes))
     '''
     n = len(axes.flatten());
 
     # Get the names
-    if bstart is not None:
-        names = setup.base_name ()[bstart:bstart+n];
-    elif tstart is not None:
-        names = setup.triplet_name ()[tstart:tstart+n];
-    else:
-        names = setup.base_name () if n == 15 else setup.triplet_name ();
-    
+    if names is None:
+        if bstart is not None:
+            names = setup.base_name ()[bstart:bstart+n];        
+        elif tstart is not None:
+            names = setup.triplet_name ()[tstart:tstart+n];
+        else:
+            names = setup.base_name () if n == 15 else setup.triplet_name ();
+
     for i in range (n):
         ax = axes.flatten()[i];
         ax.text (0.99, 0.95, names[i],

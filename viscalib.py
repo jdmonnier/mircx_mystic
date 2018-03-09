@@ -266,10 +266,17 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
     xts, yts, dyts = oifits.getdata (hdutfs,'OI_VIS2',names);
     xsc, ysc, dysc = oifits.getdata (hdusci,'OI_VIS2',names);
 
+    # Get station name for labels (assume the same for all files,
+    # and assume the OI_ARRAY is ordered starting with 1)
+    idx = hdutf[0]['OI_VIS2'].data['STA_INDEX'];
+    sta = hdutf[0]['OI_ARRAY'].data['STA_NAME'][idx-1];
+    bname = np.array ([s[0]+s[1]+' '+n for s,n in zip(sta,setup.base_name())]);
+
     for f in range (5):
         for c in range (nc):
             fig,axes = plt.subplots (3,1, sharex=True);
-            plot.base_name (axes, bstart=f*3);
+            plot.base_name (axes, names=bname[f*3:f*3+3]);
+            # plot.base_name (axes, bstart=f*3);
             plot.compact (axes);
             plt.subplots_adjust (hspace=0.03);
             fig.suptitle (' / '.join([str(hdrs[0].get(k,'--')) for k in keys]) + ' c%i'%c);
@@ -292,10 +299,17 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
     xts, yts, dyts = oifits.getdata (hdutfs,'OI_T3',names);
     xsc, ysc, dysc = oifits.getdata (hdusci,'OI_T3',names);
 
+    # Get triplet name for labels (assume the same for all files,
+    # and assume the OI_ARRAY is ordered starting with 1)
+    idx = hdutf[0]['OI_T3'].data['STA_INDEX'];
+    sta = hdutf[0]['OI_ARRAY'].data['STA_NAME'][idx-1];
+    tname = np.array ([s[0]+s[1]+s[2]+' '+n for s,n in zip(sta,setup.triplet_name())]);
+
     for f in range (5):
         for c in range (nc):
             fig,axes = plt.subplots (4,1, sharex=True);
-            plot.base_name (axes, tstart=f*4);
+            plot.base_name (axes, names=tname[f*4:f*4+4]);
+            #plot.base_name (axes, tstart=f*4);
             plot.compact (axes);
             plt.subplots_adjust (hspace=0.03);
             fig.suptitle (' / '.join([str(hdrs[0].get(k,'--')) for k in keys]) + ' c%i'%c);
