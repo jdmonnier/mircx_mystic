@@ -103,13 +103,14 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
     '''
     log.info ('Load RAW files in mode coaddRamp=%s'%str(coaddRamp));
 
-    # Build header
+    # Build output header as the copy
+    # of the first passed header
     hdr = hdrs[0].copy();
     hdr[HMQ+'NFILE'] = (0,'total number of files loaded');
     hdr[HMQ+'NRAMP'] = (0,'total number of ramp loaded');
     hdr[HMQ+'NSAT']  = (0,'total number of saturated frames');
     hdr['BZERO'] = 0;
-    
+
     cube = [];
     for h in hdrs:
         fileinfo = h['ORIGNAME'] + ' (' +h['FILETYPE']+')';
