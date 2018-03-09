@@ -27,6 +27,9 @@ Compute preproc per RAW file, to better allow selection.
 The interference removal create correlation between the photometric flux.
 This is *not* good for normalisation power.
 
+Compute the QUALITY of beam based on SNR of the x-chan fit, not mean flux.
+As integrating many frames should help.
+
 * RTS
 
 Or load various RTS into a single VIS.
@@ -56,6 +59,8 @@ Better MJD, better INT_TIME, better UCOORD,VCOORD
 
 - QC of dc is too long
 - Apply thresholding (force zeros) is too long
+
+- Add option to rereduce only part of the night
 
 * VISCAL
 
