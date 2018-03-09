@@ -62,6 +62,9 @@ parser.add_argument ("--vis-calibrated", dest="viscalib",default='TRUE',
 parser.add_argument ("--calibrators", dest="calibrators",default='name1,diam,err,name2,diam,err',
                      type=str, help="list of calibration star with diameters");
 
+parser.add_argument ("--delta-tf", dest="delta_tf",default=0.05,
+                     type=float, help="interpolation time in [days]");
+
 #
 # Initialisation
 #
@@ -101,7 +104,8 @@ if argopt.viscalib != 'FALSE':
             
             outputSetup = 'calibration_setup%i'%i;
             mrx.compute_all_viscalib (gp, catalog, outputDir=argopt.viscalib_dir,
-                                      outputSetup=outputSetup);
+                                      outputSetup=outputSetup,
+                                      deltaTf=argopt.delta_tf);
 
         except Exception as exc:
             log.error ('Cannot calibrate setup: '+str(exc));

@@ -171,7 +171,7 @@ def tf_divide (hdus, hdutf):
 
     return hdusc;
     
-def compute_all_viscalib (hdrs, catalog, delta=0.05,
+def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
                           outputDir='viscal/',
                           outputSetup='calibration_setup',
                           overwrite=True,
@@ -223,13 +223,13 @@ def compute_all_viscalib (hdrs, catalog, delta=0.05,
         output = files.output (outputDir,sci,'viscal');
         
         # Compute interpolation at the time of science and divide
-        hdutfsi = tf_time_weight (hdus, hdutf, delta);
+        hdutfsi = tf_time_weight (hdus, hdutf, deltaTf);
         hdulist = tf_divide (hdus, hdutfsi);
 
         # First HDU
         hdulist[0].header['FILETYPE'] = 'VIS_CALIBRATED';
         hdulist[0].header[HMP+'VIS_SCI'] = os.path.basename (sci['ORIGNAME']);
-        hdulist[0].header[HMP+'DELTA_INTERP'] = (delta,'[days] delta for interpolation');
+        hdulist[0].header[HMP+'DELTA_INTERP'] = (deltaTf,'[days] delta for interpolation');
 
         # Write file
         files.write (hdulist, output+'.fits');
