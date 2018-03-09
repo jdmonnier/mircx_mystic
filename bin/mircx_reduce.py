@@ -91,14 +91,17 @@ parser.add_argument ("--vis-calibrated", dest="viscalib",default='FALSE',
                      help="compute the VIS_CALIBRATED products");
 
 
-parser.add_argument ("--calibrators", dest="calibrators",default='name1,diam,err,name2,diam,err',
-                     type=str, help="list of calibration star with diameters");
+parser.add_argument ("--beam-quality", dest="beam_quality", type=float,
+                    default=2.0, help="minimum quality to consider the beammap as valid");
+
+parser.add_argument ("--ncoherent", dest="ncoherent", type=float,
+                    default=2.0, help="number of frames (can be fractional) for coherent integration");
 
 parser.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
                     default=2.0, help="SNR threshold for fringe selection");
 
-parser.add_argument ("--ncoherent", dest="ncoherent", type=float,
-                    default=2.0, help="number of frames (can be fractional) for coherent integration");
+parser.add_argument ("--calibrators", dest="calibrators",default='name1,diam,err,name2,diam,err',
+                     type=str, help="list of calibration star with diameters");
 
 #
 # Initialisation
@@ -314,12 +317,14 @@ if argopt.rts != 'FALSE':
                                          keys=keys, which='best', required=1);
                 profiles.extend (tmp);
 
-            # Associate KAPPA (closest BEAM_MAP in time, in this setup)
+            # Associate KAPPA (closest BEAM_MAP in time, in this setup,
+            # with sufficient quality)
             kappas = [];
             for i in range(1,7):
                 keys = setup.detwin + setup.detmode + setup.insmode;
                 tmp = mrx.headers.assoc (gp[0], hdrs, 'BEAM%i_MAP'%i,
-                                         keys=keys, which='closest', required=1);
+                                         keys=keys, quality=argopt.beam_quality,
+                                         which='closest', required=1);
                 kappas.extend (tmp);
                 
             mrx.compute_rts (gp, profiles, kappas, speccal, output=output);

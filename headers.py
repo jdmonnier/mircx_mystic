@@ -238,7 +238,7 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
     groups = [g for g in groups if g != []];
     return groups;
 
-def assoc (h, allh, tag, keys=[], which='closest', required=0):
+def assoc (h, allh, tag, keys=[], which='closest', required=0, quality=None):
     '''
     Search for headers with tag and matching criteria
     '''
@@ -253,6 +253,11 @@ def assoc (h, allh, tag, keys=[], which='closest', required=0):
         if tmp:
             out.append(a)
 
+    # Keep only the requested quality
+    l1 = len (out);
+    if quality is not None:
+        out = [o for o in out if o.get (HMQ+'QUALITY', 0.0) > quality];
+
     # Check closest
     if len (out) > required and which=='closest':
         if required < 2:
@@ -264,14 +269,14 @@ def assoc (h, allh, tag, keys=[], which='closest', required=0):
     # Check best quality
     if len (out) > required and which=='best':
         if required < 2:
-            quality = np.array([o['HIERARCH MIRC QC QUALITY'] for o in out]);
+            quality = np.array([o[HMQ+'QUALITY'] for o in out]);
             out = [out[np.argmax (quality)]];
         else:
             raise NotImplementedError('Not supported yet');
             
     # Check required
     if len (out) < required:
-        log.warning ('Cannot find %i %s'%(required,tag))
+        log.warning ('Cannot find %i %s (%i rejected for quality)'%(required,tag,l1-len(out)))
     else:
         log.info ('Find %i %s (%s ...)'%(len(out),tag,out[0]['ORIGNAME']));
         
