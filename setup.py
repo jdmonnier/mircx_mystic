@@ -24,7 +24,10 @@ def nspec (hdr):
     Return the expected number of spectral
     channel depending on the insturmental setup
     '''
-    return 11;
+    n = int((hdr['FR_ROW2'] - hdr['FR_ROW1'])/2)*2 - 1;
+    log.info ('nrow = %i'%n);
+    return n;
+    # return 11;
 
 def fringe_widthx (hdr):
     '''
