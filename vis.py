@@ -754,7 +754,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
 
     # Smooth SNR
     log.info ('Stabilize SNR over over few ramps');
-    base_snr = gaussian_filter (base_snr,(3,0,0,0),mode='constant',truncate=2.0);
+    base_snr = gaussian_filter (base_snr,(2,0,0,0),mode='constant',truncate=2.0);
 
     # Bootstrap over baseline. Maybe the GD should be
     # boostraped and averaged as a phasor
