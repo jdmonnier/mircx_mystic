@@ -92,7 +92,8 @@ if argopt.viscalib != 'FALSE':
     hdrs = mrx.headers.loaddir (argopt.vis_dir);
 
     # Group all VIS by calibratable setup
-    keys = setup.detwin + setup.insmode + setup.fringewin + setup.visparam;
+    keys = setup.detwin + setup.detmode + setup.insmode + \
+           setup.fringewin + setup.visparam + setup.beamorder;
     gps = mrx.headers.group (hdrs, 'VIS', delta=1e9, Delta=1e9,
                              keys=keys, continuous=False);
 

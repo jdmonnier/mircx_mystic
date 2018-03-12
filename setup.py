@@ -19,6 +19,9 @@ fringewin = [HMW+'FRINGE STARTX', HMW+'FRINGE NX', HMW+'FRINGE STARTY', HMW+'FRI
 global visparam;
 visparam = [HMP+'NFRAME_COHER'];
 
+global beamorder;
+beamorder = ['BEAMORD0','BEAMORD1','BEAMORD2','BEAMORD3','BEAMORD4','BEAMORD5'];
+
 def nspec (hdr):
     '''
     Return the expected number of spectral
