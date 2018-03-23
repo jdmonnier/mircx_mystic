@@ -28,7 +28,7 @@ The interference removal create correlation between the photometric flux.
 This is *not* good for normalisation power.
 
 Compute the QUALITY of beam based on SNR of the x-chan fit, not mean flux.
-As integrating many frames should help.
+Because integrating many frames should help.
 
 * RTS
 
@@ -45,10 +45,11 @@ each wavelength independently ??
 How to deal with the kappa ? Wouldn't the DC projection be sufficient
 if we assume the kappa is the same for all telescopes ?
 
-* VIS
+Maybe the spectral-kappa shall be taken as the best of the night,
+and only the total flux ratio should be adjusted.
+Because the SNR on the edges is really small.
 
-First do the longest SNR average (ramp).
-Then bootstrap, then perform the fringe selection
+* VIS
 
 Deal with coherent integration as time quantities
 Flatten the time ?
@@ -59,11 +60,13 @@ Better MJD, better INT_TIME, better UCOORD,VCOORD
 
 - QC of dc is too long
 - Apply thresholding (force zeros) is too long
-
 - Add option to rereduce only part of the night
 
 * VISCAL
 
 Propagate uncertainties on transfer function
-and calibrated product.
+and calibrated product with non-linear propagation
+(compute at + and - sigma).
 
+Add the beamorder in the setup for viscal... as a 
+reconfiguration is not catched yet.

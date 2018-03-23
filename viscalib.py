@@ -35,13 +35,13 @@ def tf_time_weight (hdus, hdutf, delta):
     delta is in [days]
     The function assumes the baselines are ordered the same way.
 
-    Return the VIS_SCI_TF, as a FITS handler.
+    Return the OIFITS_SCI_TF, as a FITS handler.
     '''
     log.info ('Interpolate %i TF with time_weight'%len(hdutf));
 
-    # Copy VIS_SCI to build VIS_TF
+    # Copy OIFITS_SCI to build OIFITS_TF
     hdutfs = pyfits.HDUList([hdu.copy() for hdu in hdus]);
-    hdutfs[0].header['FILETYPE'] = 'VIS_SCI_TF';
+    hdutfs[0].header['FILETYPE'] = 'OIFITS_SCI_TF';
     
     obs = [['OI_VIS2','VIS2DATA','VIS2ERR',False],
            ['OI_T3','T3AMP','T3AMPERR',False],
@@ -129,12 +129,12 @@ def tf_divide (hdus, hdutf):
     FITS handler). The TF which may come from the averaging of many TF.
     The function assumes the baselines are ordered the same way.
 
-    Return the calibrated VIS_CALIBRATED (a FITS handler).
+    Return the calibrated OIFITS_CALIBRATED (a FITS handler).
     '''
 
-    # Copy VIS_SCI to build VIS_CALIBRATED
+    # Copy OIFITS_SCI to build OIFITS_CALIBRATED
     hdusc = pyfits.HDUList([hdu.copy() for hdu in hdus]);
-    hdusc[0].header['FILETYPE'] = 'VIS_CALIBRATED';
+    hdusc[0].header['FILETYPE'] = 'OIFITS_CALIBRATED';
 
     obs = [['OI_VIS2','VIS2DATA','VIS2ERR',False],
            ['OI_T3','T3AMP','T3AMPERR',False],
@@ -178,7 +178,7 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
                           lbdMin=1.0, lbdMax=2.0,
                           keys=visparam):
     '''
-    Cross-calibrate the VIS in hdrs. The choice of SCI and CAL, and the diameter
+    Cross-calibrate the OIFITS in hdrs. The choice of SCI and CAL, and the diameter
     of the calibration stars, are specified with the catalog. Catalog should be
     of the form [('name1',diam1,err1),('name2',diam2,err2),...] where the diam
     and err are in [mas]. The input hdrs shall be a list of FITS headers.
@@ -187,11 +187,11 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
 
     headers.check_input (hdrs, required=1);
 
-    # Get VIS_SCI and VIS_CAL from input catalog
+    # Get OIFITS_SCI and OIFITS_CAL from input catalog
     scis, calibs = headers.get_sci_cal (hdrs, catalog);
     
     # List of measured Transfert Functions
-    # (VIS_CAL / diameter)
+    # (OIFITS_CAL / diameter)
     hdutf = [];
     for calib in calibs:
         f = calib['ORIGNAME'];
@@ -209,11 +209,11 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         hdulist['OI_VIS2'].data['VIS2DATA'] /= v2;
         hdulist['OI_VIS2'].data['VIS2ERR'] /= v2;
 
-        # These are VIS_CAL_TF
-        hdulist[0].header['FILETYPE'] = 'VIS_CAL_TF';
+        # These are OIFITS_CAL_TF
+        hdulist[0].header['FILETYPE'] = 'OIFITS_CAL_TF';
         hdutf.append (hdulist);
 
-    # Loop on VIS_SCI to calibrate them
+    # Loop on OIFITS_SCI to calibrate them
     hdusci, hdutfs = [], [];
     for sci in scis:
     
@@ -234,14 +234,14 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         hdulist['OI_T3'].data['FLAG'] += flag[None,:];
 
         # First HDU
-        hdulist[0].header['FILETYPE'] = 'VIS_CALIBRATED';
-        hdulist[0].header[HMP+'VIS_SCI'] = os.path.basename (sci['ORIGNAME']);
+        hdulist[0].header['FILETYPE'] = 'OIFITS_CALIBRATED';
+        hdulist[0].header[HMP+'OIFITS_SCI'] = os.path.basename (sci['ORIGNAME']);
         hdulist[0].header[HMP+'DELTA_INTERP'] = (deltaTf,'[days] delta for interpolation');
 
         # Write file
         files.write (hdulist, output+'.fits');
     
-        # Append VIS_SCI and VIS_SCI_TF, to allow a plot
+        # Append OIFITS_SCI and OIFITS_SCI_TF, to allow a plot
         # of a trend over the night for this setup
         hdusci.append (hdus);
         hdutfs.append (hdutfsi);

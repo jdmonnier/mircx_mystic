@@ -347,15 +347,15 @@ def get_sci_cal (hdrs, catalog):
     # Loop on input headers
     scis, cals = [], [];
     for h in hdrs:
-        if h['FILETYPE'] != 'VIS':
+        if h['FILETYPE'] != 'OIFITS':
             continue;
         
         if h['OBJECT'] not in name:
-            log.info ('%s (%s) -> VIS_SCI'%(h['ORIGNAME'],h['OBJECT']));
+            log.info ('%s (%s) -> OIFITS_SCI'%(h['ORIGNAME'],h['OBJECT']));
             h['FILETYPE'] += '_SCI';
             scis.append (h);
         else:
-            log.info ('%s (%s) -> VIS_CAL'%(h['ORIGNAME'],h['OBJECT']));
+            log.info ('%s (%s) -> OIFITS_CAL'%(h['ORIGNAME'],h['OBJECT']));
             idx = name.index (h['OBJECT']);
             h['FILETYPE'] += '_CAL';
             h[HMP+'CALIB DIAM'] = (diam[idx],'[mas] diameter');

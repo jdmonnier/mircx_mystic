@@ -893,7 +893,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     log.info ('Create file');
 
     # First HDU
-    hdulist[0].header['FILETYPE'] = 'VIS';
+    hdulist[0].header['FILETYPE'] = 'OIFITS';
     hdulist[0].header[HMP+'RTS'] = os.path.basename (hdrs[0]['ORIGNAME'])[-50:];
     
     # Write file

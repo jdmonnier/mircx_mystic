@@ -151,7 +151,7 @@ class mulens(object):
 
 class ruler(object):
     def tostr(self):
-        x = (self.x,self.x+2.*self.d*self.fn);
+        x = (self.x,          self.x+2.*self.d*self.fn);
         y = (self.y-self.d/2, self.y+self.d/2);
         out  = '{"type":"ruler",';
         out += '"p1":{"type":1,"x":%.3f,"y":%.3f,"exist":true},'%(x[0],y[0]);

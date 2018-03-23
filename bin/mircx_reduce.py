@@ -32,7 +32,7 @@ description:
            cleaned from the instrumental behavior, but not yet
            averaged (step 2 of reduction).
 
-  vis/     contains the final OIFITS products, which are the 
+  oifits/  contains the final OIFITS products, which are the 
            uncalibrated mean visibilities and closure phases
            computed by selecting and averaging the data in RTS
            (step 3 of reduction).
@@ -71,7 +71,7 @@ parser.add_argument ("--preproc-dir", dest="preproc_dir",default='./preproc/',ty
 parser.add_argument ("--rts-dir", dest="rts_dir",default='./rts/',type=str,
                      help="directory of products [%(default)s]");
 
-parser.add_argument ("--vis-dir", dest="vis_dir",default='./vis/',type=str,
+parser.add_argument ("--oifits-dir", dest="oifits_dir",default='./oifits/',type=str,
                      help="directory of products [%(default)s]");
 
 
@@ -83,9 +83,9 @@ parser.add_argument ("--rts", dest="rts",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the RTS products [%(default)s]");
 
-parser.add_argument ("--vis", dest="vis",default='TRUE',
+parser.add_argument ("--oifits", dest="oifits",default='TRUE',
                      choices=TrueFalseOverwrite,
-                     help="compute the VIS products [%(default)s]");
+                     help="compute the OIFITS products [%(default)s]");
 
 
 parser.add_argument ("--beam-quality", dest="beam_quality", type=float,
@@ -320,11 +320,11 @@ if argopt.rts != 'FALSE':
             log.closeFile ();
             
 #
-# Compute VIS
+# Compute OIFITS
 #
 
-if argopt.vis != 'FALSE':
-    overwrite = (argopt.vis == 'OVERWRITE');
+if argopt.oifits != 'FALSE':
+    overwrite = (argopt.oifits == 'OVERWRITE');
 
     # List inputs
     hdrs = mrx.headers.loaddir (argopt.rts_dir);
@@ -336,9 +336,9 @@ if argopt.vis != 'FALSE':
     # Compute 
     for i,gp in enumerate(gps):
         try:
-            log.info ('Compute VIS {0} over {1} '.format(i+1,len(gps)));
+            log.info ('Compute OIFITS {0} over {1} '.format(i+1,len(gps)));
             
-            output = mrx.files.output (argopt.vis_dir, gp[0], 'vis');
+            output = mrx.files.output (argopt.oifits_dir, gp[0], 'oifits');
             if os.path.exists (output+'.fits') and overwrite is False:
                 log.info ('Product already exists');
                 continue;
@@ -348,7 +348,7 @@ if argopt.vis != 'FALSE':
                              threshold=argopt.snr_threshold);
 
         except Exception as exc:
-            log.error ('Cannot compute VIS: '+str(exc));
+            log.error ('Cannot compute OIFITS: '+str(exc));
             if argopt.debug == 'TRUE': raise;
         finally:
             log.closeFile ();

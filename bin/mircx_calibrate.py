@@ -17,17 +17,17 @@ description = \
 """
 description:
   Run the mircx pipeline for calibration.
-  Shall be ran in the directory of the VIS data.
+  Shall be ran in the directory of the OIFITS data.
   The data format shall be .fits and/or .fits.fz
   The format .fits.gz is not supported.
 
-  By default, outputs are written in directory ./viscalib/
+  By default, outputs are written in directory ./calibrated/
 """
 
 epilog = \
 """
 examples:
-  cd /path/to/my/data/vis/
+  cd /path/to/my/data/oifits/
   mirx_calibrate.py --calibrators=HD1234,0.75,0.1
 """
 
@@ -47,16 +47,16 @@ parser.add_argument ("--max-file", dest="max_file",default=3000,type=int,
                           "product (speed-up for tests)");
 
 
-parser.add_argument ("--vis-dir", dest="vis_dir",default='./',type=str,
+parser.add_argument ("--oifits-dir", dest="oifits_dir",default='./',type=str,
                      help="directory of input visibilities [%(default)s]");
 
-parser.add_argument ("--vis-calibrated-dir", dest="viscalib_dir",default='./viscalib/',type=str,
+parser.add_argument ("--oifits-calibrated-dir", dest="oifitscalib_dir",default='./calibrated/',type=str,
                      help="directory of output calibrated visibilities [%(default)s]");
 
 
-parser.add_argument ("--vis-calibrated", dest="viscalib",default='TRUE',
+parser.add_argument ("--oifits-calibrated", dest="oifitscalib",default='TRUE',
                      choices=TrueOverwrite,
-                     help="compute the VIS_CALIBRATED products [%(default)s]");
+                     help="compute the OIFITS_CALIBRATED products [%(default)s]");
 
 
 parser.add_argument ("--calibrators", dest="calibrators",default='name1,diam,err,name2,diam,err',
@@ -82,19 +82,19 @@ argopt = parser.parse_args ();
 elog = log.trace ('mircx_calibrate');
                                     
 #
-# Compute VIS_CALIBRATED
+# Compute OIFITS_CALIBRATED
 #
 
-if argopt.viscalib != 'FALSE':
-    overwrite = (argopt.viscalib == 'OVERWRITE');
+if argopt.oifitscalib != 'FALSE':
+    overwrite = (argopt.oifitscalib == 'OVERWRITE');
 
-    # Read all calibration products, keep only the VIS
-    hdrs = mrx.headers.loaddir (argopt.vis_dir);
+    # Read all calibration products, keep only the OIFITS
+    hdrs = mrx.headers.loaddir (argopt.oifits_dir);
 
-    # Group all VIS by calibratable setup
+    # Group all OIFITS by calibratable setup
     keys = setup.detwin + setup.detmode + setup.insmode + \
            setup.fringewin + setup.visparam + setup.beamorder;
-    gps = mrx.headers.group (hdrs, 'VIS', delta=1e9, Delta=1e9,
+    gps = mrx.headers.group (hdrs, 'OIFITS', delta=1e9, Delta=1e9,
                              keys=keys, continuous=False);
 
     # Parse input catalog
@@ -106,11 +106,11 @@ if argopt.viscalib != 'FALSE':
             log.info ('Calibrate setup {0} over {1} '.format(i+1,len(gps)));
 
             # Create output directory and set log
-            mrx.files.ensure_dir (argopt.viscalib_dir);
-            log.setFile (argopt.viscalib_dir+'/calibration_setup%i.log'%i);
+            mrx.files.ensure_dir (argopt.oifitscalib_dir);
+            log.setFile (argopt.oifitscalib_dir+'/calibration_setup%i.log'%i);
             
             outputSetup = 'calibration_setup%i'%i;
-            mrx.compute_all_viscalib (gp, catalog, outputDir=argopt.viscalib_dir,
+            mrx.compute_all_viscalib (gp, catalog, outputDir=argopt.oifitscalib_dir,
                                       outputSetup=outputSetup,
                                       deltaTf=argopt.delta_tf,
                                       lbdMin=argopt.lbd_min,

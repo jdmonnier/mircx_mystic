@@ -31,14 +31,14 @@ Run the reduction with default
 Re-run the last step with more coherent integration
 and different SNR threshold (for instance):
 
-  nohup mircx_reduce.py --ncoherent=10 --snr-threshold=3 --vis=vis_nc10 &
+  nohup mircx_reduce.py --ncoherent=10 --snr-threshold=3 --oifits-dir=oifits_10 &
   tail -f nohup.out
   
 Calibration script:
 
-  cd vis_nc10/
+  cd oifits_nc10/
   mircx_calibrate.py --calibrators=HD_14055,0.51,0.03,HD_24398,0.70,0.03
 
 Look at the results in 
   
-  cd viscalib/
+  cd calibrated/
