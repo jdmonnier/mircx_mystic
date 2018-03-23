@@ -10,13 +10,35 @@ some packages (all from anaconda3)
 
 * Usage
 
-Make sure the mircx_pipeline is located in a directory
-pointed out by your $PYTHONPATH variable.
+Connect on orthanc.
+  ssh orthanc.astro.lsa.umich.edu
 
-Go in the directory you want to reduce, run the script:
+Make sure python can look for the pipeline package
 
-  bin/mircx_preproc.py
+  export MIRCX_PIPELINE=/Users/Shared/
+  export PYTHONPATH=$MIRCX_PIPELINE:$PYTHONPATH
+  export PATH=$MIRCX_PIPELINE/mircx_pipeline/bin:$PATH
 
-Look at output products in ./reduced/
+Go in the directory that you want to reduce:
+ 
+  cd /nfs/Monnier2/MIRCX_DATA/MIRCX_2017Oct/
 
+Run the reduction with default
 
+  nohup mircx_reduce.py &
+  tail -f nohup.out
+
+Re-run the last step with more coherent integration
+and different SNR threshold (for instance):
+
+  nohup mircx_reduce.py --ncoherent=10 --snr-threshold=3 --vis=vis_nc10 &
+  tail -f nohup.out
+  
+Calibration script:
+
+  cd vis_nc10/
+  mircx_calibrate.py --calibrators=HD_14055,0.51,0.03,HD_24398,0.70,0.03
+
+Look at the results in 
+  
+  cd viscalib/
