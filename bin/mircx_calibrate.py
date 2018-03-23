@@ -32,7 +32,7 @@ examples:
 """
 
 parser = argparse.ArgumentParser (description=description, epilog=epilog,
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter);
+                                 formatter_class=argparse.RawDescriptionHelpFormatter);
 
 TrueFalse = ['TRUE','FALSE'];
 TrueOverwrite = ['TRUE','OVERWRITE'];
@@ -48,28 +48,28 @@ parser.add_argument ("--max-file", dest="max_file",default=3000,type=int,
 
 
 parser.add_argument ("--vis-dir", dest="vis_dir",default='./',type=str,
-                     help="directory of input visibilities");
+                     help="directory of input visibilities [%(default)s]");
 
 parser.add_argument ("--vis-calibrated-dir", dest="viscalib_dir",default='./viscalib/',type=str,
-                     help="directory of output calibrated visibilities");
+                     help="directory of output calibrated visibilities [%(default)s]");
 
 
 parser.add_argument ("--vis-calibrated", dest="viscalib",default='TRUE',
                      choices=TrueOverwrite,
-                     help="compute the VIS_CALIBRATED products");
+                     help="compute the VIS_CALIBRATED products [%(default)s]");
 
 
 parser.add_argument ("--calibrators", dest="calibrators",default='name1,diam,err,name2,diam,err',
-                     type=str, help="list of calibration star with diameters");
+                     type=str, help="list of calibration star with diameters in the form name1,diam,err,name2,diam,err...");
 
 parser.add_argument ("--delta-tf", dest="delta_tf",default=0.05,
-                     type=float, help="interpolation time in [days]");
+                     type=float, help="interpolation time in days [%(default)s]");
 
 parser.add_argument ("--lbd-min", dest="lbd_min",default=1.5,
-                     type=float, help="minimum wavelenght [um]");
+                     type=float, help="minimum wavelenght in um [%(default)s]");
 
 parser.add_argument ("--lbd-max", dest="lbd_max",default=1.72,
-                     type=float, help="maximum wavelenght [um]");
+                     type=float, help="maximum wavelenght in um [%(default)s]");
 
 #
 # Initialisation
