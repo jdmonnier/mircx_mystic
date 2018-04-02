@@ -378,8 +378,13 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     hdr[HMW+'PHOTO SHIFTY'] = (shifty,'[pix] shift of PHOTO versus FRINGE');
 
     # Define quality flag
-    log.info (HMQ+'QUALITY = %f'%ffit.amplitude.value);
-    hdr[HMQ+'QUALITY'] = (ffit.amplitude.value, 'quality of data');
+    quality = ffit.amplitude.value;
+    if fxc < 1 or fcx > nx: quality = 0.0;
+    if pxc < 1 or pcx > nx: quality = 0.0;
+    
+    # Set quality
+    log.info (HMQ+'QUALITY = %f'%quality);
+    hdr[HMQ+'QUALITY'] = (quality, 'quality of data');
 
     # Figures
     log.info ('Figures');
