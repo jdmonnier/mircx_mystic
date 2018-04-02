@@ -131,8 +131,13 @@ def load (files, hlog=[]):
                 log.warning ('Old data with ENDFR');
                 hdr.rename_keyword ('ENDFR','LASTFR');
 
-            # Reformat DATE-OBS MM/DD/YYYY -> YYYY-MM-DD
-            if '/' in hdr['DATE-OBS']:
+            if hdr['DATE-OBS'][4] == '/':
+                # Reformat DATE-OBS YYYY/MM/DD -> YYYY-MM-DD
+                hdr['DATE-OBS'] = hdr['DATE-OBS'][0:4] + '-' + \
+                  hdr['DATE-OBS'][5:7] + '-' + \
+                  hdr['DATE-OBS'][8:10];
+            else if hdr['DATE-OBS'][2] == '/':
+                # Reformat DATE-OBS MM/DD/YYYY -> YYYY-MM-DD
                 hdr['DATE-OBS'] = hdr['DATE-OBS'][6:10] + '-' + \
                   hdr['DATE-OBS'][0:2] + '-' + \
                   hdr['DATE-OBS'][3:5];
