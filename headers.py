@@ -136,7 +136,7 @@ def load (files, hlog=[]):
                 hdr['DATE-OBS'] = hdr['DATE-OBS'][0:4] + '-' + \
                   hdr['DATE-OBS'][5:7] + '-' + \
                   hdr['DATE-OBS'][8:10];
-            else if hdr['DATE-OBS'][2] == '/':
+            elif hdr['DATE-OBS'][2] == '/':
                 # Reformat DATE-OBS MM/DD/YYYY -> YYYY-MM-DD
                 hdr['DATE-OBS'] = hdr['DATE-OBS'][6:10] + '-' + \
                   hdr['DATE-OBS'][0:2] + '-' + \
