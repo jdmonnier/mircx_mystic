@@ -93,9 +93,13 @@ def check_empty_window (cube, hdr):
     '''
     log.info ('Check the empty window');
     
+    # Get dimension
+    nr,nf,ny,nx = cube.shape;
+    
     # Hardcoded defined
-    sx,nx = (200,80);
-    sy,ny = (45,55)
+    sx,nx = 200,80;
+    sy,ny = int(0.55*ny), int(0.85*ny - 0.55*ny);
+    log.info ('Empty window: %i,%i, %i,%i'%(sx,nx,sy,ny));
 
     # Add QC parameters
     hdr[HMQ+'WIN EMPTY STARTX'] = (sx,'[pix] python-ref');
@@ -105,13 +109,12 @@ def check_empty_window (cube, hdr):
 
     # Crop the empty window
     empty = np.mean (cube[:,:,sy:sy+ny,sx:sx+nx], axis=(0,1));
-    log.info ('Extracted empty window');
 
     # Compute QC
     (mean,med,std) = sigma_clipped_stats (empty);
-    log.info (HMQ+'EMPTY MED = %.2f'%med);
     
     # Set QC
+    log.info (HMQ+'EMPTY MED = %.2f [adu]'%med);
     hdr[HMQ+'EMPTY MED'] = (med,'[adu]');
     hdr[HMQ+'EMPTY MEAN'] = (mean,'[adu]');
     hdr[HMQ+'EMPTY STD'] = (std,'[adu]');
