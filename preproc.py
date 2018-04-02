@@ -105,13 +105,17 @@ def check_empty_window (cube, hdr):
 
     # Crop the empty window
     empty = np.mean (cube[:,:,sy:sy+ny,sx:sx+nx], axis=(0,1));
+    log.info ('Extracted empty window');
 
     # Compute QC
     (mean,med,std) = sigma_clipped_stats (empty);
+    log.info (HMQ+'EMPTY MED = %.2f'%med);
+    
+    # Set QC
     hdr[HMQ+'EMPTY MED'] = (med,'[adu]');
     hdr[HMQ+'EMPTY MEAN'] = (mean,'[adu]');
     hdr[HMQ+'EMPTY STD'] = (std,'[adu]');
-
+    
     return empty;
 
 def compute_background (hdrs,output='output_bkg'):
