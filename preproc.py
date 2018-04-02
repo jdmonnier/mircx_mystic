@@ -379,8 +379,8 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
 
     # Define quality flag
     quality = ffit.amplitude.value;
-    if fxc < 1 or fcx > nx: quality = 0.0;
-    if pxc < 1 or pcx > nx: quality = 0.0;
+    if fxc < 1 or fxc > nx or fxw < 10 or fxw > nx: quality = 0.0;
+    if pxc < 1 or pxc > nx or pxw < 0.25 or pxw > 10: quality = 0.0;
     
     # Set quality
     log.info (HMQ+'QUALITY = %f'%quality);
