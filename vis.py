@@ -835,7 +835,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     
     # SNR
     fig,axes = plt.subplots (5,3, sharex=True);
-    fig.suptitle (['SNR versus ramp',headers.summary (hdr)]);
+    fig.suptitle ('SNR versus ramp \n' + headers.summary (hdr));
     plot.base_name (axes);
     plot.compact (axes);
     d0 = np.mean (base_snr0,axis=(1,2));
