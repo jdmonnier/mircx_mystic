@@ -60,7 +60,8 @@ parser.add_argument ("--oifits-calibrated", dest="oifitscalib",default='TRUE',
 
 
 parser.add_argument ("--calibrators", dest="calibrators",default='name1,diam,err,name2,diam,err',
-                     type=str, help="list of calibration star with diameters in the form name1,diam,err,name2,diam,err...");
+                     type=str, help="list of calibration star with diameters and error "
+                                    "in mas and in the form name1,diam,err,name2,diam,err...");
 
 parser.add_argument ("--delta-tf", dest="delta_tf",default=0.05,
                      type=float, help="interpolation time in days [%(default)s]");
