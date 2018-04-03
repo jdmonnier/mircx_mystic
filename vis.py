@@ -835,14 +835,16 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     
     # SNR
     fig,axes = plt.subplots (5,3, sharex=True);
-    fig.suptitle (headers.summary (hdr));
+    fig.suptitle (['SNR versus ramp',headers.summary (hdr)]);
     plot.base_name (axes);
     plot.compact (axes);
-    d0 = np.log10 (np.mean (base_snr0,axis=(1,2)));
-    d1 = np.log10 (np.mean (base_snr,axis=(1,2)));
-    for b in range (15): axes.flatten()[b].axhline (np.log10(threshold),color='r', alpha=0.2);
+    d0 = np.mean (base_snr0,axis=(1,2));
+    d1 = np.mean (base_snr,axis=(1,2));
+    for b in range (15): axes.flatten()[b].axhline (threshold,color='r', alpha=0.2);
     for b in range (15): axes.flatten()[b].plot (d1[:,b]);
     for b in range (15): axes.flatten()[b].plot (d0[:,b],'--', alpha=0.5);
+    for b in range (15): axes.flatten()[b].set_yscale ('log');
+    
     files.write (fig,output+'_snr.png');
 
     # GD
