@@ -22,10 +22,21 @@ def get_spfreq (hdulist,name):
     '''
     Return the spatial frequency B/lbd in [rad-1]
     '''
-    u = hdulist[name].data['UCOORD'];
-    v = hdulist[name].data['VCOORD'];
     lbd = hdulist['OI_WAVELENGTH'].data['EFF_WAVE'];
-    return np.sqrt (u**2 + v**2)[:,None] / lbd[None,:];
+    
+    if name == 'OI_VIS2':
+        u = hdulist['OI_VIS2'].data['UCOORD'];
+        v = hdulist['OI_VIS2'].data['VCOORD'];
+        return np.sqrt (u**2 + v**2)[:,None] / lbd[None,:];
+
+    if name == 'OI_T3':
+        u1 = hdulist['OI_T3'].data['U1COORD'];
+        v1 = hdulist['OI_T3'].data['V1COORD'];
+        u2 = hdulist['OI_T3'].data['U2COORD'];
+        v2 = hdulist['OI_T3'].data['V2COORD'];
+        u = np.array([u1,u2,u1+u2]);
+        v = np.array([v1,v2,v1+v2]);
+        return np.sqrt (u**2 + v**2)[:,:,None] / lbd[:,None,:];
 
 def tf_time_weight (hdus, hdutf, delta):
     '''
@@ -209,6 +220,13 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         hdulist['OI_VIS2'].data['VIS2DATA'] /= v2;
         hdulist['OI_VIS2'].data['VIS2ERR'] /= v2;
 
+        # Compute the TF
+        spf = get_spfreq (hdulist,'OI_T3');
+        v123 = signal.airy (diam * spf);
+        v123 = v123[0,:,:] * v123[1,:,:] * v123[2,:,:];
+        hdulist['OI_T3'].data['T3AMP'] /= v123;
+        hdulist['OI_T3'].data['T3AMPERR'] /= v123;
+        
         # These are OIFITS_CAL_TF
         hdulist[0].header['FILETYPE'] = 'OIFITS_CAL_TF';
         hdutf.append (hdulist);
