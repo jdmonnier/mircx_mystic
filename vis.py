@@ -332,6 +332,10 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
 
     kappa = upper / (lower + 1e-20);
 
+    # Set invalid kappas to zero
+    kappa[kappa > 1e3] = 0.0;
+    kappa[kappa < 0.] = 0.0;
+
     # Filter the kappa-matrix and the data to avoid
     # craps on the edges. treshold(ny) is defined
     # based on fringe_map 
@@ -651,9 +655,6 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     # Smooth photometry over the same amount (FIXME: be be discussed)
     log.info ('Smoothing of photometry over %.1f frames'%ncoher);
     photo = gaussian_filter (photo,(0,ncoher,0,0),mode='constant',truncate=2.0);
-
-    # Temporal/Spectral averaging of photometry
-    # to be discussed
 
     nscan = 64;
     log.info ('Compute 2d FFT (nscan=%i)'%nscan);
