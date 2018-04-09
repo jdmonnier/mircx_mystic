@@ -131,6 +131,11 @@ def load (files, hlog=[]):
                 log.warning ('Old data with ENDFR');
                 hdr.rename_keyword ('ENDFR','LASTFR');
 
+            # Check NBIN
+            if 'NBIN' not in hdr:
+                log.warning ('Old data with no NBIN (set to one)');
+                hdr['NBIN'] = 1;
+
             if hdr['DATE-OBS'][4] == '/':
                 # Reformat DATE-OBS YYYY/MM/DD -> YYYY-MM-DD
                 hdr['DATE-OBS'] = hdr['DATE-OBS'][0:4] + '-' + \
