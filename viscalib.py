@@ -36,6 +36,8 @@ def get_spfreq (hdulist,name):
         v2 = hdulist['OI_T3'].data['V2COORD'];
         u = np.array([u1,u2,u1+u2]);
         v = np.array([v1,v2,v1+v2]);
+        print (u.shape, v.shape);
+        print (np.min(u), np.min(v));
         return np.sqrt (u**2 + v**2)[:,:,None] / lbd[:,None,:];
 
 def tf_time_weight (hdus, hdutf, delta):
