@@ -34,14 +34,15 @@ examples:
 """
 
 parser = argparse.ArgumentParser (description=description, epilog=epilog,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter);
+                                 formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 add_help=False);
 
 
 TrueFalse = ['TRUE','FALSE'];
 TrueFalseOverwrite = ['TRUE','FALSE','OVERWRITE'];
 
 preproc = parser.add_argument_group ('(1) preproc',
-                    'creates  the BACKGROUND, BEAM, PREPROC and SPEC_CAL\n'
+                    '\nCreates  the BACKGROUND, BEAM, PREPROC and SPEC_CAL\n'
                     'intermediate products, which mostly corresponds to\n'
                     'detector images cleaned from the detector artifact.');
 
@@ -57,9 +58,9 @@ preproc.add_argument ("--preproc-dir", dest="preproc_dir",default='./preproc/',t
 
 
 rts = parser.add_argument_group ('(2) rts',
-                  'creates RTS intermediate products, which are the\n'
+                  '\nCreates RTS intermediate products, which are the\n'
                   'coherent flux and the photometric flux in real time,\n'
-                  'cleaned from the instrumental behavior, but not yet.');
+                  'cleaned from the instrumental behavior.');
 
 rts.add_argument ("--rts", dest="rts",default='TRUE',
                   choices=TrueFalseOverwrite,
@@ -77,7 +78,7 @@ rts.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
 
 
 oifits = parser.add_argument_group ('(3) oifits',
-                     'creates the final OIFITS products, which are the\n' 
+                     '\nCreates the final OIFITS products, which are the\n' 
                      'uncalibrated mean visibilities and closure phases\n'
                      'computed by selecting and averaging the data in RTS.');
 
@@ -103,7 +104,13 @@ advanced.add_argument ("--debug", dest="debug",default='FALSE',
 
 advanced.add_argument ("--max-file", dest="max_file",default=3000,type=int,
                      help="maximum number of file to load to build "
-                          "product (speed-up for tests) [%(default)s]");
+                     "product (speed-up for tests) [%(default)s]");
+
+advanced.add_argument ('--help', action='help',
+                     help=argparse.SUPPRESS);
+
+advanced.add_argument ('-h', action='help',
+                     help=argparse.SUPPRESS);
 
 
 
