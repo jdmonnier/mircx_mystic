@@ -634,7 +634,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     coherence_length = lbd0**2 / dlbd;
 
     # Spectral channel for QC
-    y0 = int(ny/2)-2;
+    y0 = int(ny/2) - 2;
 
     # Check if nan in photometry
     nnan = np.sum (np.isnan (photo));
@@ -831,7 +831,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     log.info ('Mean u_power: %e'%np.nanmean (u_power));
     log.info ('Mean l_power: %e'%np.nanmean (l_power));
     
-    oifits.add_vis2 (hdulist, time, u_power, l_power, output=output);
+    oifits.add_vis2 (hdulist, time, u_power, l_power, output=output, y0=y0);
 
     # Compute OI_T3
     t_cpx = (base_dft*base_flag)[:,:,:,setup.triplet_base()];
@@ -846,7 +846,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     t_cpx = np.nanmean (t_cpx, axis=1);
     t_norm = np.nanmean (t_norm * t_att, axis=1);
 
-    oifits.add_t3 (hdulist, time, t_cpx, t_norm, output=output);
+    oifits.add_t3 (hdulist, time, t_cpx, t_norm, output=output, y0=y0);
 
     # Figures
     log.info ('Figures');
