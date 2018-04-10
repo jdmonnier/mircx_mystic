@@ -735,6 +735,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     bbeam = setup.base_beam ();
     norm_power = 4. * photo[:,:,:,bbeam[:,0]] * photo[:,:,:,bbeam[:,1]];
 
+    log.info ('Mean norm_power: %e'%np.mean (norm_power));
+
     # QC for power
     log.info ('Compute QC for beam');
     for t in range(6):
@@ -784,6 +786,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     attenuation = np.exp (-(np.pi * base_gd / coherence_length)**2);
     norm_power *= attenuation**2;
 
+    log.info ('Mean norm_power: %e'%np.mean (norm_power));
+
     # Compute selection flag from averaged SNR over the ramp
     log.info ('SNR selection > %.2f'%threshold);
     hdr[HMQ+'SNR_THRESHOLD'] = (threshold, 'to accept fringe');
@@ -820,6 +824,9 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     # Compute OI_VIS2
     u_power = np.nanmean ((base_power - bias_power_mean)*base_flag, axis=1);
     l_power = np.nanmean (norm_power*base_flag, axis=1);
+
+    log.info ('Mean u_power: %e'%np.mean (u_power));
+    log.info ('Mean l_power: %e'%np.mean (l_power));
     
     oifits.add_vis2 (hdulist, time, u_power, l_power, output=output);
 
