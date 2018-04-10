@@ -628,7 +628,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     dlbd = np.mean (np.diff (lbd[4:-4]));
 
     # Verbose spectral resolution
-    log.info ('lbd0=%.3e, dlbd=%.3e um (R=$.1f)'%(lbd0*1e6,dlbd*1e6,lbd/dlbd));
+    log.info ('lbd0=%.3e, dlbd=%.3e um (R=%.1f)'%(lbd0*1e6,dlbd*1e6,lbd/dlbd));
 
     # Coherence length
     coherence_length = lbd0**2 / dlbd;
