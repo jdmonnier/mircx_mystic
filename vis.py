@@ -633,7 +633,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     # Coherence length
     coherence_length = lbd0**2 / dlbd;
 
-    # Spectral channel for QC
+    # Spectral channel for QC (not exactly center of band
+    # because this one is not working for internal light)
     y0 = int(ny/2) - 2;
 
     # Check if nan in photometry
