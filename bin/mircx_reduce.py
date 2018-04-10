@@ -100,7 +100,7 @@ parser.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
 # Private arguments
 parser.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
                      choices=TrueFalse,
-                     help="Use GAIN to associate kappa");
+                     help="Use GAIN to associate kappa [%(default)s]");
 
 
 #
