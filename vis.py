@@ -633,6 +633,9 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     # Coherence length
     coherence_length = lbd0**2 / dlbd;
 
+    # Spectral channel for QC
+    y0 = int(ny/2)-2;
+
     # Check if nan in photometry
     nnan = np.sum (np.isnan (photo));
     if nnan > 0: log.warning ('%i NaNs in photometry'%nnan);
@@ -740,17 +743,17 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     # QC for power
     log.info ('Compute QC for beam');
     for t in range(6):
-        val = np.mean (photo[:,:,int(ny/2),t], axis=(0,1));
+        val = np.mean (photo[:,:,y0,t], axis=(0,1));
         hdr[HMQ+'FLUX%i MEAN'%t] = (val,'flux at lbd0');
-        
+
     # QC for power
     log.info ('Compute QC for base');
     for b,name in enumerate (setup.base_name ()):
-        val = rep_nan (np.mean (norm_power[:,:,int(ny/2),b], axis=(0,1)));
+        val = rep_nan (np.mean (norm_power[:,:,y0,b], axis=(0,1)));
         hdr[HMQ+'NORM'+name+' MEAN'] = (val,'Norm Power at lbd0');
-        val = rep_nan (np.mean (base_power[:,:,int(ny/2),b], axis=(0,1)));
+        val = rep_nan (np.mean (base_power[:,:,y0,b], axis=(0,1)));
         hdr[HMQ+'POWER'+name+' MEAN'] = (val,'Fringe Power at lbd0');
-        val = rep_nan (np.std (base_power[:,:,int(ny/2),b], axis=(0,1)));
+        val = rep_nan (np.std (base_power[:,:,y0,b], axis=(0,1)));
         hdr[HMQ+'POWER'+name+' STD'] = (val,'Fringe Power at lbd0');
         val = rep_nan (np.mean (base_snr[:,:,:,b]));
         hdr[HMQ+'SNR'+name+' MEAN'] = (val,'Broad-band SNR');
@@ -759,7 +762,7 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
 
     # QC for bias
     log.info ('Compute QC for bias');
-    qc_power = np.mean (bias_power[:,:,int(ny/2),:], axis=(0,1));
+    qc_power = np.mean (bias_power[:,:,y0,:], axis=(0,1));
     hdr[HMQ+'BIASMEAN MEAN'] = (np.mean (qc_power),'Bias Power at lbd0');
     hdr[HMQ+'BIASMEAN STD'] = (np.std (qc_power),'Bias Power at lbd0');
     hdr[HMQ+'BIASMEAN MED'] = (np.median (qc_power),'Bias Power at lbd0');
