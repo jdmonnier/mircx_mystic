@@ -53,15 +53,6 @@ parser = argparse.ArgumentParser (description=description, epilog=epilog,
 TrueFalse = ['TRUE','FALSE'];
 TrueFalseOverwrite = ['TRUE','FALSE','OVERWRITE'];
 
-parser.add_argument ("--debug", dest="debug",default='FALSE',
-                     choices=TrueFalse,
-                     help="stop or error");
-
-parser.add_argument ("--max-file", dest="max_file",default=3000,type=int,
-                     help="maximum number of file to load to build "
-                          "product (speed-up for tests) [%(default)s]");
-
-
 parser.add_argument ("--raw-dir", dest="raw_dir",default='./',type=str,
                      help="directory of raw data [%(default)s]");
 
@@ -88,19 +79,29 @@ parser.add_argument ("--oifits", dest="oifits",default='TRUE',
                      help="compute the OIFITS products [%(default)s]");
 
 
-parser.add_argument ("--beam-quality", dest="beam_quality", type=float,
-                    default=2.0, help="minimum quality to consider the beammap as valid [%(default)s]");
-
 parser.add_argument ("--ncoherent", dest="ncoherent", type=float,
                     default=2.0, help="number of frames for coherent integration, can be fractional [%(default)s]");
 
 parser.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
                     default=2.0, help="SNR threshold for fringe selection [%(default)s]");
 
-# Private arguments
-parser.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
+# Advanced arguments
+advance = parser.add_argument_group ('advanced user arguments');
+
+advance.add_argument ("--debug", dest="debug",default='FALSE',
                      choices=TrueFalse,
-                     help="Use GAIN to associate kappa [%(default)s]");
+                     help="stop on error [%(default)s]");
+
+advance.add_argument ("--max-file", dest="max_file",default=3000,type=int,
+                     help="maximum number of file to load to build "
+                          "product (speed-up for tests) [%(default)s]");
+
+advance.add_argument ("--beam-quality", dest="beam_quality", type=float,
+                     default=2.0, help="minimum quality to consider the beammap as valid [%(default)s]");
+
+advance.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
+                     choices=TrueFalse,
+                     help="use GAIN to associate kappa [%(default)s]");
 
 
 #
