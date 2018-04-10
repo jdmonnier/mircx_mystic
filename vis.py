@@ -627,8 +627,21 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     lbd0 = np.mean (lbd[4:-4]);
     dlbd = np.mean (np.diff (lbd[4:-4]));
 
+    # Verbose spectral resolution
+    log.info ('lbd0=%.3e, dlbd=%.3e um (R=$.1f)'%(lbd0*1e6,dlbd*1e6,lbd/dlbd));
+
     # Coherence length
     coherence_length = lbd0**2 / dlbd;
+
+    # Check if nan in photometry
+    nnan = np.sum (np.isnan (photo));
+    if nnan > 0: log.warning ('%i NaNs in photometry'%nnan);
+        
+    # Check if nan in fringe
+    nnan = np.sum (np.isnan (base_dft));
+    if nnan > 0: log.warning ('%i NaNs in photometry'%nnan);
+
+    log.info ('Mean photometries: %e'%np.mean (photo));
 
     # Do spectro-temporal averaging of photometry
     if avgphot is True:
@@ -642,9 +655,12 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
             # Invert system 
             ms = np.einsum ('rfy,ys->rfs', photo[:,:,:,b], np.linalg.pinv (M));
             photo[:,:,:,b] = np.einsum ('rfs,sy->rfy',ms,M);
+            
+        log.info ('Mean photometries: %e'%np.mean (photo));
     else:
         log.info ('No spectro-temporal averaging of photometry');
         hdr[HMP+'AVGPHOT'] = (False,'spectro-temporal averaging of photometry');
+
         
     # Do coherent integration
     log.info ('Coherent integration over %.1f frames'%ncoher);
@@ -656,6 +672,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     log.info ('Smoothing of photometry over %.1f frames'%ncoher);
     photo = gaussian_filter (photo,(0,ncoher,0,0),mode='constant',truncate=2.0);
 
+    log.info ('Mean photometries: %e'%np.mean (photo));
+    
     nscan = 64;
     log.info ('Compute 2d FFT (nscan=%i)'%nscan);
 
