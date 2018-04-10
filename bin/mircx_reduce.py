@@ -97,6 +97,11 @@ parser.add_argument ("--ncoherent", dest="ncoherent", type=float,
 parser.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
                     default=2.0, help="SNR threshold for fringe selection [%(default)s]");
 
+# Private arguments
+parser.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
+                     choices=TrueFalse,
+                     help="Use GAIN to associate kappa");
+
 
 #
 # Initialisation
@@ -306,6 +311,7 @@ if argopt.rts != 'FALSE':
             kappas = [];
             for i in range(1,7):
                 keys = setup.detwin + setup.detmode + setup.insmode;
+                if argopt.kappa_gain == 'FALSE': keys.remove ('GAIN');
                 tmp = mrx.headers.assoc (gp[0], hdrs, 'BEAM%i_MAP'%i,
                                          keys=keys, quality=argopt.beam_quality,
                                          which='closest', required=1);
