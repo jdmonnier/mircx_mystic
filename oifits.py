@@ -103,7 +103,7 @@ def create (hdr,lbd):
     
     return hdulist;
 
-def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
+def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
     '''
     Compute the OI_VIS2 table from a sample of observations
     u_power and l_power shall be (sample, lbd, base)
@@ -114,6 +114,9 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     hdr = hdulist[0].header;
     ns,ny,nb = u_power.shape;
 
+    # Spectral channel for QC
+    if y0 is None: y0 = int(ny/2) - 2;
+        
     # Remove warning for invalid
     old_np_setting = np.seterr (divide='ignore',invalid='ignore');
 
@@ -166,21 +169,21 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     tbhdu.header['OI_REVN'] = 1;
     tbhdu.header['DATE-OBS'] = hdr['DATE-OBS'];
     hdulist.append(tbhdu);
-    
+
     # QC for VIS
     for b,name in enumerate (setup.base_name ()):
-        hdr[HMQ+'REJECTED'+name] = (1.0*(ns - nvalid[int(ny/2),b])/ns,'fraction of rejected');
-        val = rep_nan (np.nanmean (u_power[:,int(ny/2),b]));
+        hdr[HMQ+'REJECTED'+name] = (1.0*(ns - nvalid[y0,b])/ns,'fraction of rejected');
+        val = rep_nan (np.nanmean (u_power[:,y0,b]));
         hdr[HMQ+'UPOWER'+name+' MEAN'] = (val,'unbiased power at lbd0');
-        val = rep_nan (np.nanstd (u_power[:,int(ny/2),b]));
+        val = rep_nan (np.nanstd (u_power[:,y0,b]));
         hdr[HMQ+'UPOWER'+name+' STD'] = (val,'unbiased power at lbd0');
-        val = rep_nan (np.nanmean (l_power[:,int(ny/2),b]));
+        val = rep_nan (np.nanmean (l_power[:,y0,b]));
         hdr[HMQ+'LPOWER'+name+' MEAN'] = (val,'unbiased power at lbd0');
-        val = rep_nan (np.nanstd (l_power[:,int(ny/2),b]));
+        val = rep_nan (np.nanstd (l_power[:,y0,b]));
         hdr[HMQ+'LPOWER'+name+' STD'] = (val,'unbiased power at lbd0');
-        val = rep_nan (vis2[int(ny/2),b]);
+        val = rep_nan (vis2[y0,b]);
         hdr[HMQ+'VISS'+name+' MEAN'] = (val,'visibility at lbd0');
-        val = rep_nan (vis2err[int(ny/2),b]);
+        val = rep_nan (vis2err[y0,b]);
         hdr[HMQ+'VISS'+name+' ERR'] = (val,'visibility at lbd0');
     
     # Correlation plot
@@ -193,8 +196,8 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     
     for b,ax in enumerate(axes.flatten()):
         
-        datax = l_power[:,int(ny/2),b];
-        datay = u_power[:,int(ny/2),b];
+        datax = l_power[:,y0,b];
+        datay = u_power[:,y0,b];
 
         scalex = np.abs (np.nanmax (datax));
         scaley = np.abs (np.nanmax (datay));
@@ -205,11 +208,11 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
         plot.scale (ax, scalex);
         
         ax.plot ([0], [0], '+r', alpha=0.75, ms=4);
-        ax.plot ([0,2.0], [0,2.*vis2[int(ny/2),b]],
+        ax.plot ([0,2.0], [0,2.*vis2[y0,b]],
                   '-r', alpha=0.5);
-        ax.plot ([0,2.0], [0,2.*(vis2+vis2err)[int(ny/2),b]],
+        ax.plot ([0,2.0], [0,2.*(vis2+vis2err)[y0,b]],
                   '--r', alpha=0.5);
-        ax.plot ([0,2.0], [0,2.*(vis2-vis2err)[int(ny/2),b]],
+        ax.plot ([0,2.0], [0,2.*(vis2-vis2err)[y0,b]],
                   '--r', alpha=0.5);
 
     files.write (fig,output+'_norm_power.png');
@@ -217,7 +220,7 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output'):
     # Reset warning
     np.seterr (**old_np_setting);
 
-def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
+def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     '''
     Compute the OI_T3 table from a sample of observations
     t_product and t_norm shall be (sample, lbd, base)
@@ -228,6 +231,9 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     hdr = hdulist[0].header;
     ns,ny,nt = t_product.shape;
 
+    # Spectral channel for QC
+    if y0 is None: y0 = int(ny/2) - 2;
+        
     # Remove warning for invalid
     old_np_setting = np.seterr (divide='ignore',invalid='ignore');
 
@@ -300,10 +306,10 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     
     # QC for T3
     for t,name in enumerate (setup.triplet_name()):
-        hdr[HMQ+'REJECTED'+name] = (1.0*(ns - nvalid[int(ny/2),t])/ns,'fraction of rejected');
-        val = rep_nan (t3phi[int(ny/2),t])*180/np.pi;
+        hdr[HMQ+'REJECTED'+name] = (1.0*(ns - nvalid[y0,t])/ns,'fraction of rejected');
+        val = rep_nan (t3phi[y0,t])*180/np.pi;
         hdr[HMQ+'T3PHI'+name+' MEAN'] = (val,'[deg] tphi at lbd0');
-        val = rep_nan (t3phiErr[int(ny/2),t])*180/np.pi;
+        val = rep_nan (t3phiErr[y0,t])*180/np.pi;
         hdr[HMQ+'T3PHI'+name+' ERR'] = (val,'[deg] visibility at lbd0');
     
     # Correlation plot
@@ -315,7 +321,7 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
     plot.compact (axes);
     
     for t,ax in enumerate(axes.flatten()):
-        data = t_product[:,int(ny/2),t];
+        data = t_product[:,y0,t];
         scale = np.nanmax (np.abs (data));
         
         ax.plot (data.real/scale, data.imag/scale, '+', alpha=0.75, ms=4);
@@ -325,14 +331,14 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output'):
         plot.scale (ax, scale);
         
         ax.plot ([0], [0], '+r', alpha=0.75, ms=4);
-        ax.plot ([0,2.*np.cos(t3phi[int(ny/2),t])], \
-                 [0,2.*np.sin(t3phi[int(ny/2),t])], \
+        ax.plot ([0,2.*np.cos(t3phi[y0,t])], \
+                 [0,2.*np.sin(t3phi[y0,t])], \
                  '-r', alpha=0.5);
-        ax.plot ([0,2.*np.cos((t3phi+t3phiErr)[int(ny/2),t])], \
-                 [0,2.*np.sin((t3phi+t3phiErr)[int(ny/2),t])], \
+        ax.plot ([0,2.*np.cos((t3phi+t3phiErr)[y0,t])], \
+                 [0,2.*np.sin((t3phi+t3phiErr)[y0,t])], \
                  '--r', alpha=0.5);
-        ax.plot ([0,2.*np.cos((t3phi-t3phiErr)[int(ny/2),t])], \
-                 [0,2.*np.sin((t3phi-t3phiErr)[int(ny/2),t])], \
+        ax.plot ([0,2.*np.cos((t3phi-t3phiErr)[y0,t])], \
+                 [0,2.*np.sin((t3phi-t3phiErr)[y0,t])], \
                  '--r', alpha=0.5);
 
     files.write (fig,output+'_bispec.png');
