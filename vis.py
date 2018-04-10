@@ -825,8 +825,8 @@ def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=T
     u_power = np.nanmean ((base_power - bias_power_mean)*base_flag, axis=1);
     l_power = np.nanmean (norm_power*base_flag, axis=1);
 
-    log.info ('Mean u_power: %e'%np.mean (u_power));
-    log.info ('Mean l_power: %e'%np.mean (l_power));
+    log.info ('Mean u_power: %e'%np.nanmean (u_power));
+    log.info ('Mean l_power: %e'%np.nanmean (l_power));
     
     oifits.add_vis2 (hdulist, time, u_power, l_power, output=output);
 
