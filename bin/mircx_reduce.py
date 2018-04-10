@@ -17,25 +17,12 @@ description = \
 """
 description:
   Run the mircx pipeline. Shall be ran in the directory
-  of the RAW data. The data format shall be .fits and/or .fits.fz
-  The format .fits.gz is not supported.
+  of the RAW data. The RAW data format shall be .fits and/or
+  .fits.fz  The format .fits.gz is not supported.
 
-  By default, outputs are written in the following directories:
-
-  preproc/ contains the BACKGROUND, BEAM, PREPROC and SPEC_CAL
-           intermediate products, which mostly corresponds to
-           detector images cleaned from the detector artifact
-           (step 1 of reduction).
-
-  rts/     contains RTS intermediate products, which are the
-           coherent flux and the photometric flux in real time,
-           cleaned from the instrumental behavior, but not yet
-           averaged (step 2 of reduction).
-
-  oifits/  contains the final OIFITS products, which are the 
-           uncalibrated mean visibilities and closure phases
-           computed by selecting and averaging the data in RTS
-           (step 3 of reduction).
+  The reduction is decomposed into 3 steps: preproc, rts,
+  oifits. Each have them can be (des)activated, or tuned,
+  with the following options.
 
 """
 
@@ -53,55 +40,73 @@ parser = argparse.ArgumentParser (description=description, epilog=epilog,
 TrueFalse = ['TRUE','FALSE'];
 TrueFalseOverwrite = ['TRUE','FALSE','OVERWRITE'];
 
-parser.add_argument ("--raw-dir", dest="raw_dir",default='./',type=str,
-                     help="directory of raw data [%(default)s]");
+preproc = parser.add_argument_group ('(1) preproc',
+                    'creates  the BACKGROUND, BEAM, PREPROC and SPEC_CAL\n'
+                    'intermediate products, which mostly corresponds to\n'
+                    'detector images cleaned from the detector artifact.');
 
-parser.add_argument ("--preproc-dir", dest="preproc_dir",default='./preproc/',type=str,
-                     help="directory of products [%(default)s]");
-
-parser.add_argument ("--rts-dir", dest="rts_dir",default='./rts/',type=str,
-                     help="directory of products [%(default)s]");
-
-parser.add_argument ("--oifits-dir", dest="oifits_dir",default='./oifits/',type=str,
-                     help="directory of products [%(default)s]");
-
-
-parser.add_argument ("--preproc", dest="preproc",default='TRUE',
+preproc.add_argument ("--preproc", dest="preproc",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the PREPROC products [%(default)s]");
 
-parser.add_argument ("--rts", dest="rts",default='TRUE',
-                     choices=TrueFalseOverwrite,
-                     help="compute the RTS products [%(default)s]");
+preproc.add_argument ("--raw-dir", dest="raw_dir",default='./',type=str,
+                     help="directory of raw data [%(default)s]");
 
-parser.add_argument ("--oifits", dest="oifits",default='TRUE',
+preproc.add_argument ("--preproc-dir", dest="preproc_dir",default='./preproc/',type=str,
+                     help="directory of products [%(default)s]");
+
+
+rts = parser.add_argument_group ('(2) rts',
+                  'creates RTS intermediate products, which are the\n'
+                  'coherent flux and the photometric flux in real time,\n'
+                  'cleaned from the instrumental behavior, but not yet.');
+
+rts.add_argument ("--rts", dest="rts",default='TRUE',
+                  choices=TrueFalseOverwrite,
+                  help="compute the RTS products [%(default)s]");
+
+rts.add_argument ("--rts-dir", dest="rts_dir",default='./rts/',type=str,
+                  help="directory of products [%(default)s]");
+
+rts.add_argument ("--beam-quality", dest="beam_quality", type=float,
+                  default=2.0, help="minimum quality to consider the beammap as valid [%(default)s]");
+
+rts.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
+                  choices=TrueFalse,
+                  help="use GAIN to associate kappa [%(default)s]");
+
+
+oifits = parser.add_argument_group ('(3) oifits',
+                     'creates the final OIFITS products, which are the\n' 
+                     'uncalibrated mean visibilities and closure phases\n'
+                     'computed by selecting and averaging the data in RTS.');
+
+oifits.add_argument ("--oifits", dest="oifits",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the OIFITS products [%(default)s]");
 
+oifits.add_argument ("--oifits-dir", dest="oifits_dir",default='./oifits/',type=str,
+                     help="directory of products [%(default)s]");
 
-parser.add_argument ("--ncoherent", dest="ncoherent", type=float,
-                    default=2.0, help="number of frames for coherent integration, can be fractional [%(default)s]");
+oifits.add_argument ("--ncoherent", dest="ncoherent", type=float,
+                     default=2.0, help="number of frames for coherent integration, can be fractional [%(default)s]");
 
-parser.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
-                    default=2.0, help="SNR threshold for fringe selection [%(default)s]");
+oifits.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
+                     default=2.0, help="SNR threshold for fringe selection [%(default)s]");
 
-# Advanced arguments
-advance = parser.add_argument_group ('advanced user arguments');
 
-advance.add_argument ("--debug", dest="debug",default='FALSE',
+advanced = parser.add_argument_group ('advanced user arguments');
+                                         
+advanced.add_argument ("--debug", dest="debug",default='FALSE',
                      choices=TrueFalse,
                      help="stop on error [%(default)s]");
 
-advance.add_argument ("--max-file", dest="max_file",default=3000,type=int,
+advanced.add_argument ("--max-file", dest="max_file",default=3000,type=int,
                      help="maximum number of file to load to build "
                           "product (speed-up for tests) [%(default)s]");
 
-advance.add_argument ("--beam-quality", dest="beam_quality", type=float,
-                     default=2.0, help="minimum quality to consider the beammap as valid [%(default)s]");
 
-advance.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
-                     choices=TrueFalse,
-                     help="use GAIN to associate kappa [%(default)s]");
+
 
 
 #
