@@ -226,10 +226,12 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         # Compute the TF
         log.info ('Compute t3amp TF');
         spf = get_spfreq (hdulist,'OI_T3');
+        print (spf.shape)
         v123 = signal.airy (diam * spf);
+        print ('v123',v123.shape);
         v123 = v123[0,:,:] * v123[1,:,:] * v123[2,:,:];
-        print (v123.shape);
-        print (hdulist['OI_T3'].data['T3AMP'].shape);
+        print ('v123',v123.shape);
+        print ('t3amp',hdulist['OI_T3'].data['T3AMP'].shape);
         hdulist['OI_T3'].data['T3AMP'] /= v123;
         hdulist['OI_T3'].data['T3AMPERR'] /= v123;
         
