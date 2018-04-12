@@ -1,9 +1,9 @@
 
 def info ():
-    print ('');
+    print ('---------------------------------------------');
     print ('Module mircx_pipeline version %s'%revision);
     print ('Please report any bug to lebouquj@umich.edu');
-    print ('');
+    print ('---------------------------------------------');
     
 revision = '0.9.2';
 
