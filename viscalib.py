@@ -36,8 +36,6 @@ def get_spfreq (hdulist,name):
         v2 = hdulist['OI_T3'].data['V2COORD'];
         u = np.array([u1,u2,u1+u2]);
         v = np.array([v1,v2,v1+v2]);
-        print (u.shape, v.shape);
-        print (np.min(u), np.min(v));
         return np.sqrt (u**2 + v**2)[:,:,None] / lbd[None,None,:];
 
 def tf_time_weight (hdus, hdutf, delta):
@@ -226,12 +224,8 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         # Compute the TF
         log.info ('Compute t3amp TF');
         spf = get_spfreq (hdulist,'OI_T3');
-        print (spf.shape)
         v123 = signal.airy (diam * spf);
-        print ('v123',v123.shape);
         v123 = v123[0,:,:] * v123[1,:,:] * v123[2,:,:];
-        print ('v123',v123.shape);
-        print ('t3amp',hdulist['OI_T3'].data['T3AMP'].shape);
         hdulist['OI_T3'].data['T3AMP'] /= v123;
         hdulist['OI_T3'].data['T3AMPERR'] /= v123;
         
