@@ -1,9 +1,9 @@
-import numpy as np
+import numpy as np;
 
-from astropy.io import fits as pyfits
-from astropy.time import Time
+from astropy.io import fits as pyfits;
+from astropy.time import Time;
 
-import os, glob, pickle, datetime, re
+import os, glob, pickle, datetime, re, csv;
 
 from . import log
 
@@ -334,8 +334,44 @@ def parse_argopt_catalog (input):
         catalog.append ([star[0],float(star[1]),float(star[2])]);
 
     return catalog;
-    
 
+def update_diam_from_jmmc (catalog):
+    '''
+    For all stars with diam=0 and err=0 in the catalog, we try
+    to get the information from the JMMC SearchCal.
+    '''
+    
+    # Init
+    searchCal = 'http://apps.jmmc.fr/~sclws/getstar/sclwsGetStarProxy.php';
+    voTableToTsv = os.path.dirname (log.__file__) + '/sclguiVOTableToTSV.xsl';
+
+    # Loop on stars in catalog, query for the one
+    # with err = 0 and diam = 0
+    for c in catalog:
+        if c[1] == 0 and c[2] == 0:
+
+            try:
+                # Call online SearchCal
+                log.info ('Query JMMC SearchCal for star '+c[0]);
+                os.system ('wget '+searchCal+'?star='+c[0]+' -O mircx_searchcal.vot -o mircx_searchcal.log');
+
+                # Not found
+                if 'has not been found' in open('mircx_searchcal.vot').read():
+                    log.warning (c[0]+' has not been found');
+                    continue;
+
+                # Convert and parse
+                os.system ('xsltproc '+voTableToTsv+' mircx_searchcal.vot > mircx_searchcal.tsv');
+                answer = [l for l in csv.reader(open('mircx_searchcal.tsv'),delimiter='\t') if l[0][0] is not '#'];
+                c[1] = float (answer[1][answer[0].index('UD_H')]);
+                c[2]  = float (answer[1][answer[0].index('e_LDD')]);
+                
+                log.info ('%s found %.4f +- %.4f mas'%(c[0],c[1],c[2]));
+                
+            except:
+                log.error ('Cannot reach JMMC SearchCal or parse answer');
+                
+                
 def get_sci_cal (hdrs, catalog):
     '''
     Spread the headers from SCI and CAL according to the 
@@ -343,12 +379,27 @@ def get_sci_cal (hdrs, catalog):
     form [("NAME1",diam1,err1),("NAME2",diam2,err2),...]
     '''
 
+    # Check format of catalog
     try:
         for c in catalog:
             if len (c) != 3: raise;
             log.info ('%s defined as CALIB with d = %.3f +- %.3fmas'%(c[0],c[1],c[2]));
     except:
         log.error ('Calibrators not specified correclty');
+        raise (ValueError);
+
+    # Update missing information by on-line query
+    update_diam_from_jmmc (catalog);
+
+    # Remove stars with zero
+    for c in catalog:
+        if c[1] == 0 and c[2] == 0:
+            log.warning (c[0]+' removed from calibration since no diameter');
+            catalog.remove (c);
+
+    # Check if enought
+    if len (catalog) == 0:
+        log.error ('No valid calibrators');
         raise (ValueError);
 
     # Get values
