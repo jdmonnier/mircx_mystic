@@ -41,7 +41,7 @@ def fringe_widthx (hdr):
 
 def photo_widthx (hdr):
     '''
-    Return the expected size of the fringe in
+    Return the expected size of the xchan in
     spatial direction depending on setup
     '''
     return 5;
@@ -51,7 +51,20 @@ def lbd0 (hdr):
     Return lbd0,deltaLbd depending
     on instrument setup
     '''
-    lbd0,dlbd = (1.60736e-06,21.e-9);
+    lbd0 = 1.60736e-06;
+
+    if hdr['CONF_NA'] == 'H_PRISM':
+        log.info ('H_PRISM setup');
+        dlbd = 21.e-9;
+    elif hdr['CONF_NA'] == 'H_GRISM200' or 'H_GRISM150':
+        log.info ('H_GRISM setup');
+        dlbd = 8.9e-9;
+    else:
+        log.warning ('Unknown spectral setup, assume low dispersion');
+        dlbd = 21.e-9;
+    
+    if hdr['BANDWID'] < 0: dlbd = -dlbd;
+    
     return lbd0,dlbd;
     
 def beam_freq (hdr):
