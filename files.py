@@ -221,5 +221,4 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
     log.check (fsat,'Fraction of saturated frames = %.3f'%fsat);
     hdr[HMQ+'FSAT']  = (fsat,'fraction of saturated frames');
 
-    plt.close('all');
     return hdr,cubenp;
