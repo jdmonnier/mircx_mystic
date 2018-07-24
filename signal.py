@@ -39,7 +39,7 @@ def getwidth (curve, threshold=None):
     else:
         last = l + (threshold - curve[l]) / (curve[l+1] - curve[l]);
     
-    return 0.5*(last+first), 0.5*(last-first)
+    return 0.5*(last+first), 0.5*(last-first);
 
 def bootstrap_matrix (snr, gd):
     '''
