@@ -58,7 +58,7 @@ def lbd0 (hdr):
         dlbd = 21.e-9;
     elif hdr['CONF_NA'] == 'H_GRISM200' or 'H_GRISM150':
         log.info ('H_GRISM setup');
-        dlbd = 8.9e-9;
+        dlbd = 8.2e-9;
     else:
         log.warning ('Unknown spectral setup, assume low dispersion');
         dlbd = 21.e-9;
