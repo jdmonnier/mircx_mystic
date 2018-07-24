@@ -13,7 +13,7 @@ from skimage.feature import register_translation;
 from scipy import fftpack;
 from scipy.signal import medfilt;
 from scipy.ndimage.interpolation import shift as subpix_shift;
-from scipy.ndimage import gaussian_filter, uniform_filter;
+from scipy.ndimage import gaussian_filter, uniform_filter, median_filter;
 from scipy.optimize import least_squares;
 from scipy.ndimage.morphology import binary_closing, binary_opening;
 from scipy.ndimage.morphology import binary_dilation;
@@ -111,6 +111,10 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
                 tmp = np.correlate (data[s,y,:],data[s,y,:],mode='full');
                 correl[y,:] += tmp;
 
+    # Compute valid channels
+    spec = median_filter (spectrum, 3, mode='nearest');
+    is_valid = spec > (0.25 * np.max (spec));
+
     # Get center of spectrum
     fyc,fyw = signal.getwidth (spectrum);
     log.info ('Expect center of spectrum (lbd0) on %f'%fyc);
@@ -160,6 +164,13 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     log.info (HMQ+'QUALITY = %e'%projection);
 
     log.info ('Figures');
+
+    # Spectrum
+    fig,ax = plt.subplots ();
+    fig.suptitle ('Mean Spectrum of all observations');
+    ax.plot (spectrum,'o-', alpha=0.3);
+    ax.plot (spectrum / is_valid,'o-');
+    files.write (fig,output+'_spectrum.png');
     
     # Figures of PSD with model
     fig,axes = plt.subplots (ny,sharex=True);
@@ -203,8 +214,17 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
         npp = len (hdr['*MIRC PRO PREPROC*']);
         hdr['HIERARCH MIRC PRO PREPROC%i'%(npp+1,)] = h['ORIGNAME'][-50:];
 
+    # Other HDU
+    hdu1 = pyfits.ImageHDU (spectrum);
+    hdu1.header['EXTNAME'] = ('SPECTRUM','mean spectrum');
+    hdu1.header['BUNIT'] = 'adu';
+    
+    hdu2 = pyfits.ImageHDU (is_valid.astype(int));
+    hdu2.header['EXTNAME'] = ('IS_VALID','valid channels');
+    hdu2.header['BUNIT'] = 'bool';
+
     # Write file
-    hdulist = pyfits.HDUList ([hdu0]);
+    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2]);
     files.write (hdulist, output+'.fits');
     
     plt.close ("all");
@@ -222,6 +242,15 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     headers.check_input (kappas, required=1, maximum=6);
     headers.check_input (speccal, required=1, maximum=1);
 
+    # Load the wavelength table
+    f = speccal[0]['ORIGNAME'];
+    log.info ('Load SPEC_CAL file %s'%f);
+    lbd = pyfits.getdata (f);
+
+    # Get valid spectral channels
+    is_valid = (pyfits.getdata (f,'IS_VALID') == 1);
+    lbd = lbd[is_valid];
+    
     # Load DATA
     f = hdrs[0]['ORIGNAME'];
     log.info ('Load PREPROC file (copy) %s'%f);
@@ -238,11 +267,6 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     fsat  = 1.0 * np.sum (np.mean (np.sum (fringe,axis=1),axis=0)>40000) / (ny*nx);
     log.info (HMQ+'FRAC_SAT = %.3f'%rep_nan (fsat));
     hdr[HMQ+'FRAC_SAT'] = (rep_nan (fsat), 'fraction of saturated pixel');
-
-    # Load the wavelength table
-    f = speccal[0]['ORIGNAME'];
-    log.info ('Load SPEC_CAL file %s'%f);
-    lbd = pyfits.getdata (f);
 
     # Get fringe and photo maps
     log.info ('Read data for photometric and fringe profiles');
@@ -295,6 +319,14 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     for b in range(6):
         photo[b,:,:,:] = subpix_shift (photo[b,:,:,:], [0,0,-shifty[b]]);
 
+    # Keep only valid channels
+    log.info ('Keep only valid channels');
+    print (photo.shape, fringe.shape, fringe_map.shape, photo_map.shape);
+    photo  = photo[:,:,:,is_valid];
+    fringe = fringe[:,:,is_valid,:];
+    fringe_map = fringe_map[:,:,:,is_valid,:];
+    photo_map  = photo_map[:,:,:,is_valid,:];
+
     # Plot photometry versus time
     log.info ('Plot photometry');
     fig,axes = plt.subplots (3,2,sharex=True);
@@ -324,11 +356,14 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     
     # Build kappa from input data.
     # kappa(nb,nr,nf,ny)
-    log.info ('Build kappa-matrix with profile, filtering and registration');
+    log.info ('Build kappa-matrix with profile, filtering and registration, and keep valid');
     upper = np.sum (medfilt (fringe_kappa,[1,1,1,1,11]), axis=-1);
     lower = np.sum (medfilt (photo_kappa,[1,1,1,1,1]) * profile, axis=-1);
     for b in range(6):
         lower[b,:,:,:] = subpix_shift (lower[b,:,:,:], [0,0,-shifty[b]]);
+
+    upper = upper[:,:,:,is_valid];
+    lower = lower[:,:,:,is_valid];
 
     kappa = upper / (lower + 1e-20);
 
@@ -336,19 +371,19 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     kappa[kappa > 1e3] = 0.0;
     kappa[kappa < 0.] = 0.0;
 
-    # Filter the kappa-matrix and the data to avoid
-    # craps on the edges. treshold(ny) is defined
-    # based on fringe_map 
-    log.info ('Compute threshold');
-    threshold = np.mean (medfilt (fringe_map,[1,1,1,1,11]), axis = (0,1,2,-1));
-    threshold /= np.max (medfilt (threshold,3)) + 1e-20;
-    threshold = threshold > 0.25;
-
-    log.info ('Apply threshold:');
-    log.info (str(1*threshold));
-    fringe[:,:,~threshold,:] = 0.0;
-    photo[:,:,:,~threshold]  = 0.0;
-    kappa[:,:,:,~threshold]  = 0.0;
+#    # Filter the kappa-matrix and the data to avoid
+#    # craps on the edges. treshold(ny) is defined
+#    # based on fringe_map 
+#    log.info ('Compute threshold');
+#    threshold = np.mean (medfilt (fringe_map,[1,1,1,1,11]), axis = (0,1,2,-1));
+#    threshold /= np.max (medfilt (threshold,3)) + 1e-20;
+#    threshold = threshold > 0.25;
+#
+#    log.info ('Apply threshold:');
+#    log.info (str(1*threshold));
+#    fringe[:,:,~threshold,:] = 0.0;
+#    photo[:,:,:,~threshold]  = 0.0;
+#    kappa[:,:,:,~threshold]  = 0.0;
         
     # Kappa-matrix as spectrum
     log.info ('Plot kappa');
@@ -463,6 +498,9 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     # into integer pixels (max freq is 40)
     scale0 = 40. / np.abs (freqs * nx).max();
     ifreqs = np.round (freqs * scale0 * nx).astype(int);
+
+    # Dimensions
+    nr,nf,ny,nx = fringe.shape
 
     # Compute DFT. The amplitude of the complex number corresponds
     # to the sum of the amplitude sum(A) of the oscillation A.cos(x)
@@ -599,7 +637,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     plt.close("all");
     return hdulist;
 
-def compute_vis (hdrs, output='output_vis', ncoher=3.0, threshold=3.0, avgphot=True):
+def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgphot=True):
     '''
     Compute the VIS
     '''
