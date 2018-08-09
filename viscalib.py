@@ -219,14 +219,14 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         diam = calib[HMP+'CALIB DIAM'] * 4.84813681109536e-09;
         diamErr = calib[HMP+'CALIB DIAMERR'] * 4.84813681109536e-09;
 
-        # Compute the TF
+        # Compute the VIS2 TF
         log.info ('Compute vis2 TF');
         spf = get_spfreq (hdulist,'OI_VIS2');
         v2 = signal.airy (diam * spf)**2;
         hdulist['OI_VIS2'].data['VIS2DATA'] /= v2;
         hdulist['OI_VIS2'].data['VIS2ERR'] /= v2;
 
-        # Compute the TF
+        # Compute the T3AMP TF
         log.info ('Compute t3amp TF');
         spf = get_spfreq (hdulist,'OI_T3');
         v123 = signal.airy (diam * spf);
@@ -290,7 +290,9 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         
     log.info ('Figures for the trends');
 
-    nc = int(hdrs[0]['HIERARCH MIRC QC WIN FRINGE NY']);
+    # Get the number of spectral channels (assume the same for all)
+    lbd = hdusci[0]['OI_WAVELENGTH'].data['EFF_WAVE'];
+    nc = len (lbd);
 
     # VIS2
     names = ['MJD','VIS2DATA','VIS2ERR'];
