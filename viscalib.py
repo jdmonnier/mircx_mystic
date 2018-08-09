@@ -163,8 +163,6 @@ def tf_divide (hdus, hdutf):
         log.info ("(%i un-flagged points)"%(np.sum(~hdusc[o[0]].data['FLAG'])));
         log.info ("(%i finite points)"%(np.sum(np.isfinite(hdusc[o[0]].data[o[1]]))));
         
-        
-        
         if o[3] is True:
             # Correct phase from TF
             hdusc[o[0]].data[o[1]] -= hdutf[o[0]].data[o[1]];
@@ -182,16 +180,19 @@ def tf_divide (hdus, hdutf):
             hdusc[o[0]].data[o[1]] = Cal;
             hdusc[o[0]].data[o[2]] = Cal * np.sqrt ((dRaw/Raw)**2 + (dTfi/Tfi)**2);
 
-        # flag
-        hdusc[o[0]].data['FLAG'] += ~np.isfinite (hdusc[o[0]].data[o[1]]);
-        hdusc[o[0]].data['FLAG'] += ~np.isfinite (hdusc[o[0]].data[o[2]]);
-        hdusc[o[0]].data['FLAG'] += hdusc[o[0]].data[o[2]] <= 0.0;
+        # FLAG. Note that flag is not updated for T3AMP and VISAMP
+        # since the FLAG is only comming from T3PHI and VISPHI
+        if o[0] != 'T3AMP' and o[0] != 'VISAMP':
+            
+            hdusc[o[0]].data['FLAG'] += ~np.isfinite (hdusc[o[0]].data[o[1]]);
+            hdusc[o[0]].data['FLAG'] += ~np.isfinite (hdusc[o[0]].data[o[2]]);
+            hdusc[o[0]].data['FLAG'] += hdusc[o[0]].data[o[2]] <= 0.0;
 
-        # Flag huge errors
-        if o[3] is True: 
-            hdusc[o[0]].data['FLAG'] += (hdusc[o[0]].data[o[2]] > 60);
-        else:
-            hdusc[o[0]].data['FLAG'] += (hdusc[o[0]].data[o[2]] > 0.4);
+            # Flag huge errors
+            if o[3] is True: 
+                hdusc[o[0]].data['FLAG'] += (hdusc[o[0]].data[o[2]] > 60);
+            else:
+                hdusc[o[0]].data['FLAG'] += (hdusc[o[0]].data[o[2]] > 0.4);
 
         # Verbose
         valid = (~hdusc[o[0]].data['FLAG']) & np.isfinite (hdusc[o[0]].data[o[1]]);
