@@ -5,5 +5,5 @@ def info ():
     print ('Please report any bug to lebouquj@umich.edu');
     print ('---------------------------------------------');
     
-revision = '0.9.2';
+revision = '0.9.3';
 
