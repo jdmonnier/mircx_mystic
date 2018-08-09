@@ -87,6 +87,12 @@ def tf_time_weight (hdus, hdutf, delta):
         # When we want to interpolate
         mjd0 = hdus[o[0]].data['MJD'];
 
+        # Check date
+        mjd0[~np.isfinite(mjd0)] = 0.0;
+        mjd[~np.isfinite(mjd)]   = 0.0;
+        if np.sum(mjd0 <= 0): log.warning ('Invalid MJDs in SCI !!');
+        if np.sum(mjd  <= 0): log.warning ('Invalid MJDs in TFs !!');
+
         # Compute the weights at science time (ntf,nb,nc)
         ws = np.exp (-(mjd0[None,:,None]-mjd[:,:,None])**2/delta**2);
 
@@ -127,22 +133,21 @@ def tf_time_weight (hdus, hdutf, delta):
         # FLAG. Note that flag is not updated for T3AMP and VISAMP
         # since the FLAG is only comming from T3PHI and VISPHI
         if o[1] != 'T3AMP' and o[1] != 'VISAMP':
-            hdutfs[o[0]].data['FLAG'] += ~np.isfinite (tf);
+            hdutfs[o[0]].data['FLAG']  = ~np.isfinite (tf);
             hdutfs[o[0]].data['FLAG'] += ~np.isfinite (tfErr);
             hdutfs[o[0]].data['FLAG'] += tfErr <= 0.0;
 
             # Flag huge errors
             if o[3] is True: 
-                hdutfs[o[0]].data['FLAG'] += (tfErr > 60);
+                hdutfs[o[0]].data['FLAG'] += (tfErr > 600);
             else:
-                hdutfs[o[0]].data['FLAG'] += (tfErr > 0.4);
+                hdutfs[o[0]].data['FLAG'] += (tfErr > 1.4);
 
         # Verbose
         valid = (~hdutfs[o[0]].data['FLAG']) & np.isfinite (hdutfs[o[0]].data[o[1]]);
-        log.info (o[1]+": %i valid TFSC points over %i"%(np.sum(valid),valid.size));
-        log.info ("(%i un-flagged points)"%(np.sum(~hdutfs[o[0]].data['FLAG'])));
-        log.info ("(%i finite points)"%(np.sum(np.isfinite(hdutfs[o[0]].data[o[1]]))));
-                
+        log.info (o[1]+": %i valid interpolated points over %i"%(np.sum(valid),valid.size));
+        # log.info ("(%i un-flagged points)"%(np.sum(~hdutfs[o[0]].data['FLAG'])));
+        # log.info ("(%i finite points)"%(np.sum(np.isfinite(hdutfs[o[0]].data[o[1]]))));
             
     return hdutfs;
 
@@ -169,8 +174,8 @@ def tf_divide (hdus, hdutf):
         # Verbose
         valid = (~hdusc[o[0]].data['FLAG']) & np.isfinite(hdusc[o[0]].data[o[1]]);
         log.info (o[1]+": %i valid raw points over %i"%(np.sum(valid),valid.size));
-        log.info ("(%i un-flagged points)"%(np.sum(~hdusc[o[0]].data['FLAG'])));
-        log.info ("(%i finite points)"%(np.sum(np.isfinite(hdusc[o[0]].data[o[1]]))));
+        # log.info ("(%i un-flagged points)"%(np.sum(~hdusc[o[0]].data['FLAG'])));
+        # log.info ("(%i finite points)"%(np.sum(np.isfinite(hdusc[o[0]].data[o[1]]))));
         
         if o[3] is True:
             # Correct phase from TF
@@ -206,8 +211,8 @@ def tf_divide (hdus, hdutf):
         # Verbose
         valid = (~hdusc[o[0]].data['FLAG']) & np.isfinite (hdusc[o[0]].data[o[1]]);
         log.info (o[1]+": %i valid calibrated points over %i"%(np.sum(valid),valid.size));
-        log.info ("(%i un-flagged points)"%(np.sum(~hdusc[o[0]].data['FLAG'])));
-        log.info ("(%i finite points)"%(np.sum(np.isfinite(hdusc[o[0]].data[o[1]]))));
+        # log.info ("(%i un-flagged points)"%(np.sum(~hdusc[o[0]].data['FLAG'])));
+        # log.info ("(%i finite points)"%(np.sum(np.isfinite(hdusc[o[0]].data[o[1]]))));
         
     return hdusc;
     
