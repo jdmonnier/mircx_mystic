@@ -200,8 +200,8 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
     headers.check_input (hdrs, required=1);
 
     # Get setup name (assume the same for all file)
-    name = ' / '.join([str(hdrs[0].get(k,'--')) for k in keys]);
-    elog = log.trace ('setup: '+name);
+    setup_name = '/'.join([str(hdrs[0].get(k,'--')) for k in keys]);
+    elog = log.trace ('setup: '+setup_name);
 
     # Get OIFITS_SCI and OIFITS_CAL from input catalog
     scis, calibs = headers.get_sci_cal (hdrs, catalog);
@@ -321,7 +321,7 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
             plot.base_name (axes, names=bname[f*3:f*3+3]);
             plot.compact (axes);
             plt.subplots_adjust (hspace=0.03);
-            fig.suptitle (' / '.join([str(hdrs[0].get(k,'--')) for k in keys]) + ' c%i'%c);
+            fig.suptitle (setup_name + ' c%i'%c);
 
             for bb in range (3):
                 ax = axes.flatten()[bb];
@@ -353,7 +353,7 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
             plot.base_name (axes, names=tname[f*4:f*4+4]);
             plot.compact (axes);
             plt.subplots_adjust (hspace=0.03);
-            fig.suptitle (' / '.join([str(hdrs[0].get(k,'--')) for k in keys]) + ' c%i'%c);
+            fig.suptitle (setup_name + ' c%i'%c);
 
             for bb in range (4):
                 b = f*4+bb;
@@ -371,7 +371,7 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
     fig,axes = plt.subplots (5,4, sharex=True);
     plot.base_name (axes);
     plot.compact (axes);
-    fig.suptitle (' / '.join([str(hdrs[0].get(k,'--')) for k in keys]));
+    fig.suptitle (setup_name);
 
     for b in range (20):
         ax = axes.flatten()[b];
