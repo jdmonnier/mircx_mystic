@@ -347,7 +347,9 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
                 ax.errorbar (xtf[:,b],ytf[:,b,c],fmt='o',yerr=dytf[:,b,c],color='k',ms=1);
                 ax.errorbar (xts[:,b],yts[:,b,c],fmt='o',yerr=dyts[:,b,c],color='k',ms=1,alpha=0.25);
                 ax.errorbar (xsc[:,b],ysc[:,b,c],fmt='o',yerr=dysc[:,b,c],color='g',ms=1);
-            
+                ylim = ax.get_ylim ();
+                ax.set_ylim (np.maximum (ylim[0],-200),np.minimum (ylim[1],200));
+                
             files.write (fig,outputDir+'/'+outputSetup+'_t3phi_%i_c%02i.png'%(f,c));
             plt.close ("all");
     
