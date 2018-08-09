@@ -200,8 +200,8 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
     headers.check_input (hdrs, required=1);
 
     # Get setup name (assume the same for all file)
-    setup = ' / '.join([str(hdrs[0].get(k,'--')) for k in keys]);
-    elog = log.trace ('setup: '+setup);
+    name = ' / '.join([str(hdrs[0].get(k,'--')) for k in keys]);
+    elog = log.trace ('setup: '+name);
 
     # Get OIFITS_SCI and OIFITS_CAL from input catalog
     scis, calibs = headers.get_sci_cal (hdrs, catalog);
@@ -233,6 +233,15 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         v123 = v123[0,:,:] * v123[1,:,:] * v123[2,:,:];
         hdulist['OI_T3'].data['T3AMP'] /= v123;
         hdulist['OI_T3'].data['T3AMPERR'] /= v123;
+
+        # Print some verbose
+        valid = np.isfinite (hdulist['OI_VIS2'].data['VIS2DATA']);
+        log.info ('Valid VIS2 point: %i'%np.sum (valid));
+        valid = np.isfinite (hdulist['OI_T3'].data['T3AMP']);
+        log.info ('Valid T3AMP point: %i'%np.sum (valid));
+        valid = np.isfinite (hdulist['OI_T3'].data['T3PHI']);
+        log.info ('Valid T3PHI point: %i'%np.sum (valid));
+        
         
         # These are OIFITS_CAL_TF
         hdulist[0].header['FILETYPE'] = 'OIFITS_CAL_TF';
@@ -310,7 +319,6 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         for c in range (nc):
             fig,axes = plt.subplots (3,1, sharex=True);
             plot.base_name (axes, names=bname[f*3:f*3+3]);
-            # plot.base_name (axes, bstart=f*3);
             plot.compact (axes);
             plt.subplots_adjust (hspace=0.03);
             fig.suptitle (' / '.join([str(hdrs[0].get(k,'--')) for k in keys]) + ' c%i'%c);
@@ -343,7 +351,6 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         for c in range (nc):
             fig,axes = plt.subplots (4,1, sharex=True);
             plot.base_name (axes, names=tname[f*4:f*4+4]);
-            #plot.base_name (axes, tstart=f*4);
             plot.compact (axes);
             plt.subplots_adjust (hspace=0.03);
             fig.suptitle (' / '.join([str(hdrs[0].get(k,'--')) for k in keys]) + ' c%i'%c);
