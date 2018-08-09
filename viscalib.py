@@ -136,6 +136,13 @@ def tf_time_weight (hdus, hdutf, delta):
                 hdutfs[o[0]].data['FLAG'] += (tfErr > 60);
             else:
                 hdutfs[o[0]].data['FLAG'] += (tfErr > 0.4);
+
+        # Verbose
+        valid = (~hdutfs[o[0]].data['FLAG']) & np.isfinite (hdutfs[o[0]].data[o[1]]);
+        log.info (o[1]+": %i valid TFSC points over %i"%(np.sum(valid),valid.size));
+        log.info ("(%i un-flagged points)"%(np.sum(~hdutfs[o[0]].data['FLAG'])));
+        log.info ("(%i finite points)"%(np.sum(np.isfinite(hdutfs[o[0]].data[o[1]]))));
+                
             
     return hdutfs;
 
