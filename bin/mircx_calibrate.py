@@ -115,7 +115,8 @@ if argopt.oifitscalib != 'FALSE':
                                       outputSetup=outputSetup,
                                       deltaTf=argopt.delta_tf,
                                       lbdMin=argopt.lbd_min,
-                                      lbdMax=argopt.lbd_max);
+                                      lbdMax=argopt.lbd_max,
+                                      keys=keys);
 
         except Exception as exc:
             log.error ('Cannot calibrate setup: '+str(exc));
