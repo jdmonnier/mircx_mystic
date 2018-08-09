@@ -160,6 +160,10 @@ def tf_divide (hdus, hdutf):
         # Verbose
         valid = (~hdusc[o[0]].data['FLAG']) & np.isfinite(hdusc[o[0]].data[o[1]]);
         log.info (o[1]+": %i valid raw points over %i"%(np.sum(valid),valid.size));
+        log.info ("(%i un-flagged points)"%(np.sum(~hdusc[o[0]].data['FLAG'])));
+        log.info ("(%i finite points)"%(np.sum(np.isfinite(hdusc[o[0]].data[o[1]])));
+        
+        
         
         if o[3] is True:
             # Correct phase from TF
