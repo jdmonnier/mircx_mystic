@@ -194,9 +194,14 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
     of the form [('name1',diam1,err1),('name2',diam2,err2),...] where the diam
     and err are in [mas]. The input hdrs shall be a list of FITS headers.
     '''
-    elog = log.trace ('compute_all_viscal');
+    elog = log.trace ('compute_all_viscalib');
 
+    # Check inputs
     headers.check_input (hdrs, required=1);
+
+    # Get setup name (assume the same for all file)
+    setup = ' / '.join([str(hdrs[0].get(k,'--')) for k in keys]);
+    elog = log.trace ('setup: '+setup);
 
     # Get OIFITS_SCI and OIFITS_CAL from input catalog
     scis, calibs = headers.get_sci_cal (hdrs, catalog);
