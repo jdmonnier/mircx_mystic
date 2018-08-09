@@ -73,7 +73,7 @@ def tf_time_weight (hdus, hdutf, delta):
         err[flg] = np.nan;
 
         # Verbose 
-        log.info (o[0]+": %i valid TF over %i"%(np.sum(np.isfinite(val)),val.size));
+        log.info (o[1]+": %i valid TF points over %i"%(np.sum(np.isfinite(val)),val.size));
 
         # Don't give added advantage for <2% percent error
         #  or 0.1deg for phase, Idea from John Monnier
@@ -146,6 +146,8 @@ def tf_divide (hdus, hdutf):
     Return the calibrated OIFITS_CALIBRATED (a FITS handler).
     '''
 
+    log.info ('Divide data by interpolated TF');
+
     # Copy OIFITS_SCI to build OIFITS_CALIBRATED
     hdusc = pyfits.HDUList([hdu.copy() for hdu in hdus]);
     hdusc[0].header['FILETYPE'] = 'OIFITS_CALIBRATED';
@@ -156,8 +158,8 @@ def tf_divide (hdus, hdutf):
 
     for o in obs:
         # Verbose
-        valid = ~hdusc[o[0]].data['FLAG'];
-        log.info (o[0]+": %i valid raw points over %i"%(np.sum(valid),valid.size));
+        valid = (~hdusc[o[0]].data['FLAG']) & np.isfinite(hdusc[o[0]].data[o[1]]);
+        log.info (o[1]+": %i valid raw points over %i"%(np.sum(valid),valid.size));
         
         if o[3] is True:
             # Correct phase from TF
@@ -188,8 +190,8 @@ def tf_divide (hdus, hdutf):
             hdusc[o[0]].data['FLAG'] += (hdusc[o[0]].data[o[2]] > 0.4);
 
         # Verbose
-        valid = ~hdusc[o[0]].data['FLAG'];
-        log.info (o[0]+": %i valid calibrated points over %i"%(np.sum(valid),valid.size));
+        valid = (~hdusc[o[0]].data['FLAG']) & np.isfinite (hdusc[o[0]].data[o[1]]);
+        log.info (o[1]+": %i valid calibrated points over %i"%(np.sum(valid),valid.size));
         
     return hdusc;
     
