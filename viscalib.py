@@ -182,7 +182,7 @@ def tf_divide (hdus, hdutf):
 
         # FLAG. Note that flag is not updated for T3AMP and VISAMP
         # since the FLAG is only comming from T3PHI and VISPHI
-        if o[0] != 'T3AMP' and o[0] != 'VISAMP':
+        if o[1] != 'T3AMP' and o[1] != 'VISAMP':
             
             hdusc[o[0]].data['FLAG'] += ~np.isfinite (hdusc[o[0]].data[o[1]]);
             hdusc[o[0]].data['FLAG'] += ~np.isfinite (hdusc[o[0]].data[o[2]]);
