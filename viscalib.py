@@ -60,7 +60,7 @@ def tf_time_weight (hdus, hdutf, delta):
 
     # Loop on observables
     for o in obs:
-
+        
         # Get TF data
         mjd = np.array ([h[o[0]].data['MJD'] for h in hdutf]);
         val = np.array ([h[o[0]].data[o[1]] for h in hdutf]);
@@ -71,6 +71,9 @@ def tf_time_weight (hdus, hdutf, delta):
         flg += ~np.isfinite (val) + ~np.isfinite (err) + (err<=0);
         val[flg] = np.nan;
         err[flg] = np.nan;
+
+        # Verbose 
+        log.info (o[0]+": %i valid TF over %i"%(np.sum(np.isfinite(val)),val.size));
 
         # Don't give added advantage for <2% percent error
         #  or 0.1deg for phase, Idea from John Monnier
@@ -152,6 +155,10 @@ def tf_divide (hdus, hdutf):
            ['OI_T3','T3PHI','T3PHIERR',True]];
 
     for o in obs:
+        # Verbose
+        valid = ~hdusc[o[0]].data['FLAG'];
+        log.info (o[0]+": %i valid raw points over %i"%(np.sum(valid),valid.size));
+        
         if o[3] is True:
             # Correct phase from TF
             hdusc[o[0]].data[o[1]] -= hdutf[o[0]].data[o[1]];
@@ -180,6 +187,10 @@ def tf_divide (hdus, hdutf):
         else:
             hdusc[o[0]].data['FLAG'] += (hdusc[o[0]].data[o[2]] > 0.4);
 
+        # Verbose
+        valid = ~hdusc[o[0]].data['FLAG'];
+        log.info (o[0]+": %i valid calibrated points over %i"%(np.sum(valid),valid.size));
+        
     return hdusc;
     
 def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
@@ -234,15 +245,6 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         hdulist['OI_T3'].data['T3AMP'] /= v123;
         hdulist['OI_T3'].data['T3AMPERR'] /= v123;
 
-        # Print some verbose
-        valid = np.isfinite (hdulist['OI_VIS2'].data['VIS2DATA']);
-        log.info ('Valid VIS2 point: %i'%np.sum (valid));
-        valid = np.isfinite (hdulist['OI_T3'].data['T3AMP']);
-        log.info ('Valid T3AMP point: %i'%np.sum (valid));
-        valid = np.isfinite (hdulist['OI_T3'].data['T3PHI']);
-        log.info ('Valid T3PHI point: %i'%np.sum (valid));
-        
-        
         # These are OIFITS_CAL_TF
         hdulist[0].header['FILETYPE'] = 'OIFITS_CAL_TF';
         hdutf.append (hdulist);
