@@ -124,16 +124,18 @@ def tf_time_weight (hdus, hdutf, delta):
         hdutfs[o[0]].data[o[1]] = tf;
         hdutfs[o[0]].data[o[2]] = tfErr;
 
-        # Flag inconsistent
-        hdutfs[o[0]].data['FLAG'] += ~np.isfinite (tf);
-        hdutfs[o[0]].data['FLAG'] += ~np.isfinite (tfErr);
-        hdutfs[o[0]].data['FLAG'] += tfErr <= 0.0;
+        # FLAG. Note that flag is not updated for T3AMP and VISAMP
+        # since the FLAG is only comming from T3PHI and VISPHI
+        if o[1] != 'T3AMP' and o[1] != 'VISAMP':
+            hdutfs[o[0]].data['FLAG'] += ~np.isfinite (tf);
+            hdutfs[o[0]].data['FLAG'] += ~np.isfinite (tfErr);
+            hdutfs[o[0]].data['FLAG'] += tfErr <= 0.0;
 
-        # Flag huge errors
-        if o[3] is True: 
-            hdutfs[o[0]].data['FLAG'] += (tfErr > 60);
-        else:
-            hdutfs[o[0]].data['FLAG'] += (tfErr > 0.4);
+            # Flag huge errors
+            if o[3] is True: 
+                hdutfs[o[0]].data['FLAG'] += (tfErr > 60);
+            else:
+                hdutfs[o[0]].data['FLAG'] += (tfErr > 0.4);
             
     return hdutfs;
 
