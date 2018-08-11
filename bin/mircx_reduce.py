@@ -16,21 +16,39 @@ from mircx_pipeline import log, setup;
 description = \
 """
 description:
-  Run the mircx pipeline. Shall be ran in the directory
-  of the RAW data. The RAW data format shall be .fits and/or
-  .fits.fz  The format .fits.gz is not supported.
+  Run the mircx pipeline. The RAW data format shall
+  be .fits and/or .fits.fz  The format .fits.gz
+  is not supported.
 
   The reduction is decomposed into 3 steps: preproc, rts,
   oifits. Each have them can be (des)activated, or tuned,
   with the following options.
+
+  The input and output directories are relative to the
+  current directory.
 
 """
 
 epilog = \
 """
 examples:
-  cd /path/to/my/data/
-  mirx_reduce.py
+
+  # Run the entire reduction
+  
+  cd /path/where/I/want/my/reduced/data/
+  mircx_reduce.py --raw-dir=/path/to/raw/data/
+
+  # Do only the preproc step only
+  
+  mircx_reduce.py --raw-dir=/path/to/raw/data/ --rts=FALSE --oifits=FALSE
+
+  # Rerun the oifits step only, use a different
+  # threshold for SNR selection, dump the results
+  # into a different directory
+  
+  mircx_reduce.py --preproc=FALSE rts=FALSE snr-threshold=4.0 --oifits-dir=oifits_new
+
+
 """
 
 parser = argparse.ArgumentParser (description=description, epilog=epilog,
