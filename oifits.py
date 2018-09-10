@@ -241,8 +241,10 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     t_product[t_product==0] = np.nan;
     t_norm[t_norm==0] = np.nan;
     
-    # How many valid frame
-    valid = np.isfinite (t_product) * np.isfinite (t_norm);
+    # How many valid frame. Note that valid is defined for T3PHI
+    # So the mean MJD is the one of the T3
+    # valid = np.isfinite (t_product) * np.isfinite (t_norm);
+    valid = np.isfinite (t_product);
     nvalid = np.nansum (1. * valid, axis=0);
 
     # Compute bootstrap sample
