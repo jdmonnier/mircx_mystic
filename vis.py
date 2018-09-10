@@ -681,7 +681,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
         
     # Check if nan in fringe
     nnan = np.sum (np.isnan (base_dft));
-    if nnan > 0: log.warning ('%i NaNs in photometry'%nnan);
+    if nnan > 0: log.warning ('%i NaNs in fringe'%nnan);
 
     log.info ('Mean photometries: %e'%np.mean (photo));
 
