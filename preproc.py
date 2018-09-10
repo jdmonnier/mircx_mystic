@@ -340,9 +340,9 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     
     # Add QC parameters for window
     hdr[HMW+'PHOTO MAX']  = (pfit.amplitude.value,'[adu/pix/frame]');
-    hdr[HMW+'PHOTO WIDTHX']  = (pxw,'[pix]');
+    hdr[HMW+'PHOTO WIDTHX']  = (pxw,'[pix] spatial std');
     hdr[HMW+'PHOTO CENTERX'] = (pxc,'[pix] python-def');
-    hdr[HMW+'PHOTO WIDTHY']  = (pyw,'[pix]');
+    hdr[HMW+'PHOTO WIDTHY']  = (pyw,'[pix] spectral half-size');
     hdr[HMW+'PHOTO CENTERY'] = (pyc,'[pix] python-def');
 
     # Get spectral limits of fringe
@@ -362,9 +362,9 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
 
     # Add QC parameters for window
     hdr[HMW+'FRINGE MAX']  = (ffit.amplitude.value,'[adu/pix/frame]');
-    hdr[HMW+'FRINGE WIDTHX']  = (fxw,'[pix]');
+    hdr[HMW+'FRINGE WIDTHX']  = (fxw,'[pix] spatial std');
     hdr[HMW+'FRINGE CENTERX'] = (fxc,'[pix] python-def');
-    hdr[HMW+'FRINGE WIDTHY']  = (fyw,'[pix]');
+    hdr[HMW+'FRINGE WIDTHY']  = (fyw,'[pix] spectral half-size');
     hdr[HMW+'FRINGE CENTERY'] = (fyc,'[pix] python-def');
     
     # Extract spectrum of photo and fringes
