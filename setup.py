@@ -64,7 +64,7 @@ def lbd0 (hdr):
         dlbd = lbd0 / 27.4;
     elif hdr['CONF_NA'] == 'H_PRISM40' :
         log.info ('H_PRISM40 setup');
-        dlbd = lbd0 / 40.0;
+        dlbd = lbd0 / 49.2;
     elif hdr['CONF_NA'] == 'H_GRISM190' :
         log.info ('H_GRISM190 setup');
         dlbd = lbd0 / 190.0;
@@ -175,10 +175,14 @@ def beam_tel (hdr):
     cbeam = np.array ([hdr['BEAMORD%i'%i] for i in range(6)]);
 
     # Check configuration
-    if hdr['TEL_KEY'] != 'S1=0,S2=1,E1=2,E2=3,W1=4,W2=5':
-        raise ValueError('Configuration unsuported');
-    else:
+    if ('P_ION' in hdr) == True :
         ctel = np.array(['S1','S2','E1','E2','W1','W2']);
+    
+    else :
+        if hdr['TEL_KEY'] != 'S1=0,S2=1,E1=2,E2=3,W1=4,W2=5':
+            raise ValueError('Configuration unsuported');
+        else:
+            ctel = np.array(['S1','S2','E1','E2','W1','W2']);
 
     # CHARA tel of the CHARA beams
     return ctel[cbeam];
@@ -193,10 +197,14 @@ def beam_index (hdr):
     cbeam = np.array ([hdr['BEAMORD%i'%i] for i in range(6)]);
 
     # Check configuration
-    if hdr['TEL_KEY'] != 'S1=0,S2=1,E1=2,E2=3,W1=4,W2=5':
-        raise ValueError('Configuration unsuported');
-    else:
+    if ('P_ION' in hdr) == True :
         cidx = np.array(range (1,7));
+    
+    else :
+        if hdr['TEL_KEY'] != 'S1=0,S2=1,E1=2,E2=3,W1=4,W2=5':
+            raise ValueError('Configuration unsuported');
+        else:
+            cidx = np.array(range (1,7));
 
     # CHARA tel of the CHARA beams
     return cidx[cbeam];
