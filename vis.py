@@ -662,9 +662,19 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     log.info ('Data size: '+str(base_dft.shape));
 
     # Compute lbd0 and dlbd
-    lbd0 = np.mean (lbd[4:-4]);
-    dlbd = np.mean (np.diff (lbd[4:-4]));
-
+    
+    if hdr['CONF_NA'] == 'H_PRISM20' :
+        lbd0 = np.mean (lbd);
+        dlbd = np.mean (np.diff (lbd));
+        
+    elif hdr['CONF_NA'] == 'H_PRISM40' :
+        lbd0 = np.mean (lbd[2:-2]);
+        dlbd = np.mean (np.diff (lbd[2:-2]));
+    
+    else :
+        lbd0 = np.mean (lbd[4:-4]);
+        dlbd = np.mean (np.diff (lbd[4:-4]));
+    
     # Verbose spectral resolution
     log.info ('lbd0=%.3e, dlbd=%.3e um (R=%.1f)'%(lbd0*1e6,dlbd*1e6,np.abs(lbd0/dlbd)));
 
