@@ -56,9 +56,20 @@ def lbd0 (hdr):
     if hdr['CONF_NA'] == 'H_PRISM':
         log.info ('H_PRISM setup');
         dlbd = 21.e-9;
-    elif hdr['CONF_NA'] == 'H_GRISM200' or 'H_GRISM150':
+    elif (hdr['CONF_NA'] == 'H_GRISM200') or (hdr['CONF_NA'] == 'H_GRISM150'):
         log.info ('H_GRISM setup');
         dlbd = 8.2e-9;
+    elif hdr['CONF_NA'] == 'H_PRISM20' :
+        log.info ('H_PRISM20 setup');
+        dlbd = lbd0 / 27.4;
+    elif hdr['CONF_NA'] == 'H_PRISM40' :
+        log.info ('H_PRISM40 setup');
+        dlbd = lbd0 / 40.0;
+    elif hdr['CONF_NA'] == 'H_GRISM190' :
+        log.info ('H_GRISM190 setup');
+        dlbd = lbd0 / 190.0;
+        
+        
     else:
         log.warning ('Unknown spectral setup, assume low dispersion');
         dlbd = 21.e-9;
@@ -76,11 +87,21 @@ def beam_freq (hdr):
     '''
     # Scaling in pix/fringe at highest spatial frequency
     # and for wavelength defined as lbd0
-    scale = 5.023;
-    # Fiber position in v-groove
-    tmp = np.array([9,3,1,21,14,18]) * 1.0 - 1.0;
-    # Fiber position in fringe/pix
-    tmp /= (tmp.max() - tmp.min()) * scale;
+    
+    # Check if it's old MIRC or new MIRC-X data
+    if ('P_ION' in hdr) == True :
+        scale = 2.78999;
+        # Fiber position in v-groove
+        tmp = np.array([4,6,13,18,24,28]) * 1.0 - 1.0;
+        # Fiber position in fringe/pix
+        tmp /= (tmp.max() - tmp.min()) * scale;
+    
+    else :
+        scale = 5.023;
+        # Fiber position in v-groove
+        tmp = np.array([9,3,1,21,14,18]) * 1.0 - 1.0;
+        # Fiber position in fringe/pix
+        tmp /= (tmp.max() - tmp.min()) * scale;
     return tmp;
 
 def base_freq (hdr):
