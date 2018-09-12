@@ -77,7 +77,22 @@ def lbd0 (hdr):
     if hdr['BANDWID'] < 0: dlbd = -dlbd;
     
     return lbd0,dlbd;
+
+def fiber_pos(hdr):
+    '''
+    Return the fiber position in the v-groove
+    in unit of micro-lenses
+    '''
     
+    # Fiber position in new MIRC-X
+    if ('P_ION' in hdr) == True :
+        pos = np.array([4,6,13,18,24,28])
+    # Fiber position in old MIRC
+    else :
+        pos = np.array([9,3,1,21,14,18])
+        
+    return pos
+
 def beam_freq (hdr):
     '''
     Return the fiber position in the v-groove
