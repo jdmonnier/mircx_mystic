@@ -496,7 +496,15 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     
     # Scale to ensure the frequencies fall
     # into integer pixels (max freq is 40)
-    scale0 = 40. / np.abs (freqs * nx).max();
+    
+    if ('P_ION' in hdr) == True :
+        scale0 = 72. / np.abs (freqs * nx).max();
+    
+    else :
+        
+        
+        scale0 = 40. / np.abs (freqs * nx).max();
+        
     ifreqs = np.round (freqs * scale0 * nx).astype(int);
 
     # Dimensions
