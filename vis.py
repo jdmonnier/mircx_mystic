@@ -675,7 +675,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
         lbd0 = np.mean (lbd);
         dlbd = np.mean (np.diff (lbd));
         
-    elif hdr['CONF_NA'] == 'H_PRISM40' :
+    elif (hdr['CONF_NA'] == 'H_PRISM40') or  (hdr['CONF_NA'] == 'H_PRISM50'):
         lbd0 = np.mean (lbd[2:-2]);
         dlbd = np.mean (np.diff (lbd[2:-2]));
     
