@@ -77,7 +77,12 @@ def lbd0 (hdr):
         log.warning ('Unknown spectral setup, assume low dispersion');
         dlbd = 21.e-9;
     
-    if hdr['BANDWID'] < 0: dlbd = -dlbd;
+    #if 
+    
+    if hdr['CONF_NA'] == 'H_PRISM50' : 
+        dlbd = -dlbd;
+    elif hdr['BANDWID'] < 0 : 
+        dlbd = -dlbd;
     
     return lbd0,dlbd;
 
