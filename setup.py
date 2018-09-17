@@ -67,7 +67,7 @@ def lbd0 (hdr):
         dlbd = lbd0 / 49.2;
     elif hdr['CONF_NA'] == 'H_PRISM50' :
         log.info ('H_PRISM50 setup');
-        dlbd = lbd0 / 49.9;
+        dlbd = lbd0 / 50.;
     elif hdr['CONF_NA'] == 'H_GRISM190' :
         log.info ('H_GRISM190 setup');
         dlbd = lbd0 / 190.0;
