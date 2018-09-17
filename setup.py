@@ -63,7 +63,7 @@ def lbd0 (hdr):
         log.info ('H_PRISM20 setup');
         dlbd = lbd0 / 27.4;
     elif hdr['CONF_NA'] == 'H_PRISM22' :
-        log.info ('H_PRISM20 setup');
+        log.info ('H_PRISM22 setup');
         dlbd = lbd0 / 22.;
     elif hdr['CONF_NA'] == 'H_PRISM40' :
         log.info ('H_PRISM40 setup');
