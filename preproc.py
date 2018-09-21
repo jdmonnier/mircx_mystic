@@ -314,7 +314,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     cmean = np.mean (cube, axis=(0,1));
 
     # Compute the flux in fringe window
-    # (suposedly smoothed in x)
+    # (suposedly smoothed in x) 
     fmap = medfilt (cmean, [1,11]);
 
     # Compute the flux in the photometric window

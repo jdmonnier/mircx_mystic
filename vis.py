@@ -503,7 +503,15 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     
     # Scale to ensure the frequencies fall
     # into integer pixels (max freq is 40)
-    scale0 = 40. / np.abs (freqs * nx).max();
+    
+    if ('P_ION' in hdr) == True :
+        scale0 = 72. / np.abs (freqs * nx).max();
+    
+    else :
+        
+        
+        scale0 = 40. / np.abs (freqs * nx).max();
+        
     ifreqs = np.round (freqs * scale0 * nx).astype(int);
 
     # Dimensions
@@ -669,9 +677,19 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     log.info ('Data size: '+str(base_dft.shape));
 
     # Compute lbd0 and dlbd
-    lbd0 = np.mean (lbd[4:-4]);
-    dlbd = np.mean (np.diff (lbd[4:-4]));
-
+    
+    if hdr['CONF_NA'] == 'H_PRISM20' :
+        lbd0 = np.mean (lbd);
+        dlbd = np.mean (np.diff (lbd));
+        
+    elif (hdr['CONF_NA'] == 'H_PRISM40') or  (hdr['CONF_NA'] == 'H_PRISM50'):
+        lbd0 = np.mean (lbd[2:-2]);
+        dlbd = np.mean (np.diff (lbd[2:-2]));
+    
+    else :
+        lbd0 = np.mean (lbd[4:-4]);
+        dlbd = np.mean (np.diff (lbd[4:-4]));
+    
     # Verbose spectral resolution
     log.info ('lbd0=%.3e, dlbd=%.3e um (R=%.1f)'%(lbd0*1e6,dlbd*1e6,np.abs(lbd0/dlbd)));
 
@@ -688,7 +706,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
         
     # Check if nan in fringe
     nnan = np.sum (np.isnan (base_dft));
-    if nnan > 0: log.warning ('%i NaNs in photometry'%nnan);
+    if nnan > 0: log.warning ('%i NaNs in fringe'%nnan);
 
     log.info ('Mean photometries: %e'%np.mean (photo));
 
