@@ -153,15 +153,8 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
         log.info ('Best merit 1-c=%.4f found at s/s0=%.4f'%(res[-1].fun[0],res[-1].x[0]/s0));
 
     # Get wavelengths
-    yfit = hdr[HMW+'FRINGE STARTY'] + np.arange (ny);
+    yfit = np.arange (ny);
     lbdfit = np.array([r.x[0]*lbd0 for r in res]);
-
-    log.info ('Compute QC');
-    
-    # Compute quality factor
-    projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
-    hdr[HMQ+'QUALITY'] = (projection, 'quality of data');
-    log.info (HMQ+'QUALITY = %e'%projection);
 
     log.info ('Figures');
 
@@ -199,6 +192,20 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     ax[0].imshow (correl,aspect='auto');
     ax[1].plot (psd[:,0:int(nfreq/2)].T);
     files.write (fig,output+'_psd.png');
+
+    log.info ('Compute QC');
+    
+    # Compute quality factor
+    projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
+    hdr[HMQ+'QUALITY'] = (projection, 'quality of data');
+    log.info (HMQ+'QUALITY = %e'%projection);
+
+    # Compute position on detector of lbd0
+    lbd0 = 1.6e-6;
+    try:     y0 = hdr[HMW+'FRINGE STARTY'] + np.interp (lbd0, lbdfit, yfit);
+    except:  y0 = -99.0
+    hdr[HMQ+'YLBD0'] = (y0, 'position of %.3fum in cropped window'%lbd0);
+    log.info (HMQ+'YLBD0 = %e'%y0);
 
     # File
     log.info ('Create file');
