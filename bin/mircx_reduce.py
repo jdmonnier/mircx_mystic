@@ -74,6 +74,8 @@ preproc.add_argument ("--raw-dir", dest="raw_dir",default='./',type=str,
 preproc.add_argument ("--preproc-dir", dest="preproc_dir",default='./preproc/',type=str,
                      help="directory of products [%(default)s]");
 
+preproc.add_argument ("--max-integration-time", dest="max_integration_time",default=300.,type=float,
+                     help="maximum integration into a single file, in s [%(default)s]");
 
 rts = parser.add_argument_group ('(2) rts',
                   '\nCreates RTS intermediate products, which are the\n'
@@ -229,7 +231,7 @@ if argopt.preproc != 'FALSE':
     # Group all DATA
     keys = setup.detwin + setup.detmode + setup.insmode;
     gps = mrx.headers.group (hdrs, 'DATA', keys=keys,
-                             delta=300, Delta=120,
+                             delta=argopt.max_integration_time, Delta=120,
                              continuous=True);
 
     # Compute 

@@ -153,15 +153,8 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
         log.info ('Best merit 1-c=%.4f found at s/s0=%.4f'%(res[-1].fun[0],res[-1].x[0]/s0));
 
     # Get wavelengths
-    yfit = hdr[HMW+'FRINGE STARTY'] + np.arange (ny);
+    yfit = np.arange (ny);
     lbdfit = np.array([r.x[0]*lbd0 for r in res]);
-
-    log.info ('Compute QC');
-    
-    # Compute quality factor
-    projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
-    hdr[HMQ+'QUALITY'] = (projection, 'quality of data');
-    log.info (HMQ+'QUALITY = %e'%projection);
 
     log.info ('Figures');
 
@@ -199,6 +192,20 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     ax[0].imshow (correl,aspect='auto');
     ax[1].plot (psd[:,0:int(nfreq/2)].T);
     files.write (fig,output+'_psd.png');
+
+    log.info ('Compute QC');
+    
+    # Compute quality factor
+    projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
+    hdr[HMQ+'QUALITY'] = (projection, 'quality of data');
+    log.info (HMQ+'QUALITY = %e'%projection);
+
+    # Compute position on detector of lbd0
+    lbd0 = 1.6e-6;
+    try:     y0 = hdr[HMW+'FRINGE STARTY'] + np.interp (lbd0, lbdfit, yfit);
+    except:  y0 = -99.0
+    hdr[HMQ+'YLBD0'] = (y0, 'position of %.3fum in cropped window'%lbd0);
+    log.info (HMQ+'YLBD0 = %e'%y0);
 
     # File
     log.info ('Create file');
@@ -496,7 +503,15 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     
     # Scale to ensure the frequencies fall
     # into integer pixels (max freq is 40)
-    scale0 = 40. / np.abs (freqs * nx).max();
+    
+    if ('P_ION' in hdr) == True :
+        scale0 = 72. / np.abs (freqs * nx).max();
+    
+    else :
+        
+        
+        scale0 = 40. / np.abs (freqs * nx).max();
+        
     ifreqs = np.round (freqs * scale0 * nx).astype(int);
 
     # Dimensions
@@ -662,9 +677,19 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     log.info ('Data size: '+str(base_dft.shape));
 
     # Compute lbd0 and dlbd
-    lbd0 = np.mean (lbd[4:-4]);
-    dlbd = np.mean (np.diff (lbd[4:-4]));
-
+    
+    if hdr['CONF_NA'] == 'H_PRISM20' :
+        lbd0 = np.mean (lbd);
+        dlbd = np.mean (np.diff (lbd));
+        
+    elif (hdr['CONF_NA'] == 'H_PRISM40') or  (hdr['CONF_NA'] == 'H_PRISM50'):
+        lbd0 = np.mean (lbd[2:-2]);
+        dlbd = np.mean (np.diff (lbd[2:-2]));
+    
+    else :
+        lbd0 = np.mean (lbd[4:-4]);
+        dlbd = np.mean (np.diff (lbd[4:-4]));
+    
     # Verbose spectral resolution
     log.info ('lbd0=%.3e, dlbd=%.3e um (R=%.1f)'%(lbd0*1e6,dlbd*1e6,np.abs(lbd0/dlbd)));
 
@@ -681,7 +706,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
         
     # Check if nan in fringe
     nnan = np.sum (np.isnan (base_dft));
-    if nnan > 0: log.warning ('%i NaNs in photometry'%nnan);
+    if nnan > 0: log.warning ('%i NaNs in fringe'%nnan);
 
     log.info ('Mean photometries: %e'%np.mean (photo));
 
