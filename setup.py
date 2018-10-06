@@ -53,40 +53,38 @@ def lbd0 (hdr):
     '''
     lbd0 = 1.60736e-06;
 
+    # MIRC configurations
     if hdr['CONF_NA'] == 'H_PRISM':
-        log.info ('H_PRISM setup');
         dlbd = 21.e-9;
-    elif (hdr['CONF_NA'] == 'H_GRISM200') or (hdr['CONF_NA'] == 'H_GRISM150'):
-        log.info ('H_GRISM setup');
+    elif (hdr['CONF_NA'] == 'H_GRISM200'):
         dlbd = 8.2e-9;
+    elif (hdr['CONF_NA'] == 'H_GRISM150'):
+        dlbd = 8.2e-9;
+        
+    # temporary configurations
     elif hdr['CONF_NA'] == 'H_PRISM20' :
-        log.info ('H_PRISM20 setup');
         dlbd = lbd0 / 27.4;
-    elif hdr['CONF_NA'] == 'H_PRISM22' :
-        log.info ('H_PRISM22 setup');
-        dlbd = lbd0 / 22.;
     elif hdr['CONF_NA'] == 'H_PRISM40' :
-        log.info ('H_PRISM40 setup');
         dlbd = lbd0 / 49.2;
+        
+    # MIRCX configurations
+    elif hdr['CONF_NA'] == 'H_PRISM22' :
+        dlbd = - lbd0 / 22.;
     elif hdr['CONF_NA'] == 'H_PRISM50' :
-        log.info ('H_PRISM50 setup');
-        dlbd = lbd0 / 50.;
+        dlbd = - lbd0 / 50.;
+    elif hdr['CONF_NA'] == 'H_PRISM102' :
+        dlbd = - lbd0 / 102.;
     elif hdr['CONF_NA'] == 'H_GRISM190' :
-        log.info ('H_GRISM190 setup');
         dlbd = lbd0 / 190.0;
-        
-        
+
+    # Unknown configuration
     else:
-        log.warning ('Unknown spectral setup, assume low dispersion');
-        dlbd = 21.e-9;
-    
-    #if 
-    
-    if hdr['CONF_NA'] == 'H_PRISM50' : 
-        dlbd = -dlbd;
-    elif hdr['BANDWID'] < 0 : 
-        dlbd = -dlbd;
-    
+        log.error ('Unknown CONF_NA');
+        raise ValueError('CONF_NA unsuported');
+
+    # Verbose
+    log.info ('Configuration '+hdr['CONF_NA']+' dlbd = %fum'%(dlbd*1e6));
+
     return lbd0,dlbd;
 
 def fiber_pos(hdr):
