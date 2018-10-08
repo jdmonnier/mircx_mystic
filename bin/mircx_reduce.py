@@ -90,7 +90,7 @@ rts.add_argument ("--rts-dir", dest="rts_dir",default='./rts/',type=str,
                   help="directory of products [%(default)s]");
 
 rts.add_argument ("--beam-quality", dest="beam_quality", type=float,
-                  default=2.0, help="minimum quality to consider the beammap as valid [%(default)s]");
+                  default=0.5, help="minimum quality to consider the beammap as valid [%(default)s]");
 
 rts.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
                   choices=TrueFalse,
