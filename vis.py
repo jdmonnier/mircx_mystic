@@ -328,7 +328,6 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
 
     # Keep only valid channels
     log.info ('Keep only valid channels');
-    print (photo.shape, fringe.shape, fringe_map.shape, photo_map.shape);
     photo  = photo[:,:,:,is_valid];
     fringe = fringe[:,:,is_valid,:];
     fringe_map = fringe_map[:,:,:,is_valid,:];
