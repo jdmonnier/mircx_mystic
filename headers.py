@@ -195,7 +195,8 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
     A new group is started if:
     - a file of different type is interleaved,
     - the detector or instrument setup is different,
-    - the time distance is larger than delta.
+    - the time distance between consecutive is larger than delta.
+    - the total integration is larger than Delta
     The output is a list of list.
     '''
     elog = log.trace ('group_headers');

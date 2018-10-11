@@ -231,7 +231,7 @@ if argopt.preproc != 'FALSE':
     # Group all DATA
     keys = setup.detwin + setup.detmode + setup.insmode;
     gps = mrx.headers.group (hdrs, 'DATA', keys=keys,
-                             delta=argopt.max_integration_time, Delta=120,
+                             delta=120, Delta=argopt.max_integration_time,
                              continuous=True);
 
     # Compute 
