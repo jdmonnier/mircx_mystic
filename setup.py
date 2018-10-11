@@ -67,7 +67,8 @@ def lbd0 (hdr):
     elif hdr['CONF_NA'] == 'H_PRISM40' :
         dlbd = lbd0 / 49.2;
         
-    # MIRCX configurations
+    # MIRCX configurations, J-band on top
+    # except for the GRISM_190
     elif hdr['CONF_NA'] == 'H_PRISM22' :
         dlbd = - lbd0 / 22.;
     elif hdr['CONF_NA'] == 'H_PRISM50' :
@@ -80,7 +81,7 @@ def lbd0 (hdr):
     # Unknown configuration
     else:
         log.error ('Unknown CONF_NA');
-        raise ValueError('CONF_NA unsuported');
+        raise ValueError('CONF_NA unsuported (yet?)');
 
     # Verbose
     log.info ('Configuration '+hdr['CONF_NA']+' dlbd = %fum'%(dlbd*1e6));
