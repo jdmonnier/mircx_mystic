@@ -57,24 +57,25 @@ def lbd0 (hdr):
     if hdr['CONF_NA'] == 'H_PRISM':
         dlbd = 21.e-9;
     elif (hdr['CONF_NA'] == 'H_GRISM200'):
-        dlbd = 8.2e-9;
+        dlbd = -8.2e-9;
     elif (hdr['CONF_NA'] == 'H_GRISM150'):
-        dlbd = 8.2e-9;
+        dlbd = -8.2e-9;
         
-    # temporary configurations
+    # temporary configurations. Not sure
+    # the sign is correct
     elif hdr['CONF_NA'] == 'H_PRISM20' :
         dlbd = lbd0 / 27.4;
     elif hdr['CONF_NA'] == 'H_PRISM40' :
         dlbd = lbd0 / 49.2;
         
     # MIRCX configurations, J-band on top
-    # except for the GRISM_190
+    # of image except for the GRISM_190.
     elif hdr['CONF_NA'] == 'H_PRISM22' :
-        dlbd = - lbd0 / 22.;
+        dlbd = -lbd0 / 22.;
     elif hdr['CONF_NA'] == 'H_PRISM50' :
-        dlbd = - lbd0 / 50.;
+        dlbd = -lbd0 / 50.;
     elif hdr['CONF_NA'] == 'H_PRISM102' :
-        dlbd = - lbd0 / 102.;
+        dlbd = -lbd0 / 102.;
     elif hdr['CONF_NA'] == 'H_GRISM190' :
         dlbd = lbd0 / 190.0;
 
