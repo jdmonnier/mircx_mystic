@@ -505,13 +505,17 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     
     if ('P_ION' in hdr) == True :
         scale0 = 72. / np.abs (freqs * nx).max();
-    
     else :
-        
-        
         scale0 = 40. / np.abs (freqs * nx).max();
-        
+
+    # Compute the expected scaling
+    log.info ("ifreqs as float");
+    log.info (freqs * scale0 * nx);
+
+    # Compute the expected scaling
+    log.info ("ifreqs as integer");
     ifreqs = np.round (freqs * scale0 * nx).astype(int);
+    log.info (ifreqs);
 
     # Dimensions
     nr,nf,ny,nx = fringe.shape
