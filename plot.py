@@ -5,6 +5,7 @@ mpl.rcParams['image.interpolation'] = 'nearest';
 mpl.rcParams['axes.grid'] = True;
 mpl.rcParams['legend.framealpha'] = 0.5;
 mpl.rcParams['image.origin'] = 'lower';
+mpl.rcParams['grid.linewidth'] = 0.15;
 
 from . import setup;
 
