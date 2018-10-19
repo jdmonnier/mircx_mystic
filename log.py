@@ -1,5 +1,6 @@
 from timeit import default_timer as timer
 import time, sys, os, logging, psutil;
+import traceback;
 
 # Load colors
 try:
@@ -85,6 +86,7 @@ def check(flag,msg):
 def error(msg):
     mem = memory ();
     logger.error (msg, extra={'color':RED,'memory':mem});
+    logger.error (traceback.format_exc(), extra={'color':RED,'memory':mem});
 
 def debug(msg):
     mem = memory ();
