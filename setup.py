@@ -130,6 +130,15 @@ def beam_freq (hdr):
         tmp /= (tmp.max() - tmp.min()) * scale;
     return tmp;
 
+def ifreq_max (hdr):
+    '''
+    Return the highest frequency to use, as integer number
+    '''
+    if ('P_ION' in hdr) == True :
+        return 72;
+    else:
+        return 40;
+
 def base_freq (hdr):
     '''
     Return the base frequency in fringe/pixel

@@ -304,7 +304,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
         val = np.mean (profile[b,:,:,:,:],axis=(0,1,2));
         ax.plot (val / (np.mean (val)+1e-20), label='profile');
         val = np.mean (photo[b,:,:,:,:],axis=(0,1,2));
-        ax.plot (val / (np.mean (val)+1e-20), label='photo');
+        ax.plot (val / (np.mean (val)+1e-20), label='xchan');
     axes[0,0].legend();
     files.write (fig,output+'_profile.png');
 
@@ -501,12 +501,9 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     freqs = setup.base_freq (hdr);
     
     # Scale to ensure the frequencies fall
-    # into integer pixels (max freq is 40)
-    
-    if ('P_ION' in hdr) == True :
-        scale0 = 72. / np.abs (freqs * nx).max();
-    else :
-        scale0 = 40. / np.abs (freqs * nx).max();
+    # into integer pixels (max freq is 40 or 72)
+    ifreq_max = setup.ifreq_max (hdr);
+    scale0 = 1.0 * ifreq_max / np.abs (freqs * nx).max();
 
     # Compute the expected scaling
     log.info ("ifreqs as float");
@@ -555,8 +552,29 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     cf_upsd  = np.abs(cf[:,:,:,0:int(nx/2)])**2;
     cf_upsd -= np.mean (cf_upsd[:,:,:,ibias],axis=-1,keepdims=True);
 
+    # Compute the coherent flux for various integration
+    # for plots, to track back vibrations
+    nc = [0, 2, 5, 10];
+    power = np.zeros ((nb, len(nc)));
+    for i,n in enumerate(nc):
+        # Smooth
+        base_d = signal.gaussian_filter_cpx (base_dft[:,:,ny/2,:],(0,n,0),mode='constant',truncate=2.0);
+        bias_d = signal.gaussian_filter_cpx (bias_dft[:,:,ny/2,:],(0,n,0),mode='constant',truncate=2.0);
+        # Coherent power
+        b2 = np.mean (np.mean (np.abs(bias_d)**2, axis=(0,1,2)));
+        power[:,i] = np.mean (np.abs(base_d)**2, axis=(0,1)) - b2;
+
     # Figures
     log.info ('Figures');
+
+    # Plot the power versus
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+    for i,ax in enumerate (axes.flatten()): ax.plot (nc,power[i,:],'o-');
+    for ax in axes.flatten(): ax.set_ylim (0);
+    files.write (fig,output+'_powercoher.png');
 
     # Integrated spectra
     fig,ax = plt.subplots (2,1);
@@ -678,7 +696,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
 
 def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgphot=True):
     '''
-    Compute the VIS
+    Compute the OIFITS from the RTS
     '''
     elog = log.trace ('compute_vis');
 
@@ -751,7 +769,6 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     else:
         log.info ('No spectro-temporal averaging of photometry');
         hdr[HMP+'AVGPHOT'] = (False,'spectro-temporal averaging of photometry');
-
         
     # Do coherent integration
     log.info ('Coherent integration over %.1f frames'%ncoher);
