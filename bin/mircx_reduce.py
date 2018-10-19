@@ -256,7 +256,8 @@ if argopt.preproc != 'FALSE':
             for i in range(1,7):
                 keys = setup.detwin + setup.insmode;
                 tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MAP'%i,
-                                         keys=keys, which='best', required=1);
+                                         keys=keys, which='best', required=1,
+                                         quality=0.01);
                 bmaps.extend (tmp);
             
             mrx.compute_preproc (gp[0:argopt.max_file], bkg, bmaps, output=output);
