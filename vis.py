@@ -552,17 +552,27 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     cf_upsd  = np.abs(cf[:,:,:,0:int(nx/2)])**2;
     cf_upsd -= np.mean (cf_upsd[:,:,:,ibias],axis=-1,keepdims=True);
 
+    # Get the beam per base, and the xchan ratio
+    bbeam = setup.base_beam ();
+    xbs = setup.xchan_ratio (hdr);
+    
     # Compute the coherent flux for various integration
     # for plots, to track back vibrations
     nc = [0, 2, 5, 10];
     power = np.zeros ((nb, len(nc)));
+    vis2  = np.zeros ((nb, len(nc)));
     for i,n in enumerate(nc):
-        # Smooth
-        base_d = signal.gaussian_filter_cpx (base_dft[:,:,ny/2,:],(0,n,0),mode='constant',truncate=2.0);
-        bias_d = signal.gaussian_filter_cpx (bias_dft[:,:,ny/2,:],(0,n,0),mode='constant',truncate=2.0);
+        log.info ('Compute crude vis2 with coherent %.1f frames'%n);
+        # Coherent integration, we process only the central channel
+        base_s  = signal.gaussian_filter_cpx (base_dft[:,:,ny/2,:],(0,n,0),mode='constant',truncate=2.0);
+        bias_s  = signal.gaussian_filter_cpx (bias_dft[:,:,ny/2,:],(0,n,0),mode='constant',truncate=2.0);
+        photo_s = gaussian_filter (photo[:,:,ny/2,:],(0,n,0),mode='constant',truncate=2.0);
         # Coherent power
-        b2 = np.mean (np.mean (np.abs(bias_d)**2, axis=(0,1,2)));
-        power[:,i] = np.mean (np.abs(base_d)**2, axis=(0,1)) - b2;
+        b2 = np.mean (np.mean (np.abs(bias_s)**2, axis=(0,1,2)));
+        power[:,i] = np.mean (np.abs(base_s)**2, axis=(0,1)) - b2;
+        # Vis2, note that flux ratio of the beam-splitter is hardcoded
+        photo_s = np.mean (photo_s, axis=(0,1));
+        vis2[:,i] = power[:,i] / (4. * photo_s[bbeam[:,0]] * photo_s[bbeam[:,1]]);
 
     # Figures
     log.info ('Figures');
@@ -576,6 +586,15 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     for ax in axes.flatten(): ax.set_ylim (0);
     files.write (fig,output+'_powercoher.png');
 
+    # Plot the power versus
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+    for i,ax in enumerate (axes.flatten()): ax.plot (nc,vis2[i,:],'o-');
+    for ax in axes.flatten(): ax.set_ylim (0);
+    files.write (fig,output+'_vis2coher.png');
+    
     # Integrated spectra
     fig,ax = plt.subplots (2,1);
     fig.suptitle (headers.summary (hdr));

@@ -89,6 +89,15 @@ def lbd0 (hdr):
 
     return lbd0,dlbd;
 
+def xchan_ratio(hdr):
+    '''
+    Return a crude estimate
+    '''
+    if ('P_ION' in hdr) == True :
+        return 0.3;
+    else:
+        return 0.1;
+
 def fiber_pos(hdr):
     '''
     Return the fiber position in the v-groove
