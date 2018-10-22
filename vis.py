@@ -14,7 +14,7 @@ from scipy import fftpack;
 from scipy.signal import medfilt;
 from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter, uniform_filter, median_filter;
-from scipy.optimize import least_squares;
+from scipy.optimize import least_squares, curve_fit;
 from scipy.ndimage.morphology import binary_closing, binary_opening;
 from scipy.ndimage.morphology import binary_dilation;
 
@@ -558,33 +558,33 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     
     # Compute the coherent flux for various integration
     # for plots, to track back vibrations
-    nc = [0, 2, 5, 10];
-    power = np.zeros ((nb, len(nc)));
+    nc = np.array([0, 2, 5, 10]);
     vis2  = np.zeros ((nb, len(nc)));
     for i,n in enumerate(nc):
         log.info ('Compute crude vis2 with coherent %.1f frames'%n);
         # Coherent integration, we process only the central channel
         base_s  = signal.gaussian_filter_cpx (base_dft[:,:,ny/2,:],(0,n,0),mode='constant',truncate=2.0);
         bias_s  = signal.gaussian_filter_cpx (bias_dft[:,:,ny/2,:],(0,n,0),mode='constant',truncate=2.0);
-        photo_s = gaussian_filter (photo[:,:,ny/2,:],(0,n,0),mode='constant',truncate=2.0);
-        # Coherent power
+        photo_s = gaussian_filter (photok0[:,:,ny/2,:],(0,n,0),mode='constant',truncate=2.0);
+        # Unbiased visibility 
         b2 = np.mean (np.mean (np.abs(bias_s)**2, axis=(0,1,2)));
-        power[:,i] = np.mean (np.abs(base_s)**2, axis=(0,1)) - b2;
-        # Vis2, note that flux ratio of the beam-splitter is hardcoded
-        photo_s = np.mean (photo_s, axis=(0,1));
-        vis2[:,i] = power[:,i] / (4. * photo_s[bbeam[:,0]] * photo_s[bbeam[:,1]]);
+        power = np.mean (np.abs(base_s)**2, axis=(0,1)) - b2;
+        norm = np.mean (4. * photo_s[:,:,bbeam[:,0]] * photo_s[:,:,bbeam[:,1]], axis=(0,1));
+        vis2[:,i] = power;# / norm;
 
+    # Fit power law
+    def power_law(x,expo): return x**-expo;
+
+    # FIXME: Use the model of John Vis2 = 'P[0]*2.*P[1]/(5/3*X) * (igamma(3./5,(X/P[1])^())*gamma(3/5) - (P[1]/X)*gamma(2./P[2])*igamma(6./5],(X/P[1])^(5/3)))'        
+        
+    dit = 1./hdr['HIERARCH MIRC FRAME_RATE'];
+    for b,name in enumerate (setup.base_name ()):
+        popt, pcov = curve_fit (power_law, nc+1, vis2[b,:]/vis2[b,0], p0 = [1.]);
+        hdr[HMQ+'COHERENCE'+name+'_EXPONENT']  = (popt[0], '(nc+1)**-exponent');
+        hdr[HMQ+'COHERENCE'+name+'_NC'] = (np.exp(-np.log(0.5)/popt[0]), '-');
+        
     # Figures
     log.info ('Figures');
-
-    # Plot the power versus
-    fig,axes = plt.subplots (5,3, sharex=True);
-    fig.suptitle (headers.summary (hdr));
-    plot.base_name (axes);
-    plot.compact (axes);
-    for i,ax in enumerate (axes.flatten()): ax.plot (nc,power[i,:],'o-');
-    for ax in axes.flatten(): ax.set_ylim (0);
-    files.write (fig,output+'_powercoher.png');
 
     # Plot the power versus
     fig,axes = plt.subplots (5,3, sharex=True);
@@ -709,7 +709,8 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     # Write file
     hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2,hdu3,hdu4,hdu5,hdu6,hdu7]);
     files.write (hdulist, output+'.fits');
-
+    
+                
     plt.close("all");
     return hdulist;
 
@@ -737,8 +738,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     nr,nf,ny,nb = base_dft.shape;
     log.info ('Data size: '+str(base_dft.shape));
 
-    # Compute lbd0 and dlbd
-    
+    # Compute lbd0 and dlbd    
     if hdr['CONF_NA'] == 'H_PRISM20' :
         lbd0 = np.mean (lbd);
         dlbd = np.mean (np.diff (lbd));
@@ -856,6 +856,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     base_power = np.abs (base_dft)**2;
     bias_power = np.abs (bias_dft)**2;
     bias_power_mean = np.mean (bias_power,axis=-1,keepdims=True);
+
 
     # Compute norm power
     log.info ('Compute norm power');
