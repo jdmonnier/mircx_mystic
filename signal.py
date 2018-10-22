@@ -1,7 +1,7 @@
 import numpy as np;
 
 import scipy;
-from scipy.ndimage import gaussian_filter;
+from scipy.ndimage import gaussian_filter, uniform_filter, median_filter;
 
 from . import log, files, headers, setup, oifits;
 
@@ -13,7 +13,12 @@ def gaussian_filter_cpx (input,sigma,**kwargs):
     ''' Gaussian filter of a complex array '''
     return gaussian_filter (input.real,sigma,**kwargs) + \
            gaussian_filter (input.imag,sigma,**kwargs) * 1.j;
-               
+
+def uniform_filter_cpx (input,sigma,**kwargs):
+    ''' Uniform filter of a complex array '''
+    return uniform_filter (input.real,sigma,**kwargs) + \
+           uniform_filter (input.imag,sigma,**kwargs) * 1.j;
+           
 def getwidth (curve, threshold=None):
     '''
     Compute the width of curve around its maximum,
