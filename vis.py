@@ -558,19 +558,19 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     
     # Compute the coherent flux for various integration
     # for plots, to track back vibrations
-    nc = np.array([0, 2, 5, 10]);
+    nc = np.array([1, 2, 5, 10, 15, 25]);
     vis2  = np.zeros ((nb, len(nc)));
     for i,n in enumerate(nc):
         log.info ('Compute crude vis2 with coherent %.1f frames'%n);
         # Coherent integration, we process only the central channel
-        base_s  = signal.gaussian_filter_cpx (base_dft[:,:,ny/2,:],(0,n,0),mode='constant',truncate=2.0);
-        bias_s  = signal.gaussian_filter_cpx (bias_dft[:,:,ny/2,:],(0,n,0),mode='constant',truncate=2.0);
-        photo_s = gaussian_filter (photok0[:,:,ny/2,:],(0,n,0),mode='constant',truncate=2.0);
+        base_s  = signal.uniform_filter_cpx (base_dft[:,:,ny/2,:],(0,n,0),mode='constant');
+        bias_s  = signal.uniform_filter_cpx (bias_dft[:,:,ny/2,:],(0,n,0),mode='constant');
+        photo_s = uniform_filter (photok0[:,:,ny/2,:],(0,n,0),mode='constant');
         # Unbiased visibility 
         b2 = np.mean (np.mean (np.abs(bias_s)**2, axis=(0,1,2)));
         power = np.mean (np.abs(base_s)**2, axis=(0,1)) - b2;
         norm = np.mean (4. * photo_s[:,:,bbeam[:,0]] * photo_s[:,:,bbeam[:,1]], axis=(0,1));
-        vis2[:,i] = power;# / norm;
+        vis2[:,i] = power / norm;
 
     # Fit power law
     def power_law(x,expo): return x**-expo;
@@ -792,12 +792,12 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     # Do coherent integration
     log.info ('Coherent integration over %.1f frames'%ncoher);
     hdr[HMP+'NFRAME_COHER'] = (ncoher,'nb. of frames integrated coherently');
-    base_dft = signal.gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
-    bias_dft = signal.gaussian_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
+    base_dft = signal.uniform_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
+    bias_dft = signal.uniform_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
 
     # Smooth photometry over the same amount (FIXME: be be discussed)
     log.info ('Smoothing of photometry over %.1f frames'%ncoher);
-    photo = gaussian_filter (photo,(0,ncoher,0,0),mode='constant',truncate=2.0);
+    photo = uniform_filter (photo,(0,ncoher,0,0),mode='constant',truncate=2.0);
 
     log.info ('Mean photometries: %e'%np.mean (photo));
     
