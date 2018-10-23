@@ -25,13 +25,12 @@ def arrays (nf1,nf2,naxes1,naxes2):
 
     return figs, axes;
             
-
-def scale (ax, scale):
+def scale (ax, scale, h=0.02, v=0.92, fmt='%.1e'):
     '''
     Write a scale
     '''
-    scale = '%.1e'%(scale);
-    ax.text (0.02, 0.92, scale, transform=ax.transAxes,
+    scale = fmt%(scale);
+    ax.text (h, v, scale, transform=ax.transAxes,
              horizontalalignment='left',
              verticalalignment='top',fontsize=5);
 

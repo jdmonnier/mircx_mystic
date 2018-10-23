@@ -2,6 +2,7 @@ import numpy as np;
 
 import scipy;
 from scipy.ndimage import gaussian_filter, uniform_filter, median_filter;
+from scipy.special import gammainc, gamma;
 
 from . import log, files, headers, setup, oifits;
 
@@ -174,3 +175,30 @@ def psd_projection (scale, freq, freq0, delta0, data):
     # Return the merit function from the normalised projection
     weight = np.sqrt (np.sum (model * model) * np.sum (data * data));
     return 1. - np.sum (model*data) / weight;
+
+
+def decoherence_free (x, vis2, cohtime, expo):
+    '''
+    Decoherence loss due to phase jitter, from Monnier equation:
+    vis2*2.*cohtime/(expo*x) * ( igamma(1./expo,(x/cohtime)^(expo))*gamma(1./expo) -
+                                (cohtime/x)*gamma(2./expo)*igamma(2./expo,(x/cohtime)^(expo)) )
+
+    vis2 is the cohence without jitter, cohtime is the coherence time, expo is the exponent
+    of the turbulent jitter (5/3 for Kolmogorof)
+    '''
+    xc  = x/cohtime;
+    xce = (xc)**expo;
+    y  = gammainc (1./expo, xce) * gamma (1./expo) - gamma (2./expo) / xc * gammainc (2./expo, xce);
+    y *= 2. * vis2 / expo  / xc;
+    return y;
+
+def decoherence (x, vis2, cohtime):
+    '''
+    decoherence function with a fixed exponent
+    '''
+    expo = 1.5;
+    xc  = x/cohtime;
+    xce = (xc)**expo;
+    y  = gammainc (1./expo, xce) * gamma (1./expo) - gamma (2./expo) / xc * gammainc (2./expo, xce);
+    y *= 2. * vis2 / expo  / xc;
+    return y;

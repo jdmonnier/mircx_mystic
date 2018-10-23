@@ -109,8 +109,14 @@ oifits.add_argument ("--oifits", dest="oifits",default='TRUE',
 oifits.add_argument ("--oifits-dir", dest="oifits_dir",default='./oifits/',type=str,
                      help="directory of products [%(default)s]");
 
-oifits.add_argument ("--ncoherent", dest="ncoherent", type=float,
-                     default=2.0, help="number of frames for coherent integration, can be fractional [%(default)s]");
+oifits.add_argument ("--ncoherent", dest="ncoherent", type=int,
+                     default=5, help="number of frames for coherent integration [%(default)s]");
+
+oifits.add_argument ("--ncs", dest="ncs", type=int,
+                     default=2, help="number of frame-offset for cross-spectrum [%(default)s]");
+
+oifits.add_argument ("--nbs", dest="nbs", type=int,
+                     default=2, help="number of frame-offset for bi-spectrum [%(default)s]");
 
 oifits.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
                      default=2.0, help="SNR threshold for fringe selection [%(default)s]");
@@ -385,6 +391,7 @@ if argopt.oifits != 'FALSE':
 
             log.setFile (output+'.log');
             mrx.compute_vis (gp, output=output, ncoher=argopt.ncoherent,
+                             ncs=argopt.ncs, nbs=argopt.nbs,
                              threshold=argopt.snr_threshold);
 
         except Exception as exc:
