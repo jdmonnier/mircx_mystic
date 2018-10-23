@@ -34,10 +34,10 @@ examples:
 
 parser = argparse.ArgumentParser (description=description, epilog=epilog,
                                  formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 add_help=False);
+                                 add_help=True);
 
 
-oifits.add_argument ("--oifits-dir", dest="oifits_dir",default='./',type=str,
+parser.add_argument ("--oifits-dir", dest="oifits_dir",default='./',type=str,
                      help="directory of products [%(default)s]");
 
 
@@ -53,6 +53,28 @@ elog = log.trace ('mircx_report');
 
 # List inputs
 files = glob.glob (argopt.oifits_fits+'/mircx*oifits.fit*');
+
+
+#
+# Loop on files to load data
+#
+
+for f in files:
+    try:
+        # Load data
+        hdr = pyfits.getheader (f);
+        oivis  = pyfits.getdata (f, 'OI_VIS2');
+        oiflux = pyfits.getdata (f, 'OI_FLUX');
+        # Set them into variables
+        
+    except Exception as exc:
+        log.error ('Cannot load OIFITS: '+str(exc));
+        if argopt.debug == 'TRUE': raise;
+
+            
+#
+# Plots the trends
+#
 
 
 
