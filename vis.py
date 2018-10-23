@@ -54,7 +54,7 @@ def extract_maps (hdr, bmaps):
 
     return fringe_map, photo_map;
 
-def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
+def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
     '''
     Compute the SPEC_CAL
     '''
@@ -803,13 +803,13 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
         hdr[HMP+'AVGPHOT'] = (False,'spectro-temporal averaging of photometry');
         
     # Do coherent integration
-    log.info ('Coherent integration over %.1f frames'%ncoher);
+    log.info ('Coherent integration over %i frames'%ncoher);
     hdr[HMP+'NFRAME_COHER'] = (ncoher,'nb. of frames integrated coherently');
     base_dft = signal.uniform_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant');
     bias_dft = signal.uniform_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant');
 
     # Smooth photometry over the same amount (FIXME: be be discussed)
-    log.info ('Smoothing of photometry over %.1f frames'%ncoher);
+    log.info ('Smoothing of photometry over %i frames'%ncoher);
     photo = uniform_filter (photo,(0,ncoher,0,0),mode='constant');
 
     # Add QC
