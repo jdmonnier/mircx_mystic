@@ -376,20 +376,6 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     # Set invalid kappas to zero
     kappa[kappa > 1e3] = 0.0;
     kappa[kappa < 0.] = 0.0;
-
-#    # Filter the kappa-matrix and the data to avoid
-#    # craps on the edges. treshold(ny) is defined
-#    # based on fringe_map 
-#    log.info ('Compute threshold');
-#    threshold = np.mean (medfilt (fringe_map,[1,1,1,1,11]), axis = (0,1,2,-1));
-#    threshold /= np.max (medfilt (threshold,3)) + 1e-20;
-#    threshold = threshold > 0.25;
-#
-#    log.info ('Apply threshold:');
-#    log.info (str(1*threshold));
-#    fringe[:,:,~threshold,:] = 0.0;
-#    photo[:,:,:,~threshold]  = 0.0;
-#    kappa[:,:,:,~threshold]  = 0.0;
         
     # Kappa-matrix as spectrum
     log.info ('Plot kappa');
