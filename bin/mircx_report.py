@@ -2,11 +2,10 @@
 # -*- coding: iso-8859-15 -*-                                                   
 
 import mircx_pipeline as mrx
-import argparse
-import glob
-import os
+import argparse, glob, os
 
 from mircx_pipeline import log, setup;
+from astropy.io import fits as pyfits;
 
 #
 # Implement options
@@ -52,7 +51,7 @@ argopt = parser.parse_args ();
 elog = log.trace ('mircx_report');
 
 # List inputs
-files = glob.glob (argopt.oifits_fits+'/mircx*oifits.fit*');
+files = glob.glob (argopt.oifits_dir+'/mircx*oifits.fit*');
 
 
 #

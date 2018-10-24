@@ -812,12 +812,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     bias_scan = np.mean (np.abs(bias_fft),axis=1, keepdims=True);
 
     log.info ('Compute SNR and GD (alternate)');
-
-    # Compute SNR and GD from this opd-scan
-    # base_powerbb    = np.max (base_scan, axis=2, keepdims=True);
-    # base_powerbb_np = base_scan[:,:,int(nscan/2),:][:,:,None,:];
-    # bias_powerbb    = np.mean (np.max (bias_scan, axis=2, keepdims=True), axis=-1, keepdims=True);
-
+    
     # Alternate SNR, whose statistic is independent of averaging
     base_scan -= np.median (base_scan, axis=2, keepdims=True);
     bias_scan -= np.median (bias_scan, axis=2, keepdims=True);
@@ -886,6 +881,13 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     
     # Create the file
     hdulist = oifits.create (hdr, lbd);
+
+    # Compute OI_FLUX
+    log.info ('Compute OI_FLUX');
+    
+    p_flux = np.nanmean (photo, axis=1);
+    
+    oifits.add_flux (hdulist, time, p_flux, output=output,y0=y0);
 
     # Compute OI_VIS2
     if ncs > 0:

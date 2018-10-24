@@ -220,6 +220,69 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
     # Reset warning
     np.seterr (**old_np_setting);
 
+def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
+    '''
+    Compute the OI_FLUX table from a sample of observations
+    t_flux shall be (sample, lbd, tel)
+    mjd shall be (sample)
+    '''
+    
+    log.info ('Compute OI_FLUX');
+    hdr = hdulist[0].header;
+    ns,ny,nt = p_flux.shape;
+
+    # Spectral channel for QC
+    if y0 is None: y0 = int(ny/2) - 2;
+        
+    # How many valid frame.
+    valid = np.isfinite (p_flux);
+    nvalid = np.nansum (1. * valid, axis=0);
+    
+    # Compute bootstrap sample
+    boot = (np.random.random ((ns,20)) * ns).astype(int);
+    boot[:,0] = range (ns);
+
+    # Compute mean flux
+    flux = np.nanmean (p_flux[boot,:,:], axis=0);
+    fluxerr = np.nanstd (flux, axis=0);
+    flux = flux[0,:,:];
+
+    # Construct mjd[ns,ny,nt]
+    mjd = mjd0[:,None,None] * np.ones (valid.shape);
+    mjd[~valid] = np.nan;
+    
+    # Average MJD per baseline
+    int_time = np.nanmax (mjd, axis=(0,1)) - np.nanmin (mjd, axis=(0,1));
+    mjd = np.nanmean (mjd, axis=(0,1));
+
+    # Create OI_FLUX table
+    target_id = np.ones (nt).astype(int);
+    time = mjd * 0.0;
+    staindex = np.array([0,1,2,3,4,5]);
+    
+    # Flag data
+    flag = ~np.isfinite (flux) + ~np.isfinite (fluxerr);
+
+    tbhdu = pyfits.BinTableHDU.from_columns ([\
+             pyfits.Column (name='TARGET_ID', format='I', array=target_id), \
+             pyfits.Column (name='TIME', format='D', array=time, unit='s'), \
+             pyfits.Column (name='MJD', format='D', array=mjd,unit='day'), \
+             pyfits.Column (name='INT_TIME', format='D', array=int_time, unit='s'), \
+             pyfits.Column (name='FLUXDATA', format='%iD'%ny, array=flux.T), \
+             pyfits.Column (name='FLUXERR', format='%iD'%ny, array=fluxerr.T), \
+             pyfits.Column (name='STA_INDEX', format='1I', array=staindex), \
+             pyfits.Column (name='FLAG', format='%iL'%ny, array=flag.T)
+             ]);
+    
+    tbhdu.header['EXTNAME'] = 'OI_FLUX';
+    tbhdu.header['INSNAME'] = 'MIRCX';
+    tbhdu.header['ARRNAME'] = 'CHARA';
+    tbhdu.header['OI_REVN'] = 1;
+    tbhdu.header['CALSTAT'] = 'U';
+    tbhdu.header['DATE-OBS'] = hdr['DATE-OBS'];
+    hdulist.append(tbhdu);
+    
+
 def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     '''
     Compute the OI_T3 table from a sample of observations
