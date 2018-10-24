@@ -9,7 +9,7 @@ from astropy.coordinates import SkyCoord
 import numpy as np
 import os
 
-from . import log, setup, files, plot, headers;
+from . import log, setup, files, plot, headers, version;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 from .version import revision;
 
@@ -19,9 +19,16 @@ def create (hdr,lbd):
     OI_WAVELENGTH, OI_ARRAY and OI_TARGET.
     '''
 
-    # Create file
+    # Create primary HDU
     hdu0 = pyfits.PrimaryHDU ([]);
     hdu0.header = hdr;
+    hdu0.header['CONTENT']  = 'OIFITS2';
+    hdu0.header['TELESCOP'] = 'CHARA';
+    hdu0.header['INSTRUME'] = 'MIRCX';
+    hdu0.header['INSMODE']  = hdr['CONF_NA'];
+    hdu0.header['PROCSOFT'] = 'mircx_pipeline '+version.revision;
+
+    # Create file
     hdulist = pyfits.HDUList ([hdu0]);
 
     # Create OI_WAVELENGTH table
@@ -32,7 +39,7 @@ def create (hdr,lbd):
 
     tbhdu.header['EXTNAME'] = 'OI_WAVELENGTH';
     tbhdu.header['INSNAME'] = 'MIRCX';
-    tbhdu.header['OI_REVN'] = 1;
+    tbhdu.header['OI_REVN'] = 2;
     hdulist.append(tbhdu);
 
     # Create OI_TARGET table
@@ -65,7 +72,7 @@ def create (hdr,lbd):
              pyfits.Column (name='SPECTYP', format='A16', array=[spectype]) ]);
 
     tbhdu.header['EXTNAME'] = 'OI_TARGET';
-    tbhdu.header['OI_REVN'] = 1;
+    tbhdu.header['OI_REVN'] = 2;
     hdulist.append(tbhdu);
 
     # Create OI_ARRAY table
@@ -93,7 +100,7 @@ def create (hdr,lbd):
     
     tbhdu.header['EXTNAME'] = 'OI_ARRAY';
     tbhdu.header['ARRNAME'] = 'CHARA';
-    tbhdu.header['OI_REVN'] = 1;
+    tbhdu.header['OI_REVN'] = 2;
     tbhdu.header['FRAME'] = 'GEOCENTRIC';
     tbhdu.header['ARRAYX'] = 0.0;
     tbhdu.header['ARRAYY'] = 0.0;
@@ -166,7 +173,7 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
     tbhdu.header['EXTNAME'] = 'OI_VIS2';
     tbhdu.header['INSNAME'] = 'MIRCX';
     tbhdu.header['ARRNAME'] = 'CHARA';
-    tbhdu.header['OI_REVN'] = 1;
+    tbhdu.header['OI_REVN'] = 2;
     tbhdu.header['DATE-OBS'] = hdr['DATE-OBS'];
     hdulist.append(tbhdu);
 
@@ -258,7 +265,7 @@ def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
     # Create OI_FLUX table
     target_id = np.ones (nt).astype(int);
     time = mjd * 0.0;
-    staindex = np.array([0,1,2,3,4,5]);
+    staindex = setup.beam_index(hdr);
     
     # Flag data
     flag = ~np.isfinite (flux) + ~np.isfinite (fluxerr);
@@ -268,8 +275,8 @@ def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
              pyfits.Column (name='TIME', format='D', array=time, unit='s'), \
              pyfits.Column (name='MJD', format='D', array=mjd,unit='day'), \
              pyfits.Column (name='INT_TIME', format='D', array=int_time, unit='s'), \
-             pyfits.Column (name='FLUXDATA', format='%iD'%ny, array=flux.T), \
-             pyfits.Column (name='FLUXERR', format='%iD'%ny, array=fluxerr.T), \
+             pyfits.Column (name='FLUXDATA', format='%iD'%ny, array=flux.T, unit='adu'), \
+             pyfits.Column (name='FLUXERR', format='%iD'%ny, array=fluxerr.T, unit='adu'), \
              pyfits.Column (name='STA_INDEX', format='1I', array=staindex), \
              pyfits.Column (name='FLAG', format='%iL'%ny, array=flag.T)
              ]);
@@ -365,7 +372,7 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     tbhdu.header['EXTNAME'] = 'OI_T3';
     tbhdu.header['INSNAME'] = 'MIRCX';
     tbhdu.header['ARRNAME'] = 'CHARA';
-    tbhdu.header['OI_REVN'] = 1;
+    tbhdu.header['OI_REVN'] = 2;
     tbhdu.header['DATE-OBS'] = hdr['DATE-OBS'];
     hdulist.append (tbhdu);
     

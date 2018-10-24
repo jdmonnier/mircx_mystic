@@ -52,6 +52,19 @@ elog = log.trace ('mircx_report');
 
 # List inputs
 files = glob.glob (argopt.oifits_dir+'/mircx*oifits.fit*');
+nf = len (files);
+
+# Init variables for plots. Fill them with NaN so
+# that missing points will not be plotted
+nb = 15;
+
+vis2  = np.zeros ((nb,nf)) * np.nan;
+mjd   = np.zeros (nf) * np.nan;
+flux  = np.zeros ((nb,nf)) * np.nan;
+Hmag  = np.zeros ((nb,nf)) * np.nan;
+lbd   = np.zeros (nf) * np.nan;
+diam  = np.zeros (nf) * np.nan;
+uv    = np.zeros ((nb,nf)) * np.nan;
 
 
 #
@@ -59,13 +72,18 @@ files = glob.glob (argopt.oifits_dir+'/mircx*oifits.fit*');
 #
 
 for f in files:
+    
     try:
+        
         # Load data
         hdr = pyfits.getheader (f);
         oivis  = pyfits.getdata (f, 'OI_VIS2');
         oiflux = pyfits.getdata (f, 'OI_FLUX');
-        # Set them into variables
         
+        # Set them into variables
+
+    # Handle exceptions so that the script won't crash
+    # oif a file is corrupted
     except Exception as exc:
         log.error ('Cannot load OIFITS: '+str(exc));
         if argopt.debug == 'TRUE': raise;
