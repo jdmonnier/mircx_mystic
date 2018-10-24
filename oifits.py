@@ -110,6 +110,7 @@ def create (hdr,lbd):
     
     return hdulist;
 
+
 def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
     '''
     Compute the OI_VIS2 table from a sample of observations
@@ -227,6 +228,81 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
     # Reset warning
     np.seterr (**old_np_setting);
 
+def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
+    '''
+    Compute the OI_VIS table from a sample of observations
+    c_power shall be of size (sample, lbd, base)
+    mjd shall be (sample)
+    '''
+
+    log.info ('Compute OI_VIS');
+    hdr = hdulist[0].header;
+    ns,ny,nb = c_cpx.shape;
+
+    # Spectral channel for QC
+    if y0 is None: y0 = int(ny/2) - 2;
+        
+    # Remove warning for invalid
+    # old_np_setting = np.seterr (divide='ignore',invalid='ignore');
+
+    # How many valid frame
+    valid = np.isfinite (c_cpx) * np.isfinite (c_norm);
+    nvalid = np.nansum (1. * valid, axis=0);
+
+    # Compute bootstrap sample
+    boot = (np.random.random ((ns,20)) * ns).astype(int);
+    boot[:,0] = range (ns);
+
+    # Compute mean vis
+    vis = np.nanmean (c_cpx[boot,:,:], axis=0) / np.nanmean (c_norm[boot,:,:], axis=0);
+    visAmp = np.abs (vis[0,:,:]);
+    visAmperr = np.nanstd (np.abs (vis), axis=0);
+    visPhi = np.angle (vis[0,:,:], deg=True);
+    visPhierr = np.nanstd (np.angle (vis, deg=True), axis=0);
+    
+    # Construct mjd[ns,ny,nb]
+    mjd = mjd0[:,None,None] * np.ones (valid.shape);
+    mjd[~valid] = np.nan;
+    
+    # Average MJD per baseline
+    int_time = np.nanmax (mjd, axis=(0,1)) - np.nanmin (mjd, axis=(0,1));
+    mjd = np.nanmean (mjd, axis=(0,1));
+
+    # Create OI_VIS table
+    target_id = np.ones (nb).astype(int);
+    time = mjd * 0.0;
+    staindex = setup.beam_index(hdr)[setup.base_beam()];
+    ucoord, vcoord = setup.base_uv (hdr);
+    
+    # Flag data
+    flag = ~np.isfinite (visPhi) + ~np.isfinite (visPhierr);
+
+    tbhdu = pyfits.BinTableHDU.from_columns ([\
+             pyfits.Column (name='TARGET_ID', format='I', array=target_id), \
+             pyfits.Column (name='TIME', format='D', array=time, unit='s'), \
+             pyfits.Column (name='MJD', format='D', array=mjd,unit='day'), \
+             pyfits.Column (name='INT_TIME', format='D', array=int_time, unit='s'), \
+             pyfits.Column (name='VISPHI', format='%iD'%ny, array=visPhi.T), \
+             pyfits.Column (name='VISPHIERR', format='%iD'%ny, array=visPhierr.T), \
+             pyfits.Column (name='VISAMP', format='%iD'%ny, array=visAmp.T), \
+             pyfits.Column (name='VISAMPERR', format='%iD'%ny, array=visAmperr.T), \
+             pyfits.Column (name='UCOORD', format='D', array=ucoord, unit='m'), \
+             pyfits.Column (name='VCOORD', format='D', array=vcoord, unit='m'), \
+             pyfits.Column (name='STA_INDEX', format='2I', array=staindex), \
+             pyfits.Column (name='FLAG', format='%iL'%ny, array=flag.T)
+             ]);
+    
+    tbhdu.header['EXTNAME'] = 'OI_VIS';
+    tbhdu.header['INSNAME'] = 'MIRCX';
+    tbhdu.header['ARRNAME'] = 'CHARA';
+    tbhdu.header['OI_REVN'] = 2;
+    tbhdu.header['DATE-OBS'] = hdr['DATE-OBS'];
+    hdulist.append(tbhdu);
+
+    # Reset warning
+    # np.seterr (**old_np_setting);
+
+    
 def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
     '''
     Compute the OI_FLUX table from a sample of observations
