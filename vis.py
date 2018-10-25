@@ -911,8 +911,8 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
 
     oifits.add_vis2 (hdulist, time, u_power, l_power, output=output, y0=y0);
     
-    # Compute OI_FLUX
-    log.info ('Compute OI_VIS by removing the mean GD and mean phase');
+    # Compute OI_VIS
+    log.info ('Compute Vis by removing the mean GD and mean phase');
 
     c_cpx  = base_dft.copy ();
     phi = np.angle (np.mean (c_cpx[:,:,1:,:] * np.conj(c_cpx[:,:,:-1,:]), axis=2, keepdims=True));
@@ -1013,6 +1013,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     for b in range (15):
         axes.flatten()[b].plot (base_flag0[:,0,0,b], alpha=0.75);
         axes.flatten()[b].plot (base_flag1[:,0,0,b],  alpha=0.75);
+        axes.flatten()[b].set_ylim (-.2,1.2);
     files.write (fig,output+'_selection.png');
 
     # SNR versus GD
