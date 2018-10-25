@@ -27,6 +27,7 @@ def create (hdr,lbd):
     hdu0.header['INSTRUME'] = 'MIRCX';
     hdu0.header['INSMODE']  = hdr['CONF_NA'];
     hdu0.header['PROCSOFT'] = 'mircx_pipeline '+version.revision;
+    hdu0.header['EFF_WAVE'] = (lbd[len(lbd)/2],'[m] central wavelength');
 
     # Create file
     hdulist = pyfits.HDUList ([hdu0]);
@@ -178,7 +179,7 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
     tbhdu.header['DATE-OBS'] = hdr['DATE-OBS'];
     hdulist.append(tbhdu);
 
-    # QC for VIS
+    # QC for VIS2
     for b,name in enumerate (setup.base_name ()):
         hdr[HMQ+'REJECTED'+name] = (1.0*(ns - nvalid[y0,b])/ns,'fraction of rejected');
         val = rep_nan (np.nanmean (u_power[:,y0,b]));
@@ -193,6 +194,13 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
         hdr[HMQ+'VISS'+name+' MEAN'] = (val,'visibility at lbd0');
         val = rep_nan (vis2err[y0,b]);
         hdr[HMQ+'VISS'+name+' ERR'] = (val,'visibility at lbd0');
+        val = rep_nan (ucoord[b]);
+        hdr[HMQ+'UCOORD'+name] = (val,'[m] u coordinate');
+        val = rep_nan (vcoord[b]);
+        hdr[HMQ+'VCOORD'+name] = (val,'[m] v coordinate');
+        val = rep_nan (np.sqrt(ucoord[b]**2 + vcoord[b]**2));
+        hdr[HMQ+'BASELENGTH'+name] = (val,'[m] uv coordinate');
+        
     
     # Correlation plot
     log.info ('Correlation plots');

@@ -175,6 +175,12 @@ def base_name ():
     '''
     return np.array (['%i%i'%(t[0],t[1]) for t in base_beam ()]);
 
+def beam_name ():
+    '''
+    Return the beam name following convention 0-5
+    '''
+    return ['0','1','2','3','4','5'];
+
 ''' beam to base matrix '''
 beam_to_base = np.zeros ((15,6));
 for b,beams in enumerate(base_beam ()):
