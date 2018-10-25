@@ -573,8 +573,11 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
         vis2h[b] = np.interp (0.5 * vis2[b,0], vis2[b,::-1], time[::-1]);
         hdr[HMQ+'DECOHER'+name+'_HALF'] = (vis2h[b], '[ms] time for half V2');
         # Tau0 from model assuming 5/3
-        popt, pcov = curve_fit (signal.decoherence, time, vis2[b,:], p0=[vis2[b,0], 0.01]);
-        vis2m[b,:] = signal.decoherence (timem, popt[0], popt[1]);
+        try:
+            popt, pcov = curve_fit (signal.decoherence, time, vis2[b,:], p0=[vis2[b,0], 0.01]);
+            vis2m[b,:] = signal.decoherence (timem, popt[0], popt[1]);
+        except:
+            log.error ("Fail to fit on baseline %i, continue anyway"%b);
         hdr[HMQ+'DECOHER'+name+'_TAU0'] = (popt[1], '[ms] coherence time with 5/3');
         
     # Figures
