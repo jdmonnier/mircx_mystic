@@ -521,6 +521,9 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
         cf[:,y,1:] = cfc[:,1:nfq+1] - 1.j * cfc[:,nfq+1:];
     cf.shape = (nr,nf,ny,nfq+1);
 
+    log.info ('Free fringe');
+    del fringe;
+
     # DFT at fringe frequencies
     log.info ('Extract fringe frequency');
     base_dft  = cf[:,:,:,np.abs(ifreqs)];
@@ -537,6 +540,9 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     # thus the bias is larger than in the base data).
     cf_upsd  = np.abs(cf[:,:,:,0:int(nx/2)])**2;
     cf_upsd -= np.mean (cf_upsd[:,:,:,ibias],axis=-1,keepdims=True);
+
+    log.info ('Free cf');
+    del cf;
 
     log.info ('Compute crude vis2 with various coherent');
         
@@ -576,9 +582,9 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
         try:
             popt, pcov = curve_fit (signal.decoherence, time, vis2[b,:], p0=[vis2[b,0], 0.01]);
             vis2m[b,:] = signal.decoherence (timem, popt[0], popt[1]);
+            hdr[HMQ+'DECOHER'+name+'_TAU0'] = (popt[1], '[ms] coherence time with 5/3');
         except:
             log.error ("Fail to fit on baseline %i, continue anyway"%b);
-        hdr[HMQ+'DECOHER'+name+'_TAU0'] = (popt[1], '[ms] coherence time with 5/3');
         
     # Figures
     log.info ('Figures');
