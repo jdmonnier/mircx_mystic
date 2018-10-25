@@ -151,12 +151,12 @@ argopt = parser.parse_args ();
 
 # Verbose
 elog = log.trace ('mircx_reduce');
-
-# List inputs
-hdrs = hdrs_raw = mrx.headers.loaddir (argopt.raw_dir);
     
 if argopt.preproc != 'FALSE':
     overwrite = (argopt.preproc == 'OVERWRITE');
+
+    # List inputs
+    hdrs = hdrs_raw = mrx.headers.loaddir (argopt.raw_dir);
 
     #
     # Compute BACKGROUND_MEAN
