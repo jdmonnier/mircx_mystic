@@ -584,7 +584,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
             vis2m[b,:] = signal.decoherence (timem, popt[0], popt[1]);
             hdr[HMQ+'DECOHER'+name+'_TAU0'] = (popt[1], '[ms] coherence time with 5/3');
         except:
-            log.error ("Fail to fit on baseline %i, continue anyway"%b);
+            log.warning ("Fail to fit on baseline %i, continue anyway"%b);
         
     # Figures
     log.info ('Figures');
