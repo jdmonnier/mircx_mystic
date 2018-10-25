@@ -640,25 +640,26 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     files.write (fig,output+'_psd.png');
 
     # Compute time FFT ov the entire time serie
-    log.info ('Long FFT');
-    nt = nr*nf;
-    base_time = base_dft[:,:,ny/2,:].reshape((nt,nb));
-    ft0 = np.fft.fft (np.angle(base_time), axis=0)[:nt/2,:];
-    ft1 = np.fft.fft (np.angle(base_time[1,:]*np.conj(base_time[:-1,:])), axis=0)[:nt/2,:];
-    
-    # Vibration monitor
-    fig,ax = plt.subplots (2,1);
-    fig.suptitle (headers.summary (hdr));
-    ax[0].imshow (np.abs(ft0).T,aspect='auto');
-    ax[1].plot (np.abs(ft0));
-    files.write (fig,output+'_vib0.png');
+    log.warning ('FIXME: Skip long FFT as this is too time consuming...');
+#    log.info ('Long FFT');
+#    nt = nr*nf;
+#    base_time = base_dft[:,:,ny/2,:].reshape((nt,nb));
+#    ft0 = np.fft.fft (np.angle(base_time), axis=0)[:nt/2,:];
+#    ft1 = np.fft.fft (np.angle(base_time[1,:]*np.conj(base_time[:-1,:])), axis=0)[:nt/2,:];
+#    
+#    # Vibration monitor
+#    fig,ax = plt.subplots (2,1);
+#    fig.suptitle (headers.summary (hdr));
+#    ax[0].imshow (np.abs(ft0).T,aspect='auto');
+#    ax[1].plot (np.abs(ft0));
+#    files.write (fig,output+'_vib0.png');
+#
+#    fig,ax = plt.subplots (2,1);
+#    fig.suptitle (headers.summary (hdr));
+#    ax[0].imshow (np.abs(ft1).T,aspect='auto');
+#    ax[1].plot (np.abs(ft1));
+#    files.write (fig,output+'_vib1.png');
 
-    fig,ax = plt.subplots (2,1);
-    fig.suptitle (headers.summary (hdr));
-    ax[0].imshow (np.abs(ft1).T,aspect='auto');
-    ax[1].plot (np.abs(ft1));
-    files.write (fig,output+'_vib1.png');
-    
     # File
     log.info ('Create file');
 
