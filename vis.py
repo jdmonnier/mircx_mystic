@@ -910,6 +910,21 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     l_power = np.nanmean (l_power*base_flag, axis=1);
 
     oifits.add_vis2 (hdulist, time, u_power, l_power, output=output, y0=y0);
+    
+    # Compute OI_FLUX
+    log.info ('Compute OI_VIS by removing the mean GD and mean phase');
+
+    c_cpx  = base_dft.copy ();
+    phi = np.angle (np.mean (c_cpx[:,:,1:,:] * np.conj(c_cpx[:,:,:-1,:]), axis=2, keepdims=True));
+    c_cpx *= np.exp (-1.j * phi * np.arange (ny)[None,None,:,None]);
+
+    phi = np.angle (np.mean (c_cpx, axis=2,keepdims=True));
+    c_cpx *= np.exp (-1.j * phi);
+
+    c_cpx  = np.nanmean (c_cpx * base_flag, axis=1);
+    c_norm = np.abs (c_cpx) * 0.0 + 1.0;
+    
+    oifits.add_vis (hdulist, time, c_cpx, c_norm, output=output, y0=y0);
 
     # Compute OI_T3
     if nbs > 0:
