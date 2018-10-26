@@ -307,6 +307,9 @@ if argopt.preproc != 'FALSE':
         finally:
             log.closeFile ();
 
+    log.info ('Cleanup memory');
+    del hdrs, hdrs_calib, gps;
+
 #
 # Compute RTS
 #
@@ -365,6 +368,9 @@ if argopt.rts != 'FALSE':
         finally:
             log.closeFile ();
             
+    log.info ('Cleanup memory');
+    del hdrs, gps;
+    
 #
 # Compute OIFITS
 #
@@ -400,3 +406,5 @@ if argopt.oifits != 'FALSE':
         finally:
             log.closeFile ();
             
+    log.info ('Cleanup memory');
+    del hdrs, gps;
