@@ -815,11 +815,11 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     log.info ('Compute 2d FFT (nscan=%i)'%nscan);
 
     # Compute FFT for display, average over frames in ramp
-    base_fft  = np.fft.fftshift (np.fft.fft (base_dft, n=nscan, axis=2), axes=2);
-    base_scan = np.mean (np.abs(base_fft),axis=1, keepdims=True);
+    base_scan  = np.fft.fftshift (np.fft.fft (base_dft, n=nscan, axis=2), axes=2);
+    base_scan = np.mean (np.abs(base_scan),axis=1, keepdims=True);
 
-    bias_fft  = np.fft.fftshift (np.fft.fft (bias_dft, n=nscan, axis=2), axes=2);
-    bias_scan = np.mean (np.abs(bias_fft),axis=1, keepdims=True);
+    bias_scan  = np.fft.fftshift (np.fft.fft (bias_dft, n=nscan, axis=2), axes=2);
+    bias_scan = np.mean (np.abs(bias_scan),axis=1, keepdims=True);
 
     log.info ('Compute SNR and GD (alternate)');
     
