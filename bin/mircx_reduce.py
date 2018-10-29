@@ -113,10 +113,10 @@ oifits.add_argument ("--ncoherent", dest="ncoherent", type=int,
                      default=5, help="number of frames for coherent integration [%(default)s]");
 
 oifits.add_argument ("--ncs", dest="ncs", type=int,
-                     default=2, help="number of frame-offset for cross-spectrum [%(default)s]");
+                     default=1, help="number of frame-offset for cross-spectrum [%(default)s]");
 
 oifits.add_argument ("--nbs", dest="nbs", type=int,
-                     default=2, help="number of frame-offset for bi-spectrum [%(default)s]");
+                     default=4, help="number of frame-offset for bi-spectrum [%(default)s]");
 
 oifits.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
                      default=2.0, help="SNR threshold for fringe selection [%(default)s]");
