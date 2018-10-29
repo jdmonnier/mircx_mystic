@@ -553,17 +553,17 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     
     # Compute the coherent flux for various integration
     # for plots, to track back vibrations
-    nc = np.array([1, 2, 5, 10, 15, 25, 50]);
+    nc = np.array([2, 5, 10, 15, 25, 50]);
     vis2 = np.zeros ((nb, len(nc)));
     for i,n in enumerate(nc):
         # Coherent integration, we process only the central channel
         base_s  = signal.uniform_filter_cpx (base_dft[:,:,ny/2,:],(0,n,0),mode='constant');
         bias_s  = signal.uniform_filter_cpx (bias_dft[:,:,ny/2,:],(0,n,0),mode='constant');
-        # Unbiased visibility 
-        b2 = np.mean (np.mean (np.abs(bias_s)**2, axis=(0,1,2)));
-        power = np.mean (np.abs(base_s)**2, axis=(0,1)) - b2;
+        # Unbiased visibility, based on cross-spectrum with 1-shift
+        b2    = np.mean (np.mean (np.real (bias_s[:,1:,:] * np.conj(bias_s[:,0:-1,:])), axis=(0,1,2)));
+        power = np.mean (np.real (base_s[:,1:,:] * np.conj(base_s[:,0:-1,:])), axis=(0,1)) - b2;
         vis2[:,i] = power / norm;
-
+        
     log.info ('Compute QC DECOHER_TAU0');
     
     # Time and model
@@ -743,6 +743,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     photo     = pyfits.getdata (f, 'PHOTOMETRY').astype(float);
     lbd       = pyfits.getdata (f, 'WAVELENGTH').astype(float);
 
+
     # Dimensions
     nr,nf,ny,nb = base_dft.shape;
     log.info ('Data size: '+str(base_dft.shape));
@@ -800,7 +801,6 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
         
     # Do coherent integration
     log.info ('Coherent integration over %i frames'%ncoher);
-    hdr[HMP+'NFRAME_COHER'] = (ncoher,'nb. of frames integrated coherently');
     base_dft = signal.uniform_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant');
     bias_dft = signal.uniform_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant');
 
@@ -809,7 +809,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     photo = uniform_filter (photo,(0,ncoher,0,0),mode='constant');
 
     # Add QC
-    qc.flux (hdr, y0, photo);    
+    qc.flux (hdr, y0, photo);
 
     nscan = 64;
     log.info ('Compute 2d FFT (nscan=%i)'%nscan);
@@ -840,7 +840,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     base_snr[~np.isfinite (base_snr)] = 0.0;
 
     # Add the QC about raw SNR
-    qc.snr (hdr, y0, base_snr);
+    qc.snr (hdr, y0, base_snr);    
     
     # Smooth SNR along the ramp (if not done yet)
     log.info ('Smooth SNR over one ramp');
@@ -888,6 +888,11 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
 
     # Compute the time stamp of each ramp
     time = np.ones (base_dft.shape[0]) * hdr['MJD-OBS'];
+
+    # Save the options in file HEADER
+    hdr[HMP+'NCOHER'] = (ncoher,'[frame] coherent integration');
+    hdr[HMP+'NCS'] = (ncs,'[frame] cross-spectrum shift');
+    hdr[HMP+'NBS'] = (nbs,'[frame] bi-spectrum shift');
     
     # Create the file
     hdulist = oifits.create (hdr, lbd);
