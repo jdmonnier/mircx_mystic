@@ -251,7 +251,7 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
     if y0 is None: y0 = int(ny/2) - 2;
         
     # Remove warning for invalid
-    # old_np_setting = np.seterr (divide='ignore',invalid='ignore');
+    old_np_setting = np.seterr (divide='ignore',invalid='ignore');
 
     # How many valid frame
     valid = np.isfinite (c_cpx) * np.isfinite (c_norm);
@@ -308,7 +308,7 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
     hdulist.append(tbhdu);
 
     # Reset warning
-    # np.seterr (**old_np_setting);
+    np.seterr (**old_np_setting);
 
     
 def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
@@ -324,6 +324,9 @@ def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
 
     # Spectral channel for QC
     if y0 is None: y0 = int(ny/2) - 2;
+        
+    # Remove warning for invalid
+    old_np_setting = np.seterr (divide='ignore',invalid='ignore');
         
     # How many valid frame.
     valid = np.isfinite (p_flux);
@@ -373,6 +376,8 @@ def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
     tbhdu.header['DATE-OBS'] = hdr['DATE-OBS'];
     hdulist.append(tbhdu);
     
+    # Reset warning
+    np.seterr (**old_np_setting);
 
 def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     '''
