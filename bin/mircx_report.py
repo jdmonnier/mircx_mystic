@@ -4,9 +4,12 @@
 import mircx_pipeline as mrx;
 import argparse, glob, os;
 import numpy as np;
-
-from mircx_pipeline import log, setup;
 from astropy.io import fits as pyfits;
+import matplotlib.pyplot as plt;
+
+from mircx_pipeline import log, setup, plot, files, signal;
+from mircx_pipeline.headers import HM, HMQ, HMP, HMW, rep_nan;
+
 
 #
 # Implement options
@@ -55,63 +58,120 @@ argopt = parser.parse_args ();
 # Verbose
 elog = log.trace ('mircx_report');
 
-# List inputs
-files = glob.glob (argopt.oifits_dir+'/mircx*oifits.fit*');
-nf = len (files);
+# Load all the headers
+hdrs = mrx.headers.loaddir (argopt.oifits_dir);
 
-# Init variables for plots. Fill them with NaN so
-# that missing points will not be plotted
-nb = 15;
-nt = 6;
+# List of basename
+bname = setup.base_name ();
 
-vis2  = np.zeros ((nb,nf)) * np.nan;
-u     = np.zeros ((nb,nf)) * np.nan;
-v     = np.zeros ((nb,nf)) * np.nan;
-flux  = np.zeros ((nt,nf)) * np.nan;
-mjd   = np.zeros (nf) * np.nan;
-Hmag  = np.zeros (nf) * np.nan;
-lbd   = np.zeros (nf) * np.nan;
-diam  = np.zeros (nf) * np.nan;
+# Zero point of Hband
+Hzp = 1.0;
 
 
 #
-# Loop on files to load data
+# Query CDS to build a catalog of object information
+# This is protected since it may fail
 #
 
-for f,file in enumerate(files):
-    
+# List of object
+objlist = list(set([h['OBJECT'] for h in hdrs]));
+objcat = dict();
+
+for obj in objlist:
     try:
-        log.info ('Load file '+file);
-        
-        # Load header data
-        hdr = pyfits.getheader (file);
-        
-        # Load OI_WAVELENGTH
-        eff_wave = pyfits.getdata (file, 'OI_WAVELENGTH')['EFF_WAVE'];
-        ny = len (eff_wave)/2;
-        lbd[f] = eff_wave[ny];
-        
-        # Load OI_VIS2 and OI_FLUX
-        vis2[:,f] = pyfits.getdata (file, 'OI_VIS2')['VIS2DATA'][:,ny];
-        u[:,f]    = pyfits.getdata (file, 'OI_VIS2')['UCOORD'];
-        v[:,f]    = pyfits.getdata (file, 'OI_VIS2')['VCOORD'];
-        flux[:,f] = pyfits.getdata (file, 'OI_FLUX')['FLUXDATA'][:,ny];
+        from astroquery.vizier import Vizier;
+        objcat[obj] = Vizier.query_object (obj, catalog='JSDC')[0];
+        log.info ('Find JSDC for '+obj);
+    except:
+        log.info ('Cannot find JSDC for '+obj);
 
-        # Get the Hmag and Diameter from catalog ?
-        # ...
-        
-    # Handle exceptions so that the script won't
-    # crash if a file is corrupted
-    except Exception as exc:
-        log.error ('Cannot load OIFITS: '+str(exc));
-        if argopt.debug == 'TRUE': raise;
 
+#
+# Compute the transmission and instrumental visibility
+#
+
+for h in hdrs:
+    
+    # If we have the info about this star
+    if h['OBJECT'] in objcat:
+        fluxm = Hzp * 10**(-objcat[h['OBJECT']]['Hmag'][0]/2.5);
+        diam  = objcat[h['OBJECT']]['UDDH'][0];
+
+        log.info ("diam = %.3f mas"%diam);
+
+        # Loop on beam 
+        for b in range (6):
+            flux = h['HIERARCH MIRC QC FLUX%i MEAN'%b];
+            h['HIERARCH MIRC QC TRANS%i'%b] = flux / fluxm;
+
+        # Loop on baseline 
+        for b in bname:
+            vis2 = h['HIERARCH MIRC QC VISS'+b+' MEAN'];
+            spf  = h['HIERARCH MIRC QC BASELENGTH'+b] / h['EFF_WAVE'];
+            vis2m = signal.airy (diam * spf * 4.84813681109536e-09)**2;
+            h['HIERARCH MIRC QC TF'+b+' MEAN'] = vis2/vis2m;
             
+            
+    # If we don't have the info about this star
+    else:
+        for b in range (6):
+            h['HIERARCH MIRC QC TRANS%i'%b] = 0.0;
+        for b in bname:
+            h['HIERARCH MIRC QC TF'+b+' MEAN'] = 0.0;
+        
+
 #
-# Plots the trends
+# Plots
 #
 
-log.info ('Figures');
+# Flux
+log.info ('Plot photometry');
+
+fig,axes = plt.subplots (3,2,sharex=True);
+plot.compact (axes);
+
+for b in range (6):
+    data = [h['HIERARCH MIRC QC TRANS%i'%b] for h in hdrs];
+    axes.flatten()[b].plot (data, 'o');
+    
+files.write (fig,'report_flux.png');
+
+# Plot TF
+log.info ('Plot TF');
+
+fig,axes = plt.subplots (5,3,sharex=True);
+plot.base_name (axes);
+plot.compact (axes);
+
+for b in range (15):
+    data = [h['HIERARCH MIRC QC TF'+bname[b]+' MEAN'] for h in hdrs];
+    axes.flatten()[b].plot (data, 'o');
+    
+files.write (fig,'report_tf2.png');
+
+# Plot vis2
+log.info ('Plot vis2');
+
+fig,axes = plt.subplots (5,3,sharex=True);
+plot.base_name (axes);
+plot.compact (axes);
+
+for b in range (15):
+    data = [h['HIERARCH MIRC QC VISS'+bname[b]+' MEAN'] for h in hdrs];
+    axes.flatten()[b].plot (data, 'o');
+    
+files.write (fig,'report_vis2.png');
 
 
+# Plot coherence
+log.info ('Plot decoherence');
 
+fig,axes = plt.subplots (5,3,sharex=True);
+plot.base_name (axes);
+plot.compact (axes);
+
+for b in range (15):
+    data = [h['HIERARCH MIRC QC DECOHER'+bname[b]+'_HALF'] for h in hdrs];
+    axes.flatten()[b].plot (data, 'o');
+    
+files.write (fig,'report_decoher.png');
