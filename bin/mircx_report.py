@@ -175,3 +175,16 @@ for b in range (15):
     axes.flatten()[b].plot (data, 'o');
     
 files.write (fig,'report_decoher.png');
+
+# Plot SNR
+log.info ('Plot SNR');
+
+fig,axes = plt.subplots (5,3,sharex=True);
+plot.base_name (axes);
+plot.compact (axes);
+
+for b in range (15):
+    data = [h['HIERARCH MIRC QC SNR'+bname[b]+' MEAN'] for h in hdrs];
+    axes.flatten()[b].plot (data, 'o');
+    
+files.write (fig,'report_snr.png');
