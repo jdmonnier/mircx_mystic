@@ -814,12 +814,21 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     nscan = 64;
     log.info ('Compute 2d FFT (nscan=%i)'%nscan);
 
-    # Compute FFT for display, average over frames in ramp
+    # Compute FFT over the lbd direction, thus OPD-scan
     base_scan  = np.fft.fftshift (np.fft.fft (base_dft, n=nscan, axis=2), axes=2);
-    base_scan = np.mean (np.abs(base_scan),axis=1, keepdims=True);
-
     bias_scan  = np.fft.fftshift (np.fft.fft (bias_dft, n=nscan, axis=2), axes=2);
-    bias_scan = np.mean (np.abs(bias_scan),axis=1, keepdims=True);
+
+    # Compute power in the scan
+    if ncs > 0:
+        log.info ('Compute OPD-scan Power with offset of %i frames'%ncs);
+        base_scan = np.real (base_scan[:,ncs:,:,:] * np.conj(base_scan[:,0:-ncs,:,:]));
+        bias_scan = np.real (bias_scan[:,ncs:,:,:] * np.conj(bias_scan[:,0:-ncs,:,:]));
+        base_scan = np.mean (base_scan, axis=1, keepdims=True);
+        bias_scan = np.mean (bias_scan, axis=1, keepdims=True);
+    else:
+        log.info ('Compute OPD-scan Power without offset');
+        base_scan = np.mean (np.abs(base_scan)**2,axis=1, keepdims=True);
+        bias_scan = np.mean (np.abs(bias_scan)**2,axis=1, keepdims=True);
 
     log.info ('Compute SNR and GD (alternate)');
     
@@ -830,7 +839,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     base_powerbb    = np.max (base_scan, axis=2, keepdims=True);
     bias_powerbb    = np.mean (np.max (bias_scan, axis=2, keepdims=True), axis=-1, keepdims=True);
 
-    # Scale for gd
+    # Scale for gd in [um]
     scale_gd = 1. / (lbd0**-1 - (lbd0+dlbd)**-1) / nscan;
     base_gd  = (np.argmax (base_scan, axis=2)[:,:,None,:] - int(nscan/2)) * scale_gd;
     gd_range = scale_gd * nscan / 2;
