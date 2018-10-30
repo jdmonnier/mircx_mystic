@@ -73,15 +73,26 @@ Hzp = 1.0;
 # This is protected since it may fail
 #
 
+# Load astroquery
+try:
+    from astroquery.vizier import Vizier;
+    log.info ('Load astroquery.vizier');
+except:
+    log.warning ('Cannot load astroquery.vizier, try:');
+    log.warning ('sudo conda install -c astropy astroquery');
+    
+
 # List of object
 objlist = list(set([h['OBJECT'] for h in hdrs]));
 objcat = dict();
 
 for obj in objlist:
     try:
-        from astroquery.vizier import Vizier;
-        objcat[obj] = Vizier.query_object (obj, catalog='JSDC')[0];
+        cat = Vizier.query_object (obj, catalog='JSDC')[0];
         log.info ('Find JSDC for '+obj);
+        log.info ("diam = %.3f mas"%cat['UDDH'][0]);
+        log.info ("Hmag = %.3f mas"%cat['Hmag'][0]);
+        objcat[obj] = cat;
     except:
         log.info ('Cannot find JSDC for '+obj);
 
@@ -96,9 +107,7 @@ for h in hdrs:
     if h['OBJECT'] in objcat:
         fluxm = Hzp * 10**(-objcat[h['OBJECT']]['Hmag'][0]/2.5);
         diam  = objcat[h['OBJECT']]['UDDH'][0];
-
-        log.info ("diam = %.3f mas"%diam);
-
+        
         # Loop on beam 
         for b in range (6):
             flux = h['HIERARCH MIRC QC FLUX%i MEAN'%b];
