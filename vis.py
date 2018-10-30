@@ -898,7 +898,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     hdulist = oifits.create (hdr, lbd);
 
     # Compute OI_FLUX
-    log.info ('Compute OI_FLUX');
+    log.info ('Compute Flux by simple mean, without selection');
     
     p_flux = np.nanmean (photo, axis=1);
     
@@ -932,9 +932,13 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
 
     phi = np.angle (np.mean (c_cpx, axis=2,keepdims=True));
     c_cpx *= np.exp (-1.j * phi);
-
     c_cpx  = np.nanmean (c_cpx * base_flag, axis=1);
-    c_norm = np.abs (c_cpx) * 0.0 + 1.0;
+    
+    c_norm = photo[:,:,:,setup.base_beam ()];
+    c_norm = 4 * c_norm[:,:,:,:,0] * c_norm[:,:,:,:,1] * attenuation**2;
+    c_norm = np.sqrt (np.maximum (c_norm, 0));
+    c_norm = np.nanmean (c_norm*base_flag, axis=1);
+    # c_norm = np.abs (c_cpx) * 0.0 + 1.0;
     
     oifits.add_vis (hdulist, time, c_cpx, c_norm, output=output, y0=y0);
 
@@ -1023,8 +1027,8 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     plot.base_name (axes);
     plot.compact (axes);
     for b in range (15):
-        axes.flatten()[b].plot (base_flag0[:,0,0,b], alpha=0.75);
-        axes.flatten()[b].plot (base_flag1[:,0,0,b],  alpha=0.75);
+        axes.flatten()[b].plot (base_flag0[:,0,0,b], 'o', alpha=0.3, markersize=4);
+        axes.flatten()[b].plot (base_flag1[:,0,0,b], 'o', alpha=0.3, markersize=2);
         axes.flatten()[b].set_ylim (-.2,1.2);
     files.write (fig,output+'_selection.png');
 
