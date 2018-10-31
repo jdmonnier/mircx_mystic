@@ -145,9 +145,9 @@ for h in hdrs:
     # If we don't have the info about this star
     except:
         for b in range (6):
-            h['HIERARCH MIRC QC TRANS%i'%b] = 0.0;
+            h['HIERARCH MIRC QC TRANS%i'%b] = -1.0;
         for b in bname:
-            h['HIERARCH MIRC QC TF'+b+' MEAN'] = 0.0;
+            h['HIERARCH MIRC QC TF'+b+' MEAN'] = -1.0;
         
 
 #
@@ -182,6 +182,7 @@ for b in range (15):
     snr  = headers.getval (hdrs, HMQ+'SNRB'+bname[b]+' MEAN');
     data /= (snr>argopt.snr_threshold);
     data /= (vis2>argopt.vis2_threshold);
+    data /= (data>0);
     axes.flatten()[b].plot (data, 'o');
     axes.flatten()[b].set_ylim (0,1.2);
 
