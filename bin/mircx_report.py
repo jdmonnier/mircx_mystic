@@ -43,10 +43,6 @@ parser = argparse.ArgumentParser (description=description, epilog=epilog,
 parser.add_argument ("--oifits-dir", dest="oifits_dir",default='./',type=str,
                      help="directory of products [%(default)s]");
 
-parser.add_argument ("--debug", dest="debug",default='FALSE',
-                     choices=TrueFalse,
-                     help="stop on error [%(default)s]");
-
 parser.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
                      default=5.0, help="SNR threshold for plotting value [%(default)s]");
 
