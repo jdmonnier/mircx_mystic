@@ -190,6 +190,7 @@ for b in range (15):
     data = headers.getval (hdrs, HMQ+'VISS'+bname[b]+' MEAN');
     snr  = headers.getval (hdrs, HMQ+'SNRB'+bname[b]+' MEAN');
     data /= (snr>argopt.snr_threshold);
+    data /= (data>0);
     axes.flatten()[b].plot (data, 'o');
     
 files.write (fig,'report_vis2.png');
@@ -222,6 +223,8 @@ plot.compact (axes);
 
 for b in range (15):
     data = headers.getval (hdrs, HMQ+'SNR'+bname[b]+' MEAN');
+    data /= (data>0);
     axes.flatten()[b].plot (data, 'o');
+    axes.flatten()[b].set_yscale ('log');
     
 files.write (fig,'report_snr.png');
