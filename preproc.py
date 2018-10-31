@@ -552,6 +552,8 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     fig.suptitle (headers.summary (hdr));
     ax[0].imshow (np.mean (fringe,axis=(0,1)));
     ax[1].imshow (np.swapaxes (np.mean (photos,axis=(1,2)), 0,1).reshape((ny,-1)));
+    for b in np.arange(1,6):
+        plt.axvline (x=b*(2*pxw+1) - 0.5, color='w', linestyle='--');
     files.write (fig, output+'_mean.png');
 
     # Spectra
