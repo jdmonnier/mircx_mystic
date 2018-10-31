@@ -56,7 +56,7 @@ def extract_maps (hdr, bmaps):
 
 def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
     '''
-    Compute the SPEC_CAL
+    Compute the SPEC_CAL from list of PREPROC
     '''
     elog = log.trace ('compute_speccal');
 
@@ -170,8 +170,8 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
     fig.suptitle ('Observed PSD (orange) and scaled template (blue)');
     for y in range (ny):
         ax = axes.flatten()[y];
-        ax.plot (freq,signal.psd_projection (res[y].x[0], freq, freq0, delta0, None));
-        ax.plot (freq,psd[y,:]);
+        ax.plot (freq,signal.psd_projection (res[y].x[0], freq, freq0, delta0, None), c='blue');
+        ax.plot (freq,psd[y,:], c='orange');
         ax.set_xlim (0,1.3*np.max(freq0));
         ax.set_ylim (0,1.1);
     files.write (fig,output+'_psdmodel.png');
@@ -179,8 +179,8 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
     # Effective wavelength
     fig,ax = plt.subplots ();
     fig.suptitle ('Guess calib. (orange) and Fitted calib, (blue)');
-    ax.plot (yfit,lbdfit * 1e6,'o-');
-    ax.plot (yfit,lbd * 1e6,'o-');
+    ax.plot (yfit,lbdfit * 1e6,'o-', c='blue');
+    ax.plot (yfit,lbd * 1e6,'o-', c='orange', alpha=0.5);
     ax.set_ylabel ('lbd (um)');
     ax.set_xlabel ('Detector line (python-def)');
     ax.set_ylim (1.45,1.8);
@@ -195,10 +195,22 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
 
     log.info ('Compute QC');
     
-    # Compute quality factor
+    # Compute quality of projection
     projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
+    log.info ('Projection quality = %g'%projection);
+
+    # Typical difference with prediction
+    delta = np.median (np.abs (lbd-lbdfit));
+    log.info ('Median delta = %.3f um'%(delta*1e6));
+
+    # Set quality to zero if clearly wrong fit
+    if delta > 0.075e-6:
+        log.warning ('Spectral calibration is probably faulty, set QUALITY to 0');
+        projection = 0.0;
+
+    # Set QC
     hdr[HMQ+'QUALITY'] = (projection, 'quality of data');
-    log.info (HMQ+'QUALITY = %e'%projection);
+    hdr[HMQ+'DELTA MEDIAN'] = (delta, '[m] median difference');
 
     # Compute position on detector of lbd0
     lbd0 = 1.6e-6;
