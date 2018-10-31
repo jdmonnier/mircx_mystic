@@ -848,9 +848,6 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     base_snr = base_powerbb / bias_powerbb;
     base_snr[~np.isfinite (base_snr)] = 0.0;
 
-    # Add the QC about raw SNR
-    qc.snr (hdr, y0, base_snr);    
-    
     # Smooth SNR along the ramp (if not done yet)
     log.info ('Smooth SNR over one ramp');
     base_snr = np.mean (base_snr,axis=1,keepdims=True);
@@ -868,6 +865,9 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     # boostraped and averaged as a phasor
     base_snr, base_gd = signal.bootstrap_triangles (base_snr, base_gd);
 
+    # Add the QC about raw SNR
+    qc.snr (hdr, y0, base_snr0, base_snr);
+    
     # Reduce norm power far from white-fringe
     log.info ('Apply coherence envelope of %.1f um'%(coherence_length*1e6));
     attenuation = np.exp (-(np.pi * base_gd / coherence_length)**2);

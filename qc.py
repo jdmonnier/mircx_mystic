@@ -15,7 +15,7 @@ def flux (hdr, y0, photo):
         val = np.mean (photo[:,:,y0,t], axis=(0,1));
         hdr[HMQ+'FLUX%i MEAN'%t] = (val,'flux at lbd0');
 
-def snr (hdr, y0, base_snr):
+def snr (hdr, y0, base_snr0, base_snr):
     '''
     Add QC to hdr about snr.
     '''
@@ -23,10 +23,10 @@ def snr (hdr, y0, base_snr):
     log.info ('Compute QC for SNR');
     
     for b,name in enumerate (setup.base_name ()):
-        val = rep_nan (np.mean (base_snr[:,:,:,b]));
+        val = rep_nan (np.mean (base_snr0[:,:,:,b]));
         hdr[HMQ+'SNR'+name+' MEAN'] = (val,'Broad-band SNR');
-        val = rep_nan (np.std (base_snr[:,:,:,b]));
-        hdr[HMQ+'SNR'+name+' STD'] = (val,'Broad-band SNR');
+        val = rep_nan (np.mean (base_snr[:,:,:,b]));
+        hdr[HMQ+'SNRB'+name+' MEAN'] = (val,'Broad-band bootstrapped SNR');
         
 
 def power (hdr, y0, base_power, bias_power, norm_power):
