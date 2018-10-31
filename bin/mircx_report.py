@@ -61,6 +61,9 @@ elog = log.trace ('mircx_report');
 # Load all the headers
 hdrs = mrx.headers.loaddir (argopt.oifits_dir);
 
+ids = np.argsort ([h['MJD-OBS'] for h in hdrs]);
+hdrs = [hdrs[i] for i in ids];
+
 # List of basename
 bname = setup.base_name ();
 
@@ -104,7 +107,7 @@ for obj in objlist:
 for h in hdrs:
     
     # If we have the info about this star
-    if h['OBJECT'] in objcat:
+    try:
         fluxm = Hzp * 10**(-objcat[h['OBJECT']]['Hmag'][0]/2.5);
         diam  = objcat[h['OBJECT']]['UDDH'][0];
         
@@ -119,10 +122,9 @@ for h in hdrs:
             spf  = h['HIERARCH MIRC QC BASELENGTH'+b] / h['EFF_WAVE'];
             vis2m = signal.airy (diam * spf * 4.84813681109536e-09)**2;
             h['HIERARCH MIRC QC TF'+b+' MEAN'] = vis2/vis2m;
-            
-            
+
     # If we don't have the info about this star
-    else:
+    except:
         for b in range (6):
             h['HIERARCH MIRC QC TRANS%i'%b] = 0.0;
         for b in bname:
@@ -153,9 +155,12 @@ plot.base_name (axes);
 plot.compact (axes);
 
 for b in range (15):
-    data = [h['HIERARCH MIRC QC TF'+bname[b]+' MEAN'] for h in hdrs];
+    data = np.array([h['HIERARCH MIRC QC TF'+bname[b]+' MEAN'] for h in hdrs]);
+    snr  = np.array([h['HIERARCH MIRC QC SNR'+bname[b]+' MEAN'] for h in hdrs]);
+    data /= (snr>5);
     axes.flatten()[b].plot (data, 'o');
-    
+    axes.flatten()[b].set_ylim (0,1.2);
+
 files.write (fig,'report_tf2.png');
 
 # Plot vis2
@@ -180,8 +185,11 @@ plot.base_name (axes);
 plot.compact (axes);
 
 for b in range (15):
-    data = [h['HIERARCH MIRC QC DECOHER'+bname[b]+'_HALF'] for h in hdrs];
+    data = np.array([h['HIERARCH MIRC QC DECOHER'+bname[b]+'_HALF'] for h in hdrs]);
+    snr  = np.array([h['HIERARCH MIRC QC SNRB'+bname[b]+' MEAN'] for h in hdrs]);
+    data /= (snr>5);
     axes.flatten()[b].plot (data, 'o');
+    axes.flatten()[b].set_ylim (0);
     
 files.write (fig,'report_decoher.png');
 
