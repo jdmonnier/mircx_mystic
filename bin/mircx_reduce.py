@@ -339,7 +339,7 @@ if argopt.rts != 'FALSE':
             # Associate SPEC_CAL
             keys = setup.detwin + setup.insmode + setup.fringewin;
             speccal = mrx.headers.assoc (gp[0], hdrs, 'SPEC_CAL', keys=keys,
-                                         which='best', required=1);
+                                         which='best', required=1, quality=0.001);
             
             # Associate PROFILE (best BEAM_MAP in this setup)
             profiles = [];
