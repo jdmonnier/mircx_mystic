@@ -11,11 +11,16 @@ from mircx_pipeline import log, setup, plot, files, signal, headers;
 from mircx_pipeline.headers import HM, HMQ, HMP;
 
 #
-# Matplotlib default
+# Default
 #
 
+# Matplotlib
 import matplotlib as mpl;
 mpl.rcParams['lines.markersize'] = 2;
+     
+# Remove warning for invalid
+np.seterr (divide='ignore',invalid='ignore');
+
 
 
 #
@@ -58,6 +63,9 @@ parser.add_argument ("--debug", dest="debug",default='FALSE',
 parser.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
                      default=5.0, help="SNR threshold for plotting value [%(default)s]");
 
+parser.add_argument ("--vis2-threshold", dest="vis2_threshold", type=float,
+                     default=0.1, help="Vis2 threshold for plotting TF value [%(default)s]");
+
 #
 # Initialisation
 #
@@ -68,17 +76,18 @@ argopt = parser.parse_args ();
 # Verbose
 elog = log.trace ('mircx_report');
 
-# Load all the headers
-hdrs = mrx.headers.loaddir (argopt.oifits_dir);
-
-ids = np.argsort ([h['MJD-OBS'] for h in hdrs]);
-hdrs = [hdrs[i] for i in ids];
-
 # List of basename
 bname = setup.base_name ();
 
 # Zero point of Hband (arbitrary unit)
 Hzp = 1e5;
+
+# Load all the headers
+hdrs = mrx.headers.loaddir (argopt.oifits_dir);
+
+# Sort the headers by time
+ids = np.argsort ([h['MJD-OBS'] for h in hdrs]);
+hdrs = [hdrs[i] for i in ids];
 
 
 #
@@ -154,6 +163,7 @@ plot.compact (axes);
 
 for b in range (6):
     data = headers.getval (hdrs, HMQ+'TRANS%i'%b);
+    data /= (data>0);
     axes.flatten()[b].plot (data, 'o');
     
 files.write (fig,'report_flux.png');
@@ -168,8 +178,10 @@ plot.compact (axes);
 
 for b in range (15):
     data = headers.getval (hdrs, HMQ+'TF'+bname[b]+' MEAN');
-    snr  = headers.getval (hdrs, HMQ+'SNR'+bname[b]+' MEAN');
+    vis2 = headers.getval (hdrs, HMQ+'VISS'+bname[b]+' MEAN');
+    snr  = headers.getval (hdrs, HMQ+'SNRB'+bname[b]+' MEAN');
     data /= (snr>argopt.snr_threshold);
+    data /= (vis2>argopt.vis2_threshold);
     axes.flatten()[b].plot (data, 'o');
     axes.flatten()[b].set_ylim (0,1.2);
 
@@ -185,6 +197,8 @@ plot.compact (axes);
 
 for b in range (15):
     data = headers.getval (hdrs, HMQ+'VISS'+bname[b]+' MEAN');
+    snr  = headers.getval (hdrs, HMQ+'SNRB'+bname[b]+' MEAN');
+    data /= (snr>argopt.snr_threshold);
     axes.flatten()[b].plot (data, 'o');
     
 files.write (fig,'report_vis2.png');
@@ -200,7 +214,7 @@ plot.compact (axes);
 
 for b in range (15):
     data = headers.getval (hdrs, HMQ+'DECOHER'+bname[b]+'_HALF');
-    snr  = headers.getval (hdrs, HMQ+'SNR'+bname[b]+' MEAN');
+    snr  = headers.getval (hdrs, HMQ+'SNRB'+bname[b]+' MEAN');
     data /= (snr>argopt.snr_threshold);
     axes.flatten()[b].plot (data, 'o');
     axes.flatten()[b].set_ylim (0);
