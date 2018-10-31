@@ -11,19 +11,6 @@ from mircx_pipeline import log, setup, plot, files, signal, headers;
 from mircx_pipeline.headers import HM, HMQ, HMP;
 
 #
-# Default
-#
-
-# Matplotlib
-import matplotlib as mpl;
-mpl.rcParams['lines.markersize'] = 2;
-     
-# Remove warning for invalid
-np.seterr (divide='ignore',invalid='ignore');
-
-
-
-#
 # Implement options
 #
 
@@ -69,6 +56,13 @@ parser.add_argument ("--vis2-threshold", dest="vis2_threshold", type=float,
 #
 # Initialisation
 #
+
+# Matplotlib
+import matplotlib as mpl;
+mpl.rcParams['lines.markersize'] = 2;
+     
+# Remove warning for invalid
+np.seterr (divide='ignore',invalid='ignore');
 
 # Parse argument
 argopt = parser.parse_args ();
