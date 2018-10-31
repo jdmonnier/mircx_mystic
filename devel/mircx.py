@@ -21,7 +21,7 @@ relay = opt.camera ();
 # objective, collimator, combiner with 1" optics
 relay += opt.lens (x=100.,d=25,f=100.);
 relay += opt.lens (x=275.,d=25,f=100.);
-relay += opt.lens (x=275+100+200,d=25,f=200.); d0 = 375;
+relay += opt.lens (x=275+100+250,d=25,f=250.); d0 = 375;
 # relay += opt.lens (x=275.,d=25,f=50.);
 # relay += opt.lens (x=275+50+100,d=25,f=100.); d0 = 325;
 
@@ -48,19 +48,25 @@ for yi in (y - np.mean (y)):
     spatial += opt.diffracting (x=x,y=yi,d=0.2,fn=100);
 
 # Add x-chan in the spatial direction
-spatial += opt.splitter (x=d0+60, d=12.5, fn=1.0);
-spatial += opt.mirror (x=d0+60, y=-25, d=12.5, fn=1.0);
-spatial += opt.lens (x=d0+7,y=-25,d=12.5,f=32.);
-spatial += opt.mirror (x=d0-15, y=-25, d=12.5, fn=-1.0);
-spatial += opt.mirror (x=d0-15, y=+3, d=3.5, fn=-1.0);
+# spatial += opt.splitter (x=d0+60, d=12.5, fn=1.0);
+# spatial += opt.mirror (x=d0+60, y=-25, d=12.5, fn=1.0);
+# spatial += opt.lens (x=d0+7,y=-25,d=12.5,f=32.);
+# spatial += opt.mirror (x=d0-15, y=-25, d=12.5, fn=-1.0);
+# spatial += opt.mirror (x=d0-15, y=+3, d=3.5, fn=-1.0);
+
+spatial += opt.splitter (x=d0+60, d=12.5, fn=1.0*3);
+spatial += opt.mirror (x=d0+77, y=-12.5, d=12.5, fn=1.0*3);
+spatial += opt.lens (x=d0+17,y=-12.5,d=12.5,f=32.);
+spatial += opt.mirror (x=d0, y=-12.5, d=12.5, fn=-1.0);
+spatial += opt.mirror (x=d0, y=+3, d=3., fn=-1.0);
 
 # Move spectral
 spectral.move (ym=+80);
     
 # Rescale and recenter
 full = spatial + spectral;
-full.rescale (ys=10,xs=10);
-full.recenter (xc=(375-20)*0,yc=0);
+full.rescale (ys=20,xs=20);
+full.recenter (xc=(375-20),yc=0);
 
 # Write
 i = (i+1)%2 if 'i' in locals() else 0;

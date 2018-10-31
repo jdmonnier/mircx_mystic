@@ -139,9 +139,9 @@ def tf_time_weight (hdus, hdutf, delta):
 
             # Flag huge errors
             if o[3] is True: 
-                hdutfs[o[0]].data['FLAG'] += (tfErr > 600);
+                hdutfs[o[0]].data['FLAG'] += (tfErr > 50);
             else:
-                hdutfs[o[0]].data['FLAG'] += (tfErr > 1.4);
+                hdutfs[o[0]].data['FLAG'] += (tfErr > 0.6);
 
         # Verbose
         valid = (~hdutfs[o[0]].data['FLAG']) & np.isfinite (hdutfs[o[0]].data[o[1]]);

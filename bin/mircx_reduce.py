@@ -74,6 +74,8 @@ preproc.add_argument ("--raw-dir", dest="raw_dir",default='./',type=str,
 preproc.add_argument ("--preproc-dir", dest="preproc_dir",default='./preproc/',type=str,
                      help="directory of products [%(default)s]");
 
+preproc.add_argument ("--max-integration-time", dest="max_integration_time",default=300.,type=float,
+                     help="maximum integration into a single file, in s [%(default)s]");
 
 rts = parser.add_argument_group ('(2) rts',
                   '\nCreates RTS intermediate products, which are the\n'
@@ -88,7 +90,7 @@ rts.add_argument ("--rts-dir", dest="rts_dir",default='./rts/',type=str,
                   help="directory of products [%(default)s]");
 
 rts.add_argument ("--beam-quality", dest="beam_quality", type=float,
-                  default=2.0, help="minimum quality to consider the beammap as valid [%(default)s]");
+                  default=0.5, help="minimum quality to consider the beammap as valid [%(default)s]");
 
 rts.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
                   choices=TrueFalse,
@@ -107,8 +109,14 @@ oifits.add_argument ("--oifits", dest="oifits",default='TRUE',
 oifits.add_argument ("--oifits-dir", dest="oifits_dir",default='./oifits/',type=str,
                      help="directory of products [%(default)s]");
 
-oifits.add_argument ("--ncoherent", dest="ncoherent", type=float,
-                     default=2.0, help="number of frames for coherent integration, can be fractional [%(default)s]");
+oifits.add_argument ("--ncoherent", dest="ncoherent", type=int,
+                     default=5, help="number of frames for coherent integration [%(default)s]");
+
+oifits.add_argument ("--ncs", dest="ncs", type=int,
+                     default=1, help="number of frame-offset for cross-spectrum [%(default)s]");
+
+oifits.add_argument ("--nbs", dest="nbs", type=int,
+                     default=4, help="number of frame-offset for bi-spectrum [%(default)s]");
 
 oifits.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
                      default=2.0, help="SNR threshold for fringe selection [%(default)s]");
@@ -143,12 +151,12 @@ argopt = parser.parse_args ();
 
 # Verbose
 elog = log.trace ('mircx_reduce');
-
-# List inputs
-hdrs = hdrs_raw = mrx.headers.loaddir (argopt.raw_dir);
     
 if argopt.preproc != 'FALSE':
     overwrite = (argopt.preproc == 'OVERWRITE');
+
+    # List inputs
+    hdrs = hdrs_raw = mrx.headers.loaddir (argopt.raw_dir);
 
     #
     # Compute BACKGROUND_MEAN
@@ -229,7 +237,7 @@ if argopt.preproc != 'FALSE':
     # Group all DATA
     keys = setup.detwin + setup.detmode + setup.insmode;
     gps = mrx.headers.group (hdrs, 'DATA', keys=keys,
-                             delta=300, Delta=120,
+                             delta=120, Delta=argopt.max_integration_time,
                              continuous=True);
 
     # Compute 
@@ -254,7 +262,8 @@ if argopt.preproc != 'FALSE':
             for i in range(1,7):
                 keys = setup.detwin + setup.insmode;
                 tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MAP'%i,
-                                         keys=keys, which='best', required=1);
+                                         keys=keys, which='best', required=1,
+                                         quality=0.01);
                 bmaps.extend (tmp);
             
             mrx.compute_preproc (gp[0:argopt.max_file], bkg, bmaps, output=output);
@@ -297,6 +306,9 @@ if argopt.preproc != 'FALSE':
             if argopt.debug == 'TRUE': raise;
         finally:
             log.closeFile ();
+
+    log.info ('Cleanup memory');
+    del hdrs, hdrs_calib, gps;
 
 #
 # Compute RTS
@@ -356,6 +368,9 @@ if argopt.rts != 'FALSE':
         finally:
             log.closeFile ();
             
+    log.info ('Cleanup memory');
+    del hdrs, gps;
+    
 #
 # Compute OIFITS
 #
@@ -382,6 +397,7 @@ if argopt.oifits != 'FALSE':
 
             log.setFile (output+'.log');
             mrx.compute_vis (gp, output=output, ncoher=argopt.ncoherent,
+                             ncs=argopt.ncs, nbs=argopt.nbs,
                              threshold=argopt.snr_threshold);
 
         except Exception as exc:
@@ -390,3 +406,5 @@ if argopt.oifits != 'FALSE':
         finally:
             log.closeFile ();
             
+    log.info ('Cleanup memory');
+    del hdrs, gps;

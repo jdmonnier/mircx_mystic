@@ -14,11 +14,11 @@ from scipy import fftpack;
 from scipy.signal import medfilt;
 from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter, uniform_filter, median_filter;
-from scipy.optimize import least_squares;
+from scipy.optimize import least_squares, curve_fit;
 from scipy.ndimage.morphology import binary_closing, binary_opening;
 from scipy.ndimage.morphology import binary_dilation;
 
-from . import log, files, headers, setup, oifits, signal, plot;
+from . import log, files, headers, setup, oifits, signal, plot, qc;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
 def extract_maps (hdr, bmaps):
@@ -54,7 +54,7 @@ def extract_maps (hdr, bmaps):
 
     return fringe_map, photo_map;
 
-def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
+def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
     '''
     Compute the SPEC_CAL
     '''
@@ -153,15 +153,8 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
         log.info ('Best merit 1-c=%.4f found at s/s0=%.4f'%(res[-1].fun[0],res[-1].x[0]/s0));
 
     # Get wavelengths
-    yfit = hdr[HMW+'FRINGE STARTY'] + np.arange (ny);
+    yfit = np.arange (ny);
     lbdfit = np.array([r.x[0]*lbd0 for r in res]);
-
-    log.info ('Compute QC');
-    
-    # Compute quality factor
-    projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
-    hdr[HMQ+'QUALITY'] = (projection, 'quality of data');
-    log.info (HMQ+'QUALITY = %e'%projection);
 
     log.info ('Figures');
 
@@ -199,6 +192,20 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3.0, nfreq=4096):
     ax[0].imshow (correl,aspect='auto');
     ax[1].plot (psd[:,0:int(nfreq/2)].T);
     files.write (fig,output+'_psd.png');
+
+    log.info ('Compute QC');
+    
+    # Compute quality factor
+    projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
+    hdr[HMQ+'QUALITY'] = (projection, 'quality of data');
+    log.info (HMQ+'QUALITY = %e'%projection);
+
+    # Compute position on detector of lbd0
+    lbd0 = 1.6e-6;
+    try:     y0 = hdr[HMW+'FRINGE STARTY'] + np.interp (lbd0, lbdfit, yfit);
+    except:  y0 = -99.0
+    hdr[HMQ+'YLBD0'] = (y0, 'position of %.3fum in cropped window'%lbd0);
+    log.info (HMQ+'YLBD0 = %e'%y0);
 
     # File
     log.info ('Create file');
@@ -297,7 +304,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
         val = np.mean (profile[b,:,:,:,:],axis=(0,1,2));
         ax.plot (val / (np.mean (val)+1e-20), label='profile');
         val = np.mean (photo[b,:,:,:,:],axis=(0,1,2));
-        ax.plot (val / (np.mean (val)+1e-20), label='photo');
+        ax.plot (val / (np.mean (val)+1e-20), label='xchan');
     axes[0,0].legend();
     files.write (fig,output+'_profile.png');
 
@@ -321,7 +328,6 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
 
     # Keep only valid channels
     log.info ('Keep only valid channels');
-    print (photo.shape, fringe.shape, fringe_map.shape, photo_map.shape);
     photo  = photo[:,:,:,is_valid];
     fringe = fringe[:,:,is_valid,:];
     fringe_map = fringe_map[:,:,:,is_valid,:];
@@ -370,20 +376,6 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     # Set invalid kappas to zero
     kappa[kappa > 1e3] = 0.0;
     kappa[kappa < 0.] = 0.0;
-
-#    # Filter the kappa-matrix and the data to avoid
-#    # craps on the edges. treshold(ny) is defined
-#    # based on fringe_map 
-#    log.info ('Compute threshold');
-#    threshold = np.mean (medfilt (fringe_map,[1,1,1,1,11]), axis = (0,1,2,-1));
-#    threshold /= np.max (medfilt (threshold,3)) + 1e-20;
-#    threshold = threshold > 0.25;
-#
-#    log.info ('Apply threshold:');
-#    log.info (str(1*threshold));
-#    fringe[:,:,~threshold,:] = 0.0;
-#    photo[:,:,:,~threshold]  = 0.0;
-#    kappa[:,:,:,~threshold]  = 0.0;
         
     # Kappa-matrix as spectrum
     log.info ('Plot kappa');
@@ -495,11 +487,21 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     freqs = setup.base_freq (hdr);
     
     # Scale to ensure the frequencies fall
-    # into integer pixels (max freq is 40)
-    scale0 = 40. / np.abs (freqs * nx).max();
+    # into integer pixels (max freq is 40 or 72)
+    ifreq_max = setup.ifreq_max (hdr);
+    scale0 = 1.0 * ifreq_max / np.abs (freqs * nx).max();
+
+    # Compute the expected scaling
+    log.info ("ifreqs as float");
+    log.info (freqs * scale0 * nx);
+
+    # Compute the expected scaling
+    log.info ("ifreqs as integer");
     ifreqs = np.round (freqs * scale0 * nx).astype(int);
+    log.info (ifreqs);
 
     # Dimensions
+    nb = len(ifreqs);
     nr,nf,ny,nx = fringe.shape
 
     # Compute DFT. The amplitude of the complex number corresponds
@@ -519,6 +521,9 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
         cf[:,y,1:] = cfc[:,1:nfq+1] - 1.j * cfc[:,nfq+1:];
     cf.shape = (nr,nf,ny,nfq+1);
 
+    log.info ('Free fringe');
+    del fringe;
+
     # DFT at fringe frequencies
     log.info ('Extract fringe frequency');
     base_dft  = cf[:,:,:,np.abs(ifreqs)];
@@ -536,9 +541,67 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     cf_upsd  = np.abs(cf[:,:,:,0:int(nx/2)])**2;
     cf_upsd -= np.mean (cf_upsd[:,:,:,ibias],axis=-1,keepdims=True);
 
+    log.info ('Free cf');
+    del cf;
+
+    log.info ('Compute crude vis2 with various coherent');
+        
+    # Compute crude normalisation for vis2
+    bbeam = setup.base_beam ();
+    norm = np.mean (photok0[:,:,ny/2,:], axis=(0,1));
+    norm = 4. * norm[bbeam[:,0]] * norm[bbeam[:,1]];
+    
+    # Compute the coherent flux for various integration
+    # for plots, to track back vibrations
+    nc = np.array([2, 5, 10, 15, 25, 50]);
+    vis2 = np.zeros ((nb, len(nc)));
+    for i,n in enumerate(nc):
+        # Coherent integration, we process only the central channel
+        base_s  = signal.uniform_filter_cpx (base_dft[:,:,ny/2,:],(0,n,0),mode='constant');
+        bias_s  = signal.uniform_filter_cpx (bias_dft[:,:,ny/2,:],(0,n,0),mode='constant');
+        # Unbiased visibility, based on cross-spectrum with 1-shift
+        b2    = np.mean (np.mean (np.real (bias_s[:,1:,:] * np.conj(bias_s[:,0:-1,:])), axis=(0,1,2)));
+        power = np.mean (np.real (base_s[:,1:,:] * np.conj(base_s[:,0:-1,:])), axis=(0,1)) - b2;
+        vis2[:,i] = power / norm;
+        
+    log.info ('Compute QC DECOHER_TAU0');
+    
+    # Time and model
+    fps = hdr['HIERARCH MIRC FRAME_RATE'];
+    time  = 1.0 * nc / fps * 1e3;
+    timem = np.linspace (1e-6, time.max(), 1000);
+    vis2m = np.zeros ((nb,len(timem)));
+    vis2h  = np.zeros (nb)
+
+    # QC parameters
+    for b,name in enumerate (setup.base_name ()):
+        # Time where we lose half the coherence
+        vis2h[b] = np.interp (0.5 * vis2[b,0], vis2[b,::-1], time[::-1]);
+        hdr[HMQ+'DECOHER'+name+'_HALF'] = (vis2h[b], '[ms] time for half V2');
+        # Tau0 from model assuming 5/3
+        try:
+            popt, pcov = curve_fit (signal.decoherence, time, vis2[b,:], p0=[vis2[b,0], 0.01]);
+            vis2m[b,:] = signal.decoherence (timem, popt[0], popt[1]);
+            hdr[HMQ+'DECOHER'+name+'_TAU0'] = (popt[1], '[ms] coherence time with 5/3');
+        except:
+            log.warning ("Fail to fit on baseline %i, continue anyway"%b);
+        
     # Figures
     log.info ('Figures');
 
+    # Plot the decoherence
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+    for i,ax in enumerate (axes.flatten()):
+        ax.plot (time, vis2[i,:],'o-');
+        ax.plot (timem,vis2m[i,:],'-',alpha=0.5);
+        plot.scale (ax, vis2h[i], h=0.2, fmt="%.1f ms");
+        ax.set_ylim (0);
+    axes.flatten()[13].set_xlabel ('Coherent integration [ms]    (FPS=%f)'%fps);
+    files.write (fig,output+'_vis2coher.png');
+    
     # Integrated spectra
     fig,ax = plt.subplots (2,1);
     fig.suptitle (headers.summary (hdr));
@@ -575,6 +638,27 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     ax[1].plot (np.mean (cf_upsd, axis=(0,1))[int(ny/2),:]);
     ax[1].set_xlim (0,cf_upsd.shape[-1]);
     files.write (fig,output+'_psd.png');
+
+    # Compute time FFT ov the entire time serie
+    log.warning ('FIXME: Skip long FFT as this is too time consuming...');
+#    log.info ('Long FFT');
+#    nt = nr*nf;
+#    base_time = base_dft[:,:,ny/2,:].reshape((nt,nb));
+#    ft0 = np.fft.fft (np.angle(base_time), axis=0)[:nt/2,:];
+#    ft1 = np.fft.fft (np.angle(base_time[1,:]*np.conj(base_time[:-1,:])), axis=0)[:nt/2,:];
+#    
+#    # Vibration monitor
+#    fig,ax = plt.subplots (2,1);
+#    fig.suptitle (headers.summary (hdr));
+#    ax[0].imshow (np.abs(ft0).T,aspect='auto');
+#    ax[1].plot (np.abs(ft0));
+#    files.write (fig,output+'_vib0.png');
+#
+#    fig,ax = plt.subplots (2,1);
+#    fig.suptitle (headers.summary (hdr));
+#    ax[0].imshow (np.abs(ft1).T,aspect='auto');
+#    ax[1].plot (np.abs(ft1));
+#    files.write (fig,output+'_vib1.png');
 
     # File
     log.info ('Create file');
@@ -633,13 +717,15 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     # Write file
     hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2,hdu3,hdu4,hdu5,hdu6,hdu7]);
     files.write (hdulist, output+'.fits');
-
+    
+                
     plt.close("all");
     return hdulist;
 
-def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgphot=True):
+def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
+                 avgphot=True, ncs=2, nbs=2):
     '''
-    Compute the VIS
+    Compute the OIFITS from the RTS
     '''
     elog = log.trace ('compute_vis');
 
@@ -657,14 +743,24 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     photo     = pyfits.getdata (f, 'PHOTOMETRY').astype(float);
     lbd       = pyfits.getdata (f, 'WAVELENGTH').astype(float);
 
+
     # Dimensions
     nr,nf,ny,nb = base_dft.shape;
     log.info ('Data size: '+str(base_dft.shape));
 
-    # Compute lbd0 and dlbd
-    lbd0 = np.mean (lbd[4:-4]);
-    dlbd = np.mean (np.diff (lbd[4:-4]));
-
+    # Compute lbd0 and dlbd    
+    if hdr['CONF_NA'] == 'H_PRISM20' :
+        lbd0 = np.mean (lbd);
+        dlbd = np.mean (np.diff (lbd));
+        
+    elif (hdr['CONF_NA'] == 'H_PRISM40') or  (hdr['CONF_NA'] == 'H_PRISM50'):
+        lbd0 = np.mean (lbd[2:-2]);
+        dlbd = np.mean (np.diff (lbd[2:-2]));
+    
+    else :
+        lbd0 = np.mean (lbd[4:-4]);
+        dlbd = np.mean (np.diff (lbd[4:-4]));
+    
     # Verbose spectral resolution
     log.info ('lbd0=%.3e, dlbd=%.3e um (R=%.1f)'%(lbd0*1e6,dlbd*1e6,np.abs(lbd0/dlbd)));
 
@@ -681,7 +777,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
         
     # Check if nan in fringe
     nnan = np.sum (np.isnan (base_dft));
-    if nnan > 0: log.warning ('%i NaNs in photometry'%nnan);
+    if nnan > 0: log.warning ('%i NaNs in fringe'%nnan);
 
     log.info ('Mean photometries: %e'%np.mean (photo));
 
@@ -702,53 +798,40 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     else:
         log.info ('No spectro-temporal averaging of photometry');
         hdr[HMP+'AVGPHOT'] = (False,'spectro-temporal averaging of photometry');
-
         
     # Do coherent integration
-    log.info ('Coherent integration over %.1f frames'%ncoher);
-    hdr[HMP+'NFRAME_COHER'] = (ncoher,'nb. of frames integrated coherently');
-    base_dft = signal.gaussian_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
-    bias_dft = signal.gaussian_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant',truncate=2.0);
+    log.info ('Coherent integration over %i frames'%ncoher);
+    base_dft = signal.uniform_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant');
+    bias_dft = signal.uniform_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant');
 
     # Smooth photometry over the same amount (FIXME: be be discussed)
-    log.info ('Smoothing of photometry over %.1f frames'%ncoher);
-    photo = gaussian_filter (photo,(0,ncoher,0,0),mode='constant',truncate=2.0);
+    log.info ('Smoothing of photometry over %i frames'%ncoher);
+    photo = uniform_filter (photo,(0,ncoher,0,0),mode='constant');
 
-    log.info ('Mean photometries: %e'%np.mean (photo));
-    
+    # Add QC
+    qc.flux (hdr, y0, photo);
+
     nscan = 64;
     log.info ('Compute 2d FFT (nscan=%i)'%nscan);
 
-    # Compute FFT for display, average over frames in ramp
-    base_fft  = np.fft.fftshift (np.fft.fft (base_dft, n=nscan, axis=2), axes=2);
-    base_scan = np.mean (np.abs(base_fft),axis=1, keepdims=True);
+    # Compute FFT over the lbd direction, thus OPD-scan
+    base_scan  = np.fft.fftshift (np.fft.fft (base_dft, n=nscan, axis=2), axes=2);
+    bias_scan  = np.fft.fftshift (np.fft.fft (bias_dft, n=nscan, axis=2), axes=2);
 
-    bias_fft  = np.fft.fftshift (np.fft.fft (bias_dft, n=nscan, axis=2), axes=2);
-    bias_scan = np.mean (np.abs(bias_fft),axis=1, keepdims=True);
+    # Compute power in the scan
+    if ncs > 0:
+        log.info ('Compute OPD-scan Power with offset of %i frames'%ncs);
+        base_scan = np.real (base_scan[:,ncs:,:,:] * np.conj(base_scan[:,0:-ncs,:,:]));
+        bias_scan = np.real (bias_scan[:,ncs:,:,:] * np.conj(bias_scan[:,0:-ncs,:,:]));
+        base_scan = np.mean (base_scan, axis=1, keepdims=True);
+        bias_scan = np.mean (bias_scan, axis=1, keepdims=True);
+    else:
+        log.info ('Compute OPD-scan Power without offset');
+        base_scan = np.mean (np.abs(base_scan)**2,axis=1, keepdims=True);
+        bias_scan = np.mean (np.abs(bias_scan)**2,axis=1, keepdims=True);
 
-    # Plot the 'opd-scan'
-    fig,axes = plt.subplots (5,3, sharex=True);
-    fig.suptitle (headers.summary (hdr));
-    plot.base_name (axes);
-    plot.compact (axes);
-    for i,ax in enumerate (axes.flatten()): ax.imshow (base_scan[:,0,:,i].T,aspect='auto');
-    files.write (fig,output+'_base_trend.png');
-
-    # Plot the trend
-    fig,axes = plt.subplots (5,3, sharex=True);
-    fig.suptitle (headers.summary (hdr));
-    plot.base_name (axes);
-    plot.compact (axes);
-    for i,ax in enumerate (axes.flatten()): ax.imshow (bias_scan[:,0,:,i].T,aspect='auto');
-    files.write (fig,output+'_bias_trend.png');
-
-    log.info ('Compute SNR (alternate)');
-
-    # Compute SNR and GD from this opd-scan
-    # base_powerbb    = np.max (base_scan, axis=2, keepdims=True);
-    # base_powerbb_np = base_scan[:,:,int(nscan/2),:][:,:,None,:];
-    # bias_powerbb    = np.mean (np.max (bias_scan, axis=2, keepdims=True), axis=-1, keepdims=True);
-
+    log.info ('Compute SNR and GD (alternate)');
+    
     # Alternate SNR, whose statistic is independent of averaging
     base_scan -= np.median (base_scan, axis=2, keepdims=True);
     bias_scan -= np.median (bias_scan, axis=2, keepdims=True);
@@ -756,9 +839,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     base_powerbb    = np.max (base_scan, axis=2, keepdims=True);
     bias_powerbb    = np.mean (np.max (bias_scan, axis=2, keepdims=True), axis=-1, keepdims=True);
 
-    log.info ('Compute GD');
-
-    # Scale for gd
+    # Scale for gd in [um]
     scale_gd = 1. / (lbd0**-1 - (lbd0+dlbd)**-1) / nscan;
     base_gd  = (np.argmax (base_scan, axis=2)[:,:,None,:] - int(nscan/2)) * scale_gd;
     gd_range = scale_gd * nscan / 2;
@@ -767,45 +848,9 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     base_snr = base_powerbb / bias_powerbb;
     base_snr[~np.isfinite (base_snr)] = 0.0;
 
-    # Compute power per spectral channels
-    base_power = np.abs (base_dft)**2;
-    bias_power = np.abs (bias_dft)**2;
-    bias_power_mean = np.mean (bias_power,axis=-1,keepdims=True);
-
-    # Compute norm power
-    log.info ('Compute norm power');
-    bbeam = setup.base_beam ();
-    norm_power = 4. * photo[:,:,:,bbeam[:,0]] * photo[:,:,:,bbeam[:,1]];
-
-    log.info ('Mean norm_power: %e'%np.mean (norm_power));
-
-    # QC for power
-    log.info ('Compute QC for beam');
-    for t in range(6):
-        val = np.mean (photo[:,:,y0,t], axis=(0,1));
-        hdr[HMQ+'FLUX%i MEAN'%t] = (val,'flux at lbd0');
-
-    # QC for power
-    log.info ('Compute QC for base');
-    for b,name in enumerate (setup.base_name ()):
-        val = rep_nan (np.mean (norm_power[:,:,y0,b], axis=(0,1)));
-        hdr[HMQ+'NORM'+name+' MEAN'] = (val,'Norm Power at lbd0');
-        val = rep_nan (np.mean (base_power[:,:,y0,b], axis=(0,1)));
-        hdr[HMQ+'POWER'+name+' MEAN'] = (val,'Fringe Power at lbd0');
-        val = rep_nan (np.std (base_power[:,:,y0,b], axis=(0,1)));
-        hdr[HMQ+'POWER'+name+' STD'] = (val,'Fringe Power at lbd0');
-        val = rep_nan (np.mean (base_snr[:,:,:,b]));
-        hdr[HMQ+'SNR'+name+' MEAN'] = (val,'Broad-band SNR');
-        val = rep_nan (np.std (base_snr[:,:,:,b]));
-        hdr[HMQ+'SNR'+name+' STD'] = (val,'Broad-band SNR');
-
-    # QC for bias
-    log.info ('Compute QC for bias');
-    qc_power = np.mean (bias_power[:,:,y0,:], axis=(0,1));
-    hdr[HMQ+'BIASMEAN MEAN'] = (np.mean (qc_power),'Bias Power at lbd0');
-    hdr[HMQ+'BIASMEAN STD'] = (np.std (qc_power),'Bias Power at lbd0');
-    hdr[HMQ+'BIASMEAN MED'] = (np.median (qc_power),'Bias Power at lbd0');
-
+    # Add the QC about raw SNR
+    qc.snr (hdr, y0, base_snr);    
+    
     # Smooth SNR along the ramp (if not done yet)
     log.info ('Smooth SNR over one ramp');
     base_snr = np.mean (base_snr,axis=1,keepdims=True);
@@ -826,15 +871,13 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     # Reduce norm power far from white-fringe
     log.info ('Apply coherence envelope of %.1f um'%(coherence_length*1e6));
     attenuation = np.exp (-(np.pi * base_gd / coherence_length)**2);
-    norm_power *= attenuation**2;
 
-    log.info ('Mean norm_power: %e'%np.mean (norm_power));
-
-    # Compute selection flag from averaged SNR over the ramp
+    # Compute selection flag from SNR
     log.info ('SNR selection > %.2f'%threshold);
     hdr[HMQ+'SNR_THRESHOLD'] = (threshold, 'to accept fringe');
     base_flag  = 1. * (base_snr > threshold);
 
+    # Compute selection flag from GD
     log.info ('GD selection: enveloppe > 0.2');
     base_flag *= (attenuation**2 > 0.2);
 
@@ -848,33 +891,75 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     base_flag = 1.0 * binary_closing (base_flag, structure=structure);
     base_flag = 1.0 * binary_opening (base_flag, structure=structure);
 
-    # Plot this fringe selection
-    fig,axes = plt.subplots (2,1);
-    axes[0].imshow (base_flag0[:,0,0,:].T,aspect='auto');
-    axes[1].imshow (base_flag[:,0,0,:].T,aspect='auto');
-    files.write (fig,output+'_morpho.png');
-
     # Replace 0 by nan to perform nanmean and nanstd
+    base_flag1 = base_flag.copy ();
     base_flag[base_flag == 0.0] = np.nan;
 
     # Compute the time stamp of each ramp
     time = np.ones (base_dft.shape[0]) * hdr['MJD-OBS'];
+
+    # Save the options in file HEADER
+    hdr[HMP+'NCOHER'] = (ncoher,'[frame] coherent integration');
+    hdr[HMP+'NCS'] = (ncs,'[frame] cross-spectrum shift');
+    hdr[HMP+'NBS'] = (nbs,'[frame] bi-spectrum shift');
     
     # Create the file
     hdulist = oifits.create (hdr, lbd);
 
-    # Compute OI_VIS2
-    u_power = np.nanmean ((base_power - bias_power_mean)*base_flag, axis=1);
-    l_power = np.nanmean (norm_power*base_flag, axis=1);
-
-    log.info ('Mean u_power: %e'%np.nanmean (u_power));
-    log.info ('Mean l_power: %e'%np.nanmean (l_power));
+    # Compute OI_FLUX
+    log.info ('Compute Flux by simple mean, without selection');
     
+    p_flux = np.nanmean (photo, axis=1);
+    
+    oifits.add_flux (hdulist, time, p_flux, output=output,y0=y0);
+
+    # Compute OI_VIS2
+    if ncs > 0:
+        log.info ('Compute Cross Spectrum with offset of %i frames'%ncs);
+        b_power = np.real (bias_dft[:,ncs:,:,:] * np.conj(bias_dft[:,0:-ncs,:,:]));
+        t_power = np.real (base_dft[:,ncs:,:,:] * np.conj(base_dft[:,0:-ncs,:,:]));
+    else:
+        log.info ('Compute Cross Spectrum without offset');
+        b_power = np.abs (bias_dft)**2;
+        t_power = np.abs (base_dft)**2;
+
+    n_power = np.mean (b_power, axis=-1, keepdims=True);
+    u_power = np.nanmean ((t_power - n_power)*base_flag, axis=1);
+    
+    l_power = photo[:,:,:,setup.base_beam ()];
+    l_power = 4 * l_power[:,:,:,:,0] * l_power[:,:,:,:,1] * attenuation**2;
+    l_power = np.nanmean (l_power*base_flag, axis=1);
+
     oifits.add_vis2 (hdulist, time, u_power, l_power, output=output, y0=y0);
+    
+    # Compute OI_VIS
+    log.info ('Compute Vis by removing the mean GD and mean phase');
+
+    c_cpx  = base_dft.copy ();
+    phi = np.angle (np.mean (c_cpx[:,:,1:,:] * np.conj(c_cpx[:,:,:-1,:]), axis=2, keepdims=True));
+    c_cpx *= np.exp (-1.j * phi * np.arange (ny)[None,None,:,None]);
+
+    phi = np.angle (np.mean (c_cpx, axis=2,keepdims=True));
+    c_cpx *= np.exp (-1.j * phi);
+    c_cpx  = np.nanmean (c_cpx * base_flag, axis=1);
+    
+    c_norm = photo[:,:,:,setup.base_beam ()];
+    c_norm = 4 * c_norm[:,:,:,:,0] * c_norm[:,:,:,:,1] * attenuation**2;
+    c_norm = np.sqrt (np.maximum (c_norm, 0));
+    c_norm = np.nanmean (c_norm*base_flag, axis=1);
+    # c_norm = np.abs (c_cpx) * 0.0 + 1.0;
+    
+    oifits.add_vis (hdulist, time, c_cpx, c_norm, output=output, y0=y0);
 
     # Compute OI_T3
-    t_cpx = (base_dft*base_flag)[:,:,:,setup.triplet_base()];
-    t_cpx = t_cpx[:,:,:,:,0] * t_cpx[:,:,:,:,1] * np.conj (t_cpx[:,:,:,:,2]);
+    if nbs > 0:
+        log.info ('Compute Bispectrum with offset of %i frames'%nbs);
+        t_cpx = (base_dft*base_flag)[:,:,:,setup.triplet_base()];
+        t_cpx = t_cpx[:,2*nbs:,:,:,0] * t_cpx[:,nbs:-nbs,:,:,1] * np.conj (t_cpx[:,:-2*nbs,:,:,2]);
+    else:
+        log.info ('Compute Bispectrum without offset');
+        t_cpx = (base_dft*base_flag)[:,:,:,setup.triplet_base()];
+        t_cpx = t_cpx[:,:,:,:,0] * t_cpx[:,:,:,:,1] * np.conj (t_cpx[:,:,:,:,2]);
 
     t_norm = photo[:,:,:,setup.triplet_beam()];
     t_norm = t_norm[:,:,:,:,0] * t_norm[:,:,:,:,1] * t_norm[:,:,:,:,2];
@@ -890,13 +975,29 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     # Figures
     log.info ('Figures');
 
+    # Plot the 'opd-scan'
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+    for i,ax in enumerate (axes.flatten()): ax.imshow (base_scan[:,0,:,i].T,aspect='auto');
+    files.write (fig,output+'_base_trend.png');
+
+    # Plot the trend
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+    for i,ax in enumerate (axes.flatten()): ax.imshow (bias_scan[:,0,:,i].T,aspect='auto');
+    files.write (fig,output+'_bias_trend.png');
+
     # Pseudo PSD
     fig,ax = plt.subplots (2,2, sharey='row',sharex='col');
     fig.suptitle (headers.summary (hdr));
-    ax[0,0].imshow (np.mean (np.abs(base_dft)**2, axis=(0,1)),aspect='auto');
-    ax[0,1].imshow (np.mean (np.abs(bias_dft)**2, axis=(0,1)),aspect='auto');
-    ax[1,0].plot (np.mean (np.abs(base_dft)**2, axis=(0,1)).T);
-    ax[1,1].plot (np.mean (np.abs(bias_dft)**2, axis=(0,1)).T);
+    ax[0,0].imshow (np.mean (t_power, axis=(0,1)),aspect='auto');
+    ax[0,1].imshow (np.mean (b_power, axis=(0,1)),aspect='auto');
+    ax[1,0].plot (np.mean (t_power, axis=(0,1)).T);
+    ax[1,1].plot (np.mean (b_power, axis=(0,1)).T);
     ax[0,0].set_title ('Fringe frequencies');
     ax[0,1].set_title ('Bias frequencies');
     files.write (fig,output+'_psd.png');
@@ -912,7 +1013,6 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
     for b in range (15): axes.flatten()[b].plot (d1[:,b]);
     for b in range (15): axes.flatten()[b].plot (d0[:,b],'--', alpha=0.5);
     for b in range (15): axes.flatten()[b].set_yscale ('log');
-    
     files.write (fig,output+'_snr.png');
 
     # GD
@@ -929,6 +1029,17 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3.0, threshold=3.0, avgpho
         axes.flatten()[b].plot (d0[:,b],'--', alpha=0.5);
         axes.flatten()[b].set_ylim (-lim,+lim);
     files.write (fig,output+'_gd.png');
+
+    # Plot the fringe selection
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+    for b in range (15):
+        axes.flatten()[b].plot (base_flag0[:,0,0,b], 'o', alpha=0.3, markersize=4);
+        axes.flatten()[b].plot (base_flag1[:,0,0,b], 'o', alpha=0.3, markersize=2);
+        axes.flatten()[b].set_ylim (-.2,1.2);
+    files.write (fig,output+'_selection.png');
 
     # SNR versus GD
     fig,axes = plt.subplots (5,3, sharex=True);

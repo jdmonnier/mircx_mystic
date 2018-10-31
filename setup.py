@@ -53,20 +53,66 @@ def lbd0 (hdr):
     '''
     lbd0 = 1.60736e-06;
 
+    # MIRC configurations
     if hdr['CONF_NA'] == 'H_PRISM':
-        log.info ('H_PRISM setup');
         dlbd = 21.e-9;
-    elif hdr['CONF_NA'] == 'H_GRISM200' or 'H_GRISM150':
-        log.info ('H_GRISM setup');
-        dlbd = 8.2e-9;
+    elif (hdr['CONF_NA'] == 'H_GRISM200'):
+        dlbd = -8.2e-9;
+    elif (hdr['CONF_NA'] == 'H_GRISM150'):
+        dlbd = -8.2e-9;
+        
+    # temporary configurations. Not sure
+    # the sign is correct
+    elif hdr['CONF_NA'] == 'H_PRISM20' :
+        dlbd = lbd0 / 27.4;
+    elif hdr['CONF_NA'] == 'H_PRISM40' :
+        dlbd = lbd0 / 49.2;
+        
+    # MIRCX configurations, J-band on top
+    # of image except for the GRISM_190.
+    elif hdr['CONF_NA'] == 'H_PRISM22' :
+        dlbd = -lbd0 / 22.;
+    elif hdr['CONF_NA'] == 'H_PRISM50' :
+        dlbd = -lbd0 / 50.;
+    elif hdr['CONF_NA'] == 'H_PRISM102' :
+        dlbd = -lbd0 / 102.;
+    elif hdr['CONF_NA'] == 'H_GRISM190' :
+        dlbd = lbd0 / 190.0;
+
+    # Unknown configuration
     else:
-        log.warning ('Unknown spectral setup, assume low dispersion');
-        dlbd = 21.e-9;
-    
-    if hdr['BANDWID'] < 0: dlbd = -dlbd;
-    
+        log.error ('Unknown CONF_NA');
+        raise ValueError('CONF_NA unsuported (yet?)');
+
+    # Verbose
+    log.info ('Configuration '+hdr['CONF_NA']+' dlbd = %fum'%(dlbd*1e6));
+
     return lbd0,dlbd;
+
+def xchan_ratio(hdr):
+    '''
+    Return a crude estimate
+    '''
+    if ('P_ION' in hdr) == True :
+        return 0.3;
+    else:
+        return 0.1;
+
+def fiber_pos(hdr):
+    '''
+    Return the fiber position in the v-groove
+    in unit of micro-lenses
+    '''
     
+    # Fiber position in new MIRC-X
+    if ('P_ION' in hdr) == True :
+        pos = np.array([4,6,13,18,24,28])
+    # Fiber position in old MIRC
+    else :
+        pos = np.array([9,3,1,21,14,18])
+        
+    return pos
+
 def beam_freq (hdr):
     '''
     Return the fiber position in the v-groove
@@ -76,12 +122,31 @@ def beam_freq (hdr):
     '''
     # Scaling in pix/fringe at highest spatial frequency
     # and for wavelength defined as lbd0
-    scale = 5.023;
-    # Fiber position in v-groove
-    tmp = np.array([9,3,1,21,14,18]) * 1.0 - 1.0;
-    # Fiber position in fringe/pix
-    tmp /= (tmp.max() - tmp.min()) * scale;
+    
+    # Check if it's old MIRC or new MIRC-X data
+    if ('P_ION' in hdr) == True :
+        scale = 2.78999;
+        # Fiber position in v-groove
+        tmp = np.array([4,6,13,18,24,28]) * 1.0 - 1.0;
+        # Fiber position in fringe/pix
+        tmp /= (tmp.max() - tmp.min()) * scale;
+    
+    else :
+        scale = 5.023;
+        # Fiber position in v-groove
+        tmp = np.array([9,3,1,21,14,18]) * 1.0 - 1.0;
+        # Fiber position in fringe/pix
+        tmp /= (tmp.max() - tmp.min()) * scale;
     return tmp;
+
+def ifreq_max (hdr):
+    '''
+    Return the highest frequency to use, as integer number
+    '''
+    if ('P_ION' in hdr) == True :
+        return 72;
+    else:
+        return 40;
 
 def base_freq (hdr):
     '''
@@ -109,6 +174,12 @@ def base_name ():
     name[15]
     '''
     return np.array (['%i%i'%(t[0],t[1]) for t in base_beam ()]);
+
+def beam_name ():
+    '''
+    Return the beam name following convention 0-5
+    '''
+    return ['0','1','2','3','4','5'];
 
 ''' beam to base matrix '''
 beam_to_base = np.zeros ((15,6));
@@ -154,10 +225,14 @@ def beam_tel (hdr):
     cbeam = np.array ([hdr['BEAMORD%i'%i] for i in range(6)]);
 
     # Check configuration
-    if hdr['TEL_KEY'] != 'S1=0,S2=1,E1=2,E2=3,W1=4,W2=5':
-        raise ValueError('Configuration unsuported');
-    else:
+    if ('P_ION' in hdr) == True :
         ctel = np.array(['S1','S2','E1','E2','W1','W2']);
+    
+    else :
+        if hdr['TEL_KEY'] != 'S1=0,S2=1,E1=2,E2=3,W1=4,W2=5':
+            raise ValueError('Configuration unsuported');
+        else:
+            ctel = np.array(['S1','S2','E1','E2','W1','W2']);
 
     # CHARA tel of the CHARA beams
     return ctel[cbeam];
@@ -172,10 +247,14 @@ def beam_index (hdr):
     cbeam = np.array ([hdr['BEAMORD%i'%i] for i in range(6)]);
 
     # Check configuration
-    if hdr['TEL_KEY'] != 'S1=0,S2=1,E1=2,E2=3,W1=4,W2=5':
-        raise ValueError('Configuration unsuported');
-    else:
+    if ('P_ION' in hdr) == True :
         cidx = np.array(range (1,7));
+    
+    else :
+        if hdr['TEL_KEY'] != 'S1=0,S2=1,E1=2,E2=3,W1=4,W2=5':
+            raise ValueError('Configuration unsuported');
+        else:
+            cidx = np.array(range (1,7));
 
     # CHARA tel of the CHARA beams
     return cidx[cbeam];

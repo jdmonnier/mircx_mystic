@@ -98,16 +98,20 @@ class prism(object):
 
 class splitter(object):
     def tostr(self):
+        hw = 5*10;
         d = self.d;
-        x = (self.x-d/2-1, self.x-d/2+1, self.x+d/2+1, self.x+d/2-1);
-        d = np.abs (self.d);
-        y = (self.y-d/2, self.y-d/2, self.y+d/2, self.y+d/2);
+        # x = (self.x-d/2-1, self.x-d/2+1, self.x+d/2+1, self.x+d/2-1);
+        # d = np.abs (self.d);
+        # y = (self.y-d/2, self.y-d/2, self.y+d/2, self.y+d/2);
+        y = (self.y-d/2,self.y-d/2,self.y+d/2,self.y+d/2,);
+        d = self.d / self.fn;
+        x = (self.x-d/2-hw,self.x-d/2+hw,self.x+d/2+hw,self.x+d/2-hw);
         out  = '{"type":"refractor","path":[';
         out += '{"x":%.3f,"y":%.3f,"arc":false},'%(x[0],y[0]);
         out += '{"x":%.3f,"y":%.3f,"arc":false},'%(x[1],y[1]);
         out += '{"x":%.3f,"y":%.3f,"arc":false},'%(x[2],y[2]);
         out += '{"x":%.3f,"y":%.3f,"arc":false}'%(x[3],y[3]);
-        out += '],"notDone":false,"p":3.0}';
+        out += '],"notDone":false,"p":1.5}';
         return out;
 
     def rescale(self,xs,ys):

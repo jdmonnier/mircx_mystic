@@ -72,6 +72,10 @@ parser.add_argument ("--lbd-min", dest="lbd_min",default=1.5,
 parser.add_argument ("--lbd-max", dest="lbd_max",default=1.72,
                      type=float, help="maximum wavelenght in um [%(default)s]");
 
+parser.add_argument ("--use-detmode", dest="use_detmode",default='TRUE',
+                    choices=TrueFalse,
+                    help="use detector parameters to associate calibrators [%(default)s]");
+
 #
 # Initialisation
 #
@@ -92,9 +96,13 @@ if argopt.oifitscalib != 'FALSE':
     # Read all calibration products, keep only the OIFITS
     hdrs = mrx.headers.loaddir (argopt.oifits_dir);
 
-    # Group all OIFITS by calibratable setup
-    keys = setup.detwin + setup.detmode + setup.insmode + \
+    # Define the calibratable setups
+    keys = setup.detwin + setup.insmode + \
            setup.fringewin + setup.visparam + setup.beamorder;
+           
+    if argopt.use_detmode == 'TRUE': keys += setup.detmode;
+
+    # Group all OIFITS by calibratable setup
     gps = mrx.headers.group (hdrs, 'OIFITS', delta=1e9, Delta=1e9,
                              keys=keys, continuous=False);
 
