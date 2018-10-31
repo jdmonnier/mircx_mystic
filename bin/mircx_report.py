@@ -156,7 +156,7 @@ for b in range (6):
     data /= (data>0);
     axes.flatten()[b].plot (data, 'o');
     
-files.write (fig,'report_flux.png');
+files.write (fig,'report_trans.png');
 
 # Plot TF
 log.info ('Plot TF');
