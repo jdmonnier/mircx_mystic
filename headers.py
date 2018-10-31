@@ -320,7 +320,7 @@ def check_input (hdrs, required=1, maximum=100000):
 
 def rep_nan (val,*rep):
     ''' Replace nan by value'''
-    if not rep: rep = 0.0;
+    rep = 0.0 if not rep else rep[0];
     return val if np.isfinite (val) else rep;
 
 def parse_argopt_catalog (input):

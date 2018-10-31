@@ -916,7 +916,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     hdr[HMP+'NBS'] = (nbs,'[frame] bi-spectrum shift');
     
     # Create the file
-    hdulist = oifits.create (hdr, lbd);
+    hdulist = oifits.create (hdr, lbd, y0=y0);
 
     # Compute OI_FLUX
     log.info ('Compute Flux by simple mean, without selection');
@@ -959,7 +959,6 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     c_norm = 4 * c_norm[:,:,:,:,0] * c_norm[:,:,:,:,1] * attenuation**2;
     c_norm = np.sqrt (np.maximum (c_norm, 0));
     c_norm = np.nanmean (c_norm*base_flag, axis=1);
-    # c_norm = np.abs (c_cpx) * 0.0 + 1.0;
     
     oifits.add_vis (hdulist, time, c_cpx, c_norm, output=output, y0=y0);
 
