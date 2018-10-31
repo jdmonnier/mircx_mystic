@@ -18,6 +18,12 @@ def str2bool (s):
     if s == False or s == 'FALSE': return False;
     raise ValueError('Invalid boolean string');
 
+def getval (hdrs, key, default=np.nan):
+    '''
+    Return a numpy array with the values in header
+    '''
+    return np.array ([h[key] if key in h else default for h in hdrs]);
+
 def summary (hdr):
     '''
     Return a short string to

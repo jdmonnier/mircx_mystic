@@ -7,8 +7,15 @@ import numpy as np;
 from astropy.io import fits as pyfits;
 import matplotlib.pyplot as plt;
 
-from mircx_pipeline import log, setup, plot, files, signal;
-from mircx_pipeline.headers import HM, HMQ, HMP, HMW, rep_nan;
+from mircx_pipeline import log, setup, plot, files, signal, headers;
+from mircx_pipeline.headers import HM, HMQ, HMP;
+
+#
+# Matplotlib default
+#
+
+import matplotlib as mpl;
+mpl.rcParams['lines.markersize'] = 2;
 
 
 #
@@ -48,6 +55,9 @@ parser.add_argument ("--debug", dest="debug",default='FALSE',
                      choices=TrueFalse,
                      help="stop on error [%(default)s]");
 
+parser.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
+                     default=5.0, help="SNR threshold for plotting value [%(default)s]");
+
 #
 # Initialisation
 #
@@ -67,8 +77,8 @@ hdrs = [hdrs[i] for i in ids];
 # List of basename
 bname = setup.base_name ();
 
-# Zero point of Hband
-Hzp = 1.0;
+# Zero point of Hband (arbitrary unit)
+Hzp = 1e5;
 
 
 #
@@ -139,10 +149,11 @@ for h in hdrs:
 log.info ('Plot photometry');
 
 fig,axes = plt.subplots (3,2,sharex=True);
+fig.suptitle ('Transmission');
 plot.compact (axes);
 
 for b in range (6):
-    data = [h['HIERARCH MIRC QC TRANS%i'%b] for h in hdrs];
+    data = headers.getval (hdrs, HMQ+'TRANS%i'%b);
     axes.flatten()[b].plot (data, 'o');
     
 files.write (fig,'report_flux.png');
@@ -151,13 +162,14 @@ files.write (fig,'report_flux.png');
 log.info ('Plot TF');
 
 fig,axes = plt.subplots (5,3,sharex=True);
+fig.suptitle ('Transfer Function');
 plot.base_name (axes);
 plot.compact (axes);
 
 for b in range (15):
-    data = np.array([h['HIERARCH MIRC QC TF'+bname[b]+' MEAN'] for h in hdrs]);
-    snr  = np.array([h['HIERARCH MIRC QC SNR'+bname[b]+' MEAN'] for h in hdrs]);
-    data /= (snr>5);
+    data = headers.getval (hdrs, HMQ+'TF'+bname[b]+' MEAN');
+    snr  = headers.getval (hdrs, HMQ+'SNR'+bname[b]+' MEAN');
+    data /= (snr>argopt.snr_threshold);
     axes.flatten()[b].plot (data, 'o');
     axes.flatten()[b].set_ylim (0,1.2);
 
@@ -167,11 +179,12 @@ files.write (fig,'report_tf2.png');
 log.info ('Plot vis2');
 
 fig,axes = plt.subplots (5,3,sharex=True);
+fig.suptitle ('Vis2');
 plot.base_name (axes);
 plot.compact (axes);
 
 for b in range (15):
-    data = [h['HIERARCH MIRC QC VISS'+bname[b]+' MEAN'] for h in hdrs];
+    data = headers.getval (hdrs, HMQ+'VISS'+bname[b]+' MEAN');
     axes.flatten()[b].plot (data, 'o');
     
 files.write (fig,'report_vis2.png');
@@ -181,13 +194,14 @@ files.write (fig,'report_vis2.png');
 log.info ('Plot decoherence');
 
 fig,axes = plt.subplots (5,3,sharex=True);
+fig.suptitle ('Decoherence Half Time [ms]');
 plot.base_name (axes);
 plot.compact (axes);
 
 for b in range (15):
-    data = np.array([h['HIERARCH MIRC QC DECOHER'+bname[b]+'_HALF'] for h in hdrs]);
-    snr  = np.array([h['HIERARCH MIRC QC SNRB'+bname[b]+' MEAN'] for h in hdrs]);
-    data /= (snr>5);
+    data = headers.getval (hdrs, HMQ+'DECOHER'+bname[b]+'_HALF');
+    snr  = headers.getval (hdrs, HMQ+'SNR'+bname[b]+' MEAN');
+    data /= (snr>argopt.snr_threshold);
     axes.flatten()[b].plot (data, 'o');
     axes.flatten()[b].set_ylim (0);
     
@@ -197,11 +211,12 @@ files.write (fig,'report_decoher.png');
 log.info ('Plot SNR');
 
 fig,axes = plt.subplots (5,3,sharex=True);
+fig.suptitle ('SNR');
 plot.base_name (axes);
 plot.compact (axes);
 
 for b in range (15):
-    data = [h['HIERARCH MIRC QC SNR'+bname[b]+' MEAN'] for h in hdrs];
+    data = headers.getval (hdrs, HMQ+'SNR'+bname[b]+' MEAN');
     axes.flatten()[b].plot (data, 'o');
     
 files.write (fig,'report_snr.png');
