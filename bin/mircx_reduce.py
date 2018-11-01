@@ -353,7 +353,8 @@ if argopt.rts != 'FALSE':
             for i in range(1,7):
                 keys = setup.detwin + setup.detmode + setup.insmode;
                 tmp = mrx.headers.assoc (gp[0], hdrs, 'BEAM%i_MAP'%i,
-                                         keys=keys, which='best', required=1);
+                                         keys=keys, which='best', required=1,
+                                         quality=0.01);
                 profiles.extend (tmp);
 
             # Associate KAPPA (closest BEAM_MAP in time, in this setup,
