@@ -96,6 +96,9 @@ rts.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
                   choices=TrueFalse,
                   help="use GAIN to associate kappa [%(default)s]");
 
+rts.add_argument ("--rm-preproc", dest="rm_preproc",default='FALSE',
+                  choices=TrueFalse,
+                  help="rm the PREPROC file after computing the RTS [%(default)s]");
 
 oifits = parser.add_argument_group ('(3) oifits',
                      '\nCreates the final OIFITS products, which are the\n' 
@@ -361,6 +364,12 @@ if argopt.rts != 'FALSE':
                 kappas.extend (tmp);
                 
             mrx.compute_rts (gp, profiles, kappas, speccal, output=output);
+
+            # If remove PREPROC
+            if argopt.rm_preproc == 'TRUE':
+                f = gp[0]['ORIGNAME'];
+                log.info ('Remove the PREPROC: '+f);
+                os.remove (f);
 
         except Exception as exc:
             log.error ('Cannot compute RTS: '+str(exc));
