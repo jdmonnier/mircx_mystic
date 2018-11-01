@@ -560,7 +560,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
         
     # Compute crude normalisation for vis2
     bbeam = setup.base_beam ();
-    norm = np.mean (photok0[:,:,ny/2,:], axis=(0,1));
+    norm = np.mean (photok0[:,:,int(ny/2),:], axis=(0,1));
     norm = 4. * norm[bbeam[:,0]] * norm[bbeam[:,1]];
     
     # Compute the coherent flux for various integration
@@ -569,8 +569,8 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     vis2 = np.zeros ((nb, len(nc)));
     for i,n in enumerate(nc):
         # Coherent integration, we process only the central channel
-        base_s  = signal.uniform_filter_cpx (base_dft[:,:,ny/2,:],(0,n,0),mode='constant');
-        bias_s  = signal.uniform_filter_cpx (bias_dft[:,:,ny/2,:],(0,n,0),mode='constant');
+        base_s  = signal.uniform_filter_cpx (base_dft[:,:,int(ny/2),:],(0,n,0),mode='constant');
+        bias_s  = signal.uniform_filter_cpx (bias_dft[:,:,int(ny/2),:],(0,n,0),mode='constant');
         # Unbiased visibility, based on cross-spectrum with 1-shift
         b2    = np.mean (np.mean (np.real (bias_s[:,1:,:] * np.conj(bias_s[:,0:-1,:])), axis=(0,1,2)));
         power = np.mean (np.real (base_s[:,1:,:] * np.conj(base_s[:,0:-1,:])), axis=(0,1)) - b2;
@@ -655,9 +655,9 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     log.warning ('FIXME: Skip long FFT as this is too time consuming...');
 #    log.info ('Long FFT');
 #    nt = nr*nf;
-#    base_time = base_dft[:,:,ny/2,:].reshape((nt,nb));
-#    ft0 = np.fft.fft (np.angle(base_time), axis=0)[:nt/2,:];
-#    ft1 = np.fft.fft (np.angle(base_time[1,:]*np.conj(base_time[:-1,:])), axis=0)[:nt/2,:];
+#    base_time = base_dft[:,:,int(ny/2),:].reshape((nt,nb));
+#    ft0 = np.fft.fft (np.angle(base_time), axis=0)[:int(nt/2),:];
+#    ft1 = np.fft.fft (np.angle(base_time[1,:]*np.conj(base_time[:-1,:])), axis=0)[:int(nt/2),:];
 #    
 #    # Vibration monitor
 #    fig,ax = plt.subplots (2,1);
