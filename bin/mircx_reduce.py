@@ -124,6 +124,10 @@ oifits.add_argument ("--nbs", dest="nbs", type=int,
 oifits.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
                      default=2.0, help="SNR threshold for fringe selection [%(default)s]");
 
+oifits.add_argument ("--rm-rts", dest="rm_rts",default='FALSE',
+                     choices=TrueFalse,
+                     help="rm the RTS file after computing the OIFITS [%(default)s]");
+
 
 advanced = parser.add_argument_group ('advanced user arguments');
                                          
@@ -408,6 +412,12 @@ if argopt.oifits != 'FALSE':
             mrx.compute_vis (gp, output=output, ncoher=argopt.ncoherent,
                              ncs=argopt.ncs, nbs=argopt.nbs,
                              threshold=argopt.snr_threshold);
+            
+            # If remove RTS
+            if argopt.rm_rts == 'TRUE':
+                f = gp[0]['ORIGNAME'];
+                log.info ('Remove the RTS: '+f);
+                os.remove (f);
 
         except Exception as exc:
             log.error ('Cannot compute OIFITS: '+str(exc));
