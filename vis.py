@@ -56,7 +56,7 @@ def extract_maps (hdr, bmaps):
 
 def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
     '''
-    Compute the SPEC_CAL
+    Compute the SPEC_CAL from list of PREPROC
     '''
     elog = log.trace ('compute_speccal');
 
@@ -170,8 +170,8 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
     fig.suptitle ('Observed PSD (orange) and scaled template (blue)');
     for y in range (ny):
         ax = axes.flatten()[y];
-        ax.plot (freq,signal.psd_projection (res[y].x[0], freq, freq0, delta0, None));
-        ax.plot (freq,psd[y,:]);
+        ax.plot (freq,signal.psd_projection (res[y].x[0], freq, freq0, delta0, None), c='blue');
+        ax.plot (freq,psd[y,:], c='orange');
         ax.set_xlim (0,1.3*np.max(freq0));
         ax.set_ylim (0,1.1);
     files.write (fig,output+'_psdmodel.png');
@@ -179,8 +179,8 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
     # Effective wavelength
     fig,ax = plt.subplots ();
     fig.suptitle ('Guess calib. (orange) and Fitted calib, (blue)');
-    ax.plot (yfit,lbdfit * 1e6,'o-');
-    ax.plot (yfit,lbd * 1e6,'o-');
+    ax.plot (yfit,lbdfit * 1e6,'o-', c='blue');
+    ax.plot (yfit,lbd * 1e6,'o-', c='orange', alpha=0.5);
     ax.set_ylabel ('lbd (um)');
     ax.set_xlabel ('Detector line (python-def)');
     ax.set_ylim (1.45,1.8);
@@ -195,10 +195,22 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
 
     log.info ('Compute QC');
     
-    # Compute quality factor
+    # Compute quality of projection
     projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
+    log.info ('Projection quality = %g'%projection);
+
+    # Typical difference with prediction
+    delta = np.median (np.abs (lbd-lbdfit));
+    log.info ('Median delta = %.3f um'%(delta*1e6));
+
+    # Set quality to zero if clearly wrong fit
+    if delta > 0.075e-6:
+        log.warning ('Spectral calibration is probably faulty, set QUALITY to 0');
+        projection = 0.0;
+
+    # Set QC
     hdr[HMQ+'QUALITY'] = (projection, 'quality of data');
-    log.info (HMQ+'QUALITY = %e'%projection);
+    hdr[HMQ+'DELTA MEDIAN'] = (delta, '[m] median difference');
 
     # Compute position on detector of lbd0
     lbd0 = 1.6e-6;
@@ -548,7 +560,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
         
     # Compute crude normalisation for vis2
     bbeam = setup.base_beam ();
-    norm = np.mean (photok0[:,:,ny/2,:], axis=(0,1));
+    norm = np.mean (photok0[:,:,int(ny/2),:], axis=(0,1));
     norm = 4. * norm[bbeam[:,0]] * norm[bbeam[:,1]];
     
     # Compute the coherent flux for various integration
@@ -557,8 +569,8 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     vis2 = np.zeros ((nb, len(nc)));
     for i,n in enumerate(nc):
         # Coherent integration, we process only the central channel
-        base_s  = signal.uniform_filter_cpx (base_dft[:,:,ny/2,:],(0,n,0),mode='constant');
-        bias_s  = signal.uniform_filter_cpx (bias_dft[:,:,ny/2,:],(0,n,0),mode='constant');
+        base_s  = signal.uniform_filter_cpx (base_dft[:,:,int(ny/2),:],(0,n,0),mode='constant');
+        bias_s  = signal.uniform_filter_cpx (bias_dft[:,:,int(ny/2),:],(0,n,0),mode='constant');
         # Unbiased visibility, based on cross-spectrum with 1-shift
         b2    = np.mean (np.mean (np.real (bias_s[:,1:,:] * np.conj(bias_s[:,0:-1,:])), axis=(0,1,2)));
         power = np.mean (np.real (base_s[:,1:,:] * np.conj(base_s[:,0:-1,:])), axis=(0,1)) - b2;
@@ -643,9 +655,9 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     log.warning ('FIXME: Skip long FFT as this is too time consuming...');
 #    log.info ('Long FFT');
 #    nt = nr*nf;
-#    base_time = base_dft[:,:,ny/2,:].reshape((nt,nb));
-#    ft0 = np.fft.fft (np.angle(base_time), axis=0)[:nt/2,:];
-#    ft1 = np.fft.fft (np.angle(base_time[1,:]*np.conj(base_time[:-1,:])), axis=0)[:nt/2,:];
+#    base_time = base_dft[:,:,int(ny/2),:].reshape((nt,nb));
+#    ft0 = np.fft.fft (np.angle(base_time), axis=0)[:int(nt/2),:];
+#    ft1 = np.fft.fft (np.angle(base_time[1,:]*np.conj(base_time[:-1,:])), axis=0)[:int(nt/2),:];
 #    
 #    # Vibration monitor
 #    fig,ax = plt.subplots (2,1);
@@ -848,9 +860,6 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     base_snr = base_powerbb / bias_powerbb;
     base_snr[~np.isfinite (base_snr)] = 0.0;
 
-    # Add the QC about raw SNR
-    qc.snr (hdr, y0, base_snr);    
-    
     # Smooth SNR along the ramp (if not done yet)
     log.info ('Smooth SNR over one ramp');
     base_snr = np.mean (base_snr,axis=1,keepdims=True);
@@ -868,6 +877,9 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     # boostraped and averaged as a phasor
     base_snr, base_gd = signal.bootstrap_triangles (base_snr, base_gd);
 
+    # Add the QC about raw SNR
+    qc.snr (hdr, y0, base_snr0, base_snr);
+    
     # Reduce norm power far from white-fringe
     log.info ('Apply coherence envelope of %.1f um'%(coherence_length*1e6));
     attenuation = np.exp (-(np.pi * base_gd / coherence_length)**2);
@@ -904,7 +916,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     hdr[HMP+'NBS'] = (nbs,'[frame] bi-spectrum shift');
     
     # Create the file
-    hdulist = oifits.create (hdr, lbd);
+    hdulist = oifits.create (hdr, lbd, y0=y0);
 
     # Compute OI_FLUX
     log.info ('Compute Flux by simple mean, without selection');
@@ -947,7 +959,6 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     c_norm = 4 * c_norm[:,:,:,:,0] * c_norm[:,:,:,:,1] * attenuation**2;
     c_norm = np.sqrt (np.maximum (c_norm, 0));
     c_norm = np.nanmean (c_norm*base_flag, axis=1);
-    # c_norm = np.abs (c_cpx) * 0.0 + 1.0;
     
     oifits.add_vis (hdulist, time, c_cpx, c_norm, output=output, y0=y0);
 

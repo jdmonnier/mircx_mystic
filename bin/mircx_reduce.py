@@ -96,6 +96,9 @@ rts.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
                   choices=TrueFalse,
                   help="use GAIN to associate kappa [%(default)s]");
 
+rts.add_argument ("--rm-preproc", dest="rm_preproc",default='FALSE',
+                  choices=TrueFalse,
+                  help="rm the PREPROC file after computing the RTS [%(default)s]");
 
 oifits = parser.add_argument_group ('(3) oifits',
                      '\nCreates the final OIFITS products, which are the\n' 
@@ -120,6 +123,10 @@ oifits.add_argument ("--nbs", dest="nbs", type=int,
 
 oifits.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
                      default=2.0, help="SNR threshold for fringe selection [%(default)s]");
+
+oifits.add_argument ("--rm-rts", dest="rm_rts",default='FALSE',
+                     choices=TrueFalse,
+                     help="rm the RTS file after computing the OIFITS [%(default)s]");
 
 
 advanced = parser.add_argument_group ('advanced user arguments');
@@ -339,14 +346,15 @@ if argopt.rts != 'FALSE':
             # Associate SPEC_CAL
             keys = setup.detwin + setup.insmode + setup.fringewin;
             speccal = mrx.headers.assoc (gp[0], hdrs, 'SPEC_CAL', keys=keys,
-                                         which='best', required=1);
+                                         which='best', required=1, quality=0.001);
             
             # Associate PROFILE (best BEAM_MAP in this setup)
             profiles = [];
             for i in range(1,7):
                 keys = setup.detwin + setup.detmode + setup.insmode;
                 tmp = mrx.headers.assoc (gp[0], hdrs, 'BEAM%i_MAP'%i,
-                                         keys=keys, which='best', required=1);
+                                         keys=keys, which='best', required=1,
+                                         quality=0.01);
                 profiles.extend (tmp);
 
             # Associate KAPPA (closest BEAM_MAP in time, in this setup,
@@ -361,6 +369,12 @@ if argopt.rts != 'FALSE':
                 kappas.extend (tmp);
                 
             mrx.compute_rts (gp, profiles, kappas, speccal, output=output);
+
+            # If remove PREPROC
+            if argopt.rm_preproc == 'TRUE':
+                f = gp[0]['ORIGNAME'];
+                log.info ('Remove the PREPROC: '+f);
+                os.remove (f);
 
         except Exception as exc:
             log.error ('Cannot compute RTS: '+str(exc));
@@ -399,6 +413,12 @@ if argopt.oifits != 'FALSE':
             mrx.compute_vis (gp, output=output, ncoher=argopt.ncoherent,
                              ncs=argopt.ncs, nbs=argopt.nbs,
                              threshold=argopt.snr_threshold);
+            
+            # If remove RTS
+            if argopt.rm_rts == 'TRUE':
+                f = gp[0]['ORIGNAME'];
+                log.info ('Remove the RTS: '+f);
+                os.remove (f);
 
         except Exception as exc:
             log.error ('Cannot compute OIFITS: '+str(exc));

@@ -13,12 +13,15 @@ from . import log, setup, files, plot, headers, version;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 from .version import revision;
 
-def create (hdr,lbd):
+def create (hdr,lbd,y0=None):
     '''
     Create an OIFITS file handler (FITS) wit the 
     OI_WAVELENGTH, OI_ARRAY and OI_TARGET.
     '''
 
+    # Spectral channel for QC
+    if y0 is None: y0 = int(ny/2) - 2;
+    
     # Create primary HDU
     hdu0 = pyfits.PrimaryHDU ([]);
     hdu0.header = hdr;
@@ -27,7 +30,7 @@ def create (hdr,lbd):
     hdu0.header['INSTRUME'] = 'MIRCX';
     hdu0.header['INSMODE']  = hdr['CONF_NA'];
     hdu0.header['PROCSOFT'] = 'mircx_pipeline '+version.revision;
-    hdu0.header['EFF_WAVE'] = (lbd[len(lbd)/2],'[m] central wavelength');
+    hdu0.header['EFF_WAVE'] = (lbd[y0],'[m] central wavelength');
 
     # Create file
     hdulist = pyfits.HDUList ([hdu0]);
@@ -214,9 +217,9 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
         
         datax = l_power[:,y0,b];
         datay = u_power[:,y0,b];
-
-        scalex = np.abs (np.nanmax (datax));
-        scaley = np.abs (np.nanmax (datay));
+    
+        scalex = rep_nan (np.abs (np.nanmax (datax)), 1.);
+        scaley = rep_nan (np.abs (np.nanmax (datay)), 1.);
         ax.plot (datax/scalex, datay/scalex, '+', alpha=0.75, ms=4);
 
         ax.set_xlim (-0.1,1.1);

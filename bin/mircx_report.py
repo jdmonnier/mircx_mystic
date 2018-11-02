@@ -7,9 +7,8 @@ import numpy as np;
 from astropy.io import fits as pyfits;
 import matplotlib.pyplot as plt;
 
-from mircx_pipeline import log, setup, plot, files, signal;
-from mircx_pipeline.headers import HM, HMQ, HMP, HMW, rep_nan;
-
+from mircx_pipeline import log, setup, plot, files, signal, headers;
+from mircx_pipeline.headers import HM, HMQ, HMP;
 
 #
 # Implement options
@@ -44,13 +43,26 @@ parser = argparse.ArgumentParser (description=description, epilog=epilog,
 parser.add_argument ("--oifits-dir", dest="oifits_dir",default='./',type=str,
                      help="directory of products [%(default)s]");
 
-parser.add_argument ("--debug", dest="debug",default='FALSE',
+parser.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
+                     default=5.0, help="SNR threshold for plotting value [%(default)s]");
+
+parser.add_argument ("--vis2-threshold", dest="vis2_threshold", type=float,
+                     default=0.1, help="Vis2 threshold for plotting TF value [%(default)s]");
+
+parser.add_argument ("--only-reference", dest="only_reference",default='FALSE',
                      choices=TrueFalse,
-                     help="stop on error [%(default)s]");
+                     help="Use only REFERENCE stars [%(default)s]");
 
 #
 # Initialisation
 #
+
+# Matplotlib
+import matplotlib as mpl;
+mpl.rcParams['lines.markersize'] = 2;
+     
+# Remove warning for invalid
+np.seterr (divide='ignore',invalid='ignore');
 
 # Parse argument
 argopt = parser.parse_args ();
@@ -58,14 +70,22 @@ argopt = parser.parse_args ();
 # Verbose
 elog = log.trace ('mircx_report');
 
-# Load all the headers
-hdrs = mrx.headers.loaddir (argopt.oifits_dir);
-
 # List of basename
 bname = setup.base_name ();
 
-# Zero point of Hband
-Hzp = 1.0;
+# Zero point of Hband (arbitrary unit)
+Hzp = 1e5;
+
+# Load all the headers
+hdrs = mrx.headers.loaddir (argopt.oifits_dir);
+
+# Sort the headers by time
+ids = np.argsort ([h['MJD-OBS'] for h in hdrs]);
+hdrs = [hdrs[i] for i in ids];
+
+# Keep only reference stars
+if argopt.only_reference == 'TRUE':
+    hdrs = [h for h in hdrs if 'OBJECT_TYPE' in h and h['OBJECT_TYPE'] == 'REFERENCE'];
 
 
 #
@@ -104,96 +124,107 @@ for obj in objlist:
 for h in hdrs:
     
     # If we have the info about this star
-    if h['OBJECT'] in objcat:
+    try:
         fluxm = Hzp * 10**(-objcat[h['OBJECT']]['Hmag'][0]/2.5);
         diam  = objcat[h['OBJECT']]['UDDH'][0];
-        
+
         # Loop on beam 
         for b in range (6):
-            flux = h['HIERARCH MIRC QC FLUX%i MEAN'%b];
-            h['HIERARCH MIRC QC TRANS%i'%b] = flux / fluxm;
+            flux = h[HMQ+'FLUX%i MEAN'%b];
+            h[HMQ+'TRANS%i'%b] = flux / fluxm;
 
         # Loop on baseline 
         for b in bname:
-            vis2 = h['HIERARCH MIRC QC VISS'+b+' MEAN'];
-            spf  = h['HIERARCH MIRC QC BASELENGTH'+b] / h['EFF_WAVE'];
+            vis2 = h[HMQ+'VISS'+b+' MEAN'];
+            spf  = h[HMQ+'BASELENGTH'+b] / h['EFF_WAVE'];
             vis2m = signal.airy (diam * spf * 4.84813681109536e-09)**2;
-            h['HIERARCH MIRC QC TF'+b+' MEAN'] = vis2/vis2m;
-            
-            
+            h[HMQ+'TF'+b+' MEAN'] = vis2/vis2m;
+            h[HMQ+'VISSM'+b+' MEAN'] = vis2m;
+
     # If we don't have the info about this star
-    else:
+    except:
         for b in range (6):
-            h['HIERARCH MIRC QC TRANS%i'%b] = 0.0;
+            h[HMQ+'TRANS%i'%b] = -1.0;
         for b in bname:
-            h['HIERARCH MIRC QC TF'+b+' MEAN'] = 0.0;
+            h[HMQ+'TF'+b+' MEAN'] = -1.0;
         
 
 #
 # Plots
 #
 
-# Flux
-log.info ('Plot photometry');
-
-fig,axes = plt.subplots (3,2,sharex=True);
-plot.compact (axes);
-
-for b in range (6):
-    data = [h['HIERARCH MIRC QC TRANS%i'%b] for h in hdrs];
-    axes.flatten()[b].plot (data, 'o');
-    
-files.write (fig,'report_flux.png');
-
-# Plot TF
-log.info ('Plot TF');
-
-fig,axes = plt.subplots (5,3,sharex=True);
-plot.base_name (axes);
-plot.compact (axes);
-
-for b in range (15):
-    data = [h['HIERARCH MIRC QC TF'+bname[b]+' MEAN'] for h in hdrs];
-    axes.flatten()[b].plot (data, 'o');
-    
-files.write (fig,'report_tf2.png');
-
-# Plot vis2
-log.info ('Plot vis2');
-
-fig,axes = plt.subplots (5,3,sharex=True);
-plot.base_name (axes);
-plot.compact (axes);
-
-for b in range (15):
-    data = [h['HIERARCH MIRC QC VISS'+bname[b]+' MEAN'] for h in hdrs];
-    axes.flatten()[b].plot (data, 'o');
-    
-files.write (fig,'report_vis2.png');
-
-
 # Plot coherence
-log.info ('Plot decoherence');
-
 fig,axes = plt.subplots (5,3,sharex=True);
+fig.suptitle ('Decoherence Half Time [ms]');
 plot.base_name (axes);
 plot.compact (axes);
 
 for b in range (15):
-    data = [h['HIERARCH MIRC QC DECOHER'+bname[b]+'_HALF'] for h in hdrs];
+    data = headers.getval (hdrs, HMQ+'DECOHER'+bname[b]+'_HALF');
+    snr  = headers.getval (hdrs, HMQ+'SNRB'+bname[b]+' MEAN');
+    data /= (snr>argopt.snr_threshold);
     axes.flatten()[b].plot (data, 'o');
+    axes.flatten()[b].set_ylim (0);
     
 files.write (fig,'report_decoher.png');
 
 # Plot SNR
-log.info ('Plot SNR');
-
 fig,axes = plt.subplots (5,3,sharex=True);
+fig.suptitle ('SNR');
 plot.base_name (axes);
 plot.compact (axes);
 
 for b in range (15):
-    data = [h['HIERARCH MIRC QC SNR'+bname[b]+' MEAN'] for h in hdrs];
+    data = headers.getval (hdrs, HMQ+'SNR'+bname[b]+' MEAN');
+    data /= (data>0);
     axes.flatten()[b].plot (data, 'o');
+    axes.flatten()[b].set_yscale ('log');
     
 files.write (fig,'report_snr.png');
+
+# Plot TF
+fig,axes = plt.subplots (5,3,sharex=True);
+fig.suptitle ('Transfer Function');
+plot.base_name (axes);
+plot.compact (axes);
+
+for b in range (15):
+    data = headers.getval (hdrs, HMQ+'TF'+bname[b]+' MEAN');
+    vis2 = headers.getval (hdrs, HMQ+'VISS'+bname[b]+' MEAN');
+    snr  = headers.getval (hdrs, HMQ+'SNRB'+bname[b]+' MEAN');
+    data /= (snr>argopt.snr_threshold);
+    data /= (vis2>argopt.vis2_threshold);
+    data /= (data>0);
+    axes.flatten()[b].plot (data, 'o');
+    axes.flatten()[b].set_ylim (0,1.2);
+
+files.write (fig,'report_tf2.png');
+
+# Trans
+fig,axes = plt.subplots (3,2,sharex=True);
+fig.suptitle ('Transmission [arbitrary units]');
+plot.compact (axes);
+
+for b in range (6):
+    data = headers.getval (hdrs, HMQ+'TRANS%i'%b);
+    data /= (data>0);
+    axes.flatten()[b].plot (data, 'o');
+    
+files.write (fig,'report_trans.png');
+
+# Plot vis2
+fig,axes = plt.subplots (5,3,sharex=True);
+fig.suptitle ('Vis2');
+plot.base_name (axes);
+plot.compact (axes);
+
+for b in range (15):
+    data  = headers.getval (hdrs, HMQ+'VISS'+bname[b]+' MEAN');
+    snr  = headers.getval (hdrs, HMQ+'SNRB'+bname[b]+' MEAN');
+    data /= (snr>argopt.snr_threshold);
+    data /= (data>0);
+    axes.flatten()[b].plot (data,  'o');
+    # data2 = headers.getval (hdrs, HMQ+'VISSM'+bname[b]+' MEAN');
+    # axes.flatten()[b].plot (data2, 'o', alpha=0.1);
+    
+files.write (fig,'report_vis2.png');
