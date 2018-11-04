@@ -239,7 +239,7 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
 
     # Get OIFITS_SCI and OIFITS_CAL from input catalog
     scis, calibs = headers.get_sci_cal (hdrs, catalog);
-    
+
     # List of measured Transfert Functions
     # (OIFITS_CAL / diameter)
     hdutf = [];
@@ -321,9 +321,19 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
          
         plt.close ("all");
         
-        
     log.info ('Figures for the trends');
+    
+    # Check of amount of files to plot
+    ntf = len (hdutf);
+    log.info ('Number of transfer function %i'%ntf);
+    if ntf == 0:
+        raise ValueError ('No calibrator for this setup');
 
+    nsci = len (hdusci);
+    log.info ('Number of calibrated science %i'%nsci);
+    if nsci == 0:
+        raise ValueError ('No calibrated science for this setup');
+        
     # Get the number of spectral channels (assume the same for all)
     lbd = hdusci[0]['OI_WAVELENGTH'].data['EFF_WAVE'];
     nc = len (lbd);
