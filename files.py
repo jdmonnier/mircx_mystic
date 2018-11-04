@@ -13,7 +13,7 @@ import os
 
 from . import log
 from .headers import HM, HMQ, HMP, HMW;
-from .version import revision
+from .version import revision, git_hash, git_date, git_branch;
 
 def ensure_dir (outputDir):
     '''
@@ -71,6 +71,9 @@ def write (hdulist,filename):
 
     # Add the pipeline version
     hdr[HMP+'REV'] = (revision,'Version of mircx_pipeline');
+    hdr[HMP+'GIT HASH'] = (git_hash,'Git hash of last commit');
+    hdr[HMP+'GIT DATE'] = (git_date,'Git date of last commit');
+    hdr[HMP+'GIT BRANCH'] = (git_branch,'Git branch');
 
     # Remove if existing
     if os.path.exists (filename):

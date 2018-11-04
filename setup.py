@@ -17,7 +17,7 @@ global fringewin;
 fringewin = [HMW+'FRINGE STARTX', HMW+'FRINGE NX', HMW+'FRINGE STARTY', HMW+'FRINGE NY'];
 
 global visparam;
-visparam = [HMP+'NFRAME_COHER'];
+visparam = [HMP+'NCOHER'];
 
 global beamorder;
 beamorder = ['BEAMORD0','BEAMORD1','BEAMORD2','BEAMORD3','BEAMORD4','BEAMORD5'];
