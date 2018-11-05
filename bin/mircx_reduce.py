@@ -38,7 +38,7 @@ examples:
   cd /path/where/I/want/my/reduced/data/
   mircx_reduce.py --raw-dir=/path/to/raw/data/
 
-  # Do only the preproc step only
+  # Do the preproc step only
   
   mircx_reduce.py --raw-dir=/path/to/raw/data/ --rts=FALSE --oifits=FALSE
 
@@ -46,7 +46,7 @@ examples:
   # threshold for SNR selection, dump the results
   # into a different directory
   
-  mircx_reduce.py --preproc=FALSE rts=FALSE snr-threshold=4.0 --oifits-dir=oifits_new
+  mircx_reduce.py --preproc=FALSE --rts=FALSE snr-threshold=4.0 --oifits-dir=oifits_new
 
 
 """
