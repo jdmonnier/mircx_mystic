@@ -1,16 +1,18 @@
 from astropy.io import fits as pyfits;
 import os;
+import numpy as np;
 
 import matplotlib.pyplot as plt;
 import matplotlib.colors as mcolors;
 
-from . import log, files, headers;
+from . import log, files, headers, signal;
 
 # Try import astroquery
 try:
     from astroquery.vizier import Vizier;
 except:
-    print ('WARNING, cannot import astroquery.vizier');
+    print ('WARNING: cannot import astroquery.vizier');
+    print ('WARNING: some functionalities will crash');
 
 # Columns of our generic catalog
 columns = [('NAME','20A',''),
@@ -33,7 +35,7 @@ columns = [('NAME','20A',''),
            ('PARAM5','E',''),
            ('e_PARAM5','E','')];
 
-def model (u, v, lbd, mjd, name, data):
+def model (u, v, lbd, mjd, data):
     '''
     Models for calibration stars. u, v and lbd are in [m]
     mjd is in Modified Julian Day.
@@ -42,20 +44,28 @@ def model (u, v, lbd, mjd, name, data):
     data should accept the following calls and return valid data:
     data['MODEL'], data['PARAM1'], data['e_PARAM1']...
 
-    The function returns the complex vis.
+    The function returns the a tupple with
+    the complex vis and its error.
+
     '''
     name = data['MODEL'];
+    
     if name == 'UDD':
-        spf  = np.sqrt (u**2 + v**2) / lbd;
-        diam = data['PARAM1'] * 4.84813681109536e-09;
-        vis = signal.airy (diam * spf);
+        spf  = np.sqrt (u**2 + v**2) / lbd * 4.84813681109536e-09;
+        diam  = data['PARAM1'];
+        ediam = data['e_PARAM1'];
+        vis  = signal.airy (diam * spf);
+        evis = np.abs (signal.airy ((diam-ediam) * spf) - signal.airy ((diam+ediam) * spf));
+        
     elif name == 'LDD':
         log.warning ('LDD model is crap !!!');
         vis = u + v;
+        evis = vis * 0.0;
+        
     else:
         raise ValueError ('Model name is unknown');
     
-    return vis;
+    return vis, evis;
 
 def create_from_jsdc (filename, hdrs):
     '''
@@ -85,6 +95,7 @@ def create_from_jsdc (filename, hdrs):
 
     # Create FITS binary table, empty except the names
     hdu1 = pyfits.BinTableHDU.from_columns (bincols);
+    hdu1.header['EXTNAME'] = 'CATALOG';
 
     # Loop on object in the list
     for i,obj in enumerate (objlist):
@@ -108,7 +119,6 @@ def create_from_jsdc (filename, hdrs):
             if cat['UDDH'] > 0 and cat['UDDH'] < 1.0 and cat['e_LDD'] < 0.3 and cat['_r'] < 1./10:
                 log.info (obj+' declared as calibrator');
                 hdu1.data['ISCAL'] = 1;
-                
                 
         except:
             log.info ('Cannot find JSDC for '+obj);
