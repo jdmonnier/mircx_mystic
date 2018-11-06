@@ -73,7 +73,12 @@ def create_from_jsdc (filename, hdrs):
     by querying the JSDC.
 
     The hdrs argument can be a list of star name,
-    or a list of headers
+    or a list of headers loaded by the function
+    headers.loaddir ();
+
+    The function write the catalog as a FITS file
+    called "filename.fits". It erase any file existing
+    with the same name.
     '''
 
     # Import and init astroquery
