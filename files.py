@@ -71,7 +71,7 @@ def write (hdulist,filename):
 
     # Add the pipeline version
     hdr[HMP+'REV'] = (revision,'Version of mircx_pipeline');
-    hdr[HMP+'GIT HASH'] = (git_hash,'Git hash of last commit');
+    hdr[HMP+'GIT HASH'] = (git_hash);
     hdr[HMP+'GIT DATE'] = (git_date,'Git date of last commit');
     hdr[HMP+'GIT BRANCH'] = (git_branch,'Git branch');
 
