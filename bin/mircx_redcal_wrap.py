@@ -376,28 +376,31 @@ for date in argopt.dates.split(','):
             outtex.write('\\title{Summary report from mircx\\_redcal\\_wrap.py}\n')
             outtex.write('\\author{'+author+'}\n\\date{'+date+'}\n\n')
             outtex.write('\\begin{document}\n\n\\maketitle\n\n')
-            # Output the PI's or PIs' names:
+            # Output the PI(s)'s and observer(s)'s names & the program ID:
             outtex.write('\\subsubsection*{PI(s): ')
+            outline = None
             for item in list(set([h['PI_NAME'] for h in redhdrs])):
-                outline = None
                 if item != 'UNKNOWN':
                     try:
                         outline = outline+'; '+str(item)
                     except TypeError:
                         outline = str(item)
+            try:
                 outtex.write(outline+'}\n')
+            except TypeError:
+                outtex.write('}\n')
             outtex.write('\\subsubsection*{Observer(s): ')
+            outline = None
             for item in list(set([h['OBSERVER'] for h in redhdrs])):
-                outline = None
                 if item != 'Slimfringe':
                     try:
                         outlien = outline+'; '+str(item)
                     except TypeError:
                         outline = str(item)
-                try:
-                    outtex.write(outline+'}\n')
-                except TypeError:
-                    outtex.write('}\n')
+            try:
+                outtex.write(outline+'}\n')
+            except TypeError:
+                outtex.write('}\n')
             outtex.write('\\subsubsection*{Program ID(s): (info not yet retained in headers)\n')
             # Print table containing target info (cal, sci or new)
             outtex.write('\\subsection*{Target summary}\n')
