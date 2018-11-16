@@ -386,6 +386,19 @@ for date in argopt.dates.split(','):
                     except TypeError:
                         outline = str(item)
                 outtex.write(outline+'}\n')
+            outtex.write('\\subsubsection*{Observer(s): ')
+            for item in list(set([h['OBSERVER'] for h in redhdrs])):
+                outline = None
+                if item != 'Slimfringe':
+                    try:
+                        outlien = outline+'; '+str(item)
+                    except TypeError:
+                        outline = str(item)
+                try:
+                    outtex.write(outline+'}\n')
+                except TypeError:
+                    outtex.write('}\n')
+            outtex.write('\\subsubsection*{Program ID(s): (info not yet retained in headers)\n')
             # Print table containing target info (cal, sci or new)
             outtex.write('\\subsection*{Target summary}\n')
             outtex.write('\\begin{longtable}{p{.25\\textwidth} | p{.08\\textwidth} | ')
