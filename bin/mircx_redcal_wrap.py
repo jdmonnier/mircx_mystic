@@ -412,7 +412,7 @@ for date in argopt.dates.split(','):
                 ud_H = callist.split(',')[targlist.index(targ)*3+1]
                 eud_H = callist.split(',')[targlist.index(targ)*3+2]
                 outtex.write('    '+targ.replace('_', ' ')+' & '+scical[targlist.index(targ)]+' & $'+ud_H)
-                outtext.write('\\pm'+eud_H+'\\,$ \\\\ \n')
+                outtex.write('\\pm'+eud_H+'\\,$ \\\\ \n')
             outtex.write('    \\hline\n\\end{longtable}\n')
             outtex.write('\n')
             # Print table containing data summary:
