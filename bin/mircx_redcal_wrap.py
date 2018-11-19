@@ -23,22 +23,21 @@ description = \
 description:
  Wrapper for mircx_reduce.py, mircx_calibrate.py
  and mircx_report.py. 
- 
+
 """
 epilog = \
 """
 examples:
  mircx_redcal_wrapper.py --dates=2018Oct29,2018Oct28 
-  --ncoherent= --ncs= --nbs= --snr-threshold=
-  --email=mircx-reports@exeter.ac.uk
+  --ncoherent= --ncs= --nbs=
 
 """
 parser = argparse.ArgumentParser (description=description, epilog=epilog,
                                  formatter_class=argparse.RawDescriptionHelpFormatter,
                                  add_help=True);
-parser.add_argument ("--raw-dir",dest="raw_dir",default='./', #os.environ['MIRCX_RAW'],
+parser.add_argument ("--raw-dir",dest="raw_dir",default='/.', #os.environ['MIRCX_RAW'],
                      type=str,help="base for the raw data paths [%(default)s]");
-parser.add_argument ("--red-dir",dest="red_dir",default='./', #os.environ['MIRCX_REDUCED'],
+parser.add_argument ("--red-dir",dest="red_dir",default='/.', #os.environ['MIRCX_REDUCED'],
                      type=str,help="base for the reduction directory paths [%(default)s]");
 parser.add_argument ("--dates", dest="dates", type=str,
                      help="dates of observations to be reduced [%(default)s]");
@@ -265,11 +264,13 @@ for date in argopt.dates.split(','):
                 # Check to see whether the new target file exists and create or append as needed
                 if os.path.exists(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list'):
                     with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list', 'a') as output:
-                        output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eud_H)+'\n')
+                        output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eu
+d_H)+'\n')
                 else:
                     with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list', 'w') as output:
                         output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2,PARAM3,PARAM4\n')
-                        output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eud_H)+'\n')
+                        output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eu
+d_H)+'\n')
                 # and mark this target as a new cal:
                 callist = callist + targ.replace(' ','_')+','+ud_H+','+eud_H+','
                 scical.append('NEW:CAL')
@@ -354,6 +355,25 @@ for date in argopt.dates.split(','):
             log.info('Write '+redDir+'/oifits/calibrated/'+calibtargs[t]+'_uv_coverage.png')
         
         #####################################################
+        # Make closure phase vs max_sf plots:
+        for f in calibfits:
+            filenum = f.split('/')[-1].split('_')[0]
+            with pyfits.open(f) as input:
+                maxsf = np.max(mrx.viscalib.get_spfreq(input,'OI_T3'), axis=0)
+                cp = input['OI_T3'].data['T3PHI']
+                ecp = input['OI_T3'].data['T3PHIERR']
+                fig,axes = plt.subplots()
+                fig.suptitle(mrx.headers.summary(input[0].header))
+                for b in range(0, 20):
+                    axes.errorbar(1e-6*maxsf[b,:], cp[b,:], yerr=ecp[b,:],fmt='o',ms=1)
+                axes.set_ylim(-180.,180.)
+                axes.set_xlim(0.,315.)
+                axes.set_xlabel('max sp. freq. (M$\lambda$)')
+                axes.set_ylabel('$\phi_{CP}$')
+                mrx.files.write(fig,redDir+'/oifits/calibrated/'+filenum+'_t3phi.png')
+                plt.close("all")
+        
+        #####################################################
         # Produce summary file in each directory created containing the following:
         # 1. List of targets and a label of "SCI", "CAL", "NEW: SCI", and "NEW: CAL"
         # 2. uv coverage for the science stars
@@ -364,6 +384,9 @@ for date in argopt.dates.split(','):
         mfiles_v = glob.glob(redDir+'/oifits/calibrated/*viscal_vis2.png')
         mfiles_c = glob.glob(redDir+'/oifits/calibrated/*cpcal_t3phi.png')
         uvplot = glob.glob(redDir+'/oifits/calibrated/*_uv_coverage.png')
+        rtsPlots = sorted(glob.glob(redDir+'/rts/*rts_psd.png'))
+        snrPlots = sorted(glob.glob(redDir+'/oifits/*snr.png'))
+        basePlots = sorted(glob.glob(redDir+'/oifits/*base_trend.png'))
         with open(redDir+'/summary.tex', 'w') as outtex:
             # Set up latex file:
             outtex.write('\\documentclass[a4paper]{article}\n\n')
@@ -385,10 +408,8 @@ for date in argopt.dates.split(','):
                         outline = outline+'; '+str(item)
                     except TypeError:
                         outline = str(item)
-            try:
-                outtex.write(outline+'}\n')
-            except TypeError:
-                outtex.write('}\n')
+            
+            outtex.write(outline+'}\n')
             outtex.write('\\subsubsection*{Observer(s): ')
             outline = None
             for item in list(set([h['OBSERVER'] for h in redhdrs])):
@@ -408,11 +429,18 @@ for date in argopt.dates.split(','):
             outtex.write('p{.25\\textwidth}}\n    \\hline\n')
             outtex.write('    Target ID & used as & UD diam. for CALs (mas) \\\\ \n')
             outtex.write('    \\hline\n')
+            log.info('callist = '+callist[:-1])
             for targ in targlist:
-                ud_H = callist.split(',')[targlist.index(targ)*3+1]
-                eud_H = callist.split(',')[targlist.index(targ)*3+2]
-                outtex.write('    '+targ.replace('_', ' ')+' & '+scical[targlist.index(targ)]+' & $'+ud_H)
-                outtex.write('\\pm'+eud_H+'\\,$ \\\\ \n')
+                log.info('targ = '+targ)
+                try:
+                    ud_H = callist.split(',')[[callist.split(',')].index(targ)+1]
+                    eud_H = callist.split(',')[[callist.split(',')].index(targ)+2]
+                    outtex.write('    '+targ.replace('_', ' ')+' & '+scical[targlist.index(targ)])
+                    outtex.write(' & $'+ud_H+'\\pm'+eud_H+'\\,$ \\\\ \n')
+                except ValueError:
+                    log.info(targ+' not in callist')
+                    outtex.write('    '+targ.replace('_', ' ')+' & '+scical[targlist.index(targ)])
+                    outtex.write(' &  \\\\ \n')
             outtex.write('    \\hline\n\\end{longtable}\n')
             outtex.write('\n')
             # Print table containing data summary:
@@ -461,9 +489,9 @@ for date in argopt.dates.split(','):
                 for k in range(0, len(rfile)):
                     outtex.write('    \\includegraphics[trim=0.0cm 0.8cm 0.0cm 0.2cm, ')
                     outtex.write('clip=true, width=0.8\\textwidth]{'+redDir+'/oifits/')
-                    outtex.write(rf[k]+'}\n')
+                    outtex.write(rfile[k]+'}\n')
                 outtex.write('\\end{figure}\n\n')
-            # Print Reduction QA plots:
+            # Print Reduction QA plots: RTS PSD
             outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
             outtex.write('    \\textbf{Reduction quality assessment: PSD}\\\\ \n')
             outtex.write('    \\centering\n')
@@ -478,6 +506,38 @@ for date in argopt.dates.split(','):
                     for rts in rtsPlots[15*n:15*(n+1)]:
                         outtex.write('    \\includegraphics[trim=0.7cm 0.9cm 1.5cm 0.0cm')
                         outtex.write(', clip=true, width=0.32\\textwidth]{'+rts+'}\n')
+            outtex.write('\\end{figure}\n\n')
+            # Print Reduction QA Plots: OIFITS SNR
+            outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
+            outtex.write('    \\textbf{Reduction quality assessment: SNR}\\\\ \n')
+            outtex.write('    \\centering\n')
+            for snr in snrPlots[0:6]:
+                outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, clip=true, ')
+                outtex.write('width=0.49\\textwidth]{'+snr+'}\n')
+            if len(snrPlots) > 6:
+                for n in range(1, int(np.floor(len(snrPlots)))):
+                    outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
+                    outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
+                    outtex.write('    \\centering\n')
+                    for snr in snrPlots[6*n:6*(n+1)]:
+                        outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, ')
+                        outtext.write('clip=true, width=0.49\\textwidth]{'+snr+'}\n')
+            outtex.write('\\end{figure}\n\n')
+            # Print Reduction QA plots: OIFITS base trend
+            outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
+            outtex.write('    \\textbf{Reduction quality assessment: base trend}\\\\ \n')
+            outtex.write('    \\centering\n')
+            for ba in basePlots[0:6]:
+                outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, clip=')
+                outtex.write('true, width=0.49\\textwidth]{'+ba+'}\n')
+            if len(basePlots) > 6:
+                for n in range(1, int(np.floor(len(basePlots)))):
+                    outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
+                    outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
+                    outtex.write('    \\centering\n')
+                    for ba in basePlots[6*n:6*(n+1)]:
+                        outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, ')
+                        outtex.write('clip=true, width=0.49\textwidth]{'+ba+'}\n')
             outtex.write('\\end{figure}\n\n')
             # Print calibrated visibilities output by mircx_calibrate.py
             outtex.write('\\newpage\n\\begin{figure}\n    \\raggedright\n')
@@ -533,7 +593,4 @@ for date in argopt.dates.split(','):
             log.error('Failed to send summary.pdf file to '+argopt.email)
             log.error('Check with Narsi Anugu for permissions')
             sys.exit()
-        
         # Emailing works!
-
-
