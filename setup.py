@@ -122,10 +122,13 @@ def beam_freq (hdr):
     '''
     # Scaling in pix/fringe at highest spatial frequency
     # and for wavelength defined as lbd0
+    # 2018-11-20, the scale is multiplied by 1./1.014 to match
+    # the absolute calibration by John on iotaPeg.
     
     # Check if it's old MIRC or new MIRC-X data
     if ('P_ION' in hdr) == True :
-        scale = 2.78999;
+        # scale = 2.78999;
+        scale = 2.75147; 
         # Fiber position in v-groove
         tmp = np.array([4,6,13,18,24,28]) * 1.0 - 1.0;
         # Fiber position in fringe/pix
