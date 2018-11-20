@@ -67,7 +67,7 @@ def model (u, v, lbd, mjd, data):
     
     return vis, evis;
 
-def create_from_jsdc (filename, hdrs):
+def create_from_jsdc (filename, hdrs, overwrite=True):
     '''
     Create a new catalog file for stars in hdrs
     by querying the JSDC.
@@ -81,26 +81,37 @@ def create_from_jsdc (filename, hdrs):
     with the same name.
     '''
 
+    if overwrite == False:
+        ValueError ('overwrite=False mode is not supported yet')
+
     # Import and init astroquery
     Vizier.columns = ['+_r','*'];
 
     # List of object
     objlist = list(set([h if type(h) is str else h['OBJECT'] for h in hdrs]));
 
+    # If file exist
+    if os.path.exists (filename+'.fits'):
+        log.info ('Load existing file');
+        hdulist = pyfits.open (filename+'.fits');
+        hdu0 = hdulist[0].copy();
+        hdu1 = hdulist[1].copy();
+        hdulist.close ();
+        
     # Create catalog file
-    hdu0 = pyfits.PrimaryHDU ([]);
-    hdu0.header['FILETYPE'] = 'CATALOG';
+    else:
+        hdu0 = pyfits.PrimaryHDU ([]);
+        hdu0.header['FILETYPE'] = 'CATALOG';
 
-    # Column with names and then other columns
-    bincols = [pyfits.Column (name='NAME', format='20A', array=objlist)];
-
-    # Add other columns
+        # Create FITS binary table, empty except the names
+        bincols = [pyfits.Column (name='NAME', format='20A', array=objlist)];
+        hdu1 = pyfits.BinTableHDU.from_columns (bincols);
+        hdu1.header['EXTNAME'] = 'CATALOG';
+        
+    # Add missing columns if any
     for c in columns[1:]:
-        bincols.append (pyfits.Column (name=c[0], format=c[1], unit=c[2]));
-
-    # Create FITS binary table, empty except the names
-    hdu1 = pyfits.BinTableHDU.from_columns (bincols);
-    hdu1.header['EXTNAME'] = 'CATALOG';
+        if c[0] not in hdu1.columns.names:
+            hdu1.columns.add_col (pyfits.Column (name=c[0], format=c[1], unit=c[2]));
 
     # Loop on object in the list
     for i,obj in enumerate (objlist):
