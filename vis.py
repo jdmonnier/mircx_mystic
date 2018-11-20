@@ -190,10 +190,10 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096, fitord
     # Compute a better version of the wavelength
     # by fitting a quadratic law, optional
     lbdlaw = lbdfit.copy ();
-    hdr[HMQ+'LBDFIT_ORDER'] = (fitorder, 'order to fit the lbd solution (0 is no fit)');
 
-    if (fitorder > 0):
+    if (fitorder > 0 and is_valid.sum() > 5):
         log.info ('Fit measure with order %i polynomial'%fitorder);
+        hdr[HMQ+'LBDFIT_ORDER'] = (fitorder, 'order to fit the lbd solution (0 is no fit)');
         
         # Run a quadratic fit on valid values, except the
         # edges of the spectra.
