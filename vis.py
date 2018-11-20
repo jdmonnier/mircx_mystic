@@ -153,7 +153,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
         log.info ('Best merit 1-c=%.4f found at s/s0=%.4f'%(res[-1].fun[0],res[-1].x[0]/s0));
 
     # Get wavelengths
-    yfit = np.arange (ny);
+    yfit = 1.0 * np.arange (ny);
     lbdfit = np.array([r.x[0]*lbd0 for r in res]);
 
     log.info ('Figures');
@@ -214,16 +214,21 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
 
     # Compute position on detector of lbd0
     lbd0 = 1.6e-6;
-    try:     y0 = hdr[HMW+'FRINGE STARTY'] + np.interp (lbd0, lbdfit, yfit);
+    s = np.argsort (lbdfit);
+    try:     y0 = hdr[HMW+'FRINGE STARTY'] + np.interp (lbd0, lbdfit[s], yfit[s]);
     except:  y0 = -99.0
-    hdr[HMQ+'YLBD0'] = (y0, 'position of %.3fum in cropped window'%lbd0);
+    hdr[HMQ+'YLBD0'] = (y0, 'ypos of %.3fum in cropped window'%(lbd0*1e6));
     log.info (HMQ+'YLBD0 = %e'%y0);
+
+    # Compute a better version of the wavelength
+    log.info ('Use the direct fit');
+    lbdlaw = lbdfit.copy ();
 
     # File
     log.info ('Create file');
 
     # First HDU
-    hdu0 = pyfits.PrimaryHDU (lbdfit);
+    hdu0 = pyfits.PrimaryHDU (lbdlaw);
     hdu0.header = hdr;
     hdu0.header['FILETYPE'] = 'SPEC_CAL';
     hdu0.header['BUNIT'] = 'm';
@@ -234,16 +239,20 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
         hdr['HIERARCH MIRC PRO PREPROC%i'%(npp+1,)] = h['ORIGNAME'][-50:];
 
     # Other HDU
-    hdu1 = pyfits.ImageHDU (spectrum);
-    hdu1.header['EXTNAME'] = ('SPECTRUM','mean spectrum');
-    hdu1.header['BUNIT'] = 'adu';
+    hdu1 = pyfits.ImageHDU (lbdfit);
+    hdu1.header['EXTNAME'] = ('LBDFIT','RAW wavelength');
+    hdu1.header['BUNIT'] = 'm';
     
-    hdu2 = pyfits.ImageHDU (is_valid.astype(int));
-    hdu2.header['EXTNAME'] = ('IS_VALID','valid channels');
-    hdu2.header['BUNIT'] = 'bool';
+    hdu2 = pyfits.ImageHDU (spectrum);
+    hdu2.header['EXTNAME'] = ('SPECTRUM','mean spectrum');
+    hdu2.header['BUNIT'] = 'adu';
+    
+    hdu3 = pyfits.ImageHDU (is_valid.astype(int));
+    hdu3.header['EXTNAME'] = ('IS_VALID','valid channels');
+    hdu3.header['BUNIT'] = 'bool';
 
     # Write file
-    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2]);
+    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2,hdu3]);
     files.write (hdulist, output+'.fits');
     
     plt.close ("all");
