@@ -20,7 +20,7 @@ def info ():
     print ('Git last commit: %s'%git_date);
     print ('---------------------------------------------');
 
-revision = '1.0.1';
+revision = '1.0.2';
 
 git_date = get_from_dir ('git log -1 --format=%cd --date=format:%Y-%M-%dT%H:%M:%S');
 
