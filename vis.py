@@ -16,7 +16,7 @@ from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter, uniform_filter, median_filter;
 from scipy.optimize import least_squares, curve_fit;
 from scipy.ndimage.morphology import binary_closing, binary_opening;
-from scipy.ndimage.morphology import binary_dilation;
+from scipy.ndimage.morphology import binary_dilation, binary_erosion;
 
 from . import log, files, headers, setup, oifits, signal, plot, qc;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
@@ -54,7 +54,7 @@ def extract_maps (hdr, bmaps):
 
     return fringe_map, photo_map;
 
-def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
+def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096, fitorder=2):
     '''
     Compute the SPEC_CAL from list of PREPROC
     '''
@@ -111,9 +111,13 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
                 tmp = np.correlate (data[s,y,:],data[s,y,:],mode='full');
                 correl[y,:] += tmp;
 
-    # Compute valid channels
+    # Compute valid channels based on spectrum
     spec = median_filter (spectrum, 3, mode='nearest');
     is_valid = spec > (0.25 * np.max (spec));
+
+    # Morphology to avoid isolated rejected point
+    # tmp = np.insert (np.insert (is_valid, 0, is_valid[0]), -1, is_valid[-1]);
+    # is_valid = binary_closing (tmp, structure=[1,1,1])[1:-1];
 
     # Get center of spectrum
     fyc,fyw = signal.getwidth (spectrum);
@@ -156,43 +160,6 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
     yfit = 1.0 * np.arange (ny);
     lbdfit = np.array([r.x[0]*lbd0 for r in res]);
 
-    log.info ('Figures');
-
-    # Spectrum
-    fig,ax = plt.subplots ();
-    fig.suptitle ('Mean Spectrum of all observations');
-    ax.plot (spectrum,'o-', alpha=0.3);
-    ax.plot (spectrum / is_valid,'o-');
-    files.write (fig,output+'_spectrum.png');
-    
-    # Figures of PSD with model
-    fig,axes = plt.subplots (ny,sharex=True);
-    fig.suptitle ('Observed PSD (orange) and scaled template (blue)');
-    for y in range (ny):
-        ax = axes.flatten()[y];
-        ax.plot (freq,signal.psd_projection (res[y].x[0], freq, freq0, delta0, None), c='blue');
-        ax.plot (freq,psd[y,:], c='orange');
-        ax.set_xlim (0,1.3*np.max(freq0));
-        ax.set_ylim (0,1.1);
-    files.write (fig,output+'_psdmodel.png');
-
-    # Effective wavelength
-    fig,ax = plt.subplots ();
-    fig.suptitle ('Guess calib. (orange) and Fitted calib, (blue)');
-    ax.plot (yfit,lbdfit * 1e6,'o-', c='blue');
-    ax.plot (yfit,lbd * 1e6,'o-', c='orange', alpha=0.5);
-    ax.set_ylabel ('lbd (um)');
-    ax.set_xlabel ('Detector line (python-def)');
-    ax.set_ylim (1.45,1.8);
-    files.write (fig,output+'_lbd.png');
-
-    # PSD
-    fig,ax = plt.subplots (2,1);
-    fig.suptitle (headers.summary (hdr));
-    ax[0].imshow (correl,aspect='auto');
-    ax[1].plot (psd[:,0:int(nfreq/2)].T);
-    files.write (fig,output+'_psd.png');
-
     log.info ('Compute QC');
     
     # Compute quality of projection
@@ -221,8 +188,60 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096):
     log.info (HMQ+'YLBD0 = %e'%y0);
 
     # Compute a better version of the wavelength
-    log.info ('Use the direct fit');
+    # by fitting a quadratic law, optional
     lbdlaw = lbdfit.copy ();
+    hdr[HMQ+'LBDFIT_ORDER'] = (fitorder, 'order to fit the lbd solution (0 is no fit)');
+
+    if (fitorder > 0):
+        log.info ('Fit measure with order %i polynomial'%fitorder);
+        
+        # Run a quadratic fit on valid values, except the
+        # edges of the spectra.
+        is_fit = binary_erosion (is_valid, structure=[1,1,1]);
+        poly = np.polyfit (yfit[is_fit], lbdfit[is_fit], deg=fitorder);
+
+        # Replace the fitted values by the polynomial
+        lbdlaw[is_fit] = np.poly1d (poly)(yfit[is_fit]);
+    else:
+        log.info ('Keep raw measure (no fit of lbd solution)');
+
+    log.info ('Figures');
+
+    # Spectrum
+    fig,ax = plt.subplots ();
+    fig.suptitle ('Mean Spectrum of all observations');
+    ax.plot (spectrum,'o-', alpha=0.3);
+    ax.plot (spectrum / is_valid,'o-');
+    files.write (fig,output+'_spectrum.png');
+    
+    # Figures of PSD with model
+    fig,axes = plt.subplots (ny,sharex=True);
+    fig.suptitle ('Observed PSD (orange) and scaled template (blue)');
+    for y in range (ny):
+        ax = axes.flatten()[y];
+        ax.plot (freq,signal.psd_projection (res[y].x[0], freq, freq0, delta0, None), c='blue');
+        ax.plot (freq,psd[y,:], c='orange');
+        ax.set_xlim (0,1.3*np.max(freq0));
+        ax.set_ylim (0,1.1);
+    files.write (fig,output+'_psdmodel.png');
+
+    # Effective wavelength
+    fig,ax = plt.subplots ();
+    fig.suptitle ('Guess calib. (orange) and Fitted calib, (blue)');
+    ax.plot (yfit,lbdlaw * 1e6,'o-', c='blue', alpha=0.5);
+    ax.plot (yfit[is_fit],lbdfit[is_fit] * 1e6,'o-', c='blue', alpha=0.5);
+    ax.plot (yfit,lbd * 1e6,'o-', c='orange', alpha=0.25);
+    ax.set_ylabel ('lbd (um)');
+    ax.set_xlabel ('Detector line (python-def)');
+    ax.set_ylim (1.45,1.8);
+    files.write (fig,output+'_lbd.png');
+
+    # PSD
+    fig,ax = plt.subplots (2,1);
+    fig.suptitle (headers.summary (hdr));
+    ax[0].imshow (correl,aspect='auto');
+    ax[1].plot (psd[:,0:int(nfreq/2)].T);
+    files.write (fig,output+'_psd.png');
 
     # File
     log.info ('Create file');
