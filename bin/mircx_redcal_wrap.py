@@ -264,13 +264,11 @@ for date in argopt.dates.split(','):
                 # Check to see whether the new target file exists and create or append as needed
                 if os.path.exists(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list'):
                     with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list', 'a') as output:
-                        output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eu
-d_H)+'\n')
+                        output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eud_H)+'\n')
                 else:
                     with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list', 'w') as output:
                         output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2,PARAM3,PARAM4\n')
-                        output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eu
-d_H)+'\n')
+                        output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eud_H)+'\n')
                 # and mark this target as a new cal:
                 callist = callist + targ.replace(' ','_')+','+ud_H+','+eud_H+','
                 scical.append('NEW:CAL')
@@ -346,6 +344,8 @@ d_H)+'\n')
             ax.set_ylabel('v [M$\lambda$]')
             ax.set_xlabel('u [M$\lambda$]')
             ax.set_ylim([-330./1.49, 330./1.49])
+            ax.set_xticks([-200, -100, 0, 100, 200])
+            ax.set_xticklabels(['200', '100', '0', '-100', '-200'])
             ax.set_xlim([-330./1.49, 330./1.49])
             plt.axes().set_aspect(1)
             plt.title(calibtargs[t])
@@ -353,25 +353,6 @@ d_H)+'\n')
             plt.tight_layout()
             plt.savefig(redDir+'/oifits/calibrated/'+calibtargs[t]+'_uv_coverage.png')
             log.info('Write '+redDir+'/oifits/calibrated/'+calibtargs[t]+'_uv_coverage.png')
-        
-        #####################################################
-        # Make closure phase vs max_sf plots:
-        for f in calibfits:
-            filenum = f.split('/')[-1].split('_')[0]
-            with pyfits.open(f) as input:
-                maxsf = np.max(mrx.viscalib.get_spfreq(input,'OI_T3'), axis=0)
-                cp = input['OI_T3'].data['T3PHI']
-                ecp = input['OI_T3'].data['T3PHIERR']
-                fig,axes = plt.subplots()
-                fig.suptitle(mrx.headers.summary(input[0].header))
-                for b in range(0, 20):
-                    axes.errorbar(1e-6*maxsf[b,:], cp[b,:], yerr=ecp[b,:],fmt='o',ms=1)
-                axes.set_ylim(-180.,180.)
-                axes.set_xlim(0.,315.)
-                axes.set_xlabel('max sp. freq. (M$\lambda$)')
-                axes.set_ylabel('$\phi_{CP}$')
-                mrx.files.write(fig,redDir+'/oifits/calibrated/'+filenum+'_t3phi.png')
-                plt.close("all")
         
         #####################################################
         # Produce summary file in each directory created containing the following:
@@ -382,10 +363,10 @@ d_H)+'\n')
         # 5. Calibrated closure phases (not presently plotted)
         author = 'nchorent='+str(nco[i])+'; ncs='+str(ncs[i])+'; nbs='+str(nbs[i])+'; snr\\_threshold='+str(snr[i])
         mfiles_v = glob.glob(redDir+'/oifits/calibrated/*viscal_vis2.png')
-        mfiles_c = glob.glob(redDir+'/oifits/calibrated/*cpcal_t3phi.png')
+        mfiles_c = glob.glob(redDir+'/oifits/calibrated/*_t3phi.png')
         uvplot = glob.glob(redDir+'/oifits/calibrated/*_uv_coverage.png')
         rtsPlots = sorted(glob.glob(redDir+'/rts/*rts_psd.png'))
-        snrPlots = sorted(glob.glob(redDir+'/oifits/*snr.png'))
+        snrPlots = sorted(glob.glob(redDir+'/oifits/*oifits_snr.png'))
         basePlots = sorted(glob.glob(redDir+'/oifits/*base_trend.png'))
         with open(redDir+'/summary.tex', 'w') as outtex:
             # Set up latex file:
@@ -422,7 +403,7 @@ d_H)+'\n')
                 outtex.write(outline+'}\n')
             except TypeError:
                 outtex.write('}\n')
-            outtex.write('\\subsubsection*{Program ID(s): (info not yet retained in headers)\n')
+            outtex.write('\\subsubsection*{Program ID(s): (info not yet retained in headers)}\n')
             # Print table containing target info (cal, sci or new)
             outtex.write('\\subsection*{Target summary}\n')
             outtex.write('\\begin{longtable}{p{.25\\textwidth} | p{.08\\textwidth} | ')
@@ -432,14 +413,15 @@ d_H)+'\n')
             log.info('callist = '+callist[:-1])
             for targ in targlist:
                 log.info('targ = '+targ)
+                log.info('scical = '+scical[targlist.index(targ)])
                 try:
-                    ud_H = callist.split(',')[[callist.split(',')].index(targ)+1]
-                    eud_H = callist.split(',')[[callist.split(',')].index(targ)+2]
-                    outtex.write('    '+targ.replace('_', ' ')+' & '+scical[targlist.index(targ)])
+                    ud_H = callist.split(',')[callist.split(',').index(targ)+1]
+                    eud_H = callist.split(',')[callist.split(',').index(targ)+2]
+                    outtex.write('    '+targ.replace('_', ' ')+' & CAL')
                     outtex.write(' & $'+ud_H+'\\pm'+eud_H+'\\,$ \\\\ \n')
                 except ValueError:
                     log.info(targ+' not in callist')
-                    outtex.write('    '+targ.replace('_', ' ')+' & '+scical[targlist.index(targ)])
+                    outtex.write('    '+targ.replace('_', ' ')+' & SCI')
                     outtex.write(' &  \\\\ \n')
             outtex.write('    \\hline\n\\end{longtable}\n')
             outtex.write('\n')
@@ -491,7 +473,7 @@ d_H)+'\n')
                     outtex.write('clip=true, width=0.8\\textwidth]{'+redDir+'/oifits/')
                     outtex.write(rfile[k]+'}\n')
                 outtex.write('\\end{figure}\n\n')
-            # Print Reduction QA plots: RTS PSD
+            # Print Reduction QA plots: PSD
             outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
             outtex.write('    \\textbf{Reduction quality assessment: PSD}\\\\ \n')
             outtex.write('    \\centering\n')
@@ -499,7 +481,7 @@ d_H)+'\n')
                 outtex.write('    \\includegraphics[trim=0.7cm 0.9cm 1.5cm 0.0cm, ')
                 outtex.write('clip=true, width=0.32\\textwidth]{'+rts+'}\n')
             if len(rtsPlots) > 15:
-                for n in range(1, int(np.floor(len(rtsPlots)))):
+                for n in range(1, int(np.ceil(len(rtsPlots)/15.))):
                     outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
                     outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
                     outtex.write('    \\centering\n')
@@ -515,13 +497,13 @@ d_H)+'\n')
                 outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, clip=true, ')
                 outtex.write('width=0.49\\textwidth]{'+snr+'}\n')
             if len(snrPlots) > 6:
-                for n in range(1, int(np.floor(len(snrPlots)))):
+                for n in range(1, int(np.ceil(len(snrPlots)/6.))):
                     outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
                     outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
                     outtex.write('    \\centering\n')
                     for snr in snrPlots[6*n:6*(n+1)]:
                         outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, ')
-                        outtext.write('clip=true, width=0.49\\textwidth]{'+snr+'}\n')
+                        outtex.write('clip=true, width=0.49\\textwidth]{'+snr+'}\n')
             outtex.write('\\end{figure}\n\n')
             # Print Reduction QA plots: OIFITS base trend
             outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
@@ -531,13 +513,13 @@ d_H)+'\n')
                 outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, clip=')
                 outtex.write('true, width=0.49\\textwidth]{'+ba+'}\n')
             if len(basePlots) > 6:
-                for n in range(1, int(np.floor(len(basePlots)))):
+                for n in range(1, int(np.ceil(len(basePlots)/6.))):
                     outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
                     outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
                     outtex.write('    \\centering\n')
                     for ba in basePlots[6*n:6*(n+1)]:
                         outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, ')
-                        outtex.write('clip=true, width=0.49\textwidth]{'+ba+'}\n')
+                        outtex.write('clip=true, width=0.49\\textwidth]{'+ba+'}\n')
             outtex.write('\\end{figure}\n\n')
             # Print calibrated visibilities output by mircx_calibrate.py
             outtex.write('\\newpage\n\\begin{figure}\n    \\raggedright\n')
@@ -546,14 +528,14 @@ d_H)+'\n')
                 outtex.write('    \\includegraphics[trim=1.1cm 0.2cm 1.5cm 0.0cm, ')
                 outtex.write('clip=true, width=0.32\\textwidth]{'+mfile+'}\n')
             if len(mfiles_v) > 15:
-                for n in range(1, int(np.floor(len(mfiles_v)))):
+                for n in range(1, int(np.ceil(len(mfiles_v)/15.))):
                     outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
                     outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
                     outtex.write('    \\centering\n')
                     for mfile in sorted(mfiles_v)[15*n:15*(n+1)]:
                         outtex.write('    \\includegraphics[trim=1.1cm 0.2cm 1.5cm 0.0c')
                         outtex.write('m, clip=true, width=0.32\\textwidth]{'+mfile+'}\n')
-            outtex.write('\\end{figure}\n\n')
+            outtex.write('\\end{figure}\n\n\\newpage\n')
             # Print calibrated closure phases
             outtex.write('\\begin{figure}\n    \\raggedright\n')
             outtex.write('    \\textbf{Calibrated closure phase}\\\\ \n    \\centering\n')
@@ -561,7 +543,7 @@ d_H)+'\n')
                 outtex.write('    \\includegraphics[trim=1.1cm 0.2cm 1.5cm 0.0cm,')
                 outtex.write(' clip=true, width=0.32\\textwidth]{'+mf+'}\n')
             if len(mfiles_c) > 15:
-                for n in range(1, int(np.floor(len(mfiles_c)))):
+                for n in range(1, int(np.ceil(len(mfiles_c)/15.))):
                     outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
                     outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
                     outtex.write('    \\centering\n')
