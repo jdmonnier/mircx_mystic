@@ -315,44 +315,51 @@ for date in argopt.dates.split(','):
         with cd(redDir):
             subprocess.call("mircx_reduce.py "+optionals+" --raw-dir="+rawDir+" --oifits-dir="+redDir+'/oifits', shell=True)
         
-        log.info('Execute mircx_report.py in directory '+redDir+'/oifits')
-        # execute calibration and quality assessment report
-        with cd(redDir+"/oifits"):
-            subprocess.call("mircx_report.py", shell=True)
-            log.info('Execute mircx_calibrate.py in directory '+redDir+'/oifits')
-            subprocess.call("mircx_calibrate.py --calibrators="+callist[:-1], shell=True)
-        
-        # Up to this point is free of errors
-        calibfits = glob.glob(redDir+'/oifits/calibrated/*.fits')
-        calibhdrs = mrx.headers.loaddir(redDir+'/oifits/calibrated') # headers of the calibrated files
-        redhdrs = mrx.headers.loaddir(redDir+'/oifits') # headers of the reduced files
-        calibtargs = list(set([h['OBJECT'] for h in calibhdrs]))
-        #####################################################
-        # Make uv coverage plot:
-        for t in range(0, len(calibtargs)):
-            usf, vsf = [], []
-            for f in range(0, len(calibfits)):
-                with pyfits.open(calibfits[f]) as input:
-                    if input[0].header['OBJECT'] == calibtargs[t]:
-                        for u in range(0, len(input['OI_VIS2'].data['UCOORD'])):
-                            for w in range(0, len(input['OI_WAVELENGTH'].data['EFF_WAVE'])):
-                                usf.append(0.0-(input['OI_VIS2'].data['UCOORD'][u]/input['OI_WAVELENGTH'].data['EFF_WAVE'][w]/1e6))
-                                vsf.append(input['OI_VIS2'].data['VCOORD'][u]/input['OI_WAVELENGTH'].data['EFF_WAVE'][w]/1e6)
-            plt.plot(usf, vsf, ls='none', marker='o', color='k')
-            plt.plot(0.0-np.array(usf), 0.0-np.array(vsf), ls='none', marker='o', color='k')
-            ax = plt.gca()
-            ax.set_ylabel('v [M$\lambda$]')
-            ax.set_xlabel('u [M$\lambda$]')
-            ax.set_ylim([-330./1.49, 330./1.49])
-            ax.set_xticks([-200, -100, 0, 100, 200])
-            ax.set_xticklabels(['200', '100', '0', '-100', '-200'])
-            ax.set_xlim([-330./1.49, 330./1.49])
-            plt.axes().set_aspect(1)
-            plt.title(calibtargs[t])
-            plt.grid(True)
-            plt.tight_layout()
-            plt.savefig(redDir+'/oifits/calibrated/'+calibtargs[t]+'_uv_coverage.png')
-            log.info('Write '+redDir+'/oifits/calibrated/'+calibtargs[t]+'_uv_coverage.png')
+        # Check whether reduction was successful:
+        if os.path.isdir(redDir+'/oifits'):
+            log.info('Execute mircx_report.py in directory '+redDir+'/oifits')
+            # execute calibration and quality assessment report
+            with cd(redDir+"/oifits"):
+                subprocess.call("mircx_report.py", shell=True)
+                log.info('Execute mircx_calibrate.py in directory '+redDir+'/oifits')
+                subprocess.call("mircx_calibrate.py --calibrators="+callist[:-1], shell=True)
+            
+            calibfits = glob.glob(redDir+'/oifits/calibrated/*.fits')
+            calibhdrs = mrx.headers.loaddir(redDir+'/oifits/calibrated') # headers of the calibrated files
+            redhdrs = mrx.headers.loaddir(redDir+'/oifits') # headers of the reduced files
+            calibtargs = list(set([h['OBJECT'] for h in calibhdrs]))
+            #####################################################
+            # Make uv coverage plot:
+            for t in range(0, len(calibtargs)):
+                usf, vsf = [], []
+                for f in range(0, len(calibfits)):
+                    with pyfits.open(calibfits[f]) as input:
+                        if input[0].header['OBJECT'] == calibtargs[t]:
+                            for u in range(0, len(input['OI_VIS2'].data['UCOORD'])):
+                                for w in range(0, len(input['OI_WAVELENGTH'].data['EFF_WAVE'])):
+                                    usf.append(0.0-(input['OI_VIS2'].data['UCOORD'][u]/input['OI_WAVELENGTH'].data['EFF_WAVE'][w]/1e6))
+                                    vsf.append(input['OI_VIS2'].data['VCOORD'][u]/input['OI_WAVELENGTH'].data['EFF_WAVE'][w]/1e6)
+                plt.plot(usf, vsf, ls='none', marker='o', color='k')
+                plt.plot(0.0-np.array(usf), 0.0-np.array(vsf), ls='none', marker='o', color='k')
+                ax = plt.gca()
+                ax.set_ylabel('v [M$\lambda$]')
+                ax.set_xlabel('u [M$\lambda$]')
+                ax.set_ylim([-330./1.49, 330./1.49])
+                ax.set_xticks([-200, -100, 0, 100, 200])
+                ax.set_xticklabels(['200', '100', '0', '-100', '-200'])
+                ax.set_xlim([-330./1.49, 330./1.49])
+                plt.axes().set_aspect(1)
+                plt.title(calibtargs[t])
+                plt.grid(True)
+                plt.tight_layout()
+                plt.savefig(redDir+'/oifits/calibrated/'+calibtargs[t]+'_uv_coverage.png')
+                log.info('Write '+redDir+'/oifits/calibrated/'+calibtargs[t]+'_uv_coverage.png')
+                reductionfailed = 'False'
+        else:
+            log.error('Reduction failed!')
+            log.info('Consequently, cannot run mircx_report.py')
+            log.info('and cannot run mircx_calibrate.py')
+            reductionfailed = 'True'
         
         #####################################################
         # Produce summary file in each directory created containing the following:
@@ -362,12 +369,12 @@ for date in argopt.dates.split(','):
         # 4. Calibrated visibilities: oifits/calibrated/*viscal_vis2.png
         # 5. Calibrated closure phases (not presently plotted)
         author = 'ncohrent='+str(nco[i])+'; ncs='+str(ncs[i])+'; nbs='+str(nbs[i])+'; snr\\_threshold='+str(snr[i])
-        mfiles_v = glob.glob(redDir+'/oifits/calibrated/*viscal_vis2.png')
-        mfiles_c = glob.glob(redDir+'/oifits/calibrated/*_t3phi.png')
-        uvplot = glob.glob(redDir+'/oifits/calibrated/*_uv_coverage.png')
-        rtsPlots = sorted(glob.glob(redDir+'/rts/*rts_psd.png'))
-        snrPlots = sorted(glob.glob(redDir+'/oifits/*oifits_snr.png'))
-        basePlots = sorted(glob.glob(redDir+'/oifits/*base_trend.png'))
+        mfiles_v = glob.glob(redDir+'/oifits/calibrated/*viscal_vis2.png') # length zero if reduction failed
+        mfiles_c = glob.glob(redDir+'/oifits/calibrated/*_t3phi.png')      # length zero if reduction failed
+        uvplot = glob.glob(redDir+'/oifits/calibrated/*_uv_coverage.png')  # length zero if reduction failed
+        rtsPlots = sorted(glob.glob(redDir+'/rts/*rts_psd.png'))           # may be length zero if reduction failed
+        snrPlots = sorted(glob.glob(redDir+'/oifits/*oifits_snr.png'))     # length zero if reduction failed
+        basePlots = sorted(glob.glob(redDir+'/oifits/*base_trend.png'))    # length zero if reduction failed
         with open(redDir+'/summary.tex', 'w') as outtex:
             # Set up latex file:
             outtex.write('\\documentclass[a4paper]{article}\n\n')
@@ -380,10 +387,14 @@ for date in argopt.dates.split(','):
             outtex.write('\\title{Summary report from mircx\\_redcal\\_wrap.py}\n')
             outtex.write('\\author{'+author+'}\n\\date{'+date+'}\n\n')
             outtex.write('\\begin{document}\n\n\\maketitle\n\n')
+            if reductionfailed == 'False':
+                outtex.write('\\subsubsection*{Reduced files located in folder: '+redDir+'}\\n')
+            else:
+                outtex.write('\\subsubsection*{Reduction failed}\\n')
             # Output the PI(s)'s and observer(s)'s names & the program ID:
             outtex.write('\\subsubsection*{PI(s): ')
             outline = None
-            for item in list(set([h['PI_NAME'] for h in redhdrs])):
+            for item in list(set([h['PI_NAME'] for h in hdrs])):
                 if item != 'UNKNOWN':
                     try:
                         outline = outline+'; '+str(item)
@@ -393,7 +404,7 @@ for date in argopt.dates.split(','):
             outtex.write(outline+'}\n')
             outtex.write('\\subsubsection*{Observer(s): ')
             outline = None
-            for item in list(set([h['OBSERVER'] for h in redhdrs])):
+            for item in list(set([h['OBSERVER'] for h in hdrs])):
                 if item != 'Slimfringe':
                     try:
                         outlien = outline+'; '+str(item)
@@ -434,10 +445,16 @@ for date in argopt.dates.split(','):
             outtex.write('    & Start & File & Target & Gain & Ncoher & Nps & Frames & ')
             outtex.write('Filter & seeing \\\\ \n')
             outtex.write('    & (UTC) & num. & & & & & $/$reset & & \\\\ \n    \\hline\n')
-            tabRows = [[h['DATE'].split('T')[1],
-                h['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0],
-                h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],
-                h['FILTER1'],h['R0']] for h in redhdrs]
+            if reductionfailed == 'False':
+                tabRows = [[h['DATE'].split('T')[1],
+                    h['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0],
+                    h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],
+                    h['FILTER1'],h['R0']] for h in redhdrs]
+            else:
+                tabRows = [[h['DATE'].split('T')[1],
+                    h['COMMENT1'].split()[0],
+                    h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],
+                    h['FILTER1'],h['R0']] for h in hdrs]
             r = 0.
             for row in tabRows:
                 outstr = None
@@ -449,109 +466,110 @@ for date in argopt.dates.split(','):
                 outtex.write('        '+outstr+'\\\\ \n')
                 r += 1.
             outtex.write('    \\hline\n\\end{longtable}\n\n')
-            # Print figure showing uv-coverage of science target(s)
-            outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
-            outtex.write('    \\textbf{Full night $uv$-coverage for SCI target(s)}\\\\ \n')
-            outtex.write('    \\centering\n')
-            for uvp in uvplot[0:12]:
-                outtex.write('    \\includegraphics[trim=2.0cm 0.0cm 3.3cm 0.0cm, ')
-                outtex.write('clip=true, width=0.32\\textwidth]{'+uvp+'}\n')
-            if len(uvplot) > 12:
-                for n in range(1, int(np.floor(len(uvplot)))):
-                    outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
-                    outtex.write('    \\raggedright\n')
-                    outtex.write('    \\textbf{Cont.}\\\\ \n    \\centering\n')
-                    for uvp in uvplot[12*n:12*(n+1)]:
-                        outtex.write('    \\includegraphics[trim=2.0cm 0.0cm 3.3cm 0.0cm, ')
-                        outtex.write('clip=true, width=0.32\\textwidth]{'+uvp+'}\n')
-            outtex.write('\\end{figure}\n\n\\newpage\n')
-            # Print figures output by mircx_report.py
-            for rfile in rfiles:
-                outtex.write('\\begin{figure}[h]\n    \\raggedright\n')
-                outtex.write('    \\textbf{Results from mircx\\_report.py for ')
-                outtex.write(date+'}\\\\ \n    \\centering\n')
-                for k in range(0, len(rfile)):
-                    outtex.write('    \\includegraphics[trim=0.0cm 0.8cm 0.0cm 0.2cm, ')
-                    outtex.write('clip=true, width=0.8\\textwidth]{'+redDir+'/oifits/')
-                    outtex.write(rfile[k]+'}\n')
+            if reductionfailed == 'False':
+                # Print figure showing uv-coverage of science target(s)
+                outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
+                outtex.write('    \\textbf{Full night $uv$-coverage for SCI target(s)}\\\\ \n')
+                outtex.write('    \\centering\n')
+                for uvp in uvplot[0:12]:
+                    outtex.write('    \\includegraphics[trim=2.0cm 0.0cm 3.3cm 0.0cm, ')
+                    outtex.write('clip=true, width=0.32\\textwidth]{'+uvp+'}\n')
+                if len(uvplot) > 12:
+                    for n in range(1, int(np.floor(len(uvplot)))):
+                        outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
+                        outtex.write('    \\raggedright\n')
+                        outtex.write('    \\textbf{Cont.}\\\\ \n    \\centering\n')
+                        for uvp in uvplot[12*n:12*(n+1)]:
+                            outtex.write('    \\includegraphics[trim=2.0cm 0.0cm 3.3cm 0.0cm, ')
+                            outtex.write('clip=true, width=0.32\\textwidth]{'+uvp+'}\n')
+                outtex.write('\\end{figure}\n\n\\newpage\n')
+                # Print figures output by mircx_report.py
+                for rfile in rfiles:
+                    outtex.write('\\begin{figure}[h]\n    \\raggedright\n')
+                    outtex.write('    \\textbf{Results from mircx\\_report.py for ')
+                    outtex.write(date+'}\\\\ \n    \\centering\n')
+                    for k in range(0, len(rfile)):
+                        outtex.write('    \\includegraphics[trim=0.0cm 0.8cm 0.0cm 0.2cm, ')
+                        outtex.write('clip=true, width=0.8\\textwidth]{'+redDir+'/oifits/')
+                        outtex.write(rfile[k]+'}\n')
+                    outtex.write('\\end{figure}\n\n')
+                # Print Reduction QA plots: PSD
+                outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
+                outtex.write('    \\textbf{Reduction quality assessment: PSD}\\\\ \n')
+                outtex.write('    \\centering\n')
+                for rts in rtsPlots[0:15]:
+                    outtex.write('    \\includegraphics[trim=0.7cm 0.9cm 1.5cm 0.0cm, ')
+                    outtex.write('clip=true, width=0.32\\textwidth]{'+rts+'}\n')
+                if len(rtsPlots) > 15:
+                    for n in range(1, int(np.ceil(len(rtsPlots)/15.))):
+                        outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
+                        outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
+                        outtex.write('    \\centering\n')
+                        for rts in rtsPlots[15*n:15*(n+1)]:
+                            outtex.write('    \\includegraphics[trim=0.7cm 0.9cm 1.5cm 0.0cm')
+                            outtex.write(', clip=true, width=0.32\\textwidth]{'+rts+'}\n')
                 outtex.write('\\end{figure}\n\n')
-            # Print Reduction QA plots: PSD
-            outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
-            outtex.write('    \\textbf{Reduction quality assessment: PSD}\\\\ \n')
-            outtex.write('    \\centering\n')
-            for rts in rtsPlots[0:15]:
-                outtex.write('    \\includegraphics[trim=0.7cm 0.9cm 1.5cm 0.0cm, ')
-                outtex.write('clip=true, width=0.32\\textwidth]{'+rts+'}\n')
-            if len(rtsPlots) > 15:
-                for n in range(1, int(np.ceil(len(rtsPlots)/15.))):
-                    outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
-                    outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
-                    outtex.write('    \\centering\n')
-                    for rts in rtsPlots[15*n:15*(n+1)]:
-                        outtex.write('    \\includegraphics[trim=0.7cm 0.9cm 1.5cm 0.0cm')
-                        outtex.write(', clip=true, width=0.32\\textwidth]{'+rts+'}\n')
-            outtex.write('\\end{figure}\n\n')
-            # Print Reduction QA Plots: OIFITS SNR
-            outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
-            outtex.write('    \\textbf{Reduction quality assessment: SNR}\\\\ \n')
-            outtex.write('    \\centering\n')
-            for snr in snrPlots[0:6]:
-                outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, clip=true, ')
-                outtex.write('width=0.49\\textwidth]{'+snr+'}\n')
-            if len(snrPlots) > 6:
-                for n in range(1, int(np.ceil(len(snrPlots)/6.))):
-                    outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
-                    outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
-                    outtex.write('    \\centering\n')
-                    for snr in snrPlots[6*n:6*(n+1)]:
-                        outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, ')
-                        outtex.write('clip=true, width=0.49\\textwidth]{'+snr+'}\n')
-            outtex.write('\\end{figure}\n\n')
-            # Print Reduction QA plots: OIFITS base trend
-            outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
-            outtex.write('    \\textbf{Reduction quality assessment: base trend}\\\\ \n')
-            outtex.write('    \\centering\n')
-            for ba in basePlots[0:6]:
-                outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, clip=')
-                outtex.write('true, width=0.49\\textwidth]{'+ba+'}\n')
-            if len(basePlots) > 6:
-                for n in range(1, int(np.ceil(len(basePlots)/6.))):
-                    outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
-                    outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
-                    outtex.write('    \\centering\n')
-                    for ba in basePlots[6*n:6*(n+1)]:
-                        outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, ')
-                        outtex.write('clip=true, width=0.49\\textwidth]{'+ba+'}\n')
-            outtex.write('\\end{figure}\n\n')
-            # Print calibrated visibilities output by mircx_calibrate.py
-            outtex.write('\\newpage\n\\begin{figure}\n    \\raggedright\n')
-            outtex.write('    \\textbf{Calibrated visibility}\\\\ \n    \\centering\n')
-            for mfile in sorted(mfiles_v)[0:15]:
-                outtex.write('    \\includegraphics[trim=1.1cm 0.2cm 1.5cm 0.0cm, ')
-                outtex.write('clip=true, width=0.32\\textwidth]{'+mfile+'}\n')
-            if len(mfiles_v) > 15:
-                for n in range(1, int(np.ceil(len(mfiles_v)/15.))):
-                    outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
-                    outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
-                    outtex.write('    \\centering\n')
-                    for mfile in sorted(mfiles_v)[15*n:15*(n+1)]:
-                        outtex.write('    \\includegraphics[trim=1.1cm 0.2cm 1.5cm 0.0c')
-                        outtex.write('m, clip=true, width=0.32\\textwidth]{'+mfile+'}\n')
-            outtex.write('\\end{figure}\n\n\\newpage\n')
-            # Print calibrated closure phases
-            outtex.write('\\begin{figure}\n    \\raggedright\n')
-            outtex.write('    \\textbf{Calibrated closure phase}\\\\ \n    \\centering\n')
-            for mf in sorted(mfiles_c)[0:15]:
-                outtex.write('    \\includegraphics[trim=1.1cm 0.2cm 1.5cm 0.0cm,')
-                outtex.write(' clip=true, width=0.32\\textwidth]{'+mf+'}\n')
-            if len(mfiles_c) > 15:
-                for n in range(1, int(np.ceil(len(mfiles_c)/15.))):
-                    outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
-                    outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
-                    outtex.write('    \\centering\n')
-                    for mf in sorted(mfiles_c)[15*n:15*(n+1)]:
-                        outtex.write('    \\includegraphics[trim=1.1cm 0.2cm 1.5cm 0.0c')
-                        outtex.write('m, clip=true, width=0.32\\textwidth]{'+mf+'}\n')
+                # Print Reduction QA Plots: OIFITS SNR
+                outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
+                outtex.write('    \\textbf{Reduction quality assessment: SNR}\\\\ \n')
+                outtex.write('    \\centering\n')
+                for snr in snrPlots[0:6]:
+                    outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, clip=true, ')
+                    outtex.write('width=0.49\\textwidth]{'+snr+'}\n')
+                if len(snrPlots) > 6:
+                    for n in range(1, int(np.ceil(len(snrPlots)/6.))):
+                        outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
+                        outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
+                        outtex.write('    \\centering\n')
+                        for snr in snrPlots[6*n:6*(n+1)]:
+                            outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, ')
+                            outtex.write('clip=true, width=0.49\\textwidth]{'+snr+'}\n')
+                outtex.write('\\end{figure}\n\n')
+                # Print Reduction QA plots: OIFITS base trend
+                outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
+                outtex.write('    \\textbf{Reduction quality assessment: base trend}\\\\ \n')
+                outtex.write('    \\centering\n')
+                for ba in basePlots[0:6]:
+                    outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, clip=')
+                    outtex.write('true, width=0.49\\textwidth]{'+ba+'}\n')
+                if len(basePlots) > 6:
+                    for n in range(1, int(np.ceil(len(basePlots)/6.))):
+                        outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
+                        outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
+                        outtex.write('    \\centering\n')
+                        for ba in basePlots[6*n:6*(n+1)]:
+                            outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, ')
+                            outtex.write('clip=true, width=0.49\\textwidth]{'+ba+'}\n')
+                outtex.write('\\end{figure}\n\n')
+                # Print calibrated visibilities output by mircx_calibrate.py
+                outtex.write('\\newpage\n\\begin{figure}\n    \\raggedright\n')
+                outtex.write('    \\textbf{Calibrated visibility}\\\\ \n    \\centering\n')
+                for mfile in sorted(mfiles_v)[0:15]:
+                    outtex.write('    \\includegraphics[trim=1.1cm 0.2cm 1.5cm 0.0cm, ')
+                    outtex.write('clip=true, width=0.32\\textwidth]{'+mfile+'}\n')
+                if len(mfiles_v) > 15:
+                    for n in range(1, int(np.ceil(len(mfiles_v)/15.))):
+                        outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
+                        outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
+                        outtex.write('    \\centering\n')
+                        for mfile in sorted(mfiles_v)[15*n:15*(n+1)]:
+                            outtex.write('    \\includegraphics[trim=1.1cm 0.2cm 1.5cm 0.0c')
+                            outtex.write('m, clip=true, width=0.32\\textwidth]{'+mfile+'}\n')
+                outtex.write('\\end{figure}\n\n\\newpage\n')
+                # Print calibrated closure phases
+                outtex.write('\\begin{figure}\n    \\raggedright\n')
+                outtex.write('    \\textbf{Calibrated closure phase}\\\\ \n    \\centering\n')
+                for mf in sorted(mfiles_c)[0:15]:
+                    outtex.write('    \\includegraphics[trim=1.1cm 0.2cm 1.5cm 0.0cm,')
+                    outtex.write(' clip=true, width=0.32\\textwidth]{'+mf+'}\n')
+                if len(mfiles_c) > 15:
+                    for n in range(1, int(np.ceil(len(mfiles_c)/15.))):
+                        outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
+                        outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
+                        outtex.write('    \\centering\n')
+                        for mf in sorted(mfiles_c)[15*n:15*(n+1)]:
+                            outtex.write('    \\includegraphics[trim=1.1cm 0.2cm 1.5cm 0.0c')
+                            outtex.write('m, clip=true, width=0.32\\textwidth]{'+mf+'}\n')
             outtex.write('\\end{figure}\n\n\\end{document}\n')
         with cd(redDir):
             subprocess.call('pdflatex summary.tex', shell=True)
