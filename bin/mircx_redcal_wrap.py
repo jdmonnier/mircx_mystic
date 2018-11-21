@@ -361,7 +361,7 @@ for date in argopt.dates.split(','):
         # 3. Outputs of the mircx_report.py script 
         # 4. Calibrated visibilities: oifits/calibrated/*viscal_vis2.png
         # 5. Calibrated closure phases (not presently plotted)
-        author = 'nchorent='+str(nco[i])+'; ncs='+str(ncs[i])+'; nbs='+str(nbs[i])+'; snr\\_threshold='+str(snr[i])
+        author = 'ncohrent='+str(nco[i])+'; ncs='+str(ncs[i])+'; nbs='+str(nbs[i])+'; snr\\_threshold='+str(snr[i])
         mfiles_v = glob.glob(redDir+'/oifits/calibrated/*viscal_vis2.png')
         mfiles_c = glob.glob(redDir+'/oifits/calibrated/*_t3phi.png')
         uvplot = glob.glob(redDir+'/oifits/calibrated/*_uv_coverage.png')
