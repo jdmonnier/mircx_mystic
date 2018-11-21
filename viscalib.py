@@ -329,7 +329,6 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         dy = hdulist['OI_T3'].data['T3PHIERR'];
         for b in range (20):
             axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o',ms=1);
-        axes.set_ylim (-180.,180.);
         axes.set_xlim (0);
         axes.set_xlabel ('max sp. freq. (M$\lambda$)');
         axes.set_ylabel ('$\phi_{CP}$');
