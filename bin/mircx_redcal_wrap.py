@@ -427,25 +427,27 @@ for date in argopt.dates.split(','):
             outtex.write('\n')
             # Print table containing data summary:
             outtex.write('\\subsection*{Reduced data summary}\n')
-            outtex.write('\\begin{longtable}{p{.08\\textwidth} | p{.06\\textwidth} | ')
-            outtex.write('p{.25\\textwidth} | p{.05\\textwidth} | p{.07\\textwidth} | ')
-            outtex.write('p{.04\\textwidth} | p{.07\\textwidth} | p{.08\\textwidth} | ')
-            outtex.write('p{.05\\textwidth}} \n    \\hline\n')
-            outtex.write('    Start & File & Target & Gain & Ncoher & Nps & Frames & ')
+            outtex.write('\\begin{longtable}{p{.01\\textwidth} | p{.08\\textwidth} | ')
+            outtex.write('p{.06\\textwidth} | p{.25\\textwidth} | p{.05\\textwidth} | ')
+            outtex.write('p{.07\\textwidth} | p{.04\\textwidth} | p{.07\\textwidth} | ')
+            outtex.write('p{.08\\textwidth} | p{.05\\textwidth}} \n    \\hline\n')
+            outtex.write('    & Start & File & Target & Gain & Ncoher & Nps & Frames & ')
             outtex.write('Filter & seeing \\\\ \n')
-            outtex.write('    (UTC) & num. & & & & & $/$reset & & \\\\ \n    \\hline\n')
+            outtex.write('    & (UTC) & num. & & & & & $/$reset & & \\\\ \n    \\hline\n')
             tabRows = [[h['DATE'].split('T')[1],
                 h['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0],
                 h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],
                 h['FILTER1'],h['R0']] for h in redhdrs]
+            r = 0.
             for row in tabRows:
                 outstr = None
                 for item in row:
                     try:
                         outstr = outstr+' & '+str(item).replace('_', ' ')
                     except TypeError:
-                        outstr = str(item)
+                        outstr = str(r).split('.')[0]+' & '+str(item)
                 outtex.write('        '+outstr+'\\\\ \n')
+                r += 1.
             outtex.write('    \\hline\n\\end{longtable}\n\n')
             # Print figure showing uv-coverage of science target(s)
             outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
