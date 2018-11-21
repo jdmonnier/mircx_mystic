@@ -2,7 +2,7 @@
 # -*- coding: iso-8859-15 -*-                                                   
 
 import mircx_pipeline as mrx;
-import argparse, glob, os, subprocess, sys, re;
+import argparse, glob, os, subprocess, sys, re, socket;
 import numpy as np;
 from astropy.io import fits as pyfits;
 import matplotlib.pyplot as plt;
@@ -388,7 +388,8 @@ for date in argopt.dates.split(','):
             outtex.write('\\author{'+author+'}\n\\date{'+date+'}\n\n')
             outtex.write('\\begin{document}\n\n\\maketitle\n\n')
             if reductionfailed == 'False':
-                outtex.write('\\subsubsection*{Reduced files located in folder: '+redDir+'}\\n')
+                outtex.write('\\subsubsection*{Reduced files located in : '+redDir+' on ')
+                outtex.write(socket.gethostname()+'}\\n')
             else:
                 outtex.write('\\subsubsection*{Reduction failed}\\n')
             # Output the PI(s)'s and observer(s)'s names & the program ID:
