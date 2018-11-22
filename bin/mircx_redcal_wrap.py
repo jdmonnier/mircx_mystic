@@ -150,7 +150,8 @@ for date in argopt.dates.split(','):
         else:
             with open(targlog, 'w') as output:
                 for obj in objlist:
-                    output.write(obj+'\n');
+                    if type(obj) == str:
+                        output.write(obj+'\n');
             log.info('Save '+date+' target list to '+targlog);
     hdrs = None;
     objlist = None;
@@ -176,29 +177,30 @@ for date in argopt.dates.split(','):
              'www.ukirt.jach.hawaii.edu','vizier.iucaa.ernet.in']
     
     for targ in targlist:
-        log.info('Query SIMBAD for alternative IDs for target '+targ)
-        try:
-            alt_ids = Simbad.query_objectids(targ)
-            log.info('Alternative IDs retrieved')
-        except Simbad.ConnectionError:
-            connected == False
-            log.warning('Main SIMBAD server down')
-            m = 0
-            while connected == False:
-                try:
-                    Simbad.SIMBAD_SERVER = mirr[m]
-                except IndexError:
-                    log.error('Failed to connect to SIMBAD mirror sites')
-                    log.error('Check internet connection and retry')
-                    sys.exit()
-                try:
-                    alt_ids = Simbad.query_objectids(targ)
-                    connected == True
-                    log.info('Alternative IDs retreived from mirror site')
-                except Simbad.ConnectionError:
-                    m += 1
-        except TypeError:
+        if type(targ) != str:
             targlist.remove(targ)
+        else:
+            log.info('Query SIMBAD for alternative IDs for target '+targ)
+            try:
+                alt_ids = Simbad.query_objectids(targ)
+                log.info('Alternative IDs retrieved')
+            except Simbad.ConnectionError:
+                connected == False
+                log.warning('Main SIMBAD server down')
+                m = 0
+                while connected == False:
+                    try:
+                        Simbad.SIMBAD_SERVER = mirr[m]
+                    except IndexError:
+                        log.error('Failed to connect to SIMBAD mirror sites')
+                        log.error('Check internet connection and retry')
+                        sys.exit()
+                    try:
+                        alt_ids = Simbad.query_objectids(targ)
+                        connected == True
+                        log.info('Alternative IDs retreived from mirror site')
+                    except Simbad.ConnectionError:
+                        m += 1
         
         # Query target names against mircx_targets.list
         id_count = 0
