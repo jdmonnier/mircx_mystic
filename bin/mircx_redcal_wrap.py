@@ -203,104 +203,103 @@ for date in argopt.dates.split(','):
                         connected == True
                         log.info('Alternative IDs retreived from mirror site')
                     except Simbad.ConnectionError:
-                        m += 1
-        
-        # Query target names against mircx_targets.list
-        id_count = 0
-        targ_n = None
-        for id in alt_ids:
-            # As a check, count instances of target and its alternative IDs in the MIRC-X target list
-            id_count += m_targs.count(re.sub(' +',' ',id[0]))
-            if id_count == 1 and targ_n == None:
-                targ_n = re.sub(' +',' ',id[0])
-        if id_count == 0:
-            log.warning('Target '+targ+' not found in mircx_target.list')
-            log.info('Querying JSDC catalog at VizieR')
-            # If target is not in MIRC-X target list, treat it as a new calibrator and query the JSDC catalog
-            try:
-                result = Vizier.query_object(obj, catalog=["II/346"])
-            except Vizier.ConnectionError:
-                connected = False
-                log.warning('Main VizieR server down')
-                m = 0
-                while connected == False:
-                    try:
-                        Vizier.VIZIER_SERVER = mirr[m]
-                    except IndexError:
-                        log.error('Failed to connect to VizieR mirror sites')
-                        log.error('Check internet connection and retry')
-                        sys.exit()
-                    try:
-                        result = Vizier.query_object(obj, catalog=["II/346"])
-                        connected = True
-                        log.info('JSDC info retrieved from mirror site')
-                    except Vizier.ConnectionError:
-                        m += 1
-            if not result.keys():
-                # If nothing is returned from the JSDC, assume new target is a SCI
-                log.info('Nothing returned from JSDC for '+targ)
-                log.info('Marking '+targ+' as new SCI target')
-                scical.append('NEW:SCI')
-                # Check to see whether the new target file exists and create or append as needed
-                if os.path.exists(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list'):
-                    with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list', 'a') as output:
-                        output.write(targ+', , , , , SCI, , , \n')
+                        m += 1 
+            # Query target names against mircx_targets.list
+            id_count = 0
+            targ_n = None
+            for id in alt_ids:
+                # As a check, count instances of target and its alternative IDs in the MIRC-X target list
+                id_count += m_targs.count(re.sub(' +',' ',id[0]))
+                if id_count == 1 and targ_n == None:
+                    targ_n = re.sub(' +',' ',id[0])
+            if id_count == 0:
+                log.warning('Target '+targ+' not found in mircx_target.list')
+                log.info('Querying JSDC catalog at VizieR')
+                # If target is not in MIRC-X target list, treat it as a new calibrator and query the JSDC catalog
+                try:
+                    result = Vizier.query_object(obj, catalog=["II/346"])
+                except Vizier.ConnectionError:
+                    connected = False
+                    log.warning('Main VizieR server down')
+                    m = 0
+                    while connected == False:
+                        try:
+                            Vizier.VIZIER_SERVER = mirr[m]
+                        except IndexError:
+                            log.error('Failed to connect to VizieR mirror sites')
+                            log.error('Check internet connection and retry')
+                            sys.exit()
+                        try:
+                            result = Vizier.query_object(obj, catalog=["II/346"])
+                            connected = True
+                            log.info('JSDC info retrieved from mirror site')
+                        except Vizier.ConnectionError:
+                            m += 1
+                if not result.keys():
+                    # If nothing is returned from the JSDC, assume new target is a SCI
+                    log.info('Nothing returned from JSDC for '+targ)
+                    log.info('Marking '+targ+' as new SCI target')
+                    scical.append('NEW:SCI')
+                    # Check to see whether the new target file exists and create or append as needed
+                    if os.path.exists(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list'):
+                        with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list', 'a') as output:
+                            output.write(targ+', , , , , SCI, , , \n')
+                    else:
+                        with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list', 'w') as output:
+                            output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2,PARAM3,PARAM4\n')
+                            output.write(targ+', , , , , SCI, , , \n')
                 else:
-                    with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list', 'w') as output:
-                        output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2,PARAM3,PARAM4\n')
-                        output.write(targ+', , , , , SCI, , , \n')
-            else:
-                # If details are returned from JSDC, save these details to MIRC-X "new target" file
-                ra = result["II/346/jsdc_v2"]["_RAJ2000"][0]
-                dec = result["II/346/jsdc_v2"]["_DEJ2000"][0]
-                hmag = result["II/346/jsdc_v2"]["Hmag"][0]
-                vmag = result["II/346/jsdc_v2"]["Vmag"][0]
-                flag = result["II/346/jsdc_v2"]["CalFlag"][0]
-                # maintain care flags from JSDC:
-                if flag == 0:
-                    iscal = "CAL 0"
-                if flag == 1:
-                    iscal = "CAL 1"
-                if flag == 2:
-                    iscal = "CAL 2"
+                    # If details are returned from JSDC, save these details to MIRC-X "new target" file
+                    ra = result["II/346/jsdc_v2"]["_RAJ2000"][0]
+                    dec = result["II/346/jsdc_v2"]["_DEJ2000"][0]
+                    hmag = result["II/346/jsdc_v2"]["Hmag"][0]
+                    vmag = result["II/346/jsdc_v2"]["Vmag"][0]
+                    flag = result["II/346/jsdc_v2"]["CalFlag"][0]
+                    # maintain care flags from JSDC:
+                    if flag == 0:
+                        iscal = "CAL 0"
+                    if flag == 1:
+                        iscal = "CAL 1"
+                    if flag == 2:
+                        iscal = "CAL 2"
+                    else:
+                        iscal = "CAL"
+                    model = "UD_H"
+                    ud_H = result["II/346/jsdc_v2"]["UDDH"][0]
+                    eud_H = result["II/346/jsdc_v2"]["e_LDD"][0]
+                    # Check to see whether the new target file exists and create or append as needed
+                    if os.path.exists(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list'):
+                        with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list', 'a') as output:
+                            output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eud_H)+'\n')
+                    else:
+                        with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list', 'w') as output:
+                            output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2,PARAM3,PARAM4\n')
+                            output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eud_H)+'\n')
+                    # and mark this target as a new cal:
+                    callist = callist + targ.replace(' ','_')+','+ud_H+','+eud_H+','
+                    scical.append('NEW:CAL')
+            
+            elif id_count == 1:
+                if targ_n == targ:
+                    log.info('Target '+targ+' located in mircx_target.list')
                 else:
-                    iscal = "CAL"
-                model = "UD_H"
-                ud_H = result["II/346/jsdc_v2"]["UDDH"][0]
-                eud_H = result["II/346/jsdc_v2"]["e_LDD"][0]
-                # Check to see whether the new target file exists and create or append as needed
-                if os.path.exists(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list'):
-                    with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list', 'a') as output:
-                        output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eud_H)+'\n')
+                    log.info('Target '+targ+' located in mircx_target.list as '+targ_n)
+                #Retrieve info for target from mircx_targets.list:
+                print m_scical[m_targs.index(targ_n)]
+                if 'SCI' in m_scical[m_targs.index(targ_n)]:
+                    scical.append('SCI')
                 else:
-                    with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list', 'w') as output:
-                        output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2,PARAM3,PARAM4\n')
-                        output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eud_H)+'\n')
-                # and mark this target as a new cal:
-                callist = callist + targ.replace(' ','_')+','+ud_H+','+eud_H+','
-                scical.append('NEW:CAL')
-        
-        elif id_count == 1:
-            if targ_n == targ:
-                log.info('Target '+targ+' located in mircx_target.list')
-            else:
-                log.info('Target '+targ+' located in mircx_target.list as '+targ_n)
-            #Retrieve info for target from mircx_targets.list:
-            print m_scical[m_targs.index(targ_n)]
-            if 'SCI' in m_scical[m_targs.index(targ_n)]:
-                scical.append('SCI')
-            else:
-                with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_targets.list') as input:
-                    for line in input:
-                        if targ_n in line:
-                            ud_H = line.split(',')[7]
-                            eud_H = line.strip().split(',')[8]
-                callist = callist + targ.replace(' ','_')+','+ud_H+','+eud_H+','
-                scical.append('CAL')
-        elif id_count > 1:
-            log.error('Multiple entries found for '+targ+' in mircx_targets.list!')
-            log.error('Please rectify this before continuing.')
-            sys.exit()
+                    with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_targets.list') as input:
+                        for line in input:
+                            if targ_n in line:
+                                ud_H = line.split(',')[7]
+                                eud_H = line.strip().split(',')[8]
+                    callist = callist + targ.replace(' ','_')+','+ud_H+','+eud_H+','
+                    scical.append('CAL')
+            elif id_count > 1:
+                log.error('Multiple entries found for '+targ+' in mircx_targets.list!')
+                log.error('Please rectify this before continuing.')
+                sys.exit()
     
     for i in range(0, len(nco)):
         # execute reduction
