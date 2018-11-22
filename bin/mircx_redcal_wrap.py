@@ -412,8 +412,10 @@ for date in argopt.dates.split(','):
                         outline = outline+'; '+str(princInv)
                     except TypeError:
                         outline = str(princInv)
-            
-            outtex.write(outline+'}\n')
+            try:
+                outtex.write(outline+'}\n')
+            except KeyError:
+                outtex.write('}\n')
             outtex.write('\\subsubsection*{Observer(s): ')
             outline = None
             for h in hdrs:
@@ -467,8 +469,7 @@ for date in argopt.dates.split(','):
                     h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],
                     h['FILTER1'],h['R0']] for h in redhdrs]
             else:
-                tabRows = [[h['DATE'].split('T')[1],
-                    h['COMMENT1'].split()[0],
+                tabRows = [[h['DATE'].split('T')[1],h['COMMENT1'].split()[0],
                     h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],
                     h['FILTER1'],h['R0']] for h in hdrs]
             r = 0.
