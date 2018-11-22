@@ -151,7 +151,8 @@ for date in argopt.dates.split(','):
             with open(targlog, 'w') as output:
                 for obj in objlist:
                     if type(obj) == str:
-                        output.write(obj+'\n');
+                        if len(obj) > 0:
+                            output.write(obj+'\n');
             log.info('Save '+date+' target list to '+targlog);
     hdrs = None;
     objlist = None;
@@ -178,6 +179,8 @@ for date in argopt.dates.split(','):
     
     for targ in targlist:
         if type(targ) != str:
+            targlist.remove(targ)
+        elif len(targ) == 0:
             targlist.remove(targ)
         else:
             log.info('Query SIMBAD for alternative IDs for target '+targ)
