@@ -180,7 +180,7 @@ for date in argopt.dates.split(','):
         try:
             alt_ids = Simbad.query_objectids(targ)
             log.info('Alternative IDs retrieved')
-        except ConnectionError:
+        except Simbad.ConnectionError:
             connected == False
             log.warning('Main SIMBAD server down')
             m = 0
@@ -195,8 +195,10 @@ for date in argopt.dates.split(','):
                     alt_ids = Simbad.query_objectids(targ)
                     connected == True
                     log.info('Alternative IDs retreived from mirror site')
-                except ConnectionError:
+                except Simbad.ConnectionError:
                     m += 1
+        except TypeError:
+            targlist.remove(targ)
         
         # Query target names against mircx_targets.list
         id_count = 0
@@ -212,7 +214,7 @@ for date in argopt.dates.split(','):
             # If target is not in MIRC-X target list, treat it as a new calibrator and query the JSDC catalog
             try:
                 result = Vizier.query_object(obj, catalog=["II/346"])
-            except ConnectionError:
+            except Vizier.ConnectionError:
                 connected = False
                 log.warning('Main VizieR server down')
                 m = 0
@@ -227,7 +229,7 @@ for date in argopt.dates.split(','):
                         result = Vizier.query_object(obj, catalog=["II/346"])
                         connected = True
                         log.info('JSDC info retrieved from mirror site')
-                    except ConnectionError:
+                    except Vizier.ConnectionError:
                         m += 1
             if not result.keys():
                 # If nothing is returned from the JSDC, assume new target is a SCI
