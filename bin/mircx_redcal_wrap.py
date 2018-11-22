@@ -402,22 +402,30 @@ for date in argopt.dates.split(','):
             # Output the PI(s)'s and observer(s)'s names & the program ID:
             outtex.write('\n\\subsubsection*{PI(s): ')
             outline = None
-            for item in list(set([h['PI_NAME'] for h in hdrs])):
-                if item != 'UNKNOWN':
+            for h in hdrs:
+                try:
+                    princInv = h['PI_NAME']
+                except KeyError:
+                    princInv = 'UNKNOWN'
+                if princInv != 'UNKNOWN':
                     try:
-                        outline = outline+'; '+str(item)
+                        outline = outline+'; '+str(princInv)
                     except TypeError:
-                        outline = str(item)
+                        outline = str(princInv)
             
             outtex.write(outline+'}\n')
             outtex.write('\\subsubsection*{Observer(s): ')
             outline = None
-            for item in list(set([h['OBSERVER'] for h in hdrs])):
+            for h in hdrs:
+                try:
+                    obsPerson = h['OBSERVER']
+                except KeyError:
+                    obsPerson = 'Slimfringe'
                 if item != 'Slimfringe':
                     try:
-                        outlien = outline+'; '+str(item)
+                        outline = outline+'; '+str(obsPerson)
                     except TypeError:
-                        outline = str(item)
+                        outline = str(obsPerson)
             try:
                 outtex.write(outline+'}\n')
             except TypeError:
