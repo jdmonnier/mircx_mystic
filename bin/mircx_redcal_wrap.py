@@ -392,12 +392,13 @@ for date in argopt.dates.split(','):
             outtex.write('\\author{'+author+'}\n\\date{'+date+'}\n\n')
             outtex.write('\\begin{document}\n\n\\maketitle\n\n')
             if reductionfailed == 'False':
-                outtex.write('\\subsubsection*{Reduced files located in : '+redDir+' on ')
+                outtex.write('\\subsubsection*{Reduced files located in : ')
+                outtex.write(redDir.replace('_','\\_')+' on ')
                 outtex.write(socket.gethostname()+'}\\n')
             else:
                 outtex.write('\\subsubsection*{Reduction failed}\\n')
             # Output the PI(s)'s and observer(s)'s names & the program ID:
-            outtex.write('\\subsubsection*{PI(s): ')
+            outtex.write('\\n\\subsubsection*{PI(s): ')
             outline = None
             for item in list(set([h['PI_NAME'] for h in hdrs])):
                 if item != 'UNKNOWN':
