@@ -193,7 +193,7 @@ for date in argopt.dates.split(','):
                 m = 0
                 while connected == False:
                     try:
-                        Simbad.SIMBAD_SERVER = mirr[m]
+                        Simbad.SIMBAD_SERVER = mirrs[m]
                     except IndexError:
                         log.error('Failed to connect to SIMBAD mirror sites')
                         log.error('Check internet connection and retry')
@@ -217,20 +217,21 @@ for date in argopt.dates.split(','):
                 log.info('Querying JSDC catalog at VizieR')
                 # If target is not in MIRC-X target list, treat it as a new calibrator and query the JSDC catalog
                 try:
-                    result = Vizier.query_object(obj, catalog=["II/346"])
+                    result = Vizier.query_object(targ, catalog=["II/346"])
+                    connected = True
                 except Vizier.ConnectionError:
                     connected = False
                     log.warning('Main VizieR server down')
                     m = 0
                     while connected == False:
                         try:
-                            Vizier.VIZIER_SERVER = mirr[m]
+                            Vizier.VIZIER_SERVER = mirrs[m]
                         except IndexError:
                             log.error('Failed to connect to VizieR mirror sites')
                             log.error('Check internet connection and retry')
                             sys.exit()
                         try:
-                            result = Vizier.query_object(obj, catalog=["II/346"])
+                            result = Vizier.query_object(targ, catalog=["II/346"])
                             connected = True
                             log.info('JSDC info retrieved from mirror site')
                         except Vizier.ConnectionError:
@@ -285,7 +286,6 @@ for date in argopt.dates.split(','):
                 else:
                     log.info('Target '+targ+' located in mircx_target.list as '+targ_n)
                 #Retrieve info for target from mircx_targets.list:
-                print m_scical[m_targs.index(targ_n)]
                 if 'SCI' in m_scical[m_targs.index(targ_n)]:
                     scical.append('SCI')
                 else:
@@ -432,7 +432,7 @@ for date in argopt.dates.split(','):
                     obsPerson = h['OBSERVER']
                 except KeyError:
                     obsPerson = 'Slimfringe'
-                if item != 'Slimfringe':
+                if obsPerson != 'Slimfringe':
                     try:
                         outline = outline+'; '+str(obsPerson)
                     except TypeError:
