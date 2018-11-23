@@ -323,7 +323,11 @@ for date in argopt.dates.split(','):
         
         # Check whether reduction was successful:
         if os.path.isdir(redDir+'/oifits'):
-            reductionfailed = 'False'
+            redfiles = glob.glob(redDir+'/oifits/*.fits')
+            if len(redfiles) > 0:
+                reductionfailed = 'False'
+            else:
+                reductionfailed = 'True'
             log.info('Execute mircx_report.py in directory '+redDir+'/oifits')
             # execute calibration and quality assessment report
             with cd(redDir+"/oifits"):
