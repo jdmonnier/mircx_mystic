@@ -323,6 +323,7 @@ for date in argopt.dates.split(','):
         
         # Check whether reduction was successful:
         if os.path.isdir(redDir+'/oifits'):
+            reductionfailed = 'False'
             log.info('Execute mircx_report.py in directory '+redDir+'/oifits')
             # execute calibration and quality assessment report
             with cd(redDir+"/oifits"):
@@ -330,6 +331,14 @@ for date in argopt.dates.split(','):
                 log.info('Execute mircx_calibrate.py in directory '+redDir+'/oifits')
                 subprocess.call("mircx_calibrate.py --calibrators="+callist[:-1], shell=True)
             
+        else:
+            log.error('Reduction failed!')
+            log.info('Consequently, cannot run mircx_report.py')
+            log.info('and cannot run mircx_calibrate.py')
+            reductionfailed = 'True'
+        
+        # Check whether calibration was successful:
+        if os.path.isdir(redDir+'/oifits/calibrated'):
             calibfits = glob.glob(redDir+'/oifits/calibrated/*.fits')
             calibhdrs = mrx.headers.loaddir(redDir+'/oifits/calibrated') # headers of the calibrated files
             redhdrs = mrx.headers.loaddir(redDir+'/oifits') # headers of the reduced files
@@ -360,12 +369,6 @@ for date in argopt.dates.split(','):
                 plt.tight_layout()
                 plt.savefig(redDir+'/oifits/calibrated/'+calibtargs[t]+'_uv_coverage.png')
                 log.info('Write '+redDir+'/oifits/calibrated/'+calibtargs[t]+'_uv_coverage.png')
-                reductionfailed = 'False'
-        else:
-            log.error('Reduction failed!')
-            log.info('Consequently, cannot run mircx_report.py')
-            log.info('and cannot run mircx_calibrate.py')
-            reductionfailed = 'True'
         
         #####################################################
         # Produce summary file in each directory created containing the following:
@@ -415,6 +418,8 @@ for date in argopt.dates.split(','):
             try:
                 outtex.write(outline+'}\n')
             except KeyError:
+                outtex.write('}\n')
+            except TypeError:
                 outtex.write('}\n')
             outtex.write('\\subsubsection*{Observer(s): ')
             outline = None
