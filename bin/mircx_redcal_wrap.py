@@ -251,8 +251,8 @@ for date in argopt.dates.split(','):
                             output.write(targ+', , , , , SCI, , , \n')
                 else:
                     # If details are returned from JSDC, save these details to MIRC-X "new target" file
-                    ra = result["II/346/jsdc_v2"]["_RAJ2000"][0]
-                    dec = result["II/346/jsdc_v2"]["_DEJ2000"][0]
+                    ra = result["II/346/jsdc_v2"]["RAJ2000"][0]
+                    dec = result["II/346/jsdc_v2"]["DEJ2000"][0]
                     hmag = result["II/346/jsdc_v2"]["Hmag"][0]
                     vmag = result["II/346/jsdc_v2"]["Vmag"][0]
                     flag = result["II/346/jsdc_v2"]["CalFlag"][0]
@@ -277,7 +277,7 @@ for date in argopt.dates.split(','):
                             output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2,PARAM3,PARAM4\n')
                             output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eud_H)+'\n')
                     # and mark this target as a new cal:
-                    callist = callist + targ.replace(' ','_')+','+ud_H+','+eud_H+','
+                    callist = callist + targ.replace(' ','_')+','+str(ud_H)+','+str(eud_H)+','
                     scical.append('NEW:CAL')
             
             elif id_count == 1:
