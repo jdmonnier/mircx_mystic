@@ -421,7 +421,8 @@ for date in argopt.dates.split(','):
                     princInv = 'UNKNOWN'
                 if princInv != 'UNKNOWN':
                     try:
-                        outline = outline+'; '+str(princInv)
+                        if princInv not in outline:
+                            outline = outline+'; '+str(princInv)
                     except TypeError:
                         outline = str(princInv)
             try:
@@ -439,7 +440,8 @@ for date in argopt.dates.split(','):
                     obsPerson = 'Slimfringe'
                 if obsPerson != 'Slimfringe':
                     try:
-                        outline = outline+'; '+str(obsPerson)
+                        if obsPerson not in outline:
+                            outline = outline+'; '+str(obsPerson)
                     except TypeError:
                         outline = str(obsPerson)
             try:
