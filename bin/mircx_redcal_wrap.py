@@ -5,6 +5,8 @@ import mircx_pipeline as mrx;
 import argparse, glob, os, subprocess, sys, re, socket;
 import numpy as np;
 from astropy.io import fits as pyfits;
+from astropy.coordinates import SkyCoord;
+from astropy import units as u;
 import matplotlib.pyplot as plt;
 
 from mircx_pipeline import log, setup, plot, files, signal, headers;
@@ -251,8 +253,11 @@ for date in argopt.dates.split(','):
                             output.write(targ+', , , , , SCI, , , \n')
                 else:
                     # If details are returned from JSDC, save these details to MIRC-X "new target" file
-                    ra = result["II/346/jsdc_v2"]["RAJ2000"][0]
-                    dec = result["II/346/jsdc_v2"]["DEJ2000"][0]
+                    ra_in = result["II/346/jsdc_v2"]["RAJ2000"][0]
+                    dec_in = result["II/346/jsdc_v2"]["DEJ2000"][0]
+                    coords = SkyCoord(ra_in+' '+dec_in, unit=(u.hourangle, u.deg))
+                    ra = coords.ra.deg
+                    dec = coords.dec.deg
                     hmag = result["II/346/jsdc_v2"]["Hmag"][0]
                     vmag = result["II/346/jsdc_v2"]["Vmag"][0]
                     flag = result["II/346/jsdc_v2"]["CalFlag"][0]
