@@ -84,6 +84,8 @@ def create (hdr,lbd,y0=None):
     staindex = range (1,7);
     telname = ['S1','S2','E1','E2','W1','W2'];
     staname = telname;
+    fov     = np.ones (6) * 0.320;
+    fovtype = ['FWHM','FWHM','FWHM','FWHM','FWHM','FWHM'];
 
     # Check if staxyz in in header
     staxyz = np.zeros ((6,3));
@@ -94,21 +96,23 @@ def create (hdr,lbd,y0=None):
                 staxyz[j,i] = hdr[name];
             else:
                 log.warning ('Missing keyword (replace by 0.0): '+name);
-    
+
     tbhdu = pyfits.BinTableHDU.from_columns ([\
              pyfits.Column (name='TEL_NAME',  format='A16', array=telname), \
              pyfits.Column (name='STA_NAME',  format='A16', array=staname), \
              pyfits.Column (name='STA_INDEX', format='I', array=staindex), \
              pyfits.Column (name='DIAMETER', format='E', array=diameter, unit='m'), \
-             pyfits.Column (name='STAXYZ', format='3D', dim='(3)', array=staxyz, unit='m')]);
+             pyfits.Column (name='STAXYZ', format='3D', dim='(3)', array=staxyz, unit='m'), \
+             pyfits.Column (name='FOV', format='D', array=fov, unit='arc sec'), \
+             pyfits.Column (name='FOVTYPE', format='A6', array=fovtype)]);
     
     tbhdu.header['EXTNAME'] = 'OI_ARRAY';
     tbhdu.header['ARRNAME'] = 'CHARA';
     tbhdu.header['OI_REVN'] = 2;
     tbhdu.header['FRAME'] = 'GEOCENTRIC';
-    tbhdu.header['ARRAYX'] = 0.0;
-    tbhdu.header['ARRAYY'] = 0.0;
-    tbhdu.header['ARRAYZ'] = 0.0;
+    tbhdu.header['ARRAYX'] = (-2476998.047780,'[m]');
+    tbhdu.header['ARRAYY'] = (-4647390.089884,'[m]');
+    tbhdu.header['ARRAYZ'] = (3582240.612296,'[m]');
     
     hdulist.append(tbhdu);
     
