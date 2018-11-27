@@ -36,7 +36,7 @@ def create (hdr,lbd,y0=None):
     hdulist = pyfits.HDUList ([hdu0]);
 
     # Create OI_WAVELENGTH table
-    dlbd = lbd * 0 + np.mean (np.diff(lbd));
+    dlbd = np.abs (lbd * 0 + np.mean (np.diff(lbd)));
     tbhdu = pyfits.BinTableHDU.from_columns ( \
             [pyfits.Column (name='EFF_WAVE', format='1E', array=lbd, unit='m'), \
              pyfits.Column (name='EFF_BAND', format='1E', array=dlbd, unit='m')]);
