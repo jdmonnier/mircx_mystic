@@ -182,6 +182,8 @@ for date in argopt.dates.split(','):
     for targ in targlist:
         if type(targ) != str:
             targlist.remove(targ)
+        elif targ == 'NOSTAR':
+            targlist.remove(targ)
         elif len(targ) == 0:
             targlist.remove(targ)
         else:
