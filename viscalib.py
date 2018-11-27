@@ -249,9 +249,13 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         log.info ('Load %s (%s)'%(f,calib['FILETYPE']));
         hdulist = pyfits.open (f);
 
+        if calib[HMP+'CALIB MODEL_NAME'] != 'UD_H':
+           log.warning ('MODEL_NAME is not supported');
+           continue;
+
         # Get diameter in [rad]
-        diam = calib[HMP+'CALIB DIAM'] * 4.84813681109536e-09;
-        diamErr = calib[HMP+'CALIB DIAMERR'] * 4.84813681109536e-09;
+        diam = calib[HMP+'CALIB PARAM1'] * 4.84813681109536e-09;
+        diamErr = calib[HMP+'CALIB PARAM2'] * 4.84813681109536e-09;
 
         # Compute the VIS2 TF
         log.info ('Compute vis2 TF');
