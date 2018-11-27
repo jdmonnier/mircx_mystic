@@ -293,8 +293,8 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
              pyfits.Column (name='TIME', format='D', array=time, unit='s'), \
              pyfits.Column (name='MJD', format='D', array=mjd,unit='day'), \
              pyfits.Column (name='INT_TIME', format='D', array=int_time, unit='s'), \
-             pyfits.Column (name='VISPHI', format='%iD'%ny, array=visPhi.T), \
-             pyfits.Column (name='VISPHIERR', format='%iD'%ny, array=visPhierr.T), \
+             pyfits.Column (name='VISPHI', format='%iD'%ny, array=visPhi.T,unit='deg'), \
+             pyfits.Column (name='VISPHIERR', format='%iD'%ny, array=visPhierr.T,unit='deg'), \
              pyfits.Column (name='VISAMP', format='%iD'%ny, array=visAmp.T), \
              pyfits.Column (name='VISAMPERR', format='%iD'%ny, array=visAmperr.T), \
              pyfits.Column (name='UCOORD', format='D', array=ucoord, unit='m'), \
