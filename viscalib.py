@@ -324,7 +324,7 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         # CP
         fig,axes = plt.subplots ();
         fig.suptitle (headers.summary (sci));
-        x  = np.max (mrx.viscalib.get_spfreq (hdulist,'OI_T3'), axis=0);
+        x  = np.max (get_spfreq (hdulist,'OI_T3'), axis=0);
         y  = hdulist['OI_T3'].data['T3PHI'];
         dy = hdulist['OI_T3'].data['T3PHIERR'];
         for b in range (20):
