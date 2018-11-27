@@ -415,41 +415,25 @@ for date in argopt.dates.split(','):
                 outtex.write('\\subsubsection*{Reduction failed}\n')
             # Output the PI(s)'s and observer(s)'s names & the program ID:
             outtex.write('\n\\subsubsection*{PI(s): ')
-            outline = None
+            outline = []
             for h in hdrs:
                 try:
                     princInv = h['PI_NAME']
                 except KeyError:
                     princInv = 'UNKNOWN'
                 if princInv != 'UNKNOWN':
-                    try:
-                        if str(princInv) not in outline:
-                            outline = outline+'; '+str(princInv)
-                    except TypeError:
-                        outline = str(princInv)
-            try:
-                outtex.write(outline+'}\n')
-            except KeyError:
-                outtex.write('}\n')
-            except TypeError:
-                outtex.write('}\n')
+                    outline.append(princInv)
+            outtex.write('; '.join(str(out) for out in list(set(outline)))+'}\n')
             outtex.write('\\subsubsection*{Observer(s): ')
-            outline = None
+            outline = []
             for h in hdrs:
                 try:
                     obsPerson = h['OBSERVER']
                 except KeyError:
                     obsPerson = 'Slimfringe'
                 if obsPerson != 'Slimfringe':
-                    try:
-                        if str(obsPerson) not in outline:
-                            outline = outline+'; '+str(obsPerson)
-                    except TypeError:
-                        outline = str(obsPerson)
-            try:
-                outtex.write(outline+'}\n')
-            except TypeError:
-                outtex.write('}\n')
+                    outline.append(obsPerson)
+            outtex.write('; '.join(str(out) for out in list(set(outline)))+'}\n')
             outtex.write('\\subsubsection*{Program ID(s): (info not yet retained in headers)}\n')
             # Print table containing target info (cal, sci or new)
             outtex.write('\\subsection*{Target summary}\n')
