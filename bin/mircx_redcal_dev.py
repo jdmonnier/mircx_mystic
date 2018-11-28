@@ -172,7 +172,7 @@ for d in argopt.dates.split(','):
         redF = True
         calF = True
         suf    = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]
-        redOpt = '--ncoherent='+opt[i][0]+' --ncs='+opt[i][1]+' --nbs='+opt[i][2]+' --snr-threshold='+opt[i][3]
+        redOpt = '--ncoherent='+opt[i][0]+' --ncs='+opt[i][1]+' --nbs='+opt[i][2]+' --snr-threshold='+opt[i][3].replace('p','.')
         rawDir = rawBase+'/'+d[0:7]+'/'+d
         redDir = redBase+'/'+d+suf
         if redoRed[i] == True:
