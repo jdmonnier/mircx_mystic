@@ -113,7 +113,7 @@ else:
 if argopt.red_dir[-1] == '/':
     redBase = argopt.red_dir[:-1]
 else:
-    rawBase = argopt.red_dir
+    redBase = argopt.red_dir
 
 try:
     ext = os.environ['MIRCX_PIPELINE']
