@@ -181,10 +181,19 @@ for d in argopt.dates.split(','):
                 ma = " --preproc-dir="+redDir+"/preproc --rts-dir="+redDir+"/rts"
                 nd = " --oifits-dir="+redDir+"/oifits"
                 pipe = "> nohup_reduce.out"
-                viewout = "& tail -f nohup_reduce.out"
                 with open('nohup_reduce.out', 'w') as output:
                     output.write('\n')
-                subprocess.call('nohup '+com+ma+nd+' '+pipe+' '+viewout, shell=True)
+                subprocess.call('nohup '+com+ma+nd+' '+pipe+' &', shell=True)
+                nf = open('nohup_reduce.out', 'r')
+                ll = 0
+                while True:
+                    nf.seek(ll,0)
+                    last_line = nf.read()
+                    ll = nf.tell()
+                    if last_line:
+                        print last_line
+                        if 'Git last commit:' in last_line:
+                            break
         
         # Check that at least some reduced fits files have been produced:
         if os.path.isdir(redDir+'/oifits'):
@@ -195,20 +204,38 @@ for d in argopt.dates.split(','):
                     ma  = " --preproc-dir="+redDir+"/preproc --rts-dir="+redDir+"/rts"
                     nd  = " --oifits-dir="+redDir+"/oifits"
                     pipe = "> nohup_report.out"
-                    viewout = "& tail -f nohup_report.out"
                     with open('nohup_report.out', 'w') as output:
                         output.write('\n')
-                    subprocess.call("nohup "+com+ma+nd+' '+pipe+' '+viewout, shell=True)
+                    subprocess.call("nohup "+com+ma+nd+' '+pipe+' &', shell=True)
+                    nf = open('nohup_report.out', 'r')
+                    ll = 0
+                    while True:
+                        nf.seek(ll,0)
+                        last_line = nf.read()
+                        ll = nf.tell()
+                        if last_line:
+                            print last_line
+                            if 'Git last commit:' in last_line:
+                                break
                 
                 if redoCal[i] == True:
                     with cd(redDir+'/oifits'):
                         com = "mircx_calibrate.py --calibrators="+calInfo[:-1]
                         mand = " --oifits-dir="+redDir+"/oifits"
                         pipe = "> nohup_calibrate.out"
-                        viewout = "& tail -f nohup_calibrate.out"
                         with open('nohup_calibrate.out', 'w') as output:
                             output.write('\n')
-                        subprocess.call("nohup "+com+mand+" "+pipe+" "+viewout, shell=True)
+                        subprocess.call("nohup "+com+mand+" "+pipe+" &", shell=True)
+                        nf = open('nohup_calibrate.out', 'r')
+                        ll = 0
+                        while True:
+                            nf.seek(ll,0)
+                            last_line = nf.read()
+                            ll = nf.tell()
+                            if last_line:
+                                print last_line
+                                if 'Git last commit:' in last_line:
+                                    break
         
         # Check that at least some calibrated fits files have been produced:
         if os.path.isdir(redDir+'/oifits/calibrated'): 
