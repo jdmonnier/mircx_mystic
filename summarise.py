@@ -250,13 +250,20 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
             outtex.write('    & (UTC) & num. & & & & & $/$reset & & \\\\ \n    \\hline\n')
             if redF == False:
                 tabRows = [[h['DATE'].split('T')[1],
-                    h['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0],
-                    h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],
-                    h['FILTER1'],h['R0']] for h in redhdrs]
+                    h['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in redhdrs]
             else:
-                tabRows = [[h['DATE'].split('T')[1],h['COMMENT1'].split()[0],
-                    h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],
-                    h['FILTER1'],h['R0']] for h in rawhdrs]
+                print [h['DATE'] for h in rawhdrs]
+                print [h['DATE'].split('T')[1] for h in rawhdrs]
+                print [h['COMMENT1'] for h in rawhdrs]
+                print [h['COMMENT1'].split()[0] for h in rawhdrs]
+                print [h['OBJECT'] for h in rawhdrs]
+                print [h['GAIN'] for h in rawhdrs]
+                print [h['NCOHER'] for h in rawhdrs]
+                print [h['PSCOADD'] for h in rawhdrs]
+                print [h['FRMPRST'] for h in rawhdrs]
+                print [h['FILTER1'] for h in rawhdrs]
+                print [h['R0'] for h in rawhdrs]
+                tabRows = [[h['DATE'].split('T')[1],h['COMMENT1'].split()[0],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in rawhdrs]
             for r in range(0, len(tabRows)-1):
                 if r == 0:
                     outtex.write('        '+str(r)+' & '.join(str(s).replace('_',' ') for s in tabRows[r])+'\\\\ \n')
