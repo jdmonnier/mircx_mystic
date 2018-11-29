@@ -191,7 +191,7 @@ for d in argopt.dates.split(','):
                     last_line = nf.read()
                     ll = nf.tell()
                     if last_line:
-                        print last_line
+                        print last_line.strip()
                         if 'Git last commit:' in last_line:
                             break
         
@@ -214,7 +214,7 @@ for d in argopt.dates.split(','):
                         last_line = nf.read()
                         ll = nf.tell()
                         if last_line:
-                            print last_line
+                            print last_line.strip()
                             if 'Git last commit:' in last_line:
                                 break
                 
@@ -233,7 +233,7 @@ for d in argopt.dates.split(','):
                             last_line = nf.read()
                             ll = nf.tell()
                             if last_line:
-                                print last_line
+                                print last_line.strip()
                                 if 'Git last commit:' in last_line:
                                     break
         
