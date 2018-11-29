@@ -246,15 +246,18 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
             outtex.write('Filter & seeing \\\\ \n')
             outtex.write('    & (UTC) & num. & & & & & $/$reset & & \\\\ \n    \\hline\n')
             if redF == False:
-                tabRows = [[h['DATE'].split('T')[1],
-                    h['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in redhdrs]
+                tabRows = [[h['DATE'].split('T')[1],h['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in redhdrs]
             else:
+                # if the reduction process failed, the hierarch mirc pro rts keyword is unassigned so this cannot be read
                 tabRows = [[h['DATE'].split('T')[1],h['COMMENT1'],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in rawhdrs]
             for r in range(0, len(tabRows)-1):
                 if r == 0:
-                    outtex.write('        '+str(r)+' & '.join(str(s).replace('_',' ') for s in tabRows[r])+'\\\\ \n')
-                elif tabRows[r+1] != tabRows[r]:
-                    outtex.write('        '+str(r)+' & '.join(str(s).replace('_',' ') for s in tabRows[r+1])+'\\\\ \n')
+                    outtex.write('        '+str(r)+' & '+' & '.join(str(s).replace('_',' ') for s in tabRows[r])+'\\\\ \n')
+                else:
+                    nextrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r+1])
+                    thisrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r])
+                    if nextrow[11:] != thisrow[11:]:
+                       outtex.write('        '+str(r)+' & '+nextrow+'\\\\ \n')
             outtex.write('    \\hline\n\\end{longtable}\n\n')
     return
 
@@ -273,7 +276,7 @@ def texReportPlts(direc):
         with open(outFile, 'a') as outtex:
             if len(reportFiles) == 0:
                 outtex.write('\\subsubsection{No outputs from mircx\\_report.py available')
-                outtex.write('to show} \n')
+                outtex.write(' to show} \n')
             else:
                 outtex.write('\\newpage \n')
             r = 0
