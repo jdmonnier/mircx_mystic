@@ -228,8 +228,8 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
             outtex.write('    \\hline\n')
             for targ in targs:
                 try:
-                    ud_H = calInf.split(',')[calInf.split(',').index(targ)+1]
-                    eud_H = calInf.split(',')[calInf.split(',').index(targ)+2]
+                    ud_H = calInf.split(',')[calInf.split(',').index(targ.replace(' ','_'))+1]
+                    eud_H = calInf.split(',')[calInf.split(',').index(targ.replace(' ','_'))+2]
                     outtex.write('    '+targ.replace('_', ' ')+' & CAL')
                     outtex.write(' & $'+ud_H+'\\pm'+eud_H+'\\,$ \\\\ \n')
                 except ValueError:
