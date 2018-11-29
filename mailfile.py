@@ -31,11 +31,11 @@ def sendSummary(dir, toaddr, fromaddr):
     msg['From'] = fromaddr
     msg['To']   = toaddr
     
-    d = dir.split('/')[-1].split('_')[0]
+    d = dir.split('/')[-1]
     msg['Subject'] = 'MIRC-X redcal summary for '+d
-    body = 'MIRC-X redcal summary for '+d+'\n'
+    body = 'MIRC-X redcal summary for '+d.split('_')[0]+'\n'
     msg.attach(MIMEText(body, 'plain'))
-    filename = d+'_report.pdf'
+    filename = 'report_'+d+'.pdf'
     attachment = open(dir+'/'+filename, 'rb')
     part = MIMEBase('application', 'octet-stream')
     part.set_payload((attachment).read())
