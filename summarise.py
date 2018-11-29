@@ -355,10 +355,13 @@ def texSumPlots(direc,redF,calF):
         the reduction and calibration were successful,
         respectively;
     """
-    if redF == True:
-        return
     suf = direc.split('/')[-1]
     outFiles = [direc+'/summary_'+suf+'.tex',direc+'/report_'+suf+'.tex']
+    if redF == True:
+        for outFile in outFiles:
+            with open(outFile, 'a') as outtex:                    
+                outtex.write('\\end{document}\n')
+        return
     # sort the reduced files by camera settings and target:
     redFiles = sorted(glob.glob(direc+'/oifits/*.fits'))
     redhdrs = headers.loaddir(direc+'/oifits')
