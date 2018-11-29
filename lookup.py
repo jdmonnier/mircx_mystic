@@ -64,6 +64,7 @@ def targList(d,rawBase,redBase,opt):
     else:
         log.info('Target lists already exist.')
         log.info('Reading target names from '+redBase+'/'+d+suf+'/'+d+'_targets.list')
+        objs = []
         with open(redBase+'/'+d+suf+'/'+d+'_targets.list', 'r') as input:
             for line in input:
                 objs.append(line.strip())
