@@ -216,8 +216,10 @@ def queryLocal(targs,db):
             else:
                 log.info('Target '+targ+' located in '+db+' as '+targNew)
             if 'SCI' in m_scical[m_targs.index(targNew)]:
+                log.info(targ+' recognised as SCI')
                 scical.append('SCI')
             else:
+                log.info(targ+' recognised as CAL')
                 if m_modTyp[m_targs.index(targNew)] == 'UD_H':
                     ud_H = pd.Series.tolist(localDB['PARAM1'])[m_targs.index(targNew)]
                     eud_H = pd.Series.tolist(localDB['PARAM2'])[m_targs.index(targNew)]
