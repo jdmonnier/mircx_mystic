@@ -238,7 +238,7 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
             outtex.write('    \\hline\n\\end{longtable}\n')
             outtex.write('\n')
             outtex.write('\\subsection*{Reduced data summary}\n')
-            outtex.write('\\begin{longtable}{p{.01\\textwidth} | p{.08\\textwidth} | ')
+            outtex.write('\\begin{longtable}{p{.04\\textwidth} | p{.08\\textwidth} | ')
             outtex.write('p{.06\\textwidth} | p{.25\\textwidth} | p{.05\\textwidth} | ')
             outtex.write('p{.07\\textwidth} | p{.04\\textwidth} | p{.07\\textwidth} | ')
             outtex.write('p{.08\\textwidth} | p{.05\\textwidth}} \n    \\hline\n')
@@ -275,7 +275,7 @@ def texReportPlts(direc):
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
             if len(reportFiles) == 0:
-                outtex.write('\\subsubsection{No outputs from mircx\\_report.py available')
+                outtex.write('\\subsubsection*{No outputs from mircx\\_report.py available')
                 outtex.write(' to show} \n')
             else:
                 outtex.write('\\newpage \n')
