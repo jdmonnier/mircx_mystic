@@ -976,11 +976,13 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     log.info ('Compute Vis by removing the mean GD and mean phase');
 
     c_cpx  = base_dft.copy ();
-    phi = np.angle (np.mean (c_cpx[:,:,1:,:] * np.conj(c_cpx[:,:,:-1,:]), axis=2, keepdims=True));
-    c_cpx *= np.exp (-1.j * phi * np.arange (ny)[None,None,:,None]);
+    phigd = np.mean (c_cpx[:,:,1:,:] * np.conj(c_cpx[:,:,:-1,:]), axis=2, keepdims=True);
+    # smooth phigd before removing it ??
+    c_cpx *= np.exp (-1.j * np.angle (phigd) * np.arange (ny)[None,None,:,None]);
 
-    phi = np.angle (np.mean (c_cpx, axis=2,keepdims=True));
-    c_cpx *= np.exp (-1.j * phi);
+    phi = np.mean (c_cpx, axis=2,keepdims=True);
+    # smooth phi before removing it ??
+    c_cpx *= np.exp (-1.j * np.angle (phi));
     c_cpx  = np.nanmean (c_cpx * base_flag, axis=1);
     
     c_norm = photo[:,:,:,setup.base_beam ()];
