@@ -69,11 +69,10 @@ def targList(d,rawBase,redBase,opt):
         with open(redBase+'/'+d+suf+'/'+d+'_targets.list', 'r') as input:
             for line in input:
                 objs.append(line.strip())
-                print line.strip()
     try:
         return hdrs, objs
     except NameError:
-        return '', ''
+        return '', objs
 
 def queryJSDC(targ,m):
     connected = False
