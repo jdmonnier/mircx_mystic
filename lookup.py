@@ -30,6 +30,7 @@ def targList(d,rawBase,redBase,opt):
             dotargList = 'yes'
     if dotargList == 'yes':
         # Load all the headers from observing date:
+        log.info('Read headers from raw data directory')
         hdrs = headers.loaddir(rawBase+'/'+d[0:7]+'/'+d)
         # create python list of object names:
         log.info('Retrieve object names from headers')
@@ -194,10 +195,10 @@ def queryLocal(targs,db):
             log.info('Querying JSDC catalog at VizieR...')
             calsci = queryJSDC(targ,m)
             if len(calsci.split(',')) == 1:
-                outline = targ+', , , , , SCI, , , \n'
+                outline = targ.replace('_', ' ')+', , , , , SCI, , , \n'
                 scical.append('NEW:SCI')
             else:
-                outline = targ+','+calsci+'\n'
+                outline = targ.replace('_',' ')+','+calsci+'\n'
                 scical.append('NEW:CAL')
                 calInf = calInf+targ.replace(' ','_')+','+','.join(calsci.split(',')[6:8])
             outfile = os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list'

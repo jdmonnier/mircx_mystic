@@ -160,13 +160,25 @@ for d in argopt.dates.split(','):
                 else:
                     redoCal.append(True)
         else:
-            redoRed.append(True)
-            redoCal.append(True)
+            # Someone has requested not to redo the reduction process:
+            redoRed.append(False)
+            if argopt.calibrate != 'FALSE':
+                if os.path.isdir(redBase+'/'+d+suff+'/oifits/calibrated') and c_overwrite is False:
+                    # The calibration has not been run or previously failed but
+                    # should not be run at this time.
+                    redoCal.append(False)
+                else:
+                    # The calibration should be re-run
+                    redoCal.append(True)
+            else:
+                # Someone has requested not to redo the calibration process
+                redoCal.append(False)
     
     # Query database (local and JSDC) to retrieve whether targets are sci; cal; new:
     calInfo, scical = lookup.queryLocal(targs, localDB)
     
     if rawhdrs == '':
+        log.info('Read headers from raw data directory')
         rawhdrs = headers.loaddir(rawBase+'/'+d[0:7]+'/'+d)
     for i in range(0, len(nco)):
         redF = True
