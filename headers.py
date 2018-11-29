@@ -261,6 +261,7 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
         for i in range(np.shape(groups)[0]):
             if np.shape(groups[i])[0] > 3:
                 groups[i] = groups[i][1:];
+                log.info('More than 3 BACKGROUND files,so the first one is ignored')
     
     return groups;
 
