@@ -4,6 +4,7 @@ from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
 from astropy.coordinates import SkyCoord
 from astropy import units as u
+from requests.exceptions import ConnectionError
 
 from . import headers, log, files
 
@@ -83,7 +84,7 @@ def queryJSDC(targ,m):
     try:
         result = Vizier.query_object(targIDs[0], catalog=['II/346'])
         connected = True
-    except Vizier.ConnectionError:
+    except ConnectionError:
         connected = False
         log.warning(mirrs[m]+' VizieR server down')
         while connected == False:
@@ -97,7 +98,7 @@ def queryJSDC(targ,m):
                 result = Vizier.query_object(targIDs[0], catalog=['II/346'])
                 connected = True
                 log.info('JSDC info retrieved from mirror site')
-            except Vizier.ConnectionError:
+            except ConnectionError:
                 m += 1
     if not result.keys():
         # If nothing is returned from JSDC, assume the target is SCI:
@@ -160,7 +161,7 @@ def queryLocal(targs,db):
             alt_ids = Simbad.query_objectids(targ)
             log.info('Alternative IDs for '+targ+' retrieved from SIMBAD.')
             connected = True
-        except Simbad.ConnectionError:
+        except ConnectionError:
             connected = False
             if m == 0:
                 log.warning('Main SIMBAD server down')
@@ -178,8 +179,8 @@ def queryLocal(targs,db):
                     connected = True
                     log.info('Alternative IDs for '+targ+' retrieved from SIMBAD mirror:')
                     log.info(mirrs[m])
-                except Simbad.ConnectionError:
-                        m += 1
+                except ConnectionError:
+                    m += 1
         # Then query all alternative IDs for target against MIRCX database
         id_count = 0
         targNew = None
