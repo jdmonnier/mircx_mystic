@@ -1,6 +1,3 @@
-#! /usr/bin/env python                                                          
-# -*- coding: iso-8859-15 -*-                                                   
-
 import glob, socket, os
 import numpy as np
 import matplotlib.pyplot as plt

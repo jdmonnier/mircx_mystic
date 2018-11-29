@@ -1,6 +1,3 @@
-#! /usr/bin/env python                                                          
-# -*- coding: iso-8859-15 -*-                                                   
-
 import sys, os
 import smtplib
 from email.MIMEMultipart import MIMEMultipart

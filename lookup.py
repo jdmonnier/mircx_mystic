@@ -1,6 +1,3 @@
-#! /usr/bin/env python                                                          
-# -*- coding: iso-8859-15 -*-                                                   
-
 import os, sys, re
 import pandas as pd
 from astroquery.simbad import Simbad
