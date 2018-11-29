@@ -255,6 +255,13 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
 
     # Clean from void groups
     groups = [g for g in groups if g != []];
+    
+    # For the BACKGROUND, remove the first file if there is more than 3 files
+    if mtype == 'BACKGROUND':
+        for i in range(np.shape(groups)[0]):
+            if np.shape(groups[i])[0] > 3:
+                groups[i] = groups[i][1:];
+    
     return groups;
 
 def assoc (h, allh, tag, keys=[], which='closest', required=0, quality=None):
