@@ -69,7 +69,7 @@ def targList(d,rawBase,redBase,opt):
         objs = []
         with open(redBase+'/'+d+suf+'/'+d+'_targets.list', 'r') as input:
             for line in input:
-                objs.append(line.strip())
+                objs.append(line.strip().replace('_', ' '))
     try:
         return hdrs, objs
     except NameError:
