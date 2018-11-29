@@ -45,8 +45,8 @@ def sendSummary(dir, toaddr, fromaddr):
     try:
         send_email(msg, fromaddr, toaddr)
         log.info('Emailed summary report ('+filename+') to:')
-        log.info(addr)
+        log.info(toaddr)
     except smtplib.SMTPAuthenticationError:
-        log.error('Failed to send summary report ('+filename+') to '+addr)
+        log.error('Failed to send summary report ('+filename+') to '+toaddr)
         log.error('Check with Narsi Anugu for permissions')
         sys.exit()
