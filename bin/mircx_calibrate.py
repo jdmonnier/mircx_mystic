@@ -108,6 +108,9 @@ if argopt.oifitscalib != 'FALSE':
 
     # Parse input catalog
     catalog = mrx.headers.parse_argopt_catalog (argopt.calibrators);
+    
+    # Update missing information by on-line query
+    # mrx.headers.update_diam_from_jmmc (catalog);
 
     # Compute 
     for i,gp in enumerate (gps):

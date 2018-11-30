@@ -2,6 +2,8 @@ import numpy as np;
 
 from astropy.io import fits as pyfits;
 from astropy.time import Time;
+from astropy.io import ascii;
+from astropy.table import Table;
 
 import os, glob, pickle, datetime, re, csv;
 
@@ -326,26 +328,45 @@ def rep_nan (val,*rep):
 def parse_argopt_catalog (input):
     '''
     Parse the syntax 'NAME1,d1,e1,NAME2,d2,e2,...'
+    and return an astropy Table with column NAME,
+    ISCAL, MODEL_NAME, PARAM1 and PARAM2.
     '''
     if input == 'name1,diam,err,name2,diam,err':
         raise (ValueError('No calibrators specified'));
 
+    # Catalog is a list
+    if input[-5:] == '.list':
+        log.info ('Calibrators given as list');
+        catalog = ascii.read (input);
+        return catalog;
+
     # Check it is a multiple of 3
-    values = [i for i in input.split(',') if i != ''];
+    values = input.split(',');
     if float(len (values) / 3).is_integer() is False:
         raise (ValueError('Wrong syntax for calibrators'));
-
+    
     # Parse each star
-    catalog = [];
-    for star in map(list,zip(*[iter(values)]*3)):
-        catalog.append ([star[0],float(star[1]),float(star[2])]);
+    names = np.array (values[0::3]);
+    diam  = np.array (values[1::3]).astype(float);
+    ediam = np.array (values[2::3]).astype(float);
 
+    # Create catalog
+    catalog = Table ();
+    catalog['NAME'] = names;
+    catalog['ISCAL'] = 'CAL';
+    catalog['MODEL_NAME'] = 'UD_H';
+    catalog['PARAM1'] =  diam;
+    catalog['PARAM2'] = ediam;
+        
     return catalog;
 
 def update_diam_from_jmmc (catalog):
     '''
     For all stars with diam=0 and err=0 in the catalog, we try
     to get the information from the JMMC SearchCal.
+
+    FIXME: this is not working anymore, need to deal with the new
+    format for catalog based on astropy Table.
     '''
     
     # Init
@@ -382,27 +403,19 @@ def update_diam_from_jmmc (catalog):
 def get_sci_cal (hdrs, catalog):
     '''
     Spread the headers from SCI and CAL according to the 
-    entries defined in catalog. Catalog should be of the
-    form [("NAME1",diam1,err1),("NAME2",diam2,err2),...]
+    entries defined in catalog. Catalog should be an astropy
+    Table with the columns NAME, ISCAL, PARAM1 and PARAM2.
     '''
 
     # Check format of catalog
     try:
-        for c in catalog:
-            if len (c) != 3: raise;
-            log.info ('%s defined as CALIB with d = %.3f +- %.3fmas'%(c[0],c[1],c[2]));
+        t = catalog['NAME'];
+        t = catalog['ISCAL'];
+        t = catalog['PARAM1'];
+        t = catalog['PARAM2'];
     except:
         log.error ('Calibrators not specified correclty');
         raise (ValueError);
-
-    # Update missing information by on-line query
-    update_diam_from_jmmc (catalog);
-
-    # Remove stars with zero
-    for c in catalog:
-        if c[1] == 0 and c[2] == 0:
-            log.warning (c[0]+' removed from calibration since no diameter');
-            catalog.remove (c);
 
     # Check if enought
     if len (catalog) == 0:
@@ -410,24 +423,29 @@ def get_sci_cal (hdrs, catalog):
         raise (ValueError);
 
     # Get values
-    name,diam,err = list (map(list, zip(*catalog)));
+    name,iscal = catalog['NAME'], catalog['ISCAL'];
 
     # Loop on input headers
     scis, cals = [], [];
     for h in hdrs:
         if h['FILETYPE'] != 'OIFITS':
             continue;
+
+        # Find where in catalog
+        idx = np.where (name == h['OBJECT'])[0];
         
-        if h['OBJECT'] not in name:
+        if len(idx) > 0 and iscal[idx[0]] == 'CAL':
+            idx = idx[0];
+            log.info ('%s (%s) -> OIFITS_CAL (%s, %f,%f)'%(h['ORIGNAME'],h['OBJECT'], \
+                      catalog[idx]['MODEL_NAME'],catalog[idx]['PARAM1'],catalog[idx]['PARAM2']));
+            h['FILETYPE'] += '_CAL';
+            h[HMP+'CALIB MODEL_NAME'] = (catalog[idx]['MODEL_NAME']);
+            h[HMP+'CALIB PARAM1'] = (catalog[idx]['PARAM1']);
+            h[HMP+'CALIB PARAM2'] = (catalog[idx]['PARAM2']);
+            cals.append (h);
+        else:
             log.info ('%s (%s) -> OIFITS_SCI'%(h['ORIGNAME'],h['OBJECT']));
             h['FILETYPE'] += '_SCI';
             scis.append (h);
-        else:
-            log.info ('%s (%s) -> OIFITS_CAL'%(h['ORIGNAME'],h['OBJECT']));
-            idx = name.index (h['OBJECT']);
-            h['FILETYPE'] += '_CAL';
-            h[HMP+'CALIB DIAM'] = (diam[idx],'[mas] diameter');
-            h[HMP+'CALIB DIAMERR'] = (err[idx],'[mas] diameter uncertainty');
-            cals.append (h);
 
     return scis,cals;
