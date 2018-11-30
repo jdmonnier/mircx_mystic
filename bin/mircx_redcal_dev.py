@@ -212,12 +212,11 @@ for d in argopt.dates.split(','):
             if len(glob.glob(redDir+'/oifits/*.fits')) > 0:
                 redF = False
                 with cd(redDir+'/oifits'):
-                    com = "mircx_report.py --raw-dir="+rawDir
-                    mand  = " --oifits-dir="+redDir+"/oifits"
+                    command = "mircx_report.py --oifits-dir="+redDir+"/oifits"
                     pipe = "> nohup_report.out"
                     with open('nohup_report.out', 'w') as output:
                         output.write('\n')
-                    subprocess.call("nohup "+com+mand+' '+pipe+' &', shell=True)
+                    subprocess.call("nohup "+command+' '+pipe+' &', shell=True)
                     nf = open('nohup_report.out', 'r')
                     ll = 0
                     while True:
