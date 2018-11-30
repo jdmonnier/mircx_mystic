@@ -281,7 +281,6 @@ def texReportPlts(direc):
                 outtex.write('\\newpage \n')
             r = 0
             while r < len(reportFiles):
-                print r, reportFiles[r]
                 outtex.write('\\begin{figure}[h]\n    \\raggedright\n')
                 outtex.write('    \\textbf{Results from mircx\\_report.py for '+d)
                 if r == 0:

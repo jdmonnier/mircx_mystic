@@ -195,6 +195,7 @@ for d in argopt.dates.split(','):
                 pipe = "> nohup_reduce.out"
                 with open('nohup_reduce.out', 'w') as output:
                     output.write('\n')
+                log.info('Execute nohup '+com+ma+nd+' '+pipe)
                 subprocess.call('nohup '+com+ma+nd+' '+pipe+' &', shell=True)
                 nf = open('nohup_reduce.out', 'r')
                 ll = 0
@@ -216,6 +217,7 @@ for d in argopt.dates.split(','):
                     pipe = "> nohup_report.out"
                     with open('nohup_report.out', 'w') as output:
                         output.write('\n')
+                    log.info('Execute nohup '+command+' '+pipe)
                     subprocess.call("nohup "+command+' '+pipe+' &', shell=True)
                     nf = open('nohup_report.out', 'r')
                     ll = 0
@@ -231,11 +233,13 @@ for d in argopt.dates.split(','):
                 if redoCal[i] == True:
                     with cd(redDir+'/oifits'):
                         com = "mircx_calibrate.py --calibrators="+calInfo[:-1]
-                        mand = " --oifits-dir="+redDir+"/oifits"
+                        ma = " --oifits-dir="+redDir+"/oifits"
+                        nd = " --oifits-calibrated-dir="+redDir+"/ofits/calibrated"
                         pipe = "> nohup_calibrate.out"
                         with open('nohup_calibrate.out', 'w') as output:
                             output.write('\n')
-                        subprocess.call("nohup "+com+mand+" "+pipe+" &", shell=True)
+                        log.info('Execute nohup '+com+ma+nd+' '+pipe)
+                        subprocess.call("nohup "+com+ma+nd+" "+pipe+" &", shell=True)
                         nf = open('nohup_calibrate.out', 'r')
                         ll = 0
                         while True:
