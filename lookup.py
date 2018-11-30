@@ -38,7 +38,8 @@ def targList(d,rawBase,redBase,opt):
         objs = []
         for h in hdrs:
             try:
-                objs.append(h['OBJECT'])
+                if h['OBJECT'] != '' and h['OBJECT'] != 'NOSTAR':
+                    objs.append(h['OBJECT'])
             except KeyError:
                 log.warning('Not all headers contain OBJECT key word.')
                 log.info('Continuing.')
@@ -56,13 +57,7 @@ def targList(d,rawBase,redBase,opt):
                     for obj in objs:
                         if type(obj) != str:
                             objs.remove(obj)
-                        elif len(obj) == 0:
-                            objs.remove(obj)
-                        elif obj == 'NOSTAR':
-                            objs.remove(obj)
-                        else:
-                            output.write(obj+'\n')
-                            log.info('Added '+obj+' to file.')
+                        output.write(obj+'\n')
                 if len(objs) == 0:
                     log.error('No target names retrieved from headers.')
                     log.info('Exiting.')
