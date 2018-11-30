@@ -58,7 +58,7 @@ def targList(d,rawBase,redBase,opt):
                         if type(obj) != str:
                             objs.remove(obj)
                         output.write(obj+'\n')
-                 if len(objs) == 0:
+                if len(objs) == 0:
                     log.error('No target names retrieved from headers.')
                     log.info('Exiting.')
                     sys.exit()
