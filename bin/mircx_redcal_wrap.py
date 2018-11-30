@@ -251,7 +251,7 @@ for date in argopt.dates.split(','):
                             output.write(targ+', , , , , SCI, , , \n')
                     else:
                         with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list', 'w') as output:
-                            output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2,PARAM3,PARAM4\n')
+                            output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2\n')
                             output.write(targ+', , , , , SCI, , , \n')
                 else:
                     # If details are returned from JSDC, save these details to MIRC-X "new target" file
@@ -281,7 +281,7 @@ for date in argopt.dates.split(','):
                             output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eud_H)+'\n')
                     else:
                         with open(os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list', 'w') as output:
-                            output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2,PARAM3,PARAM4\n')
+                            output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2\n')
                             output.write(targ+','+str(ra)+','+str(dec)+','+str(hmag)+','+str(vmag)+','+str(iscal)+','+str(model)+','+str(ud_H)+','+str(eud_H)+'\n')
                     # and mark this target as a new cal:
                     callist = callist + targ.replace(' ','_')+','+str(ud_H)+','+str(eud_H)+','
