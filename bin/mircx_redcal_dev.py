@@ -213,12 +213,11 @@ for d in argopt.dates.split(','):
                 redF = False
                 with cd(redDir+'/oifits'):
                     com = "mircx_report.py --raw-dir="+rawDir
-                    ma  = " --preproc-dir="+redDir+"/preproc --rts-dir="+redDir+"/rts"
-                    nd  = " --oifits-dir="+redDir+"/oifits"
+                    mand  = " --oifits-dir="+redDir+"/oifits"
                     pipe = "> nohup_report.out"
                     with open('nohup_report.out', 'w') as output:
                         output.write('\n')
-                    subprocess.call("nohup "+com+ma+nd+' '+pipe+' &', shell=True)
+                    subprocess.call("nohup "+com+mand+' '+pipe+' &', shell=True)
                     nf = open('nohup_report.out', 'r')
                     ll = 0
                     while True:
