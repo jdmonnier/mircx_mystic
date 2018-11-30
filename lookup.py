@@ -62,7 +62,12 @@ def targList(d,rawBase,redBase,opt):
                             objs.remove(obj)
                         else:
                             output.write(obj+'\n')
-                log.info('File written successfully')
+                if len(objs) == 0:
+                    log.error('No target names retrieved from headers.')
+                    log.info('Exiting.')
+                    sys.exit()
+                else:
+                    log.info('File written successfully')
     else:
         log.info('Target lists already exist.')
         log.info('Reading target names from '+redBase+'/'+d+suf+'/'+d+'_targets.list')
