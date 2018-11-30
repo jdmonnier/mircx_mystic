@@ -201,7 +201,7 @@ def queryLocal(targs,db):
             else:
                 outline = targ.replace('_',' ')+','+calsci+'\n'
                 scical.append('NEW:CAL')
-                calInf = calInf+targ.replace(' ','_')+','+','.join(calsci.split(',')[6:8])
+                calInf = calInf+targ.replace(' ','_')+','+','.join(calsci.split(',')[6:8])+','
             outfile = os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list'
             if not os.path.exists(outfile):
                 with open(outfile, 'w') as output:
