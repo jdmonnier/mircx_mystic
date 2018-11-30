@@ -62,6 +62,7 @@ def targList(d,rawBase,redBase,opt):
                             objs.remove(obj)
                         else:
                             output.write(obj+'\n')
+                            log.info('Added '+obj+' to file.')
                 if len(objs) == 0:
                     log.error('No target names retrieved from headers.')
                     log.info('Exiting.')
