@@ -82,7 +82,7 @@ def queryJSDC(targ,m):
              'www.ukirt.jach.hawaii.edu','vizier.iucaa.ernet.in']
     Vizier.VIZIER_SERVER = mirrs[m]
     try:
-        result = Vizier.query_object(targIDs[0], catalog=['II/346'])
+        result = Vizier.query_object(targ, catalog=['II/346'])
         connected = True
     except ConnectionError:
         connected = False
@@ -95,7 +95,7 @@ def queryJSDC(targ,m):
                 log.error('Check internet connection and retry')
                 sys.exit()
             try:
-                result = Vizier.query_object(targIDs[0], catalog=['II/346'])
+                result = Vizier.query_object(targ, catalog=['II/346'])
                 connected = True
                 log.info('JSDC info retrieved from mirror site')
             except ConnectionError:
