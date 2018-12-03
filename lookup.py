@@ -44,6 +44,9 @@ def targList(d,rawBase,redBase,opt):
                 log.warning('Not all headers contain OBJECT key word.')
                 log.info('Continuing.')
         
+        log.info('Cleanup memory')
+        del hdrs
+        
         objs = list(set(objs))
         for i in range(0, len(opt)):
             suf = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]
@@ -71,10 +74,7 @@ def targList(d,rawBase,redBase,opt):
         with open(redBase+'/'+d+suf+'/'+d+'_targets.list', 'r') as input:
             for line in input:
                 objs.append(line.strip().replace('_', ' '))
-    try:
-        return hdrs, objs
-    except NameError:
-        return '', objs
+    return objs
 
 def queryJSDC(targ,m):
     connected = False

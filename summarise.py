@@ -44,6 +44,8 @@ def plotUV(direc):
             log.info('Save '+direc+'/'+objs[t]+'_uv_coverage.png')
         else:
             log.info('File '+direc+'/'+objs[t]+'_uv_coverage.png already exists.')
+    log.info('Cleanup memory')
+    del hdrs, lbd, usf, vsf, objs
     return
 
 def addV2CP(input, viscp, fig, axes):
@@ -258,7 +260,12 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
                     thisrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r])
                     if nextrow[11:] != thisrow[11:]:
                        outtex.write('        '+str(r)+' & '+nextrow+'\\\\ \n')
+                    del nextrow, thisrow
             outtex.write('    \\hline\n\\end{longtable}\n\n')
+    log.info('Cleanup memory')
+    if redF == False:
+        del redhdrs
+    del tabRows
     return
 
 def texReportPlts(direc):
@@ -366,6 +373,7 @@ def texSumPlots(direc,redF,calF):
     redhdrs = headers.loaddir(direc+'/oifits')
     setupL = [[h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],
         h['R0']] for h in redhdrs]
+    del redhdrs
     setups = []
     setups.append(setupL[0])
     for m in range(0, len(setupL)-1):
@@ -380,6 +388,7 @@ def texSumPlots(direc,redF,calF):
         calhdrs = headers.loaddir(direc+'/oifits/calibrated')
         setL = [[h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],
             h['R0']] for h in calhdrs]
+        del calhdrs
         setC = []
         setC.append(setL[0])
         for m in range(0, len(setL)-1):

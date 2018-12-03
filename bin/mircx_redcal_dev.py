@@ -136,7 +136,7 @@ for d in argopt.dates.split(','):
     for i in range(0, len(nco)):
         opt.append([str(nco[i]),str(ncs[i]),str(nbs[i]),str(snr[i]).replace('.','p')])
     # Save a target summary for the observation date to file:
-    rawhdrs, targs = lookup.targList(d,rawBase,redBase,opt)
+    targs = lookup.targList(d,rawBase,redBase,opt)
     
     # Check whether reduction and calibration need to be (re)run:
     r_overwrite = (argopt.reduce == 'OVERWRITE')
@@ -177,9 +177,6 @@ for d in argopt.dates.split(','):
     # Query database (local and JSDC) to retrieve whether targets are sci; cal; new:
     calInfo, scical = lookup.queryLocal(targs, localDB)
     
-    if rawhdrs == '':
-        log.info('Read headers from raw data directory')
-        rawhdrs = headers.loaddir(rawBase+'/'+d[0:7]+'/'+d)
     for i in range(0, len(nco)):
         redF = True
         calF = True
@@ -259,8 +256,14 @@ for d in argopt.dates.split(','):
                 summarise.plotUV(redDir+'/oifits/calibrated')
         
         # make summary PDF files:
+        log.info('Read headers from raw data directory')
+        rawhdrs = headers.loaddir(rawBase+'/'+d[0:7]+'/'+d)
+        log.info('Create report summary files')
         summarise.texSumTitle(redDir, rawhdrs, opt[i], redF, calF)
         summarise.texSumTables(redDir,targs,calInfo,scical,redF,rawhdrs)
+        log.info('Cleanup memory')
+        del rawhdrs
+        
         summarise.texReportPlts(redDir)
         summarise.texSumUV(redDir,calF)
         summarise.texSumPlots(redDir,redF,calF)
