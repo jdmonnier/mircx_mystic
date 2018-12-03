@@ -163,7 +163,7 @@ if argopt.preproc != 'FALSE':
     overwrite = (argopt.preproc == 'OVERWRITE');
 
     # List inputs
-    hdrs = hdrs_raw = mrx.headers.loaddir (argopt.raw_dir);
+    hdrs = mrx.headers.loaddir (argopt.raw_dir);
 
     #
     # Compute BACKGROUND_MEAN
@@ -195,6 +195,9 @@ if argopt.preproc != 'FALSE':
         finally:
             log.closeFile ();
 
+    log.info ('Cleanup memory');
+    del gps;
+    
     #
     # Compute BEAMi_MAP
     #
@@ -234,6 +237,9 @@ if argopt.preproc != 'FALSE':
         finally:
             log.closeFile ();
         
+    log.info ('Cleanup memory');
+    del hdrs_calib, gps;
+    
     #
     # Compute PREPROC
     #
@@ -281,6 +287,9 @@ if argopt.preproc != 'FALSE':
         finally:
             log.closeFile ();
 
+    log.info ('Cleanup memory');
+    del hdrs, hdrs_calib, gps;
+    
     #
     # Compute SPEC_CAL
     #
@@ -315,7 +324,7 @@ if argopt.preproc != 'FALSE':
             log.closeFile ();
 
     log.info ('Cleanup memory');
-    del hdrs, hdrs_calib, gps;
+    del hdrs, gps;
 
 #
 # Compute RTS
