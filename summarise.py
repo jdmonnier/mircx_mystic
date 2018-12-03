@@ -226,7 +226,7 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
             try:
                 tmp = [h[t] for h in redhdrs]
                 log.info('Writing '+t+' from header to summary table')
-            except KerError:
+            except KeyError:
                 log.info('Keyword '+t+' not found in all headers')
                 avoid.append(t)
     for outFile in outFiles:
