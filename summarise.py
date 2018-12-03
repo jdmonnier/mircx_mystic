@@ -258,8 +258,6 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
                 try:
                     tabRows = [[h['DATE'].split('T')[1],h['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in redhdrs]
                 except KeyError:
-                    day, nam, objct, gain, ncoher, psco = [], [], [], [], [], []
-                    frmrst, fltr, seeing = [], [], []
                     for h in range(0, len(redhdrs)):
                         try:
                             day = redhdrs[h]['DATE'].split('T')[1]
@@ -423,8 +421,42 @@ def texSumPlots(direc,redF,calF):
     # sort the reduced files by camera settings and target:
     redFiles = sorted(glob.glob(direc+'/oifits/*.fits'))
     redhdrs = headers.loaddir(direc+'/oifits')
-    setupL = [[h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],
-        h['R0']] for h in redhdrs]
+    try:
+        setupL = [[h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in redhdrs]
+    except KeyError:
+        for h in range(0, len(redhdrs)):
+            try:
+                objct = redhdrs[h]['OBJECT']
+            except:
+                objct = '--'
+            try:
+                gain = redhdrs[h]['GAIN']
+            except:
+                gain = '--'
+            try:
+                ncoher = redhdrs[h]['NCOHER']
+            except:
+                ncoher = '--'
+            try:
+                psco = redhdrs[h]['PSCOADD']
+            except:
+                psco = '--'
+            try:
+                frmrst = redhdrs[h]['FRMPRST']
+            except:
+                frmrst = '--'
+            try:
+                fltr = redhdrs[h]['FILTER1']
+            except:
+                fltr = '--'
+            try:
+                seeing = redhdrs[h]['R0']
+            except:
+                seeing = '--'
+            try:
+                setupL.append([objct, gain, ncoher, psco, frmrst, fltr, seeing])
+            except:
+                setupL = [[objct, gain, ncoher, psco, frmrst, fltr, seeing]]
     del redhdrs
     setups = []
     setups.append(setupL[0])
