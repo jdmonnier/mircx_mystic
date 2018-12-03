@@ -296,7 +296,7 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
                         try:
                             seeing = redhdrs[h]['R0']
                         except:
-                            seeing = '--')
+                            seeing = '--'
                         try:
                             tabRows.append([day, nam, objct, gain, ncoher, psco, frmrst, fltr, seeing])
                         except:
