@@ -231,7 +231,7 @@ for d in argopt.dates.split(','):
                     with cd(redDir+'/oifits'):
                         com = "mircx_calibrate.py --calibrators="+calInfo[:-1]
                         ma = " --oifits-dir="+redDir+"/oifits"
-                        nd = " --oifits-calibrated-dir="+redDir+"/ofits/calibrated"
+                        nd = " --oifits-calibrated-dir="+redDir+"/oifits/calibrated"
                         pipe = "> nohup_calibrate.out"
                         with open('nohup_calibrate.out', 'w') as output:
                             output.write('\n')
