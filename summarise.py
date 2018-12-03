@@ -268,7 +268,7 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
                                 rem.append(t)
                     for r in rem:
                         torun = torun.replace(r, "h['COMMENT1']")
-                    exec('tabRows=[['+torun+'] for h in redhdrs]')
+                    exec('tabRows=[['+torun+'] for h in redhdrs]') in locals()
             else:
                 # if the reduction process failed, the hierarch mirc pro rts keyword is unassigned so this cannot be read
                 tabRows = [[h['DATE'].split('T')[1],h['COMMENT1'],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in rawhdrs]
