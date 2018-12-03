@@ -222,14 +222,12 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
     outFiles = [direc+'/summary_'+suf+'.tex',direc+'/report_'+suf+'.tex']
     if redF == False:
         redhdrs = headers.loaddir(direc+'/oifits')
-        avoid = []
         for t in ['DATE','HIERARCH MIRC PRO RTS','OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']:
             try:
                 tmp = [h[t] for h in redhdrs]
                 log.info('Writing '+t+' from header to summary table')
             except KeyError:
                 log.info('Keyword '+t+' not found in all headers')
-                avoid.append(t)
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
             outtex.write('\\subsection*{Target summary}\n')
@@ -260,16 +258,49 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
                 try:
                     tabRows = [[h['DATE'].split('T')[1],h['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in redhdrs]
                 except KeyError:
-                    torun = "h['DATE'].split('T')[1],h['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']"
-                    rem = []
-                    f = torun.split(',')
-                    for av in avoid:
-                        for t in f:
-                            if av in t:
-                                rem.append(t)
-                    for r in rem:
-                        torun = torun.replace(r, "h['COMMENT1']")
-                    eval('tabRows=[['+torun+'] for h in redhdrs]')
+                    day, nam, objct, gain, ncoher, psco = [], [], [], [], [], []
+                    frmrst, fltr, seeing = [], [], []
+                    for h in range(0, len(redhdrs)):
+                        try:
+                            day = redhdrs[h]['DATE'].split('T')[1]
+                        except:
+                            day = '--'
+                        try:
+                            nam = redhdrs[h]['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0]
+                        except:
+                            nam = '--'
+                        try:
+                            objct = redhdrs[h]['OBJECT']
+                        except:
+                            objct = '--'
+                        try:
+                            gain = redhdrs[h]['GAIN']
+                        except:
+                            gain = '--'
+                        try:
+                            ncoher = redhdrs[h]['NCOHER']
+                        except:
+                            ncoher = '--'
+                        try:
+                            psco = redhdrs[h]['PSCOADD']
+                        except:
+                            psco = '--'
+                        try:
+                            frmrst = redhdrs[h]['FRMPRST']
+                        except:
+                            frmrst = '--'
+                        try:
+                            fltr = redhdrs[h]['FILTER1']
+                        except:
+                            fltr = '--'
+                        try:
+                            seeing = redhdrs[h]['R0']
+                        except:
+                            seeing = '--')
+                        try:
+                            tabRows.append([day, nam, objct, gain, ncoher, psco, frmrst, fltr, seeing])
+                        except:
+                            tabRows = [[day, nam, objct, gain, ncoher, psco, frmrst, fltr, seeing]]
             else:
                 # if the reduction process failed, the hierarch mirc pro rts keyword is unassigned so this cannot be read
                 tabRows = [[h['DATE'].split('T')[1],h['COMMENT1'],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in rawhdrs]
