@@ -110,10 +110,10 @@ def queryJSDC(targ,m):
         ra_in = result["II/346/jsdc_v2"]["RAJ2000"][0]
         dec_in = result["II/346/jsdc_v2"]["DEJ2000"][0]
         coords = SkyCoord(ra_in+' '+dec_in, unit=(u.hourangle, u.deg))
-        ra = coords.ra.deg
-        dec = coords.dec.deg
-        hmag = result["II/346/jsdc_v2"]["Hmag"][0]
-        vmag = result["II/346/jsdc_v2"]["Vmag"][0]
+        ra = str(coords.ra.deg)
+        dec = str(coords.dec.deg)
+        hmag = str(result["II/346/jsdc_v2"]["Hmag"][0])
+        vmag = str(result["II/346/jsdc_v2"]["Vmag"][0])
         flag = result["II/346/jsdc_v2"]["CalFlag"][0]
         # maintain care flags from JSDC:
         if flag == 0:
@@ -127,7 +127,7 @@ def queryJSDC(targ,m):
         model = "UD_H"
         ud_H = result["II/346/jsdc_v2"]["UDDH"][0]
         eud_H = result["II/346/jsdc_v2"]["e_LDD"][0]
-        return ''.join(str([ra, dec, hmag, vmag, iscal, model, ud_H, eud_H])[1:-1])
+        return ''.join(str([ra, dec, hmag, vmag, iscal, model, ud_H, eud_H])[1:-1]).replace("'", "")
 
 def queryLocal(targs,db):
     """
@@ -206,8 +206,7 @@ def queryLocal(targs,db):
             outfile = os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list'
             if not os.path.exists(outfile):
                 with open(outfile, 'w') as output:
-                    output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2,')
-                    output.write('PARAM3,PARAM4\n')
+                    output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2\n')
             with open(outfile, 'a') as output:
                 output.write(outline)
         # If one match is found, read in the information from the local database
