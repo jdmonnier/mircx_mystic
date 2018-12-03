@@ -94,7 +94,39 @@ def plotV2CP(direc,setups,viscp):
     for file in fitsfiles:
         with pyfits.open(file) as input:
             h = input[0].header
-            if [h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] == setups[p]:
+            try:
+                teststr = [h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']]
+            except KeyError:
+                try:
+                    objct = h['OBJECT']
+                except:
+                    objct = '--'
+                try:
+                    gain = h['GAIN']
+                except:
+                    gain = '--'
+                try:
+                    ncoher = h['NCOHER']
+                except:
+                    ncoher = '--'
+                try:
+                    psco = h['PSCOADD']
+                except:
+                    psco = '--'
+                try:
+                    frmrst = h['FRMPRST']
+                except:
+                    frmrst = '--'
+                try:
+                    fltr = h['FILTER1']
+                except:
+                    fltr = '--'
+                try:
+                    seeing = h['R0']
+                except:
+                    seeing = '--'
+                teststr = [objct, gain, ncoher, psco, frmrst, fltr, seeing]
+            if teststr == setups[p]:
                 if first == None:
                     # If the file being read in is the first in the sequence with settings
                     # matching setups[p], grab the file number from the fits header:
@@ -127,9 +159,6 @@ def plotV2CP(direc,setups,viscp):
                 # Then plot this file's data in a new window:
                 fig,axes = plt.subplots()
                 fig.suptitle(', '.join(str(s) for s in setups[p]))
-                if [h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] != setups[p]:
-                    log.error('Logic is wrong - next file does not have next setup!')
-                    sys.exit()
                 saveAsStr = h['HIERARCH MIRC PRO RTS'].split('_')[0]
                 addV2CP(input, viscp, fig, axes)
     return
