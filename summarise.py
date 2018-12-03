@@ -42,10 +42,11 @@ def plotUV(direc):
             plt.tight_layout()
             plt.savefig(direc+'/'+objs[t]+'_uv_coverage.png')
             log.info('Save '+direc+'/'+objs[t]+'_uv_coverage.png')
+            del lbd, usf, vsf
         else:
             log.info('File '+direc+'/'+objs[t]+'_uv_coverage.png already exists.')
     log.info('Cleanup memory')
-    del hdrs, lbd, usf, vsf, objs
+    del hdrs, objs
     return
 
 def addV2CP(input, viscp, fig, axes):
@@ -268,8 +269,7 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
                                 rem.append(t)
                     for r in rem:
                         torun = torun.replace(r, "h['COMMENT1']")
-                    print 'tabRows=[['+torun+'] for h in redhdrs]'
-                    exec('tabRows=[['+torun+'] for h in redhdrs]', {})
+                    eval('tabRows=[['+torun+'] for h in redhdrs]')
             else:
                 # if the reduction process failed, the hierarch mirc pro rts keyword is unassigned so this cannot be read
                 tabRows = [[h['DATE'].split('T')[1],h['COMMENT1'],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in rawhdrs]
