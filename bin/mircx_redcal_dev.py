@@ -272,4 +272,3 @@ for d in argopt.dates.split(','):
             subprocess.call('pdflatex '+redDir+'/report_'+d+suf+'.tex' , shell=True)
             log.info('Write and compile summary report')
         mailfile.sendSummary(redDir, argopt.email, argopt.sender)
-            
