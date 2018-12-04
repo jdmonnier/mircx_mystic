@@ -326,6 +326,7 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
                         except:
                             tabRows2 = [[day, nam, objct, gain, ncoher, psco, frmrst, fltr, seeing]]
                 tabRows = tabRows2
+                del tabRows2
             else:
                 # if the reduction process failed, the hierarch mirc pro rts keyword is unassigned so this cannot be read
                 tabRows = [[h['DATE'].split('T')[1],h['COMMENT1'],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in rawhdrs]
