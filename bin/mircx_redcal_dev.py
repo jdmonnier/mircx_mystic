@@ -47,9 +47,9 @@ parser = argparse.ArgumentParser(description=description,epilog=epilog,
 
 TrueFalseOverwrite = ['TRUE','FALSE','OVERWRITE']
 
-parser.add_argument("--raw-dir",dest="raw_dir",default='/.',type=str,
+parser.add_argument("--raw-dir",dest="raw_dir",default='/data/CHARADATA/MIRCX',type=str,
             help="directory base for the raw data paths [%(default)s]")
-parser.add_argument("--red-dir",dest="red_dir",default='/.',type=str,
+parser.add_argument("--red-dir",dest="red_dir",default='/data/MIRCX/reduced',type=str,
             help="directory base for the reduced data paths [%(default)s]")
 parser.add_argument("--dates",dest="dates",type=str,
             help="comma-separated list of observation dates to be reduced [%(default)s]")
