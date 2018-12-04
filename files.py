@@ -11,7 +11,7 @@ from scipy.ndimage import gaussian_filter
 import numpy as np
 import os
 
-from . import log
+from . import log, headers, plot;
 from .headers import HM, HMQ, HMP, HMW;
 from .version import revision, git_hash, git_date, git_branch;
 
@@ -84,7 +84,8 @@ def write (hdulist,filename):
     os.chmod (filename,0o666);
 
 def load_raw (hdrs, checkSaturation=True, differentiate=True,
-              removeBias=True, background=None, coaddRamp=False):
+              removeBias=True, background=None, coaddRamp=False,
+              badpix=None, output='output',saturationThreshold=60000):
     '''
     Load data and append into gigantic cube. The output cube is
     of shape: [nfile*nramp, nframes, ny, ny].
@@ -142,7 +143,8 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
         # Close file
         hdulist.close();
 
-        # Guessed fringe window
+        # Guessed fringe window, FIXME: this may be wrong since we change the
+        # orientation of images in saved data to match the header.
         nr,nf,ny,nx = data.shape;
         ys = ny - hdr['FR_ROW2'];
         ye = ny - hdr['FR_ROW1'];
@@ -153,9 +155,23 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
         # Frame is declared saturated if more than 10 pixels in
         # the center of the fringes are near saturation. flag is 0
         # if no saturation, or the id of the first saturated frame
+        # if checkSaturation is True:
+        #     flag = np.sum (data[:,:,ys:ye,xs:xe]>saturationThreshold, axis=(2,3));
+        #     flag = np.argmax (flag > 10, axis=1);
+        #     nsat = np.sum ( (flag.flatten() > 0) * (nf - flag.flatten()));
+        #     hdr[HMQ+'NSAT'] += nsat;
+
+        # Check if some frames are saturated. Check individual pixels, therefore
+        # we make use of the badpixel mask if it was provided. flag array is 0
+        # if no saturation, or the id of the first saturated frame
+        # if checkSaturation is True:
         if checkSaturation is True:
-            flag = np.sum (data[:,:,ys:ye,xs:xe]>60000, axis=(2,3));
-            flag = np.argmax (flag > 10, axis=1);
+            if badpix is None:
+                frame_max = np.max (data, axis=(2,3));
+            else:
+                frame_max = np.max (data * (badpix==False)[None,None,:,:], axis=(2,3));
+                
+            flag = np.argmax (frame_max > saturationThreshold, axis=1);
             nsat = np.sum ( (flag.flatten() > 0) * (nf - flag.flatten()));
             hdr[HMQ+'NSAT'] += nsat;
 
@@ -211,6 +227,25 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
         cubenp[ramp:ramp+cube[c].shape[0],:,:,:] = cube[c];
         ramp += cube[c].shape[0];
         cube[c] = None;
+
+    # Recompute badpixels
+    if badpix is None:
+        log.info ('No badpixel map');
+    else:
+        log.info ('Recompute %i bad pixels'%np.sum (badpix));
+        ref = np.mean (cubenp, axis=(0,1));
+        idx = np.argwhere (badpix);
+        cubenp[:,:,idx[:,0],idx[:,1]] = 0.25 * cubenp[:,:,idx[:,0]-1,idx[:,1]-1] + \
+                                        0.25 * cubenp[:,:,idx[:,0]+1,idx[:,1]-1] + \
+                                        0.25 * cubenp[:,:,idx[:,0]-1,idx[:,1]+1] + \
+                                        0.25 * cubenp[:,:,idx[:,0]+1,idx[:,1]+1];
+        # Figure
+        fig,ax = plt.subplots (3,1);
+        fig.suptitle (headers.summary (hdrs[0]));
+        ax[0].imshow (badpix);
+        ax[1].imshow (ref);
+        ax[2].imshow (np.mean (cubenp, axis=(0,1)));
+        write (fig, output+'_rmbad.png');
 
     # Some verbose
     nr,nf,ny,nx = cubenp.shape;

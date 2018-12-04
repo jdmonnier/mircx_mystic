@@ -20,11 +20,14 @@ from . import log, files, headers, setup, oifits, signal, plot;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
 
-def remove_badpixels (hdr, cube, bkg, output='output'):
+def define_badpixels (bkg):
     '''
-    Remove bad pixels from a cube, given an input background
+    Define bad pixels from a cube, given an input background
     on which the bad-pixels are detected.
     '''
+
+    # Set log in input header
+    hdr = bkg[0];
 
     # Load background error
     bkg_noise = pyfits.getdata (bkg[0]['ORIGNAME'],0);
@@ -66,25 +69,9 @@ def remove_badpixels (hdr, cube, bkg, output='output'):
     bad = bad_mean + bad_err + bad_noise;
     bad[0,:] = False; bad[-1,:] = False;
     bad[:,0] = False; bad[:,-1] = False;
-    idx = np.argwhere (bad);
-    
-    # Remove them
-    log.info ('Remove %i bad pixels'%np.sum (bad));
-    ref = np.mean (cube, axis=(0,1));
-    cube[:,:,idx[:,0],idx[:,1]] = 0.25 * cube[:,:,idx[:,0]-1,idx[:,1]-1] + \
-                                  0.25 * cube[:,:,idx[:,0]+1,idx[:,1]-1] + \
-                                  0.25 * cube[:,:,idx[:,0]-1,idx[:,1]+1] + \
-                                  0.25 * cube[:,:,idx[:,0]+1,idx[:,1]+1];
 
-    # Figure
-    fig,ax = plt.subplots (3,1);
-    fig.suptitle (headers.summary (hdr));
-    ax[0].imshow (bad);
-    ax[1].imshow (ref);
-    ax[2].imshow (np.mean (cube, axis=(0,1)));
-    files.write (fig, output+'_rmbad.png');
-
-    return cube;
+    # Return the image of badpixel
+    return bad;
 
 def check_empty_window (cube, hdr):
     '''
@@ -292,13 +279,14 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     log.info ('Load background %s'%bkg[0]['ORIGNAME']);
     bkg_cube = pyfits.getdata (bkg[0]['ORIGNAME'],0);
     
+    # Compute bad pixels position
+    badpix = define_badpixels (bkg);
+    
     # Load files
-    hdr,cube = files.load_raw (hdrs, coaddRamp=True, background=bkg_cube);
+    hdr,cube = files.load_raw (hdrs, coaddRamp=True, background=bkg_cube,
+                               badpix=badpix, output=output);
     log.info ('Data size: '+str(cube.shape));
 
-    # Remove bad pixels
-    cube = remove_badpixels (hdr, cube, bkg, output=output);
-    
     # Check background subtraction in empty region
     check_empty_window (cube, hdr);
 
@@ -478,12 +466,12 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     log.info ('Load background %s'%bkg[0]['ORIGNAME']);
     bkg_cube = pyfits.getdata (bkg[0]['ORIGNAME'],0);
     
+    # Compute bad pixels position
+    badpix = define_badpixels (bkg);
+    
     # Load files
-    hdr,cube = files.load_raw (hdrs, background=bkg_cube);
+    hdr,cube = files.load_raw (hdrs, background=bkg_cube, badpix=badpix, output=output);
     log.info ('Data size: '+str(cube.shape));
-
-    # Remove bad pixels
-    cube = remove_badpixels (hdr, cube, bkg, output=output);
 
     # Check background subtraction in empty region
     check_empty_window (cube, hdr);
