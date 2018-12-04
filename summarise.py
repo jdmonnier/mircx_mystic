@@ -502,33 +502,33 @@ def texSumPlots(direc,redF,calF):
         try:
             setL = [[h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in calhdrs]
         except KeyError:
-            for h in range(0, len(redhdrs)):
+            for h in range(0, len(calhdrs)):
                 try:
-                    objct = redhdrs[h]['OBJECT']
+                    objct = calhdrs[h]['OBJECT']
                 except:
                     objct = '--'
                 try:
-                    gain = redhdrs[h]['GAIN']
+                    gain = calhdrs[h]['GAIN']
                 except:
                     gain = '--'
                 try:
-                    ncoher = redhdrs[h]['NCOHER']
+                    ncoher = calhdrs[h]['NCOHER']
                 except:
                     ncoher = '--'
                 try:
-                    psco = redhdrs[h]['PSCOADD']
+                    psco = calhdrs[h]['PSCOADD']
                 except:
                     psco = '--'
                 try:
-                    frmrst = redhdrs[h]['FRMPRST']
+                    frmrst = calhdrs[h]['FRMPRST']
                 except:
                     frmrst = '--'
                 try:
-                    fltr = redhdrs[h]['FILTER1']
+                    fltr = calhdrs[h]['FILTER1']
                 except:
                     fltr = '--'
                 try:
-                    seeing = redhdrs[h]['R0']
+                    seeing = calhdrs[h]['R0']
                 except:
                     seeing = '--'
                 try:
