@@ -69,13 +69,16 @@ def loaddir (dirs):
         files = glob.glob (dir+'/mircx*.fit*');
         files = sorted (files);
 
-        # Load log
+        # Load existing log if any
         hlog = [];
-        fpkl = dir+'/mircx_hdrs.pkl';
+        # fpkl = dir+'/mircx_hdrs.pkl';
+        fpkl = dir+'/mircx_hdrs.txt';
         if os.path.isfile (fpkl):
             try:
-                log.info ('Load binary log %s'%fpkl);
-                hlog = pickle.load (open(fpkl, 'rb'));
+                log.info ('Load header log %s'%fpkl);
+                # hlog = pickle.load (open(fpkl, 'rb'));
+                with open (fpkl) as file:
+                    hlog = [pyfits.Header.fromstring (l) for l in file];
             except:
                 log.info ('Failed to load...');
 
@@ -83,9 +86,12 @@ def loaddir (dirs):
         hdrs_here = load (files, hlog=hlog);
                 
         # Dump log
-        log.info ('Write binary log %s'%fpkl);
+        log.info ('Write header log %s'%fpkl);
         if os.path.isfile (fpkl): os.remove (fpkl);
-        pickle.dump (hdrs_here, open(fpkl, 'wb'), -1);
+        # pickle.dump (hdrs_here, open(fpkl, 'wb'), -1);
+        with open (fpkl,'w') as file:
+            for h in hdrs_here: file.write (h.tostring()); file.write('\n');
+        
         
         # Append headers
         hdrs.extend (hdrs_here);
