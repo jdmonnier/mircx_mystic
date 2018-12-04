@@ -339,10 +339,10 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
                        outtex.write('        '+str(r)+' & '+nextrow+'\\\\ \n')
                     del nextrow, thisrow
             outtex.write('    \\hline\n\\end{longtable}\n\n')
+            del tabRows
     log.info('Cleanup memory')
     if redF == False:
         del redhdrs
-    del tabRows
     return
 
 def texReportPlts(direc):
