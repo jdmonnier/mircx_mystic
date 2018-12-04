@@ -14,6 +14,7 @@ HM  = 'HIERARCH MIRC ';
 HMQ = 'HIERARCH MIRC QC ';
 HMP = 'HIERARCH MIRC PRO ';
 HMW = 'HIERARCH MIRC QC WIN ';
+HC = 'HIERARCH CHARA ';
 
 def str2bool (s):
     if s == True or s == 'TRUE': return True;

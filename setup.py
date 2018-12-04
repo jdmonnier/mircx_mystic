@@ -1,6 +1,6 @@
 import numpy as np;
 
-from .headers import HM, HMQ, HMP, HMW, rep_nan;
+from .headers import HM, HMQ, HMP, HMW, HC, rep_nan;
 from . import log;
 
 # Definition of setups
@@ -21,6 +21,9 @@ visparam = [HMP+'NCOHER'];
 
 global beamorder;
 beamorder = ['BEAMORD0','BEAMORD1','BEAMORD2','BEAMORD3','BEAMORD4','BEAMORD5'];
+
+global pop;
+pop = [HC+"S1_POP", HC+"S2_POP", HC+"E1_POP", HC+"E2_POP", HC+"W1_POP", HC+"W2_POP"]
 
 def nspec (hdr):
     '''

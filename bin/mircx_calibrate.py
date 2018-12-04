@@ -98,7 +98,7 @@ if argopt.oifitscalib != 'FALSE':
 
     # Define the calibratable setups
     keys = setup.detwin + setup.insmode + \
-           setup.fringewin + setup.visparam + setup.beamorder;
+           setup.fringewin + setup.visparam + setup.beamorder + setup.pop;
            
     if argopt.use_detmode == 'TRUE': keys += setup.detmode;
 
