@@ -501,40 +501,40 @@ def texSumPlots(direc,redF,calF):
         calhdrs = headers.loaddir(direc+'/oifits/calibrated')
         try:
             setL = [[h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in calhdrs]
-		except KeyError:
-			for h in range(0, len(redhdrs)):
-				try:
-					objct = redhdrs[h]['OBJECT']
-				except:
-					objct = '--'
-				try:
-					gain = redhdrs[h]['GAIN']
-				except:
-					gain = '--'
-				try:
-					ncoher = redhdrs[h]['NCOHER']
-				except:
-					ncoher = '--'
-				try:
-					psco = redhdrs[h]['PSCOADD']
-				except:
-					psco = '--'
-				try:
-					frmrst = redhdrs[h]['FRMPRST']
-				except:
-					frmrst = '--'
-				try:
-					fltr = redhdrs[h]['FILTER1']
-				except:
-					fltr = '--'
-				try:
-					seeing = redhdrs[h]['R0']
-				except:
-					seeing = '--'
-				try:
-					setL.append([objct, gain, ncoher, psco, frmrst, fltr, seeing])
-				except:
-					setL = [[objct, gain, ncoher, psco, frmrst, fltr, seeing]]
+        except KeyError:
+            for h in range(0, len(redhdrs)):
+                try:
+                    objct = redhdrs[h]['OBJECT']
+                except:
+                    objct = '--'
+                try:
+                    gain = redhdrs[h]['GAIN']
+                except:
+                    gain = '--'
+                try:
+                    ncoher = redhdrs[h]['NCOHER']
+                except:
+                    ncoher = '--'
+                try:
+                    psco = redhdrs[h]['PSCOADD']
+                except:
+                    psco = '--'
+                try:
+                    frmrst = redhdrs[h]['FRMPRST']
+                except:
+                    frmrst = '--'
+                try:
+                    fltr = redhdrs[h]['FILTER1']
+                except:
+                    fltr = '--'
+                try:
+                    seeing = redhdrs[h]['R0']
+                except:
+                    seeing = '--'
+                try:
+                    setL.append([objct, gain, ncoher, psco, frmrst, fltr, seeing])
+                except:
+                    setL = [[objct, gain, ncoher, psco, frmrst, fltr, seeing]]
         del calhdrs
         setC = []
         setC.append(setL[0])
