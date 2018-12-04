@@ -336,7 +336,7 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
                 else:
                     nextrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r+1])
                     thisrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r])
-                    if nextrow[11:] != thisrow[11:]:
+                    if nextrow[17:] != thisrow[17:]:
                        outtex.write('        '+str(r)+' & '+nextrow+'\\\\ \n')
                     del nextrow, thisrow
             outtex.write('    \\hline\n\\end{longtable}\n\n')
