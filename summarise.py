@@ -178,7 +178,7 @@ def texSumTitle(direc,hdrs,opt,redF,calF):
         - redF and calF are flags for if the reduction
         and/or calibration process failed;
     """
-    auth = 'ncohrent='+opt[0]+'; ncs='+opt[1]+'; nbs='+opt[2]+'; snr\\_threshold='+opt[3]
+    auth = 'ncohrent='+opt[0]+'; ncs='+opt[1]+'; nbs='+opt[2]+'; snr\\_threshold='+opt[3].replace('p','.')
     suf = direc.split('/')[-1]
     outFiles = [direc+'/summary_'+suf+'.tex',direc+'/report_'+suf+'.tex']
     # ^-- outFiles[0] is not to be emailed. It exceeds the 10MB gmail attachment limit.
@@ -499,8 +499,42 @@ def texSumPlots(direc,redF,calF):
     if calF == False:
         calFiles = sorted(glob.glob(direc+'/oifits/calibrated/*.fits'))
         calhdrs = headers.loaddir(direc+'/oifits/calibrated')
-        setL = [[h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],
-            h['R0']] for h in calhdrs]
+        try:
+            setL = [[h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in calhdrs]
+		except KeyError:
+			for h in range(0, len(redhdrs)):
+				try:
+					objct = redhdrs[h]['OBJECT']
+				except:
+					objct = '--'
+				try:
+					gain = redhdrs[h]['GAIN']
+				except:
+					gain = '--'
+				try:
+					ncoher = redhdrs[h]['NCOHER']
+				except:
+					ncoher = '--'
+				try:
+					psco = redhdrs[h]['PSCOADD']
+				except:
+					psco = '--'
+				try:
+					frmrst = redhdrs[h]['FRMPRST']
+				except:
+					frmrst = '--'
+				try:
+					fltr = redhdrs[h]['FILTER1']
+				except:
+					fltr = '--'
+				try:
+					seeing = redhdrs[h]['R0']
+				except:
+					seeing = '--'
+				try:
+					setL.append([objct, gain, ncoher, psco, frmrst, fltr, seeing])
+				except:
+					setL = [[objct, gain, ncoher, psco, frmrst, fltr, seeing]]
         del calhdrs
         setC = []
         setC.append(setL[0])
