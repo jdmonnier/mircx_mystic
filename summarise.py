@@ -284,6 +284,7 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
             outtex.write('Filter & seeing \\\\ \n')
             outtex.write('    & (UTC) & num. & & & & & $/$reset & & \\\\ \n    \\hline\n')
             if redF == False:
+                skipd = 17
                 try:
                     tabRows = [[h['DATE'].split('T')[1],h['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in redhdrs]
                 except KeyError:
@@ -328,6 +329,7 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
                 tabRows = tabRows2
                 del tabRows2
             else:
+                skipd = 11
                 # if the reduction process failed, the hierarch mirc pro rts keyword is unassigned so this cannot be read
                 tabRows = [[h['DATE'].split('T')[1],h['COMMENT1'],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in rawhdrs]
             for r in range(0, len(tabRows)-1):
@@ -336,8 +338,8 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
                 else:
                     nextrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r+1])
                     thisrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r])
-                    if nextrow[17:] != thisrow[17:]:
-                       outtex.write('        '+str(r)+' & '+nextrow+'\\\\ \n')
+                    if nextrow[skipd:] != thisrow[skipd:]:
+                        outtex.write('        '+str(r)+' & '+nextrow+'\\\\ \n')
                     del nextrow, thisrow
             outtex.write('    \\hline\n\\end{longtable}\n\n')
             del tabRows
