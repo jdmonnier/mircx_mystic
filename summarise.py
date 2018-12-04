@@ -288,10 +288,7 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
                     tabRows = [[h['DATE'].split('T')[1],h['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in redhdrs]
                 except KeyError:
                     for h in range(0, len(redhdrs)):
-                        try:
-                            day = redhdrs[h]['DATE'].split('T')[1]
-                        except:
-                            day = '--'
+                        day = redhdrs[h]['DATE'].split('T')[1]
                         try:
                             nam = redhdrs[h]['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0]
                         except:
@@ -325,9 +322,10 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
                         except:
                             seeing = '--'
                         try:
-                            tabRows.append([day, nam, objct, gain, ncoher, psco, frmrst, fltr, seeing])
+                            tabRows2.append([day, nam, objct, gain, ncoher, psco, frmrst, fltr, seeing])
                         except:
-                            tabRows = [[day, nam, objct, gain, ncoher, psco, frmrst, fltr, seeing]]
+                            tabRows2 = [[day, nam, objct, gain, ncoher, psco, frmrst, fltr, seeing]]
+                tabRows = tabRows2
             else:
                 # if the reduction process failed, the hierarch mirc pro rts keyword is unassigned so this cannot be read
                 tabRows = [[h['DATE'].split('T')[1],h['COMMENT1'],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in rawhdrs]
