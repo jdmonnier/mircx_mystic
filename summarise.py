@@ -94,45 +94,45 @@ def plotV2CP(direc,setups,viscp):
             keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
             teststr = [str(input[0].header.get(k,'--')) for k in keys]
             fname = str(input[0].header['HIERARCH MIRC PRO RTS']).split('_')[0]
-        if teststr == setups[p] and first == True:
-            # option i) file matches current setup and is first file to match it
-            fig,axes = plt.subplots()
-            fig.suptitle(', '.join(str(s) for s in teststr))
-            saveAsStr = fname
-            addV2CP(input, viscp, fig, axes)
-            first = False
-        elif teststr == setups[p] and first != True:
-            # option ii) file matches current setup but is not first file to match it
-            addV2CP(input, viscp, fig, axes)
-        elif teststr != setups[p]:
-            # option iii) file doesn't match current setup at all:
-            if first != True:
-                # if there is data plotted already, close the plot
-                axes.set_xlim(0)
-                if viscp == 'vis':
-                    axes.set_ylim(-0.1,1.2)
-                    axes.set_xlabel('sp. freq. (M$\lambda$)')
-                    axes.set_ylabel('vis2')
-                    plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
-                elif viscp == 'cp':
-                    axes.set_xlabel('max sp. freq. (M$\lambda$)');
-                    axes.set_ylabel('$\phi_{CP}$')
-                    plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-                plt.close("all")
-            # increase the value of p until a match is found for the current file:
-            p += 1
-            while first == True:
-                try:
-                    if teststr == setups[p]:
-                        fig,axes = plt.subplots()
-                        fig.suptitle(', '.join(str(s) for s in teststr))
-                        saveAsStr = str(h['HIERARCH MIRC PRO RTS']).split('_')[0]
-                        addV2CP(input, viscp, fig, axes)
-                        first = False
-                    else:
-                        p += 1
-                except IndexError:
-                    return
+            if teststr == setups[p] and first == True:
+                # option i) file matches current setup and is first file to match it
+                fig,axes = plt.subplots()
+                fig.suptitle(', '.join(str(s) for s in teststr))
+                saveAsStr = fname
+                addV2CP(input, viscp, fig, axes)
+                first = False
+            elif teststr == setups[p] and first != True:
+                # option ii) file matches current setup but is not first file to match it
+                addV2CP(input, viscp, fig, axes)
+            elif teststr != setups[p]:
+                # option iii) file doesn't match current setup at all:
+                if first != True:
+                    # if there is data plotted already, close the plot
+                    axes.set_xlim(0)
+                    if viscp == 'vis':
+                        axes.set_ylim(-0.1,1.2)
+                        axes.set_xlabel('sp. freq. (M$\lambda$)')
+                        axes.set_ylabel('vis2')
+                        plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+                    elif viscp == 'cp':
+                        axes.set_xlabel('max sp. freq. (M$\lambda$)');
+                        axes.set_ylabel('$\phi_{CP}$')
+                        plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+                    plt.close("all")
+                # increase the value of p until a match is found for the current file:
+                p += 1
+                while first == True:
+                    try:
+                        if teststr == setups[p]:
+                            fig,axes = plt.subplots()
+                            fig.suptitle(', '.join(str(s) for s in teststr))
+                            saveAsStr = fname
+                            addV2CP(input, viscp, fig, axes)
+                            first = False
+                        else:
+                            p += 1
+                    except IndexError:
+                        return
         del teststr
     return
 
