@@ -38,10 +38,14 @@ def targList(d,rawBase,redBase,opt):
         objs = []
         for h in hdrs:
             try:
-                objs.append(h['OBJECT'])
+                if h['OBJECT'] != '' and h['OBJECT'] != 'NOSTAR':
+                    objs.append(h['OBJECT'])
             except KeyError:
                 log.warning('Not all headers contain OBJECT key word.')
                 log.info('Continuing.')
+        
+        log.info('Cleanup memory')
+        del hdrs
         
         objs = list(set(objs))
         for i in range(0, len(opt)):
@@ -56,13 +60,7 @@ def targList(d,rawBase,redBase,opt):
                     for obj in objs:
                         if type(obj) != str:
                             objs.remove(obj)
-                        elif len(obj) == 0:
-                            objs.remove(obj)
-                        elif obj == 'NOSTAR':
-                            objs.remove(obj)
-                        else:
-                            output.write(obj+'\n')
-                            log.info('Added '+obj+' to file.')
+                        output.write(obj+'\n')
                 if len(objs) == 0:
                     log.error('No target names retrieved from headers.')
                     log.info('Exiting.')
@@ -76,10 +74,7 @@ def targList(d,rawBase,redBase,opt):
         with open(redBase+'/'+d+suf+'/'+d+'_targets.list', 'r') as input:
             for line in input:
                 objs.append(line.strip().replace('_', ' '))
-    try:
-        return hdrs, objs
-    except NameError:
-        return '', objs
+    return objs
 
 def queryJSDC(targ,m):
     connected = False
@@ -115,10 +110,10 @@ def queryJSDC(targ,m):
         ra_in = result["II/346/jsdc_v2"]["RAJ2000"][0]
         dec_in = result["II/346/jsdc_v2"]["DEJ2000"][0]
         coords = SkyCoord(ra_in+' '+dec_in, unit=(u.hourangle, u.deg))
-        ra = coords.ra.deg
-        dec = coords.dec.deg
-        hmag = result["II/346/jsdc_v2"]["Hmag"][0]
-        vmag = result["II/346/jsdc_v2"]["Vmag"][0]
+        ra = str(coords.ra.deg)
+        dec = str(coords.dec.deg)
+        hmag = str(result["II/346/jsdc_v2"]["Hmag"][0])
+        vmag = str(result["II/346/jsdc_v2"]["Vmag"][0])
         flag = result["II/346/jsdc_v2"]["CalFlag"][0]
         # maintain care flags from JSDC:
         if flag == 0:
@@ -130,9 +125,9 @@ def queryJSDC(targ,m):
         else:
             iscal = "CAL"
         model = "UD_H"
-        ud_H = result["II/346/jsdc_v2"]["UDDH"][0]
-        eud_H = result["II/346/jsdc_v2"]["e_LDD"][0]
-        return ''.join(str([ra, dec, hmag, vmag, iscal, model, ud_H, eud_H])[1:-1])
+        ud_H = '{0:.6f}'.format(float(result["II/346/jsdc_v2"]["UDDH"][0]))
+        eud_H = '{0:.6f}'.format(float(result["II/346/jsdc_v2"]["e_LDD"][0]))
+        return ''.join(str([ra, dec, hmag, vmag, iscal, model, ud_H, eud_H])[1:-1]).replace("'", "")
 
 def queryLocal(targs,db):
     """
@@ -211,8 +206,7 @@ def queryLocal(targs,db):
             outfile = os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list'
             if not os.path.exists(outfile):
                 with open(outfile, 'w') as output:
-                    output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2,')
-                    output.write('PARAM3,PARAM4\n')
+                    output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2\n')
             with open(outfile, 'a') as output:
                 output.write(outline)
         # If one match is found, read in the information from the local database
@@ -227,9 +221,9 @@ def queryLocal(targs,db):
             else:
                 log.info(targ+' recognised as CAL')
                 if m_modTyp[m_targs.index(targNew)] == 'UD_H':
-                    ud_H = pd.Series.tolist(localDB['PARAM1'])[m_targs.index(targNew)]
-                    eud_H = pd.Series.tolist(localDB['PARAM2'])[m_targs.index(targNew)]
-                    calInf = calInf+targ.replace(' ','_')+','+str(ud_H)+','+str(eud_H)+','
+                    ud_H = float(pd.Series.tolist(localDB['PARAM1'])[m_targs.index(targNew)])
+                    eud_H = float(pd.Series.tolist(localDB['PARAM2'])[m_targs.index(targNew)])
+                    calInf = calInf+targ.replace(' ','_')+','+'{0:.6f}'.format(ud_H)+','+'{0:.6f}'.format(eud_H)+','
                     scical.append('CAL')
                 else:
                     log.error('Model type '+m_modTyp[m_targs.index(targNew)]+' not supported')

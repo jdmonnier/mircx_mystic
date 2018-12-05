@@ -1,4 +1,4 @@
-import glob, socket, os
+import glob, socket, os, sys
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
@@ -42,8 +42,11 @@ def plotUV(direc):
             plt.tight_layout()
             plt.savefig(direc+'/'+objs[t]+'_uv_coverage.png')
             log.info('Save '+direc+'/'+objs[t]+'_uv_coverage.png')
+            del lbd, usf, vsf
         else:
             log.info('File '+direc+'/'+objs[t]+'_uv_coverage.png already exists.')
+    log.info('Cleanup memory')
+    del hdrs, objs
     return
 
 def addV2CP(input, viscp, fig, axes):
@@ -66,6 +69,41 @@ def addV2CP(input, viscp, fig, axes):
             axes.errorbar(1e-6*max_sf[b,:],cp[b,:],yerr=ecp[b,:],fmt='o',ms=1)
     return
 
+def calibPlots(calibfiles,viscp,saveAsStr,setup):
+    """
+    Plots the calibrated files corresponding to each 
+    setup (if they exist).
+    """
+    first = True
+    for file in calibfiles:
+        f = '/'.join(file.split('/')[:-1])+'/calibrated/'+file.split('/')[-1].replace('.fits','_viscal.fits')
+        if os.path.isfile(f):
+            # calibrated file exists
+            if first == True:
+                fig,axes = plt.subplots()
+                fig.suptitle(', '.join(str(s) for s in setup))
+                with pyfits.open(f) as input:
+                    addV2CP(input, viscp, fig, axes)
+                first = False
+            else:
+                with pyfits.open(f) as input:
+                    addV2CP(input, viscp, fig, axes)
+    if first == False:
+        axes.set_xlim(0)
+        if viscp == 'vis':
+            axes.set_ylim(-0.1,1.2)
+            axes.set_xlabel('sp. freq. (M$\lambda$)')
+            axes.set_ylabel('vis2')
+            plt.savefig('/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_vis2.png')
+            log.info('    - Write '+'/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_vis2.png')
+        elif viscp == 'cp':
+            axes.set_xlabel('max sp. freq. (M$\lambda$)');
+            axes.set_ylabel('$\phi_{CP}$')
+            plt.savefig('/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_t3phi.png')
+            log.info('    - Write '+'/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_t3phi.png')
+        plt.close("all")
+    return
+
 def plotV2CP(direc,setups,viscp):
     """
     Searches a directory for fits files and plots vis vs sf
@@ -82,53 +120,85 @@ def plotV2CP(direc,setups,viscp):
     fitsfiles = sorted(glob.glob(direc+'/*.fits'))
     if direc.split('/')[-1] == 'oifits':
         suff = 'reduced'
-    elif direc.split('/')[-1] == 'calibrated':
-        suff = 'calib'
-    p = 0
-    first = None
-    fig,axes = plt.subplots()
-    fig.suptitle(', '.join(str(s) for s in setups[p]))
+    p, first = 0, True
+    calibfiles = []
     for file in fitsfiles:
+        # keywords from file headers read in
         with pyfits.open(file) as input:
-            h = input[0].header
-            if [h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] == setups[p]:
-                if first == None:
-                    # If the file being read in is the first in the sequence with settings
-                    # matching setups[p], grab the file number from the fits header:
-                    saveAsStr = str(h['HIERARCH MIRC PRO RTS']).split('_')[0]
-                    # change the value of "first" so that this isn't done again until
-                    # a different setups[p] is dealt with:
-                    first = 'no'                
-                addV2CP(input, viscp, fig, axes)
-            else:
-                # if the file being read in does not match the setup of the last file, 
-                # close the last plot...
-                axes.set_xlim(0)
-                if viscp == 'vis':
-                    axes.set_ylim(-0.1,1.2)
-                    axes.set_xlabel('sp. freq. (M$\lambda$)')
-                    axes.set_ylabel('vis2')
-                    plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
-                elif viscp == 'cp':
-                    axes.set_xlabel('max sp. freq. (M$\lambda$)');
-                    axes.set_ylabel('$\phi_{CP}$')
-                    plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-                plt.close("all")
-                p += 1
-                # and see if there is another setup to be plotted:
-                try:
-                    x = setups[p]
-                    first = None
-                except IndexError:
-                    return
-                # Then plot this file's data in a new window:
+            keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
+            teststr = [str(input[0].header.get(k,'--')) for k in keys]
+            if teststr == setups[p] and first == True:
+                # option i) file matches current setup and is first file to match it
+                log.info('    - '+file+' matches setup '+', '.join(str(s) for s in teststr))
                 fig,axes = plt.subplots()
-                fig.suptitle(', '.join(str(s) for s in setups[p]))
-                if [h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] != setups[p]:
-                    log.error('Logic is wrong - next file does not have next setup!')
-                    sys.exit()
-                saveAsStr = h['HIERARCH MIRC PRO RTS'].split('_')[0]
+                fig.suptitle(', '.join(str(s) for s in teststr))
+                saveAsStr = str(input[0].header['HIERARCH MIRC PRO RTS']).split('_')[0]
                 addV2CP(input, viscp, fig, axes)
+                calibfiles.append(file)
+                first = False
+            elif teststr == setups[p] and first != True:
+                # option ii) file matches current setup but is not first file to match it
+                log.info('    - '+file+' also matches setup '+', '.join(str(s) for s in teststr))
+                addV2CP(input, viscp, fig, axes)
+                calibfiles.append(file)
+            elif teststr != setups[p]:
+                # option iii) file doesn't match current setup at all:
+                if first != True:
+                    # if there is data plotted already, close the plot
+                    axes.set_xlim(0)
+                    if viscp == 'vis':
+                        axes.set_ylim(-0.1,1.2)
+                        axes.set_xlabel('sp. freq. (M$\lambda$)')
+                        axes.set_ylabel('vis2')
+                        plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+                        log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+                    elif viscp == 'cp':
+                        axes.set_xlabel('max sp. freq. (M$\lambda$)');
+                        axes.set_ylabel('$\phi_{CP}$')
+                        plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+                        log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+                    plt.close("all")
+                    del fig,axes
+                    first = True
+                    # If there is corresponding calibrated data, plot it:
+                    calibPlots(calibfiles, viscp, saveAsStr, teststr)
+                    calibfiles = []
+                # increase the value of p until a match is found for the current file:
+                p += 1
+                while first == True:
+                    try:
+                        if teststr == setups[p]:
+                            log.info('    -- '+file+' matches setup '+', '.join(str(s) for s in teststr))
+                            fig,axes = plt.subplots()
+                            fig.suptitle(', '.join(str(s) for s in teststr))
+                            saveAsStr = str(input[0].header['HIERARCH MIRC PRO RTS']).split('_')[0]
+                            addV2CP(input, viscp, fig, axes)
+                            calibfiles.append(file)
+                            first = False
+                        else:
+                            p += 1
+                    except IndexError:
+                        log.info('End of setups list reached')
+                        return
+        del teststr
+        log.info('   - Close '+file)
+    try:
+       axes.set_xlim(0)
+       if viscp == 'vis':
+           axes.set_ylim(-0.1,1.2)
+           axes.set_xlabel('sp. freq. (M$\lambda$)')
+           axes.set_ylabel('vis2')
+           plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+           log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+       elif viscp == 'cp':
+           axes.set_xlabel('max sp. freq. (M$\lambda$)');
+           axes.set_ylabel('$\phi_{CP}$')
+           plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+           log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+       plt.close("all")
+       calibPlots(calibfiles, viscp, saveAsStr, teststr)
+    except:
+        return
     return
 
 ######
@@ -146,9 +216,9 @@ def texSumTitle(direc,hdrs,opt,redF,calF):
         - redF and calF are flags for if the reduction
         and/or calibration process failed;
     """
-    auth = 'ncohrent='+opt[0]+'; ncs='+opt[1]+'; nbs='+opt[2]+'; snr\\_threshold='+opt[3]
+    auth = 'ncohrent='+opt[0]+'; ncs='+opt[1]+'; nbs='+opt[2]+'; snr\\_threshold='+opt[3].replace('p','.')
     suf = direc.split('/')[-1]
-    outFiles = [direc+'/summary_'+suf+'.tex',direc+'/report_'+suf+'.tex']
+    outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
     # ^-- outFiles[0] is not to be emailed. It exceeds the 10MB gmail attachment limit.
     # outFiles[1] is a smaller file containing a night log summary as well as uv 
     # coverage plots for sci targets and vis2 vs sf and CP vs max_sf plots for reduced
@@ -216,7 +286,7 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
         - rawhdrs is the fits headers from the raw data.
     """
     suf = direc.split('/')[-1]
-    outFiles = [direc+'/summary_'+suf+'.tex',direc+'/report_'+suf+'.tex']
+    outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
     if redF == False:
         redhdrs = headers.loaddir(direc+'/oifits')
     for outFile in outFiles:
@@ -245,20 +315,29 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
             outtex.write('    & Start & File & Target & Gain & Ncoher & Nps & Frames & ')
             outtex.write('Filter & seeing \\\\ \n')
             outtex.write('    & (UTC) & num. & & & & & $/$reset & & \\\\ \n    \\hline\n')
+            keys = ['DATE','HIERARCH MIRC PRO RTS','OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
+            tabRows = [[str(h.get(k,'--')) for k in keys] for h in redhdrs]
+            for row in tabRows:
+                row[0] = row[0].split('T')[1]
+                row[1] = row[1].split('/')[-1].split('mircx')[1].split('_')[0]
             if redF == False:
-                tabRows = [[h['DATE'].split('T')[1],h['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in redhdrs]
+                skipd = 17
             else:
-                # if the reduction process failed, the hierarch mirc pro rts keyword is unassigned so this cannot be read
-                tabRows = [[h['DATE'].split('T')[1],h['COMMENT1'],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in rawhdrs]
+                skipd = 11
             for r in range(0, len(tabRows)-1):
                 if r == 0:
                     outtex.write('        '+str(r)+' & '+' & '.join(str(s).replace('_',' ') for s in tabRows[r])+'\\\\ \n')
                 else:
                     nextrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r+1])
                     thisrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r])
-                    if nextrow[11:] != thisrow[11:]:
-                       outtex.write('        '+str(r)+' & '+nextrow+'\\\\ \n')
+                    if nextrow[skipd:] != thisrow[skipd:]:
+                        outtex.write('        '+str(r)+' & '+nextrow+'\\\\ \n')
+                    del nextrow, thisrow
             outtex.write('    \\hline\n\\end{longtable}\n\n')
+            del tabRows
+    log.info('Cleanup memory')
+    if redF == False:
+        del redhdrs
     return
 
 def texReportPlts(direc):
@@ -271,7 +350,7 @@ def texReportPlts(direc):
     reportFiles = glob.glob(direc+'/oifits/report*.png')
     suf = direc.split('/')[-1]
     d = suf.split('_')[0]
-    outFiles = [direc+'/summary_'+suf+'.tex',direc+'/report_'+suf+'.tex']
+    outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
             if len(reportFiles) == 0:
@@ -317,7 +396,7 @@ def texSumUV(direc,calF):
     if calF == False:
         uvPlt = glob.glob(direc+'/oifits/calibrated/*_uv_coverage.png')
         suf = direc.split('/')[-1]
-        outFiles = [direc+'/summary_'+suf+'.tex',direc+'/report_'+suf+'.tex']
+        outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
         for outFile in outFiles:
             with open(outFile, 'a') as outtex:
                 outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
@@ -355,7 +434,7 @@ def texSumPlots(direc,redF,calF):
         respectively;
     """
     suf = direc.split('/')[-1]
-    outFiles = [direc+'/summary_'+suf+'.tex',direc+'/report_'+suf+'.tex']
+    outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
     if redF == True:
         for outFile in outFiles:
             with open(outFile, 'a') as outtex:                    
@@ -364,29 +443,20 @@ def texSumPlots(direc,redF,calF):
     # sort the reduced files by camera settings and target:
     redFiles = sorted(glob.glob(direc+'/oifits/*.fits'))
     redhdrs = headers.loaddir(direc+'/oifits')
-    setupL = [[h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],
-        h['R0']] for h in redhdrs]
+    log.info('Retrieve targets and camera settings from successfully reduced files')
+    keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
+    setupL = [[str(h.get(k,'--')) for k in keys] for h in redhdrs]
+    del redhdrs
     setups = []
     setups.append(setupL[0])
+    log.info('Targets and camera settings:')
     for m in range(0, len(setupL)-1):
         if setupL[m+1] != setupL[m]:
+            log.info('    '+', '.join(str(s) for s in setupL[m+1]))
             setups.append(setupL[m+1])
-    # make reduced vis2 and CP plots
+    # make reduced and calibrated vis2 and CP plots
     plotV2CP(direc+'/oifits', setups, 'vis')
     plotV2CP(direc+'/oifits', setups, 'cp')
-    # Then do the same for calibrated files if calibration process was successful:
-    if calF == False:
-        calFiles = sorted(glob.glob(direc+'/oifits/calibrated/*.fits'))
-        calhdrs = headers.loaddir(direc+'/oifits/calibrated')
-        setL = [[h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],
-            h['R0']] for h in calhdrs]
-        setC = []
-        setC.append(setL[0])
-        for m in range(0, len(setL)-1):
-            if setL[m+1] != setL[m]:
-                setC.append(setL[m+1])
-        plotV2CP(direc+'/oifits/calibrated', setC, 'vis')
-        plotV2CP(direc+'/oifits/calibrated', setC, 'cp')
     # Read in mircx numbers of vis2 plots created in reduced and calibrated directories:
     redPlts = sorted(glob.glob(direc+'/oifits/*reduced_vis2.png'))
     redNum = [int(i.split('/')[-1].split('_')[0].split('x')[1]) for i in redPlts]
@@ -394,6 +464,7 @@ def texSumPlots(direc,redF,calF):
     for num in range(0, len(redNum)):
         # ensure correct number of leading zeros are added to redNum for file name:
         strnum = '0'*(5-len(str(redNum[num])))+str(redNum[num])
+        log.info('Gather plots for summary report for file mircx'+strnum)
         redV2plt = direc+'/oifits/mircx'+strnum+'_reduced_vis2.png'
         redCPplt = direc+'/oifits/mircx'+strnum+'_reduced_t3phi.png'
         for outFile in outFiles:
@@ -417,6 +488,7 @@ def texSumPlots(direc,redF,calF):
                     outtex.write(direc+'/oifits/calibrated/mircx'+strnum+'_calib_t3phi.png')
                     outtex.write('}\\\\ \n')
                 outtex.write('\\end{figure}\n\n')
+    
     # Then append reduction QA plots to the file that won't be emailed:
     with open(outFiles[0], 'a') as outtex:
          outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
