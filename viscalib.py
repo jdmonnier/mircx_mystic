@@ -277,12 +277,18 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         hdulist[0].header['FILETYPE'] = 'OIFITS_CAL_TF';
         hdutf.append (hdulist);
 
+    # Number of TF
+    ntf = len (hdutf);
+    
     # Loop on OIFITS_SCI to calibrate them
     hdusci, hdutfs = [], [];
     for sci in scis:
     
         log.info ('Load SCI %s'%(sci['ORIGNAME']));
         hdus = pyfits.open (sci['ORIGNAME']);
+
+        # Check
+        if ntf == 0: continue;
 
         # Define output name
         output = files.output (outputDir,sci,'viscal');
@@ -312,10 +318,9 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         # Write file
         files.write (hdulist, output+'.fits');
     
-        # Append OIFITS_SCI and OIFITS_SCI_TF, to allow a plot
-        # of a trend over the night for this setup
-        hdusci.append (hdus);
+        # Append OIFITS_SCI OIFITS_SCI_TF for the trend
         hdutfs.append (hdutfsi);
+        hdusci.append (hdus);
         
         # VIS2
         fig,axes = plt.subplots ();
@@ -323,8 +328,10 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         x  = get_spfreq (hdulist,'OI_VIS2');
         y  = hdulist['OI_VIS2'].data['VIS2DATA'];
         dy = hdulist['OI_VIS2'].data['VIS2ERR'];
+        y[hdulist['OI_VIS2'].data['FLAG']] = np.nan;
         for b in range (15):
-            axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o',ms=1);
+            bars = axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o-',ms=2)[2];
+            for bar in bars: bar.set_alpha(0.15);
         axes.set_ylim (-0.1,1.2);
         axes.set_xlim (0);
         axes.set_xlabel ('sp. freq. (Mlbd)');
@@ -339,8 +346,10 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         x  = np.max (get_spfreq (hdulist,'OI_T3'), axis=0);
         y  = hdulist['OI_T3'].data['T3PHI'];
         dy = hdulist['OI_T3'].data['T3PHIERR'];
+        y[hdulist['OI_T3'].data['FLAG']] = np.nan;
         for b in range (20):
-            axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o',ms=1);
+            bars = axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o-',ms=2)[2];
+            for bar in bars: bar.set_alpha(0.15);
         axes.set_xlim (0);
         axes.set_xlabel ('max sp. freq. (M$\lambda$)');
         axes.set_ylabel ('$\phi_{CP}$');
@@ -351,7 +360,6 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
     log.info ('Figures for the trends');
     
     # Check of amount of files to plot
-    ntf = len (hdutf);
     log.info ('Number of transfer function %i'%ntf);
     if ntf == 0:
         raise ValueError ('No calibrator for this setup');
