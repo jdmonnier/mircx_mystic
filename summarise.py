@@ -91,6 +91,7 @@ def plotV2CP(direc,setups,viscp):
         log.info('Plotting calibrated '+viscp)
     p, first = 0, True
     for file in fitsfiles:
+        q = p
         # keywords from file headers read in
         with pyfits.open(file) as input:
             keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
@@ -127,20 +128,21 @@ def plotV2CP(direc,setups,viscp):
                     first = True
                 # increase the value of p until a match is found for the current file:
                 p += 1
-                while first == True:
-                    try:
-                        if teststr == setups[p]:
-                            log.info('    -- data from '+file+' matches setup '+', '.join(str(s) for s in teststr))
-                            fig,axes = plt.subplots()
-                            fig.suptitle(', '.join(str(s) for s in teststr))
-                            saveAsStr = str(input[0].header['HIERARCH MIRC PRO RTS']).split('_')[0]
-                            addV2CP(input, viscp, fig, axes)
-                            first = False
-                        else:
-                            p += 1
-                    except IndexError:
-                        log.info('End of setups list reached')
-                        return
+                else:
+                    while first == True:
+                        try:
+                            if teststr == setups[p]:
+                                log.info('    -- data from '+file+' matches setup '+', '.join(str(s) for s in teststr))
+                                fig,axes = plt.subplots()
+                                fig.suptitle(', '.join(str(s) for s in teststr))
+                                saveAsStr = str(input[0].header['HIERARCH MIRC PRO RTS']).split('_')[0]
+                                addV2CP(input, viscp, fig, axes)
+                                first = False
+                            else:
+                                p += 1
+                        except IndexError:
+                            log.info('End of setups list reached')
+                            return
         del teststr
     return
 
