@@ -90,19 +90,19 @@ def calibPlots(calibfiles,viscp,saveAsStr,setup):
                     addV2CP(input, viscp, fig, axes)
     if first == False:
         axes.set_xlim(0)
-		if viscp == 'vis':
-			axes.set_ylim(-0.1,1.2)
-			axes.set_xlabel('sp. freq. (M$\lambda$)')
-			axes.set_ylabel('vis2')
-			plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
-			log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
-		elif viscp == 'cp':
-			axes.set_xlabel('max sp. freq. (M$\lambda$)');
-			axes.set_ylabel('$\phi_{CP}$')
-			plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-			log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-		plt.close("all")
-	return
+        if viscp == 'vis':
+            axes.set_ylim(-0.1,1.2)
+            axes.set_xlabel('sp. freq. (M$\lambda$)')
+            axes.set_ylabel('vis2')
+            plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+            log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+        elif viscp == 'cp':
+            axes.set_xlabel('max sp. freq. (M$\lambda$)');
+            axes.set_ylabel('$\phi_{CP}$')
+            plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+            log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+        plt.close("all")
+    return
 
 def plotV2CP(direc,setups,viscp):
     """
