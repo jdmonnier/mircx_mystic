@@ -91,7 +91,6 @@ def plotV2CP(direc,setups,viscp):
         log.info('Plotting calibrated '+viscp)
     p, first = 0, True
     for file in fitsfiles:
-        print first, p, ', '.join(str(s) for s in setups[p])
         # keywords from file headers read in
         with pyfits.open(file) as input:
             keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
@@ -125,6 +124,7 @@ def plotV2CP(direc,setups,viscp):
                         plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
                         log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
                     plt.close("all")
+                    del fig,axes
                     first = True
                 # increase the value of p until a match is found for the current file:
                 p += 1
@@ -148,6 +148,22 @@ def plotV2CP(direc,setups,viscp):
                 sys.exit()
         del teststr
         log.info('   - Close '+file)
+    try:
+       axes.set_xlim(0)
+       if viscp == 'vis':
+           axes.set_ylim(-0.1,1.2)
+           axes.set_xlabel('sp. freq. (M$\lambda$)')
+           axes.set_ylabel('vis2')
+           plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+           log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+       elif viscp == 'cp':
+           axes.set_xlabel('max sp. freq. (M$\lambda$)');
+           axes.set_ylabel('$\phi_{CP}$')
+           plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+           log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+       plt.close("all")
+    except:
+        return
     return
 
 ######
@@ -412,7 +428,6 @@ def texSumPlots(direc,redF,calF):
         calFiles = sorted(glob.glob(direc+'/oifits/calibrated/*.fits'))
         plotV2CP(direc+'/oifits/calibrated', setups, 'vis')
         plotV2CP(direc+'/oifits/calibrated', setups, 'cp')
-    sys.exit()
     # Read in mircx numbers of vis2 plots created in reduced and calibrated directories:
     redPlts = sorted(glob.glob(direc+'/oifits/*reduced_vis2.png'))
     redNum = [int(i.split('/')[-1].split('_')[0].split('x')[1]) for i in redPlts]
