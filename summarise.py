@@ -1,4 +1,4 @@
-import glob, socket, os
+import glob, socket, os, sys
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
@@ -91,14 +91,14 @@ def plotV2CP(direc,setups,viscp):
         log.info('Plotting calibrated '+viscp)
     p, first = 0, True
     for file in fitsfiles:
-        q = p
+        print first, p, ', '.join(str(s) for s in setups[p])
         # keywords from file headers read in
         with pyfits.open(file) as input:
             keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
             teststr = [str(input[0].header.get(k,'--')) for k in keys]
             if teststr == setups[p] and first == True:
                 # option i) file matches current setup and is first file to match it
-                log.info('    - data from '+file+' matches setup '+', '.join(str(s) for s in teststr))
+                log.info('    - '+file+' matches setup '+', '.join(str(s) for s in teststr))
                 fig,axes = plt.subplots()
                 fig.suptitle(', '.join(str(s) for s in teststr))
                 saveAsStr = str(input[0].header['HIERARCH MIRC PRO RTS']).split('_')[0]
@@ -106,7 +106,7 @@ def plotV2CP(direc,setups,viscp):
                 first = False
             elif teststr == setups[p] and first != True:
                 # option ii) file matches current setup but is not first file to match it
-                log.info('    - data from '+file+' also matches setup '+', '.join(str(s) for s in teststr))
+                log.info('    - '+file+' also matches setup '+', '.join(str(s) for s in teststr))
                 addV2CP(input, viscp, fig, axes)
             elif teststr != setups[p]:
                 # option iii) file doesn't match current setup at all:
@@ -118,12 +118,12 @@ def plotV2CP(direc,setups,viscp):
                         axes.set_xlabel('sp. freq. (M$\lambda$)')
                         axes.set_ylabel('vis2')
                         plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
-                        log.info('Write '+direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+                        log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
                     elif viscp == 'cp':
                         axes.set_xlabel('max sp. freq. (M$\lambda$)');
                         axes.set_ylabel('$\phi_{CP}$')
                         plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-                        log.info('Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+                        log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
                     plt.close("all")
                     first = True
                     p += 1
@@ -133,7 +133,7 @@ def plotV2CP(direc,setups,viscp):
                     while first == True:
                         try:
                             if teststr == setups[p]:
-                                log.info('    -- data from '+file+' matches setup '+', '.join(str(s) for s in teststr))
+                                log.info('    -- '+file+' matches setup '+', '.join(str(s) for s in teststr))
                                 fig,axes = plt.subplots()
                                 fig.suptitle(', '.join(str(s) for s in teststr))
                                 saveAsStr = str(input[0].header['HIERARCH MIRC PRO RTS']).split('_')[0]
@@ -144,7 +144,12 @@ def plotV2CP(direc,setups,viscp):
                         except IndexError:
                             log.info('End of setups list reached')
                             return
+            else:
+                log.info('There is an alternative option')
+                log.info(file)
+                sys.exit()
         del teststr
+        log.info('   - Close '+file)
     return
 
 ######
@@ -409,6 +414,7 @@ def texSumPlots(direc,redF,calF):
         calFiles = sorted(glob.glob(direc+'/oifits/calibrated/*.fits'))
         plotV2CP(direc+'/oifits/calibrated', setups, 'vis')
         plotV2CP(direc+'/oifits/calibrated', setups, 'cp')
+    sys.exit()
     # Read in mircx numbers of vis2 plots created in reduced and calibrated directories:
     redPlts = sorted(glob.glob(direc+'/oifits/*reduced_vis2.png'))
     redNum = [int(i.split('/')[-1].split('_')[0].split('x')[1]) for i in redPlts]
