@@ -221,8 +221,8 @@ def queryLocal(targs,db):
             else:
                 log.info(targ+' recognised as CAL')
                 if m_modTyp[m_targs.index(targNew)] == 'UD_H':
-                    ud_H = pd.Series.tolist(localDB['PARAM1'])[m_targs.index(targNew)]
-                    eud_H = pd.Series.tolist(localDB['PARAM2'])[m_targs.index(targNew)]
+                    ud_H = float(pd.Series.tolist(localDB['PARAM1'])[m_targs.index(targNew)])
+                    eud_H = float(pd.Series.tolist(localDB['PARAM2'])[m_targs.index(targNew)])
                     calInf = calInf+targ.replace(' ','_')+','+'{0:.6f}'.format(ud_H)+','+'{0:.6f}'.format(eud_H)+','
                     scical.append('CAL')
                 else:
