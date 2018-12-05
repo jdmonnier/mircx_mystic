@@ -352,7 +352,7 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
             for bar in bars: bar.set_alpha(0.15);
         axes.set_xlim (0);
         axes.set_xlabel ('max sp. freq. (M$\lambda$)');
-        axes.set_ylabel ('$\phi_{CP}$');
+        axes.set_ylabel ('T3PHI (deg)');
         files.write (fig,output+'_t3phi.png');
         
         plt.close ("all");
