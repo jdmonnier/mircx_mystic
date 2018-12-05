@@ -69,6 +69,41 @@ def addV2CP(input, viscp, fig, axes):
             axes.errorbar(1e-6*max_sf[b,:],cp[b,:],yerr=ecp[b,:],fmt='o',ms=1)
     return
 
+def calibPlots(calibfiles,viscp,saveAsStr,setup):
+    """
+    Plots the calibrated files corresponding to each 
+    setup (if they exist).
+    """
+    first = True
+    for file in calibfiles:
+        f = '/'.join(file.split('/')[:-1])+'/calibrated/'+file.split('/')[-1].replace('.fits','_viscal.fits')
+        if os.path.isfile(f):
+            # calibrated file exists
+            if first == True:
+                fig,axes = plt.subplots()
+                fig.suptitle(', '.join(str(s) for s in setup))
+                with pyfits.open(f) as input:
+                    addV2CP(input, viscp, fig, axes)
+                first = False
+            else:
+                with pyfits.open(f) as input:
+                    addV2CP(input, viscp, fig, axes)
+    if first == False:
+        axes.set_xlim(0)
+		if viscp == 'vis':
+			axes.set_ylim(-0.1,1.2)
+			axes.set_xlabel('sp. freq. (M$\lambda$)')
+			axes.set_ylabel('vis2')
+			plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+			log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+		elif viscp == 'cp':
+			axes.set_xlabel('max sp. freq. (M$\lambda$)');
+			axes.set_ylabel('$\phi_{CP}$')
+			plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+			log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+		plt.close("all")
+	return
+
 def plotV2CP(direc,setups,viscp):
     """
     Searches a directory for fits files and plots vis vs sf
@@ -86,10 +121,11 @@ def plotV2CP(direc,setups,viscp):
     if direc.split('/')[-1] == 'oifits':
         suff = 'reduced'
         log.info('Plotting reduced '+viscp)
-    elif direc.split('/')[-1] == 'calibrated':
-        suff = 'calib'
-        log.info('Plotting calibrated '+viscp)
+    #elif direc.split('/')[-1] == 'calibrated':
+    #    suff = 'calib'
+    #    log.info('Plotting calibrated '+viscp)
     p, first = 0, True
+    calibfiles = []
     for file in fitsfiles:
         # keywords from file headers read in
         with pyfits.open(file) as input:
@@ -102,11 +138,13 @@ def plotV2CP(direc,setups,viscp):
                 fig.suptitle(', '.join(str(s) for s in teststr))
                 saveAsStr = str(input[0].header['HIERARCH MIRC PRO RTS']).split('_')[0]
                 addV2CP(input, viscp, fig, axes)
+                calibfiles.append(file)
                 first = False
             elif teststr == setups[p] and first != True:
                 # option ii) file matches current setup but is not first file to match it
                 log.info('    - '+file+' also matches setup '+', '.join(str(s) for s in teststr))
                 addV2CP(input, viscp, fig, axes)
+                calibfiles.append(file)
             elif teststr != setups[p]:
                 # option iii) file doesn't match current setup at all:
                 if first != True:
@@ -126,6 +164,9 @@ def plotV2CP(direc,setups,viscp):
                     plt.close("all")
                     del fig,axes
                     first = True
+                    # If there is corresponding calibrated data, plot it:
+                    calibPlots(calibfiles, viscp, saveAsStr, teststr)
+                    calibfiles = []
                 # increase the value of p until a match is found for the current file:
                 p += 1
                 while first == True:
@@ -136,16 +177,13 @@ def plotV2CP(direc,setups,viscp):
                             fig.suptitle(', '.join(str(s) for s in teststr))
                             saveAsStr = str(input[0].header['HIERARCH MIRC PRO RTS']).split('_')[0]
                             addV2CP(input, viscp, fig, axes)
+                            calibfiles.append(file)
                             first = False
                         else:
                             p += 1
                     except IndexError:
                         log.info('End of setups list reached')
                         return
-            else:
-                log.info('There is an alternative option')
-                log.info(file)
-                sys.exit()
         del teststr
         log.info('   - Close '+file)
     try:
@@ -162,6 +200,7 @@ def plotV2CP(direc,setups,viscp):
            plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
            log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
        plt.close("all")
+       calibPlots(calibfiles, viscp, saveAsStr, teststr)
     except:
         return
     return
@@ -419,15 +458,9 @@ def texSumPlots(direc,redF,calF):
         if setupL[m+1] != setupL[m]:
             log.info('    '+', '.join(str(s) for s in setupL[m+1]))
             setups.append(setupL[m+1])
-    # make reduced vis2 and CP plots
+    # make reduced and calibrated vis2 and CP plots
     plotV2CP(direc+'/oifits', setups, 'vis')
     plotV2CP(direc+'/oifits', setups, 'cp')
-    # Then do the same for calibrated files if calibration process was successful:
-    if calF == False:
-        log.info('Retrieve targets and camera settings from successfully calibrated files')
-        calFiles = sorted(glob.glob(direc+'/oifits/calibrated/*.fits'))
-        plotV2CP(direc+'/oifits/calibrated', setups, 'vis')
-        plotV2CP(direc+'/oifits/calibrated', setups, 'cp')
     # Read in mircx numbers of vis2 plots created in reduced and calibrated directories:
     redPlts = sorted(glob.glob(direc+'/oifits/*reduced_vis2.png'))
     redNum = [int(i.split('/')[-1].split('_')[0].split('x')[1]) for i in redPlts]
