@@ -94,13 +94,13 @@ def calibPlots(calibfiles,viscp,saveAsStr,setup):
             axes.set_ylim(-0.1,1.2)
             axes.set_xlabel('sp. freq. (M$\lambda$)')
             axes.set_ylabel('vis2')
-            plt.savefig('/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_'+suff+'_vis2.png')
-            log.info('    - Write '+'/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_'+suff+'_vis2.png')
+            plt.savefig('/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_vis2.png')
+            log.info('    - Write '+'/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_vis2.png')
         elif viscp == 'cp':
             axes.set_xlabel('max sp. freq. (M$\lambda$)');
             axes.set_ylabel('$\phi_{CP}$')
-            plt.savefig('/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-            log.info('    - Write '+'/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+            plt.savefig('/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_t3phi.png')
+            log.info('    - Write '+'/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_t3phi.png')
         plt.close("all")
     return
 
@@ -120,10 +120,6 @@ def plotV2CP(direc,setups,viscp):
     fitsfiles = sorted(glob.glob(direc+'/*.fits'))
     if direc.split('/')[-1] == 'oifits':
         suff = 'reduced'
-        log.info('Plotting reduced '+viscp)
-    #elif direc.split('/')[-1] == 'calibrated':
-    #    suff = 'calib'
-    #    log.info('Plotting calibrated '+viscp)
     p, first = 0, True
     calibfiles = []
     for file in fitsfiles:
