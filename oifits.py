@@ -515,8 +515,27 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     np.seterr (**old_np_setting);
 
 
-def getdata (hdus,ext,names):
+def getdata (hdus,ext,names,flag=True):
     '''
+    Get the data of many OIFITS handler and return as an array
+    (actually a tupple of array since names is multiple entries).
+
+    If the option flag is True, the flagged data are replaced by nan.
     '''
-    return [np.array([h[ext].data[n] for h in hdus]) for n in names];
+    out = [];
+
+    # Read flag if needed
+    if flag:
+        ff = np.array ([h[ext].data['FLAG'] for h in hdus]);
+
+    # Loop on variables to be read
+    for n in names:
+        d = np.array ([h[ext].data[n] for h in hdus]);
+        if flag and d.shape == ff.shape: d[ff] = np.nan;
+        out.append (d);
+        
+    return out;
+
+    # Old code
+    # return [np.array([h[ext].data[n] for h in hdus]) for n in names];
 
