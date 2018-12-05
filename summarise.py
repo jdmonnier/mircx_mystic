@@ -126,9 +126,10 @@ def plotV2CP(direc,setups,viscp):
                         log.info('Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
                     plt.close("all")
                     first = True
-                # increase the value of p until a match is found for the current file:
-                p += 1
+                    p += 1
                 else:
+                    # increase the value of p until a match is found for the current file:
+                    p += 1
                     while first == True:
                         try:
                             if teststr == setups[p]:
