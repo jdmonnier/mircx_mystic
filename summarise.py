@@ -93,11 +93,12 @@ def plotV2CP(direc,setups,viscp):
         with pyfits.open(file) as input:
             keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
             teststr = [str(input[0].header.get(k,'--')) for k in keys]
+            fname = str(input[0].header['HIERARCH MIRC PRO RTS']).split('_')[0]
         if teststr == setups[p] and first == True:
             # option i) file matches current setup and is first file to match it
             fig,axes = plt.subplots()
             fig.suptitle(', '.join(str(s) for s in teststr))
-            saveAsStr = str(h['HIERARCH MIRC PRO RTS']).split('_')[0]
+            saveAsStr = fname
             addV2CP(input, viscp, fig, axes)
             first = False
         elif teststr == setups[p] and first != True:
