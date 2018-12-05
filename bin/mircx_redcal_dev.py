@@ -70,7 +70,7 @@ parser.add_argument("--calibrate",dest="calibrate",default='TRUE',
 parser.add_argument("--targ-list",dest="targ_list",default='mircx_targets.list',
             type=str,
             help="local database to query to identify SCI and CAL targets [%(default)s]")
-parser.add_argument("--email",dest="email",type=str,default='mircx-reports@exeter.ac.uk', 
+parser.add_argument("--email",dest="email",type=str,default='', 
             help='email address to send summary report file TO [%(default)s]')
 parser.add_argument("--sender",dest="sender",type=str,default='mircx.mystic@gmail.com',
             help='email address to send summary report file FROM [%(default)s]')
@@ -95,15 +95,16 @@ else:
 try:
     pw = os.environ['MAILLOGIN']
 except KeyError:
-    log.error('Password for '+argopt.sender+' not found!')
-    log.info('Please add environment variable MAILLOGIN to your bash or')
-    log.info(' csh profile before continuing.')
-    log.info('If you do not own the password for '+argopt.sender+',')
-    log.info(' please contact Narsi Anugu or use option --sender to change')
-    log.info(' the email address from which the summary report will be sent.')
-    log.info('[HINT: the password for the email parsed to --sender will need')
-    log.info(' to be saved as environment varaible $MAILLOGIN.]')
-    sys.exit()
+    if '@' in argopt.email:
+        log.error('Password for '+argopt.sender+' not found!')
+        log.info('Please add environment variable MAILLOGIN to your bash or')
+        log.info(' csh profile before continuing.')
+        log.info('If you do not own the password for '+argopt.sender+',')
+        log.info(' please contact Narsi Anugu or use option --sender to change')
+        log.info(' the email address from which the summary report will be sent.')
+        log.info('[HINT: the password for the email parsed to --sender will need')
+        log.info(' to be saved as environment varaible $MAILLOGIN.]')
+        sys.exit()
 
 if argopt.raw_dir[-1] == '/':
     rawBase = argopt.raw_dir[:-1]
@@ -271,4 +272,5 @@ for d in argopt.dates.split(','):
             subprocess.call('pdflatex '+redDir+'/summary_'+d+suf+'.tex', shell=True)
             subprocess.call('pdflatex '+redDir+'/report_'+d+suf+'.tex' , shell=True)
             log.info('Write and compile summary report')
-        mailfile.sendSummary(redDir, argopt.email, argopt.sender)
+        if '@' in argopt.email:
+            mailfile.sendSummary(redDir, argopt.email, argopt.sender)
