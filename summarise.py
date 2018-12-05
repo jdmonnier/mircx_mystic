@@ -94,13 +94,13 @@ def calibPlots(calibfiles,viscp,saveAsStr,setup):
             axes.set_ylim(-0.1,1.2)
             axes.set_xlabel('sp. freq. (M$\lambda$)')
             axes.set_ylabel('vis2')
-            plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
-            log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+            plt.savefig('/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_'+suff+'_vis2.png')
+            log.info('    - Write '+'/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_'+suff+'_vis2.png')
         elif viscp == 'cp':
             axes.set_xlabel('max sp. freq. (M$\lambda$)');
             axes.set_ylabel('$\phi_{CP}$')
-            plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-            log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+            plt.savefig('/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+            log.info('    - Write '+'/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_'+suff+'_t3phi.png')
         plt.close("all")
     return
 
