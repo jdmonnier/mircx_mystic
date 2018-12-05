@@ -153,7 +153,7 @@ def texSumTitle(direc,hdrs,opt,redF,calF):
     """
     auth = 'ncohrent='+opt[0]+'; ncs='+opt[1]+'; nbs='+opt[2]+'; snr\\_threshold='+opt[3].replace('p','.')
     suf = direc.split('/')[-1]
-    outFiles = [direc+'/summary_'+suf+'.tex',direc+'/report_'+suf+'.tex']
+    outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
     # ^-- outFiles[0] is not to be emailed. It exceeds the 10MB gmail attachment limit.
     # outFiles[1] is a smaller file containing a night log summary as well as uv 
     # coverage plots for sci targets and vis2 vs sf and CP vs max_sf plots for reduced
@@ -221,7 +221,7 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
         - rawhdrs is the fits headers from the raw data.
     """
     suf = direc.split('/')[-1]
-    outFiles = [direc+'/summary_'+suf+'.tex',direc+'/report_'+suf+'.tex']
+    outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
     if redF == False:
         redhdrs = headers.loaddir(direc+'/oifits')
     for outFile in outFiles:
@@ -285,7 +285,7 @@ def texReportPlts(direc):
     reportFiles = glob.glob(direc+'/oifits/report*.png')
     suf = direc.split('/')[-1]
     d = suf.split('_')[0]
-    outFiles = [direc+'/summary_'+suf+'.tex',direc+'/report_'+suf+'.tex']
+    outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
             if len(reportFiles) == 0:
@@ -331,7 +331,7 @@ def texSumUV(direc,calF):
     if calF == False:
         uvPlt = glob.glob(direc+'/oifits/calibrated/*_uv_coverage.png')
         suf = direc.split('/')[-1]
-        outFiles = [direc+'/summary_'+suf+'.tex',direc+'/report_'+suf+'.tex']
+        outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
         for outFile in outFiles:
             with open(outFile, 'a') as outtex:
                 outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
@@ -369,7 +369,7 @@ def texSumPlots(direc,redF,calF):
         respectively;
     """
     suf = direc.split('/')[-1]
-    outFiles = [direc+'/summary_'+suf+'.tex',direc+'/report_'+suf+'.tex']
+    outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
     if redF == True:
         for outFile in outFiles:
             with open(outFile, 'a') as outtex:                    

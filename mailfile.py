@@ -24,7 +24,7 @@ def send_email(msg, fromaddr, toaddr):
 
 def sendSummary(dir, toaddr, fromaddr):
     """
-    Emails the report PDF file for the reduced and calibrated 
+    Emails the summary report PDF file for the reduced and calibrated 
     night of observations to 'addr'
     """
     msg = MIMEMultipart()
@@ -35,7 +35,7 @@ def sendSummary(dir, toaddr, fromaddr):
     msg['Subject'] = 'MIRC-X redcal summary for '+d
     body = 'MIRC-X redcal summary for '+d.split('_')[0]+'\n'
     msg.attach(MIMEText(body, 'plain'))
-    filename = 'report_'+d+'.pdf'
+    filename = 'summary_'+d+'.pdf'
     attachment = open(dir+'/'+filename, 'rb')
     part = MIMEBase('application', 'octet-stream')
     part.set_payload((attachment).read())
