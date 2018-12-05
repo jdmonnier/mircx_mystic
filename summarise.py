@@ -89,7 +89,7 @@ def plotV2CP(direc,setups,viscp):
     elif direc.split('/')[-1] == 'calibrated':
         suff = 'calib'
         log.info('Plotting calibrated '+viscp)
-        p, first = 0, True
+    p, first = 0, True
     for file in fitsfiles:
         log.info(' - plot data from '+file)
         # keywords from file headers read in
