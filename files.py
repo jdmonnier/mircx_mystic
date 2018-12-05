@@ -163,14 +163,15 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
 
         # Check if some frames are saturated. Check individual pixels, therefore
         # we make use of the badpixel mask if it was provided. flag array is 0
-        # if no saturation, or the id of the first saturated frame
-        # if checkSaturation is True:
+        # if no saturation, or the id of the first saturated frame. Note that we
+        # don't check the edges of the images because badpixels are not properly
+        # detected here
         if checkSaturation is True:
             if badpix is None:
-                frame_max = np.max (data, axis=(2,3));
+                frame_max = np.max (data[:,:,2:-2,2:-2], axis=(2,3));
             else:
-                frame_max = np.max (data * (badpix==False)[None,None,:,:], axis=(2,3));
-                
+                frame_max = np.max ((data * (badpix==False)[None,None,:,:])[:,:,2:-2,2:-2], axis=(2,3));
+            
             flag = np.argmax (frame_max > saturationThreshold, axis=1);
             nsat = np.sum ( (flag.flatten() > 0) * (nf - flag.flatten()));
             hdr[HMQ+'NSAT'] += nsat;
