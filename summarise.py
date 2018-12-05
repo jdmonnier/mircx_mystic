@@ -87,57 +87,26 @@ def plotV2CP(direc,setups,viscp):
         suff = 'reduced'
     elif direc.split('/')[-1] == 'calibrated':
         suff = 'calib'
-    p = 0
-    first = None
-    fig,axes = plt.subplots()
-    fig.suptitle(', '.join(str(s) for s in setups[p]))
+    p, first = 0, True
     for file in fitsfiles:
+        # keywords from file headers read in
         with pyfits.open(file) as input:
-            h = input[0].header
-            try:
-                teststr = [h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']]
-            except KeyError:
-                try:
-                    objct = h['OBJECT']
-                except:
-                    objct = '--'
-                try:
-                    gain = h['GAIN']
-                except:
-                    gain = '--'
-                try:
-                    ncoher = h['NCOHER']
-                except:
-                    ncoher = '--'
-                try:
-                    psco = h['PSCOADD']
-                except:
-                    psco = '--'
-                try:
-                    frmrst = h['FRMPRST']
-                except:
-                    frmrst = '--'
-                try:
-                    fltr = h['FILTER1']
-                except:
-                    fltr = '--'
-                try:
-                    seeing = h['R0']
-                except:
-                    seeing = '--'
-                teststr = [objct, gain, ncoher, psco, frmrst, fltr, seeing]
-            if teststr == setups[p]:
-                if first == None:
-                    # If the file being read in is the first in the sequence with settings
-                    # matching setups[p], grab the file number from the fits header:
-                    saveAsStr = str(h['HIERARCH MIRC PRO RTS']).split('_')[0]
-                    # change the value of "first" so that this isn't done again until
-                    # a different setups[p] is dealt with:
-                    first = 'no'                
-                addV2CP(input, viscp, fig, axes)
-            else:
-                # if the file being read in does not match the setup of the last file, 
-                # close the last plot...
+            keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
+            teststr = [str(input[0].header.get(k,'--')) for k in keys]
+        if teststr == setups[p] and first == True:
+            # option i) file matches current setup and is first file to match it
+            fig,axes = plt.subplots()
+            fig.suptitle(', '.join(str(s) for s in teststr))
+            saveAsStr = str(h['HIERARCH MIRC PRO RTS']).split('_')[0]
+            addV2CP(input, viscp, fig, axes)
+            first = False
+        elif teststr == setups[p] and first != True:
+            # option ii) file matches current setup but is not first file to match it
+            addV2CP(input, viscp, fig, axes)
+        elif teststr != setups[p]:
+            # option iii) file doesn't match current setup at all:
+            if first != True:
+                # if there is data plotted already, close the plot
                 axes.set_xlim(0)
                 if viscp == 'vis':
                     axes.set_ylim(-0.1,1.2)
@@ -149,18 +118,21 @@ def plotV2CP(direc,setups,viscp):
                     axes.set_ylabel('$\phi_{CP}$')
                     plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
                 plt.close("all")
-                p += 1
-                # and see if there is another setup to be plotted:
+            # increase the value of p until a match is found for the current file:
+            p += 1
+            while first == True:
                 try:
-                    x = setups[p]
-                    first = None
+                    if teststr == setups[p]:
+                        fig,axes = plt.subplots()
+                        fig.suptitle(', '.join(str(s) for s in teststr))
+                        saveAsStr = str(h['HIERARCH MIRC PRO RTS']).split('_')[0]
+                        addV2CP(input, viscp, fig, axes)
+                        first = False
+                    else:
+                        p += 1
                 except IndexError:
                     return
-                # Then plot this file's data in a new window:
-                fig,axes = plt.subplots()
-                fig.suptitle(', '.join(str(s) for s in setups[p]))
-                saveAsStr = h['HIERARCH MIRC PRO RTS'].split('_')[0]
-                addV2CP(input, viscp, fig, axes)
+        del teststr
     return
 
 ######
@@ -251,12 +223,6 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
     outFiles = [direc+'/summary_'+suf+'.tex',direc+'/report_'+suf+'.tex']
     if redF == False:
         redhdrs = headers.loaddir(direc+'/oifits')
-        for t in ['DATE','HIERARCH MIRC PRO RTS','OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']:
-            try:
-                tmp = [h[t] for h in redhdrs]
-                log.info('Writing '+t+' from header to summary table')
-            except KeyError:
-                log.info('Keyword '+t+' not found in all headers')
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
             outtex.write('\\subsection*{Target summary}\n')
@@ -283,55 +249,15 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
             outtex.write('    & Start & File & Target & Gain & Ncoher & Nps & Frames & ')
             outtex.write('Filter & seeing \\\\ \n')
             outtex.write('    & (UTC) & num. & & & & & $/$reset & & \\\\ \n    \\hline\n')
+            keys = ['DATE','HIERARCH MIRC PRO RTS','OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
+            tabRows = [[str(h.get(k,'--')) for k in keys] for h in redhdrs]
+            for row in tabRows:
+                row[0] = row[0].split('T')[1]
+                row[1] = row[1].split('/')[-1].split('mircx')[1].split('_')[0]
             if redF == False:
                 skipd = 17
-                try:
-                    tabRows = [[h['DATE'].split('T')[1],h['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in redhdrs]
-                except KeyError:
-                    for h in range(0, len(redhdrs)):
-                        day = redhdrs[h]['DATE'].split('T')[1]
-                        try:
-                            nam = redhdrs[h]['HIERARCH MIRC PRO RTS'].split('/')[-1].split('mircx')[1].split('_')[0]
-                        except:
-                            nam = '--'
-                        try:
-                            objct = redhdrs[h]['OBJECT']
-                        except:
-                            objct = '--'
-                        try:
-                            gain = redhdrs[h]['GAIN']
-                        except:
-                            gain = '--'
-                        try:
-                            ncoher = redhdrs[h]['NCOHER']
-                        except:
-                            ncoher = '--'
-                        try:
-                            psco = redhdrs[h]['PSCOADD']
-                        except:
-                            psco = '--'
-                        try:
-                            frmrst = redhdrs[h]['FRMPRST']
-                        except:
-                            frmrst = '--'
-                        try:
-                            fltr = redhdrs[h]['FILTER1']
-                        except:
-                            fltr = '--'
-                        try:
-                            seeing = redhdrs[h]['R0']
-                        except:
-                            seeing = '--'
-                        try:
-                            tabRows2.append([day, nam, objct, gain, ncoher, psco, frmrst, fltr, seeing])
-                        except:
-                            tabRows2 = [[day, nam, objct, gain, ncoher, psco, frmrst, fltr, seeing]]
-                tabRows = tabRows2
-                del tabRows2
             else:
                 skipd = 11
-                # if the reduction process failed, the hierarch mirc pro rts keyword is unassigned so this cannot be read
-                tabRows = [[h['DATE'].split('T')[1],h['COMMENT1'],h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in rawhdrs]
             for r in range(0, len(tabRows)-1):
                 if r == 0:
                     outtex.write('        '+str(r)+' & '+' & '.join(str(s).replace('_',' ') for s in tabRows[r])+'\\\\ \n')
@@ -451,42 +377,8 @@ def texSumPlots(direc,redF,calF):
     # sort the reduced files by camera settings and target:
     redFiles = sorted(glob.glob(direc+'/oifits/*.fits'))
     redhdrs = headers.loaddir(direc+'/oifits')
-    try:
-        setupL = [[h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in redhdrs]
-    except KeyError:
-        for h in range(0, len(redhdrs)):
-            try:
-                objct = redhdrs[h]['OBJECT']
-            except:
-                objct = '--'
-            try:
-                gain = redhdrs[h]['GAIN']
-            except:
-                gain = '--'
-            try:
-                ncoher = redhdrs[h]['NCOHER']
-            except:
-                ncoher = '--'
-            try:
-                psco = redhdrs[h]['PSCOADD']
-            except:
-                psco = '--'
-            try:
-                frmrst = redhdrs[h]['FRMPRST']
-            except:
-                frmrst = '--'
-            try:
-                fltr = redhdrs[h]['FILTER1']
-            except:
-                fltr = '--'
-            try:
-                seeing = redhdrs[h]['R0']
-            except:
-                seeing = '--'
-            try:
-                setupL.append([objct, gain, ncoher, psco, frmrst, fltr, seeing])
-            except:
-                setupL = [[objct, gain, ncoher, psco, frmrst, fltr, seeing]]
+    keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
+    setupL = [[str(h.get(k,'--')) for k in keys] for h in redhdrs]
     del redhdrs
     setups = []
     setups.append(setupL[0])
@@ -499,51 +391,8 @@ def texSumPlots(direc,redF,calF):
     # Then do the same for calibrated files if calibration process was successful:
     if calF == False:
         calFiles = sorted(glob.glob(direc+'/oifits/calibrated/*.fits'))
-        calhdrs = headers.loaddir(direc+'/oifits/calibrated')
-        try:
-            setL = [[h['OBJECT'],h['GAIN'],h['NCOHER'],h['PSCOADD'],h['FRMPRST'],h['FILTER1'],h['R0']] for h in calhdrs]
-        except KeyError:
-            for h in range(0, len(calhdrs)):
-                try:
-                    objct = calhdrs[h]['OBJECT']
-                except:
-                    objct = '--'
-                try:
-                    gain = calhdrs[h]['GAIN']
-                except:
-                    gain = '--'
-                try:
-                    ncoher = calhdrs[h]['NCOHER']
-                except:
-                    ncoher = '--'
-                try:
-                    psco = calhdrs[h]['PSCOADD']
-                except:
-                    psco = '--'
-                try:
-                    frmrst = calhdrs[h]['FRMPRST']
-                except:
-                    frmrst = '--'
-                try:
-                    fltr = calhdrs[h]['FILTER1']
-                except:
-                    fltr = '--'
-                try:
-                    seeing = calhdrs[h]['R0']
-                except:
-                    seeing = '--'
-                try:
-                    setL.append([objct, gain, ncoher, psco, frmrst, fltr, seeing])
-                except:
-                    setL = [[objct, gain, ncoher, psco, frmrst, fltr, seeing]]
-        del calhdrs
-        setC = []
-        setC.append(setL[0])
-        for m in range(0, len(setL)-1):
-            if setL[m+1] != setL[m]:
-                setC.append(setL[m+1])
-        plotV2CP(direc+'/oifits/calibrated', setC, 'vis')
-        plotV2CP(direc+'/oifits/calibrated', setC, 'cp')
+        plotV2CP(direc+'/oifits/calibrated', setups, 'vis')
+        plotV2CP(direc+'/oifits/calibrated', setups, 'cp')
     # Read in mircx numbers of vis2 plots created in reduced and calibrated directories:
     redPlts = sorted(glob.glob(direc+'/oifits/*reduced_vis2.png'))
     redNum = [int(i.split('/')[-1].split('_')[0].split('x')[1]) for i in redPlts]
@@ -551,6 +400,7 @@ def texSumPlots(direc,redF,calF):
     for num in range(0, len(redNum)):
         # ensure correct number of leading zeros are added to redNum for file name:
         strnum = '0'*(5-len(str(redNum[num])))+str(redNum[num])
+        log.info('Gather plots for summary report for file mircx'+strnum)
         redV2plt = direc+'/oifits/mircx'+strnum+'_reduced_vis2.png'
         redCPplt = direc+'/oifits/mircx'+strnum+'_reduced_t3phi.png'
         for outFile in outFiles:
