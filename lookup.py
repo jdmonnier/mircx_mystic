@@ -125,8 +125,8 @@ def queryJSDC(targ,m):
         else:
             iscal = "CAL"
         model = "UD_H"
-        ud_H = '{0:.6f}'.format(result["II/346/jsdc_v2"]["UDDH"][0])
-        eud_H = '{0:.6f}'.format(result["II/346/jsdc_v2"]["e_LDD"][0])
+        ud_H = '{0:.6f}'.format(float(result["II/346/jsdc_v2"]["UDDH"][0]))
+        eud_H = '{0:.6f}'.format(float(result["II/346/jsdc_v2"]["e_LDD"][0]))
         return ''.join(str([ra, dec, hmag, vmag, iscal, model, ud_H, eud_H])[1:-1]).replace("'", "")
 
 def queryLocal(targs,db):
