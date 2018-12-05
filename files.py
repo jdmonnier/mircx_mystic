@@ -143,14 +143,16 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
         # Close file
         hdulist.close();
 
+        # Dimensions
+        nr,nf,ny,nx = data.shape;
+        
         # Guessed fringe window, FIXME: this may be wrong since we change the
         # orientation of images in saved data to match the header.
-        nr,nf,ny,nx = data.shape;
-        ys = ny - hdr['FR_ROW2'];
-        ye = ny - hdr['FR_ROW1'];
-        xc = int(nx - (hdr['FR_COL2'] + hdr['FR_COL1'])/2);
-        xs = xc - 10;
-        xe = xc + 10;
+        # ys = ny - hdr['FR_ROW2'];
+        # ye = ny - hdr['FR_ROW1'];
+        # xc = int(nx - (hdr['FR_COL2'] + hdr['FR_COL1'])/2);
+        # xs = xc - 10;
+        # xe = xc + 10;
 
         # Frame is declared saturated if more than 10 pixels in
         # the center of the fringes are near saturation. flag is 0
