@@ -125,8 +125,8 @@ def queryJSDC(targ,m):
         else:
             iscal = "CAL"
         model = "UD_H"
-        ud_H = result["II/346/jsdc_v2"]["UDDH"][0]
-        eud_H = result["II/346/jsdc_v2"]["e_LDD"][0]
+        ud_H = '{0:.6f}'.format(result["II/346/jsdc_v2"]["UDDH"][0])
+        eud_H = '{0:.6f}'.format(result["II/346/jsdc_v2"]["e_LDD"][0])
         return ''.join(str([ra, dec, hmag, vmag, iscal, model, ud_H, eud_H])[1:-1]).replace("'", "")
 
 def queryLocal(targs,db):
@@ -223,7 +223,7 @@ def queryLocal(targs,db):
                 if m_modTyp[m_targs.index(targNew)] == 'UD_H':
                     ud_H = pd.Series.tolist(localDB['PARAM1'])[m_targs.index(targNew)]
                     eud_H = pd.Series.tolist(localDB['PARAM2'])[m_targs.index(targNew)]
-                    calInf = calInf+targ.replace(' ','_')+','+str(ud_H)+','+str(eud_H)+','
+                    calInf = calInf+targ.replace(' ','_')+','+'{0:.6f}'.format(ud_H)+','+'{0:.6f}'.format(eud_H)+','
                     scical.append('CAL')
                 else:
                     log.error('Model type '+m_modTyp[m_targs.index(targNew)]+' not supported')
