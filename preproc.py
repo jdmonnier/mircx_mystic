@@ -120,7 +120,7 @@ def compute_background (hdrs,output='output_bkg'):
     headers.check_input (hdrs, required=1);
 
     # Load files
-    hdr,cube = files.load_raw (hdrs, coaddRamp=True);
+    hdr,cube = files.load_raw (hdrs, coaddRamp=True, checkSaturation=False);
     log.info ('Data size: '+str(cube.shape));
 
     # Background mean
