@@ -221,6 +221,7 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
                           outputSetup='calibration_setup',
                           overwrite=True,
                           lbdMin=1.0, lbdMax=2.0,
+                          flagEdges=False,
                           keys=visparam):
     '''
     Cross-calibrate the OIFITS in hdrs. The choice of SCI and CAL, and the diameter
@@ -290,11 +291,18 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         hdutfsi = tf_time_weight (hdus, hdutf, deltaTf);
         hdulist = tf_divide (hdus, hdutfsi);
 
-        # Ignore wavelengths
+        # Flag wavelengths
         lbd = hdulist['OI_WAVELENGTH'].data['EFF_WAVE'] * 1e6;
         flag = (lbd < lbdMin) + (lbd > lbdMax);
         hdulist['OI_VIS2'].data['FLAG'] += flag[None,:];
+        hdulist['OI_VIS'].data['FLAG'] += flag[None,:];
         hdulist['OI_T3'].data['FLAG'] += flag[None,:];
+
+        # Flag edges
+        if flagEdges:
+            hdulist['OI_VIS2'].data['FLAG'][:,[0,-1]] += True;
+            hdulist['OI_VIS'].data['FLAG'][:,[0,-1]] += True;
+            hdulist['OI_T3'].data['FLAG'][:,[0,-1]] += True;
 
         # First HDU
         hdulist[0].header['FILETYPE'] = 'OIFITS_CALIBRATED';

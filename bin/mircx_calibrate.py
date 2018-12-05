@@ -72,6 +72,10 @@ parser.add_argument ("--lbd-min", dest="lbd_min",default=1.5,
 parser.add_argument ("--lbd-max", dest="lbd_max",default=1.72,
                      type=float, help="maximum wavelenght in um [%(default)s]");
 
+parser.add_argument ("--flag-edges", dest="flag_edges",default='TRUE',
+                    choices=TrueFalse,
+                    help="flag first and last channels [%(default)s]");
+
 parser.add_argument ("--use-detmode", dest="use_detmode",default='TRUE',
                     choices=TrueFalse,
                     help="use detector parameters to associate calibrators [%(default)s]");
@@ -127,6 +131,7 @@ if argopt.oifitscalib != 'FALSE':
                                       deltaTf=argopt.delta_tf,
                                       lbdMin=argopt.lbd_min,
                                       lbdMax=argopt.lbd_max,
+                                      flagEdges=argopt.flag_edges,
                                       keys=keys);
 
         except Exception as exc:
