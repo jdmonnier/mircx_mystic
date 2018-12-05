@@ -91,7 +91,6 @@ def plotV2CP(direc,setups,viscp):
         log.info('Plotting calibrated '+viscp)
     p, first = 0, True
     for file in fitsfiles:
-        log.info(' - plot data from '+file)
         # keywords from file headers read in
         with pyfits.open(file) as input:
             keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
@@ -125,6 +124,7 @@ def plotV2CP(direc,setups,viscp):
                         plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
                         log.info('Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
                     plt.close("all")
+                    first = True
                 # increase the value of p until a match is found for the current file:
                 p += 1
                 while first == True:
