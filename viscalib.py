@@ -378,6 +378,7 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
     xtf, ytf, dytf = oifits.getdata (hdutf,'OI_VIS2',names);
     xts, yts, dyts = oifits.getdata (hdutfs,'OI_VIS2',names);
     xsc, ysc, dysc = oifits.getdata (hdusci,'OI_VIS2',names);
+    
 
     # Get station name for labels (assume the same for all files,
     # and assume the OI_ARRAY is ordered starting with 1)
