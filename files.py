@@ -83,9 +83,11 @@ def write (hdulist,filename):
     hdulist.writeto (filename);
     os.chmod (filename,0o666);
 
-def load_raw (hdrs, checkSaturation=True, differentiate=True,
+def load_raw (hdrs, differentiate=True,
               removeBias=True, background=None, coaddRamp=False,
-              badpix=None, output='output',saturationThreshold=60000):
+              badpix=None, output='output',
+              saturationThreshold=60000,
+              continuityThreshold=10000):
     '''
     Load data and append into gigantic cube. The output cube is
     of shape: [nfile*nramp, nframes, ny, ny].
@@ -145,6 +147,9 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
 
         # Dimensions
         nr,nf,ny,nx = data.shape;
+
+        # flag for invalid frames
+        flag = np.zeros ((nr,nf), dtype=bool);
         
         # Guessed fringe window, FIXME: this may be wrong since we change the
         # orientation of images in saved data to match the header.
@@ -157,7 +162,7 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
         # Frame is declared saturated if more than 10 pixels in
         # the center of the fringes are near saturation. flag is 0
         # if no saturation, or the id of the first saturated frame
-        # if checkSaturation is True:
+        # if saturationThreshold is not None:
         #     flag = np.sum (data[:,:,ys:ye,xs:xe]>saturationThreshold, axis=(2,3));
         #     flag = np.argmax (flag > 10, axis=1);
         #     nsat = np.sum ( (flag.flatten() > 0) * (nf - flag.flatten()));
@@ -168,15 +173,12 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
         # if no saturation, or the id of the first saturated frame. Note that we
         # don't check the edges of the images because badpixels are not properly
         # detected here
-        if checkSaturation is True:
+        if saturationThreshold is not None:
             if badpix is None:
-                frame_max = np.max (data[:,:,2:-2,2:-2], axis=(2,3));
+                tmp = data[:,:,2:-2,2:-2];
             else:
-                frame_max = np.max ((data * (badpix==False)[None,None,:,:])[:,:,2:-2,2:-2], axis=(2,3));
-            
-            flag = np.argmax (frame_max > saturationThreshold, axis=1);
-            nsat = np.sum ( (flag.flatten() > 0) * (nf - flag.flatten()));
-            hdr[HMQ+'NSAT'] += nsat;
+                tmp = (data * (badpix==False)[None,None,:,:])[:,:,2:-2,2:-2];
+            flag += tmp.max (axis=(2,3)) > saturationThreshold;
 
         # TODO: deal with non-linearity,
         # static flat-field and bad-pixels.
@@ -198,11 +200,24 @@ def load_raw (hdrs, checkSaturation=True, differentiate=True,
         if background is not None:
             data -= background;
 
-        # Set the saturation fringes to zero
-        if checkSaturation is True:
+        # Check continuity in flux, to detect cosmics. We consider that the
+        # frames after a discontinuity are invalid (e.g saturated).
+        if continuityThreshold is not None:
+            if badpix is None:
+                tmp = np.diff (data[:,:,2:-2,2:-2], axis=1);
+            else:
+                tmp = np.diff ((data * (badpix==False)[None,None,:,:])[:,:,2:-2,2:-2], axis=1);
+            flag[:,1:-2] = tmp.max (axis=(2,3)) > continuityThreshold;
+            
+        # Set the flagged frames to zero over all pixels
+        if flag.any():
+            flag = np.argmax (flag, axis=1);
+            nsat = np.sum ( (flag.flatten() > 0) * (nf - flag.flatten()));
+            hdr[HMQ+'NSAT'] += nsat;
             for r in range(data.shape[0]):
                 if flag[r] != 0:
                     data[r,flag[r]-3:,:,:] = 0.0;
+            log.check (nsat, '%i saturated frames in this file'%nsat);
 
         # Add this RAW file in hdr
         nraw = len (hdr['*MIRC PRO RAW*']);
