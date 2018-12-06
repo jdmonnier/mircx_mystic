@@ -486,7 +486,8 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
      
     # Compute flux in fringes. fringe_map is normalised
     log.info ('Compute dc in fringes');
-    fringe_map  = medfilt (fringe_map, [1,1,1,1,11]);
+    # fringe_map  = medfilt (fringe_map, [1,1,1,1,11]);
+    # fringe_map  = median_filter (fringe_map, size=[1,1,1,1,11],mode='nearest');
     fringe_map /= np.sum (fringe_map, axis=-1, keepdims=True) + 1e-20;
     cont = np.einsum ('Brfy,Brfyx->rfyx', photok, fringe_map);
 
