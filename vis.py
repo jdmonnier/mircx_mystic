@@ -505,14 +505,27 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     ax.legend (loc=2);
     files.write (fig,output+'_dccorr.png');
 
-    # Save integrated spectra before
+    # Save integrated spectra and profile before
     # subtracting the continuum
-    fringe_spectra = np.mean (fringe,axis=(0,1,3));
+    cont_img   = np.mean (cont, axis=(0,1));
+    fringe_img = np.mean (fringe, axis=(0,1));
+    fringe_spectra = np.mean (fringe_img, axis=1);
 
     # Subtract continuum
     log.info ('Subtract dc');
     fringe -= cont;
     cont = [];
+
+    log.info ('Figure of DC residual');
+    fig,axes = plt.subplots (2, 1, sharex=True);
+    fig.suptitle (headers.summary (hdr));
+    axes[0].plot (fringe_img[ny/2,:], label='fringe');
+    axes[0].plot (cont_img[ny/2,:], label='cont');
+    axes[0].legend();
+    axes[1].plot ((fringe_img-cont_img)[ny/2,:], label='res');
+    axes[1].set_xlabel('x (spatial direction)');
+    axes[1].legend();
+    files.write (fig,output+'_dcres.png');
 
     # Model (x,f)
     log.info ('Model of data');
