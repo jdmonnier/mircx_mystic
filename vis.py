@@ -516,6 +516,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     fringe -= cont;
     cont = [];
 
+    # Check residual
     log.info ('Figure of DC residual');
     fig,axes = plt.subplots (2, 1, sharex=True);
     fig.suptitle (headers.summary (hdr));
