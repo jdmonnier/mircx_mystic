@@ -763,7 +763,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     return hdulist;
 
 def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
-                 avgphot=True, ncs=2, nbs=2):
+                 avgphot=True, ncs=2, nbs=2, gdAttenuation=True):
     '''
     Compute the OIFITS from the RTS
     '''
@@ -858,7 +858,8 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     base_scan  = np.fft.fftshift (np.fft.fft (base_dft, n=nscan, axis=2), axes=2);
     bias_scan  = np.fft.fftshift (np.fft.fft (bias_dft, n=nscan, axis=2), axes=2);
 
-    # Compute power in the scan
+    # Compute power in the scan, average the scan over the ramp.
+    # Therefore the coherent integration is the ramp, hardcoded.
     if ncs > 0:
         log.info ('Compute OPD-scan Power with offset of %i frames'%ncs);
         base_scan = np.real (base_scan[:,ncs:,:,:] * np.conj(base_scan[:,0:-ncs,:,:]));
@@ -909,8 +910,12 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     qc.snr (hdr, y0, base_snr0, base_snr);
     
     # Reduce norm power far from white-fringe
-    log.info ('Apply coherence envelope of %.1f um'%(coherence_length*1e6));
-    attenuation = np.exp (-(np.pi * base_gd / coherence_length)**2);
+    if gdAttenuation == True or gdAttenuation == 'TRUE':
+        log.info ('Apply coherence envelope of %.1f um'%(coherence_length*1e6));
+        attenuation = np.exp (-(np.pi * base_gd / coherence_length)**2);
+    else:
+        log.info ('Dont apply coherence envelope');
+        attenuation = base_gd * 0.0 + 1.0;
 
     # Compute selection flag from SNR
     log.info ('SNR selection > %.2f'%threshold);

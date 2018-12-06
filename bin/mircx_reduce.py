@@ -124,6 +124,10 @@ oifits.add_argument ("--nbs", dest="nbs", type=int,
 oifits.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
                      default=2.0, help="SNR threshold for fringe selection [%(default)s]");
 
+oifits.add_argument ("--gd-attenuation", dest="gd_attenuation",default='TRUE',
+                     choices=TrueFalse,
+                     help="correct from the attenuation due to GD [%(default)s]");
+
 oifits.add_argument ("--rm-rts", dest="rm_rts",default='FALSE',
                      choices=TrueFalse,
                      help="rm the RTS file after computing the OIFITS [%(default)s]");
@@ -421,7 +425,8 @@ if argopt.oifits != 'FALSE':
             log.setFile (output+'.log');
             mrx.compute_vis (gp, output=output, ncoher=argopt.ncoherent,
                              ncs=argopt.ncs, nbs=argopt.nbs,
-                             threshold=argopt.snr_threshold);
+                             threshold=argopt.snr_threshold,
+                             gdAttenuation=argopt.gd_attenuation);
             
             # If remove RTS
             if argopt.rm_rts == 'TRUE':
