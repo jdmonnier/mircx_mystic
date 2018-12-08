@@ -75,7 +75,8 @@ preproc.add_argument ("--preproc-dir", dest="preproc_dir",default='./preproc/',t
                      help="directory of products [%(default)s]");
 
 preproc.add_argument ("--max-integration-time", dest="max_integration_time",default=300.,type=float,
-                     help="maximum integration into a single file, in s [%(default)s]");
+                     help='maximum integration into a single file, in (s).\n'
+                     'This apply to PREPROC, RTS and OIFITS steps [%(default)s]');
 
 rts = parser.add_argument_group ('(2) rts',
                   '\nCreates RTS intermediate products, which are the\n'
@@ -342,7 +343,8 @@ if argopt.rts != 'FALSE':
 
     # Group all DATA
     keys = setup.detwin + setup.detmode + setup.insmode + setup.fringewin;
-    gps = mrx.headers.group (hdrs, 'DATA_PREPROC', delta=0, keys=keys);
+    gps = mrx.headers.group (hdrs, 'DATA_PREPROC', delta=120,
+                             Delta=argopt.max_integration_time, keys=keys);
 
     # Compute 
     for i,gp in enumerate(gps):
@@ -385,9 +387,10 @@ if argopt.rts != 'FALSE':
 
             # If remove PREPROC
             if argopt.rm_preproc == 'TRUE':
-                f = gp[0]['ORIGNAME'];
-                log.info ('Remove the PREPROC: '+f);
-                os.remove (f);
+                for g in gp:
+                    f = g['ORIGNAME'];
+                    log.info ('Remove the PREPROC: '+f);
+                    os.remove (f);
 
         except Exception as exc:
             log.error ('Cannot compute RTS: '+str(exc));
@@ -410,7 +413,8 @@ if argopt.oifits != 'FALSE':
 
     # Group all DATA
     keys = setup.detwin + setup.detmode + setup.insmode + setup.fringewin;
-    gps = mrx.headers.group (hdrs, 'RTS', delta=0, keys=keys);
+    gps = mrx.headers.group (hdrs, 'RTS', delta=120,
+                             Delta=argopt.max_integration_time, keys=keys);
 
     # Compute 
     for i,gp in enumerate(gps):
@@ -430,9 +434,10 @@ if argopt.oifits != 'FALSE':
             
             # If remove RTS
             if argopt.rm_rts == 'TRUE':
-                f = gp[0]['ORIGNAME'];
-                log.info ('Remove the RTS: '+f);
-                os.remove (f);
+                for g in gp:
+                    f = g['ORIGNAME'];
+                    log.info ('Remove the RTS: '+f);
+                    os.remove (f);
 
         except Exception as exc:
             log.error ('Cannot compute OIFITS: '+str(exc));

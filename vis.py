@@ -284,7 +284,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     elog = log.trace ('compute_rts');
 
     # Check inputs
-    headers.check_input (hdrs,  required=1, maximum=1);
+    headers.check_input (hdrs,  required=1);
     headers.check_input (profiles, required=1, maximum=6);
     headers.check_input (kappas, required=1, maximum=6);
     headers.check_input (speccal, required=1, maximum=1);
@@ -300,13 +300,20 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     
     # Load DATA
     f = hdrs[0]['ORIGNAME'];
-    log.info ('Load PREPROC file (copy) %s'%f);
+    log.info ('Load PREPROC file %s'%f);
     hdr = pyfits.getheader (f);
     fringe = pyfits.getdata (f).astype(float);
     photo  = pyfits.getdata (f, 'PHOTOMETRY_PREPROC').astype(float);
-    nr,nf,ny,nx = fringe.shape
 
-    # Some verbose
+    # Load other files if any
+    for h in hdrs[1:]:
+        f = h['ORIGNAME'];
+        log.info ('Load PREPROC file %s'%f);
+        fringe = np.append (fringe, pyfits.getdata (f).astype(float), axis=0);
+        photo  = np.append (photo, pyfits.getdata (f, 'PHOTOMETRY_PREPROC').astype(float), axis=1);
+
+    # Dimensions
+    nr,nf,ny,nx = fringe.shape
     log.info ('fringe.shape = %s'%str(fringe.shape));
     log.info ('mean(fringe) = %f adu/pix/frame'%np.mean(fringe,axis=(0,1,2,3)));
 
@@ -694,27 +701,6 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     ax[1].set_xlim (0,cf_upsd.shape[-1]);
     files.write (fig,output+'_psd.png');
 
-    # Compute time FFT ov the entire time serie
-    log.warning ('FIXME: Skip long FFT as this is too time consuming...');
-#    log.info ('Long FFT');
-#    nt = nr*nf;
-#    base_time = base_dft[:,:,int(ny/2),:].reshape((nt,nb));
-#    ft0 = np.fft.fft (np.angle(base_time), axis=0)[:int(nt/2),:];
-#    ft1 = np.fft.fft (np.angle(base_time[1,:]*np.conj(base_time[:-1,:])), axis=0)[:int(nt/2),:];
-#    
-#    # Vibration monitor
-#    fig,ax = plt.subplots (2,1);
-#    fig.suptitle (headers.summary (hdr));
-#    ax[0].imshow (np.abs(ft0).T,aspect='auto');
-#    ax[1].plot (np.abs(ft0));
-#    files.write (fig,output+'_vib0.png');
-#
-#    fig,ax = plt.subplots (2,1);
-#    fig.suptitle (headers.summary (hdr));
-#    ax[0].imshow (np.abs(ft1).T,aspect='auto');
-#    ax[1].plot (np.abs(ft1));
-#    files.write (fig,output+'_vib1.png');
-
     # File
     log.info ('Create file');
 
@@ -785,10 +771,10 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     elog = log.trace ('compute_vis');
 
     # Check inputs
-    headers.check_input (hdrs,  required=1, maximum=1);
-    f = hdrs[0]['ORIGNAME'];
+    headers.check_input (hdrs, required=1);
 
     # Get data
+    f = hdrs[0]['ORIGNAME'];
     log.info ('Load RTS file %s'%f);
     hdr = pyfits.getheader (f);
     base_dft  = pyfits.getdata (f, 'BASE_DFT_IMAG').astype(float) * 1.j;
@@ -798,7 +784,19 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     photo     = pyfits.getdata (f, 'PHOTOMETRY').astype(float);
     lbd       = pyfits.getdata (f, 'WAVELENGTH').astype(float);
 
-
+    # Load other files if any
+    for h in hdrs[1:]:
+        f = h['ORIGNAME'];
+        log.info ('Load RTS file %s'%f);
+        base_dft = np.append (base_dft, \
+                   pyfits.getdata (f, 'BASE_DFT_IMAG').astype(float) * 1.j + \
+                   pyfits.getdata (f, 'BASE_DFT_REAL').astype(float), axis=0);
+        bias_dft = np.append (bias_dft, \
+                   pyfits.getdata (f, 'BIAS_DFT_IMAG').astype(float) * 1.j + \
+                   pyfits.getdata (f, 'BIAS_DFT_REAL').astype(float), axis=0);
+        photo    = np.append (photo, \
+                   pyfits.getdata (f, 'PHOTOMETRY').astype(float), axis=0);
+                   
     # Dimensions
     nr,nf,ny,nb = base_dft.shape;
     log.info ('Data size: '+str(base_dft.shape));
