@@ -22,17 +22,14 @@ It would be easier if the PREPROC would be truly static windows…
 Propagate the frame_numer and all counters
 Use a flat-field and bad pixel
 
-Compute preproc per RAW file, to better allow selection.
-
 The interference removal create correlation between the photometric flux.
-This is *not* good for normalisation power.
+This is *not* good for normalisation power. Maybe add backgroud-subtraction
+for each xchan ?
 
 Compute the QUALITY of beam based on SNR of the x-chan fit, not mean flux.
 Because integrating many frames should help.
 
 * RTS
-
-Or load various RTS into a single VIS.
 
 Photometry extraction:
 Think on the dimensions...
