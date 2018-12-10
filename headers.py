@@ -147,31 +147,32 @@ def load (files, hlog=[]):
                 hdr.rename_keyword ('ENDFR','LASTFR');
 
             # Check NBIN
-            if 'NBIN' not in hdr:
+            if 'NBIN' not in hdr and hdrs['FILETYPE'] is not 'FLAT_MAP':
                 log.warning ('Old data with no NBIN (set to one)');
                 hdr['NBIN'] = 1;
 
-            if hdr['DATE-OBS'][4] == '/':
-                # Reformat DATE-OBS YYYY/MM/DD -> YYYY-MM-DD
-                hdr['DATE-OBS'] = hdr['DATE-OBS'][0:4] + '-' + \
-                  hdr['DATE-OBS'][5:7] + '-' + \
-                  hdr['DATE-OBS'][8:10];
-            elif hdr['DATE-OBS'][2] == '/':
-                # Reformat DATE-OBS MM/DD/YYYY -> YYYY-MM-DD
-                hdr['DATE-OBS'] = hdr['DATE-OBS'][6:10] + '-' + \
-                  hdr['DATE-OBS'][0:2] + '-' + \
-                  hdr['DATE-OBS'][3:5];
+            if 'MJD-OBS' not in hdr:
+                if hdr['DATE-OBS'][4] == '/':
+                    # Reformat DATE-OBS YYYY/MM/DD -> YYYY-MM-DD
+                    hdr['DATE-OBS'] = hdr['DATE-OBS'][0:4] + '-' + \
+                     hdr['DATE-OBS'][5:7] + '-' + \
+                     hdr['DATE-OBS'][8:10];
+                elif hdr['DATE-OBS'][2] == '/':
+                    # Reformat DATE-OBS MM/DD/YYYY -> YYYY-MM-DD
+                    hdr['DATE-OBS'] = hdr['DATE-OBS'][6:10] + '-' + \
+                     hdr['DATE-OBS'][0:2] + '-' + \
+                     hdr['DATE-OBS'][3:5];
 
-            # Compute MJD-OBS
-            mjd = Time(hdr['DATE-OBS'] + 'T'+ hdr['UTC-OBS'], format='isot', scale='utc').mjd;
+                # Compute MJD-OBS
+                mjd = Time(hdr['DATE-OBS'] + 'T'+ hdr['UTC-OBS'], format='isot', scale='utc').mjd;
 
-            # Check MJD-OBS
-            if mjd%1 == 0:
-                log.warning ('UTC-OBS is zero, use unix time instead');
-                mjd = Time(hdr['TIME_S'],format='unix').mjd;
+                # Check MJD-OBS
+                if mjd%1 == 0:
+                    log.warning ('UTC-OBS is zero, use unix time instead');
+                    mjd = Time(hdr['TIME_S'],format='unix').mjd;
 
-            # Set in header
-            hdr['MJD-OBS'] = (mjd, '[mjd] Observing time (UTC)');
+                # Set in header
+                hdr['MJD-OBS'] = (mjd, '[mjd] Observing time (UTC)');
 
             # Add the loading time
             hdr['MJD-LOAD'] =  (Time.now().mjd, '[mjd] Last loading time (UTC)');
@@ -315,6 +316,28 @@ def assoc (h, allh, tag, keys=[], which='closest', required=0, quality=None):
         log.info ('Find %i %s (%s ...)'%(len(out),tag,out[0]['ORIGNAME']));
         
     return out
+
+def assoc_flat (h, allh):
+    '''
+    Return the best FLAT for a given file. Note that the flat header is return
+    as a list of one to match the output of 'assoc' function.
+    '''
+    
+    # Associate best FLAT based in gain
+    flats = [a for a in allh if a['FILETYPE']=='FLAT_MAP'];
+
+    # Check
+    if len (flats) < 1:
+        log.warning ('Cannot find FLAT');
+        return [];
+
+    # Get closest gain
+    m = np.argmin ([np.abs (h['GAIN'] - f['GAIN']) for f in flats]);
+    flat = flats[m];
+
+    # Return
+    log.info ('Find 1 FLAT (%s)'%os.path.basename(flat['ORIGNAME']));
+    return [flat];
 
 def check_input (hdrs, required=1, maximum=100000):
     '''

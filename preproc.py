@@ -19,7 +19,7 @@ from scipy.optimize import least_squares;
 from . import log, files, headers, setup, oifits, signal, plot;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
-
+    
 def define_badpixels (bkg):
     '''
     Define bad pixels from a cube, given an input background
@@ -263,7 +263,7 @@ def compute_background (hdrs,output='output_bkg'):
     plt.close ("all");
     return hdulist;
 
-def compute_beammap (hdrs,bkg,output='output_beammap'):
+def compute_beammap (hdrs,bkg,flat,output='output_beammap'):
     '''
     Compute BEAM_MAP product. The output product contains
     keywords defining the fringe window and the photometric
@@ -274,24 +274,35 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     # Check inputs
     headers.check_input (hdrs, required=1);
     headers.check_input (bkg, required=1, maximum=1);
+    headers.check_input (flat, required=1, maximum=1);
     
     # Load background
     log.info ('Load background %s'%bkg[0]['ORIGNAME']);
     bkg_cube = pyfits.getdata (bkg[0]['ORIGNAME'],0);
     
-    # Compute bad pixels position
-    badpix = define_badpixels (bkg);
-    
+    # Compute bad pixels position from background
+    bad_img = define_badpixels (bkg);
+
+    # Load flat
+    log.info ('Load flat %s'%flat[0]['ORIGNAME']);
+    flat_img = pyfits.getdata (flat[0]['ORIGNAME'],'FLAT');
+
+    # Crop the FLAT image. For now, this is not working.
+    # Either the image are not defined with the same orientation,
+    # or the flat is not valid anymores
+    idy, idx = setup.crop_ids (hdrs[0]);
+    flat_img = flat_img[idy,:][:,idx];
+
     # Load files
     hdr,cube = files.load_raw (hdrs, coaddRamp=True, background=bkg_cube,
-                               badpix=badpix, output=output);
+                               badpix=bad_img, flat=None, output=output);
+
+    # Get dimensions
     log.info ('Data size: '+str(cube.shape));
+    nr,nf,ny,nx = cube.shape;
 
     # Check background subtraction in empty region
     check_empty_window (cube, hdr);
-
-    # Get dimensions
-    nr,nf,ny,nx = cube.shape;
 
     # Number of spectral channels to extract on plots
     ns = int(setup.nspec (hdr)/2 + 0.5) + 1;
@@ -399,7 +410,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     fig,ax = plt.subplots(3,1);
     fig.suptitle (headers.summary (hdr));
     ax[0].imshow (fmap);
-    ax[1].plot (fx, label='Data');
+    ax[1].plot (fx, label='Medfilt Data');
     ax[1].plot (x,ffit(x), label='Gaussian');
     ax[1].set_ylabel ('adu/pix/fr');
     ax[1].legend ();
@@ -448,7 +459,7 @@ def compute_beammap (hdrs,bkg,output='output_beammap'):
     plt.close("all");
     return hdulist;
 
-def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
+def compute_preproc (hdrs,bkg,flat,bmaps,output='output_preproc'):
     '''
     Compute preproc file. The first HDU contains the
     fringe window. The second HDU contains the 6 photometries
@@ -460,6 +471,7 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     # Check inputs
     headers.check_input (hdrs,  required=1);
     headers.check_input (bkg,   required=1, maximum=1);
+    headers.check_input (flat, required=1, maximum=1);
     headers.check_input (bmaps, required=1, maximum=6);
 
     # Load background
@@ -467,12 +479,25 @@ def compute_preproc (hdrs,bkg,bmaps,output='output_preproc'):
     bkg_cube = pyfits.getdata (bkg[0]['ORIGNAME'],0);
     
     # Compute bad pixels position
-    badpix = define_badpixels (bkg);
-    
-    # Load files
-    hdr,cube = files.load_raw (hdrs, background=bkg_cube, badpix=badpix, output=output);
-    log.info ('Data size: '+str(cube.shape));
+    bad_img = define_badpixels (bkg);
 
+    # Load flat
+    log.info ('Load flat %s'%flat[0]['ORIGNAME']);
+    flat_img = pyfits.getdata (flat[0]['ORIGNAME'],'FLAT');
+
+    # Crop the FLAT image. For now, this is not working.
+    # Either the image are not defined with the same orientation,
+    # or the flat is not valid anymores
+    idy, idx = setup.crop_ids (hdrs[0]);
+    flat_img = flat_img[idy,:][:,idx];
+        
+    # Load files
+    hdr,cube = files.load_raw (hdrs, background=bkg_cube,
+                               badpix=bad_img, flat=None, output=output);
+
+    # Get dimensions
+    log.info ('Data size: '+str(cube.shape));
+    
     # Check background subtraction in empty region
     check_empty_window (cube, hdr);
 

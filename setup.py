@@ -1,4 +1,5 @@
 import numpy as np;
+import os;
 
 from .headers import HM, HMQ, HMP, HMW, HC, rep_nan;
 from . import log;
@@ -24,6 +25,10 @@ beamorder = ['BEAMORD0','BEAMORD1','BEAMORD2','BEAMORD3','BEAMORD4','BEAMORD5'];
 
 global pop;
 pop = [HC+"S1_POP", HC+"S2_POP", HC+"E1_POP", HC+"E2_POP", HC+"W1_POP", HC+"W2_POP"]
+
+# Directory for static calibration
+global static;
+static = os.path.dirname (os.path.abspath(__file__))+'/static/';
 
 def nspec (hdr):
     '''
@@ -292,3 +297,26 @@ def base_uv (hdr):
 
     # CHARA tel of the CHARA beams
     return u,v;
+
+def crop_ids (hdr):
+    '''
+    Read the cropping parameter of the HDR
+    and return the ids to crop a full-frame
+    '''
+
+    croprows = hdr['CROPROWS'].split(',');
+    cropcols = hdr['CROPCOLS'];
+
+    # Spatial direction
+    if cropcols != '1-10':
+        raise ValueError ('CROPCOLS of 1-10 supported only');
+    else:
+        idx = np.arange (0, 320);
+
+    # Spectral direction
+    idy = np.array([], dtype=int);
+    for win in croprows:
+        a,b = win.split('-');
+        idy = np.append (idy, np.arange (int(a), int(b)+1));
+
+    return idy,idx;

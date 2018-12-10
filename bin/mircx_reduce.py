@@ -170,6 +170,9 @@ if argopt.preproc != 'FALSE':
     # List inputs
     hdrs = mrx.headers.loaddir (argopt.raw_dir);
 
+    # List static calibrations
+    hdrs_static = mrx.headers.loaddir (setup.static);
+
     #
     # Compute BACKGROUND_MEAN
     #
@@ -234,7 +237,11 @@ if argopt.preproc != 'FALSE':
             bkg = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
                                      keys=keys, which='closest', required=1);
             
-            mrx.compute_beammap (gp[0:argopt.max_file], bkg, output=output);
+            # Associate best FLAT based in gain
+            flat = mrx.headers.assoc_flat (gp[0], hdrs_static);
+
+            # Compute the BEAM_MAP
+            mrx.compute_beammap (gp[0:argopt.max_file], bkg, flat, output=output);
             
         except Exception as exc:
             log.error ('Cannot compute BEAM_MAP: '+str(exc));
@@ -275,6 +282,9 @@ if argopt.preproc != 'FALSE':
             bkg  = mrx.headers.assoc (gp[0], hdrs_calib, 'BACKGROUND_MEAN',
                                      keys=keys, which='closest', required=1);
 
+            # Associate best FLAT based in gain
+            flat = mrx.headers.assoc_flat (gp[0], hdrs_static);
+                
             # Associate BEAM_MAP (best of the night)
             bmaps = [];
             for i in range(1,7):
@@ -283,8 +293,9 @@ if argopt.preproc != 'FALSE':
                                          keys=keys, which='best', required=1,
                                          quality=0.01);
                 bmaps.extend (tmp);
-            
-            mrx.compute_preproc (gp[0:argopt.max_file], bkg, bmaps, output=output);
+
+            # Compute PREPROC
+            mrx.compute_preproc (gp[0:argopt.max_file], bkg, flat, bmaps, output=output);
             
         except Exception as exc:
             log.error ('Cannot compute PREPROC: '+str(exc));

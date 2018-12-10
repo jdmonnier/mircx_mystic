@@ -85,7 +85,7 @@ def write (hdulist,filename):
 
 def load_raw (hdrs, differentiate=True,
               removeBias=True, background=None, coaddRamp=False,
-              badpix=None, output='output',
+              badpix=None, flat=None, output='output',
               saturationThreshold=60000,
               continuityThreshold=10000):
     '''
@@ -228,7 +228,7 @@ def load_raw (hdrs, differentiate=True,
         # Co-add ramp if required
         if coaddRamp is True:
             data = np.mean (data,axis=0,keepdims=True);
-        
+
         # Append the data in the final cube
         cube.append (data);
 
@@ -245,6 +245,13 @@ def load_raw (hdrs, differentiate=True,
         cubenp[ramp:ramp+cube[c].shape[0],:,:,:] = cube[c];
         ramp += cube[c].shape[0];
         cube[c] = None;
+
+    # Apply flat
+    if flat is not None:
+        log.info ('Apply flat');
+        data /= flat[None,None,:,:];
+    else:
+        log.info ('No flat applied');
 
     # Recompute badpixels
     if badpix is None:
