@@ -234,5 +234,5 @@ def queryLocal(targs,db):
             log.error('Multiple entries found for '+targ+' in '+db)
             log.error('Please rectify this before continuing.')
             sys.exit()
-    return calInf, scical
+    return calInf.replace(' ', ''), scical
 
