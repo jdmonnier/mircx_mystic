@@ -66,7 +66,15 @@ def loaddir (dirs):
             continue;
         
         log.info ('Load directory: '+dir);
-        files = glob.glob (dir+'/mircx*.fit*');
+        files  = glob.glob (dir+'/mircx*.fits');
+        files += glob.glob (dir+'/mircx*.fits.fz');
+
+        # Check if any
+        if len(files) == 0:
+            log.warning ('No mircx*fits or mircx*fits.fz files in this directory');
+            continue;
+
+        # Sort them alphabetically
         files = sorted (files);
 
         # Load existing log if any
