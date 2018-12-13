@@ -147,7 +147,7 @@ def load (files, hlog=[]):
                 hdr.rename_keyword ('ENDFR','LASTFR');
 
             # Check NBIN
-            if 'NBIN' not in hdr and hdrs['FILETYPE'] is not 'FLAT_MAP':
+            if 'NBIN' not in hdr and hdr['FILETYPE'] is not 'FLAT_MAP':
                 log.warning ('Old data with no NBIN (set to one)');
                 hdr['NBIN'] = 1;
 
@@ -184,6 +184,7 @@ def load (files, hlog=[]):
             raise;
         except Exception as exc:
             log.warning ('Cannot get header of '+f+' ('+str(exc)+')');
+            
 
     log.info ('%i headers loaded'%len(hdrs));
     return hdrs;
