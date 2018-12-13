@@ -407,7 +407,8 @@ def texSumUV(direc,calF):
                     outtex.write('clip=true, width=0.32\\textwidth]{'+uvp+'}\n')
                 if len(uvPlt) > 12:
                     for n in range(1, int(np.floor(len(uvPlt)))):
-                        outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
+                        outtex.write('\\end{figure}\n\n\\clearpage\n')
+                        outtex.write('\\begin{figure}[h]\n')
                         outtex.write('    \\raggedright\n')
                         outtex.write('    \\textbf{Cont.}\\\\ \n    \\centering\n')
                         for uvp in uvPlt[12*n:12*(n+1)]:
@@ -499,7 +500,8 @@ def texSumPlots(direc,redF,calF):
              outtex.write('clip=true, width=0.32\\textwidth]{'+rts+'}\n')
          if len(RTS_p) > 15:
              for n in range(1, int(np.ceil(len(RTS_p)/15.))):
-                 outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
+                 outtex.write('\\end{figure}\n\n\\clearpage\n')
+                 outtex.write('\\begin{figure}[h]\n')
                  outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
                  outtex.write('    \\centering\n')
                  for rts in RTS_p[15*n:15*(n+1)]:
@@ -516,7 +518,8 @@ def texSumPlots(direc,redF,calF):
              outtex.write('}\n')
          if len(RTS_p) > 6:
              for n in range(1, int(np.ceil(len(RTS_p)/6.))):
-                 outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
+                 outtex.write('\\end{figure}\n\n\\clearpage\n')
+                 outtex.write('\\begin{figure}[h]\n')
                  outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
                  outtex.write('    \\centering\n')
                  for snr in RTS_p[6*n:6*(n+1)]:
@@ -535,7 +538,8 @@ def texSumPlots(direc,redF,calF):
              outtex.write('}\n')
          if len(RTS_p) > 6:
              for n in range(1, int(np.ceil(len(RTS_p)/6.))):
-                 outtex.write('\\end{figure}\n\n\\begin{figure}[h]\n')
+                 outtex.write('\\end{figure}\n\n\\clearpage\n')
+                 outtex.write('\\begin{figure}[h]\n')
                  outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
                  outtex.write('    \\centering\n')
                  for ba in RTS_p[6*n:6*(n+1)]:
