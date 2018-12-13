@@ -217,7 +217,7 @@ def load_raw (hdrs, differentiate=True,
             for r in range(data.shape[0]):
                 if flag[r] != 0:
                     data[r,flag[r]-3:,:,:] = 0.0;
-            log.check (nsat, '%i saturated frames in this file'%nsat);
+            # log.check (nsat, '%i saturated frames in this file'%nsat);
 
         # Add this RAW file in hdr
         nraw = len (hdr['*MIRC PRO RAW*']);
