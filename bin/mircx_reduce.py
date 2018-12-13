@@ -170,8 +170,9 @@ if argopt.preproc != 'FALSE':
     # List inputs
     hdrs = mrx.headers.loaddir (argopt.raw_dir);
 
-    # List static calibrations
-    hdrs_static = mrx.headers.loaddir (setup.static);
+    # List static calibrations. Don't use log of header since
+    # these static files can be updated by git regularly
+    hdrs_static = mrx.headers.loaddir (setup.static, uselog=False);
 
     #
     # Compute BACKGROUND_MEAN

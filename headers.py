@@ -47,7 +47,7 @@ def setup (hdr, params):
     value = ' / '.join([str(hdr.get(p,'--')) for p in params]);
     return value;
     
-def loaddir (dirs):
+def loaddir (dirs, uselog=True):
     '''
     Load the headers of all files mircx*.fit* from
     the input list of directory
@@ -81,7 +81,7 @@ def loaddir (dirs):
         hlog = [];
         # fpkl = dir+'/mircx_hdrs.pkl';
         fpkl = dir+'/mircx_hdrs.txt';
-        if os.path.isfile (fpkl):
+        if uselog and os.path.isfile (fpkl):
             try:
                 log.info ('Load header log %s'%fpkl);
                 # hlog = pickle.load (open(fpkl, 'rb'));
@@ -94,12 +94,12 @@ def loaddir (dirs):
         hdrs_here = load (files, hlog=hlog);
                 
         # Dump log
-        log.info ('Write header log %s'%fpkl);
-        if os.path.isfile (fpkl): os.remove (fpkl);
-        # pickle.dump (hdrs_here, open(fpkl, 'wb'), -1);
-        with open (fpkl,'w') as file:
-            for h in hdrs_here: file.write (h.tostring()); file.write('\n');
-        
+        if uselog:
+            log.info ('Write header log %s'%fpkl);
+            if os.path.isfile (fpkl): os.remove (fpkl);
+            # pickle.dump (hdrs_here, open(fpkl, 'wb'), -1);
+            with open (fpkl,'w') as file:
+                for h in hdrs_here: file.write (h.tostring()); file.write('\n');
         
         # Append headers
         hdrs.extend (hdrs_here);
