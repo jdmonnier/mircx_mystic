@@ -88,18 +88,21 @@ def loaddir (dirs, uselog=True):
                 with open (fpkl) as file:
                     hlog = [pyfits.Header.fromstring (l) for l in file];
             except:
-                log.info ('Failed to load...');
+                log.info ('Failed to load log (continue anyway)');
 
         # Load header
         hdrs_here = load (files, hlog=hlog);
                 
         # Dump log
         if uselog:
-            log.info ('Write header log %s'%fpkl);
-            if os.path.isfile (fpkl): os.remove (fpkl);
-            # pickle.dump (hdrs_here, open(fpkl, 'wb'), -1);
-            with open (fpkl,'w') as file:
-                for h in hdrs_here: file.write (h.tostring()); file.write('\n');
+            try:
+                log.info ('Write header log %s'%fpkl);
+                if os.path.isfile (fpkl): os.remove (fpkl);
+                # pickle.dump (hdrs_here, open(fpkl, 'wb'), -1);
+                with open (fpkl,'w') as file:
+                    for h in hdrs_here: file.write (h.tostring()); file.write('\n');
+            except:
+                log.info ('Failed to write log (continue anyway)');
         
         # Append headers
         hdrs.extend (hdrs_here);
@@ -133,9 +136,9 @@ def load (files, hlog=[]):
                 # Look for it
                 hdr = hlog[filesin.index (os.path.split (f)[1])];
                 # Check if not modified since last loaded
-                tmod  = Time(os.path.getmtime(f),format='unix',scale='utc').mjd;
+                tmod  = Time (os.path.getmtime(f),format='unix',scale='utc').mjd;
                 if (tmod > hdr['MJD-LOAD']): raise;
-                log.info('Recover header %i over %i (%s)'%(fn+1,len(files),f));
+                log.info ('Recover header %i over %i (%s)'%(fn+1,len(files),f));
             # Read header from file
             except:
                 # Read compressed file
