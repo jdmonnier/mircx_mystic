@@ -528,10 +528,10 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     log.info ('Figure of DC residual');
     fig,axes = plt.subplots (2, 1, sharex=True);
     fig.suptitle (headers.summary (hdr));
-    axes[0].plot (fringe_img[ny/2,:], label='fringe');
-    axes[0].plot (cont_img[ny/2,:], label='cont');
+    axes[0].plot (fringe_img[int(ny/2),:], label='fringe');
+    axes[0].plot (cont_img[int(ny/2),:], label='cont');
     axes[0].legend();
-    axes[1].plot ((fringe_img-cont_img)[ny/2,:], label='res');
+    axes[1].plot ((fringe_img-cont_img)[int(ny/2),:], label='res');
     axes[1].set_xlabel('x (spatial direction)');
     axes[1].legend();
     files.write (fig,output+'_dcres.png');
