@@ -249,7 +249,7 @@ def load_raw (hdrs, differentiate=True,
     # Apply flat
     if flat is not None:
         log.info ('Apply flat');
-        data /= flat[None,None,:,:];
+        cubenp /= flat[None,None,:,:];
     else:
         log.info ('No flat applied');
 
