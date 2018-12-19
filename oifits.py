@@ -224,10 +224,11 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
     
         scalex = rep_nan (np.abs (np.nanmax (datax)), 1.);
         scaley = rep_nan (np.abs (np.nanmax (datay)), 1.);
+        scale  = rep_nan (scaley/scalex, 1.);
         ax.plot (datax/scalex, datay/scalex, '+', alpha=0.75, ms=4);
 
         ax.set_xlim (-0.1,1.1);
-        ax.set_ylim (-0.1*scaley/scalex,1.1*scaley/scalex);
+        ax.set_ylim (-0.1*scale,1.1*scale);
         plot.scale (ax, scalex);
         
         ax.plot ([0], [0], '+r', alpha=0.75, ms=4);
