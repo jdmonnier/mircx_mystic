@@ -595,7 +595,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     base_dft[:,:,:,idx] = np.conj(base_dft[:,:,:,idx]);
 
     # DFT at bias frequencies
-    ibias = np.abs (ifreqs).max() + 4 + np.arange (24);
+    ibias = np.abs (ifreqs).max() + 4 + np.arange (15);
     bias_dft  = cf[:,:,:,ibias];
 
     # Compute unbiased PSD for plots (without coherent average
@@ -953,7 +953,8 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     base_flag1 = base_flag.copy ();
     base_flag[base_flag == 0.0] = np.nan;
 
-    # Compute the time stamp of each ramp
+    # Compute the time stamp of each ramp.
+    # FIXME: improve this time
     time = np.ones (base_dft.shape[0]) * hdr['MJD-OBS'];
 
     # Save the options in file HEADER
