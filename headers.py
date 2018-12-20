@@ -179,7 +179,8 @@ def load (files, hlog=[]):
             except:
                 mjd = 0.;
 
-            # Compute MJD from linux time
+            # Compute MJD from linux time. Note that the TIME_US is actually the
+            # time in nanosecond, not in microsecond as stated in comment.
             try:    
                 mjdl = Time (hdr['TIME_S']+hdr['TIME_US']*1e-9,format='unix').mjd;
             except:
@@ -187,7 +188,7 @@ def load (files, hlog=[]):
                 
             # Check time difference
             delta = np.abs (mjd-mjdl) * 24 * 3600;
-            if (delta > 5):
+            if (delta > 5.):
                 log.warning ('UTC-OBS and TIME are different by %.1fs!!'%delta);
 
             # Set MJD-OBS in header
