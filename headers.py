@@ -46,6 +46,66 @@ def setup (hdr, params):
     '''
     value = ' / '.join([str(hdr.get(p,'--')) for p in params]);
     return value;
+
+def clean_date_obs (hdr):
+    '''
+    Clean DATE-OBS keyword to always match
+    ISO format YYYY-MM-DD
+    '''
+    if 'DATE-OBS' not in hdr:
+        return;
+    
+    if hdr['DATE-OBS'][4] == '/':
+        # Reformat DATE-OBS YYYY/MM/DD -> YYYY-MM-DD
+        hdr['DATE-OBS'] = hdr['DATE-OBS'][0:4] + '-' + \
+          hdr['DATE-OBS'][5:7] + '-' + \
+          hdr['DATE-OBS'][8:10];
+    elif hdr['DATE-OBS'][2] == '/':
+        # Reformat DATE-OBS MM/DD/YYYY -> YYYY-MM-DD
+        hdr['DATE-OBS'] = hdr['DATE-OBS'][6:10] + '-' + \
+          hdr['DATE-OBS'][0:2] + '-' + \
+          hdr['DATE-OBS'][3:5];
+
+def get_mjd (hdr, origin=['linux','gps','mjd'], check=2.0):
+    '''
+    Return the MJD-OBS as computed either by Linux time
+    TIME_S + 1e-9 * TIME_US  (note than TIME_US is actually
+    nanosec) or by GPS time DATE-OBS + UTC-OBS, or by an
+    existing keyword 'MJD-OBS'.
+    '''
+
+    # Check input
+    if type(origin) is not list: origin = [origin];
+        
+    # Read header silently
+    try:    
+        mjdu = Time (hdr['DATE-OBS'] + 'T'+ hdr['UTC-OBS'], format='isot', scale='utc').mjd;
+    except:
+        mjdu = 0.0;
+    try:    
+        mjdl = Time (hdr['TIME_S']+hdr['TIME_US']*1e-9,format='unix').mjd;
+    except:
+        mjdl = 0.0;
+    try:    
+        mjd  = hdr['MJD-OBS'];
+    except:
+        mjd  = 0.0;
+
+    # Check the difference in [s]
+    delta = np.abs (mjdu-mjdl) * 24 * 3600;
+    if (delta > check):
+        log.warning ('UTC-OBS and TIME are different by %.1f s!!'%delta);
+
+    # Return the requested one
+    for o in origin:
+        if o == 'linux' and mjdl != 0.0:
+            return mjdl;
+        if o == 'gps' and mjdu != 0.0:
+            return mjdu;
+        if o == 'mjd' and mjd != 0.0:
+            return mjd;
+    
+    return 0.0;
     
 def loaddir (dirs, uselog=True):
     '''
@@ -162,44 +222,14 @@ def load (files, hlog=[]):
                 log.warning ('Old data with no NBIN (set to one)');
                 hdr['NBIN'] = 1;
 
-            # Compute MJD from DATE-OBS
-            try:
-                if hdr['DATE-OBS'][4] == '/':
-                    # Reformat DATE-OBS YYYY/MM/DD -> YYYY-MM-DD
-                    hdr['DATE-OBS'] = hdr['DATE-OBS'][0:4] + '-' + \
-                    hdr['DATE-OBS'][5:7] + '-' + \
-                    hdr['DATE-OBS'][8:10];
-                elif hdr['DATE-OBS'][2] == '/':
-                    # Reformat DATE-OBS MM/DD/YYYY -> YYYY-MM-DD
-                    hdr['DATE-OBS'] = hdr['DATE-OBS'][6:10] + '-' + \
-                    hdr['DATE-OBS'][0:2] + '-' + \
-                    hdr['DATE-OBS'][3:5];
+            # Reformat DATE-OBS
+            clean_date_obs (hdr);
 
-                mjd  = Time (hdr['DATE-OBS'] + 'T'+ hdr['UTC-OBS'], format='isot', scale='utc').mjd;
-            except:
-                mjd = 0.;
+            # Compute MJD from information in header
+            mjd = get_mjd (hdr);
 
-            # Compute MJD from linux time. Note that the TIME_US is actually the
-            # time in nanosecond, not in microsecond as stated in comment.
-            try:    
-                mjdl = Time (hdr['TIME_S']+hdr['TIME_US']*1e-9,format='unix').mjd;
-            except:
-                mjdl = 0.;
-                
-            # Check time difference
-            delta = np.abs (mjd-mjdl) * 24 * 3600;
-            if (delta > 5.):
-                log.warning ('UTC-OBS and TIME are different by %.1fs!!'%delta);
-
-            # Set MJD-OBS in header
-            if 'MJD-OBS' not in hdr:
-                if mjdl != 0:
-                    hdr['MJD-OBS'] = (mjdl, '[mjd] Observing time (UTC Linux)');
-                elif mjd%1 == 0:
-                    log.warning ('UTC-OBS is zero, and no linux time');
-                    hdr['MJD-OBS'] = (mjd, '[mjd] Wrong observing time (UTC)');
-                else:
-                    hdr['MJD-OBS'] = (mjd, '[mjd] Observing time (UTC)');
+            # Set in header
+            hdr['MJD-OBS'] = (mjd, '[mjd] Observing time');
 
             # Add the loading time
             hdr['MJD-LOAD'] =  (Time.now().mjd, '[mjd] Last loading time (UTC)');
