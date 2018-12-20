@@ -275,34 +275,6 @@ def beam_index (hdr):
     # CHARA tel of the CHARA beams
     return cidx[cbeam];
 
-def base_uv (hdr):
-    '''
-    Return the uv coordinages of all 15 baselines
-    ucoord[nbase],vcoord[nbase]
-    '''
-    
-    # Get the telescope names of each base
-    tels = beam_tel (hdr)[base_beam ()];
-
-    u = np.zeros (15);
-    v = np.zeros (15);
-    
-    for b,t in enumerate(tels):
-        if 'U_'+t[0]+'-'+t[1] in hdr:
-            u[b] = hdr['U_'+t[0]+'-'+t[1]];
-            v[b] = hdr['V_'+t[0]+'-'+t[1]];
-        elif 'U_'+t[1]+'-'+t[0] in hdr:
-            u[b] = -hdr['U_'+t[1]+'-'+t[0]];
-            v[b] = -hdr['V_'+t[1]+'-'+t[0]];
-        else:
-            log.warning ('Cannot read UV base %i (%s-%s) in header.'%(b,t[0],t[1]));
-            
-        if u[b] == v[b]:
-            log.warning ('ucoord == vcoord base %i (%s-%s) in header.'%(b,t[0],t[1]));
-
-    # CHARA tel of the CHARA beams
-    return u,v;
-
 def beam_xyz (hdr):
     '''
     Return a dictionary with the telescope positions
@@ -333,11 +305,53 @@ def beam_xyz (hdr):
 
     return pos;
 
+def chara_coord (hdr):
+    '''
+    Return the longitude and latitude of CHARA
+    '''
+    # lon = Angle (-118.059166, unit=units.deg);
+    # lat = Angle (34.231666, unit=units.deg);
+    
+    c = EarthLocation.of_site ('CHARA');
+    if hasattr (c, 'lon'):
+        return c.lon, c.lat;
+    else:
+        return c.longitude, c.latitude;
+    
+def base_uv (hdr):
+    '''
+    Return the uv coordinages of all 15 baselines
+    ucoord[nbase],vcoord[nbase]
+    '''
+    
+    # Get the telescope names of each base
+    tels = beam_tel (hdr)[base_beam ()];
+
+    u = np.zeros (15);
+    v = np.zeros (15);
+    
+    for b,t in enumerate(tels):
+        if 'U_'+t[0]+'-'+t[1] in hdr:
+            u[b] = hdr['U_'+t[0]+'-'+t[1]];
+            v[b] = hdr['V_'+t[0]+'-'+t[1]];
+        elif 'U_'+t[1]+'-'+t[0] in hdr:
+            u[b] = -hdr['U_'+t[1]+'-'+t[0]];
+            v[b] = -hdr['V_'+t[1]+'-'+t[0]];
+        else:
+            log.warning ('Cannot read UV base %i (%s-%s) in header.'%(b,t[0],t[1]));
+            
+        if u[b] == v[b]:
+            log.warning ('ucoord == vcoord base %i (%s-%s) in header.'%(b,t[0],t[1]));
+
+    # CHARA tel of the CHARA beams
+    return np.array ([u,v]);
+
 def compute_base_uv (hdr,mjd=None):
     '''
     Return the uv coordinages of all 15 baselines
     ucoord[nbase],vcoord[nbase]
     '''
+    log.info ('Compute uv');
 
     # Default for time
     if mjd is None: mjd = np.ones (15) * hdr['MJD-OBS'];
@@ -348,14 +362,11 @@ def compute_base_uv (hdr,mjd=None):
     baseline = np.array ([xyz[t1,:] - xyz[t2,:] for t1,t2 in base_beam()]);
 
     # CHARA site
-    lat = EarthLocation.of_site ('CHARA').lat;
-    lon = EarthLocation.of_site ('CHARA').lon;
-    # lon = Angle (-118.059166, unit=units.deg);
-    # lat = Angle (34.231666, unit=units.deg);
+    lon, lat = chara_coord (hdr);
     
     # HA and DEC
-    ra  = Angle (hdr['RA'], unit=units.hourangle);
     dec = Angle (hdr['DEC'], unit=units.deg);
+    ra  = Angle (hdr['RA'], unit=units.hourangle);
     ha  = obstime.sidereal_time ('apparent', longitude=lon) - ra;
     
     # Project baseline on sky
@@ -367,7 +378,7 @@ def compute_base_uv (hdr,mjd=None):
     u =  np.sin (ha.rad) * bx + np.cos (ha.rad) * by;
     v = -np.sin (dec.rad) * np.cos (ha.rad) * bx + np.sin (dec.rad) * np.sin (ha.rad) * by + np.cos (dec.rad) * bz;
 
-    return u,v;
+    return np.array ([u,v]);
 
 def crop_ids (hdr):
     '''
