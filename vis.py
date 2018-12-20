@@ -304,6 +304,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     hdr = pyfits.getheader (f);
     fringe = pyfits.getdata (f).astype(float);
     photo  = pyfits.getdata (f, 'PHOTOMETRY_PREPROC').astype(float);
+    mjd    = pyfits.getdata (f, 'MJD');
 
     # Load other files if any
     for h in hdrs[1:]:
@@ -311,6 +312,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
         log.info ('Load PREPROC file %s'%f);
         fringe = np.append (fringe, pyfits.getdata (f).astype(float), axis=0);
         photo  = np.append (photo, pyfits.getdata (f, 'PHOTOMETRY_PREPROC').astype(float), axis=1);
+        mjd    = np.append (mjd, pyfits.getdata (f, 'MJD'), axis=0);
 
     # Dimensions
     nr,nf,ny,nx = fringe.shape
@@ -755,10 +757,14 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     hdu7.header['EXTNAME'] = ('KAPPA','ratio total_fringe/total_photo');
     hdu7.header['SHAPE'] = '(nr,nf,ny,nt)';
 
-    # Write file
-    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2,hdu3,hdu4,hdu5,hdu6,hdu7]);
-    files.write (hdulist, output+'.fits');
+    hdu8 = pyfits.ImageHDU (mjd);
+    hdu8.header['EXTNAME'] = ('MJD','time of each frame');
+    hdu8.header['BUNIT'] = 'day';
+    hdu8.header['SHAPE'] = '(nr,nf)';
     
+    # Write file
+    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2,hdu3,hdu4,hdu5,hdu6,hdu7,hdu8]);
+    files.write (hdulist, output+'.fits');
                 
     plt.close("all");
     return hdulist;
@@ -782,6 +788,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     bias_dft  = pyfits.getdata (f, 'BIAS_DFT_IMAG').astype(float) * 1.j;
     bias_dft += pyfits.getdata (f, 'BIAS_DFT_REAL').astype(float);
     photo     = pyfits.getdata (f, 'PHOTOMETRY').astype(float);
+    mjd       = pyfits.getdata (f, 'MJD');
     lbd       = pyfits.getdata (f, 'WAVELENGTH').astype(float);
 
     # Load other files if any
@@ -796,6 +803,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
                    pyfits.getdata (f, 'BIAS_DFT_REAL').astype(float), axis=0);
         photo    = np.append (photo, \
                    pyfits.getdata (f, 'PHOTOMETRY').astype(float), axis=0);
+        mjd      = np.append (mjd, pyfits.getdata (f, 'MJD'), axis=0);
                    
     # Dimensions
     nr,nf,ny,nb = base_dft.shape;

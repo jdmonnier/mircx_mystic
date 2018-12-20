@@ -120,7 +120,7 @@ def compute_background (hdrs,output='output_bkg'):
     headers.check_input (hdrs, required=1);
 
     # Load files
-    hdr,cube = files.load_raw (hdrs, coaddRamp=True, saturationThreshold=False, continuityThreshold=False);
+    hdr,cube,mjd = files.load_raw (hdrs, coaddRamp=True, saturationThreshold=False, continuityThreshold=False);
     log.info ('Data size: '+str(cube.shape));
 
     # Background mean
@@ -129,7 +129,7 @@ def compute_background (hdrs,output='output_bkg'):
     bkg_err  = np.std (cube, axis=0) / np.sqrt (cube.shape[0]);
 
     # Load all ramp of first file to measure readout noise
-    __,cube = files.load_raw (hdrs[0:1], coaddRamp=False, saturationThreshold=False, continuityThreshold=False);
+    __,cube,__ = files.load_raw (hdrs[0:1], coaddRamp=False, saturationThreshold=False, continuityThreshold=False);
 
     # Compute temporal rms
     log.info ('Compute rms over ramp/frame of first file');
@@ -294,8 +294,8 @@ def compute_beammap (hdrs,bkg,flat,output='output_beammap'):
     flat_img = flat_img[idy,:][:,idx];
 
     # Load files
-    hdr,cube = files.load_raw (hdrs, coaddRamp=True, background=bkg_cube,
-                               badpix=bad_img, flat=None, output=output);
+    hdr,cube,mjd = files.load_raw (hdrs, coaddRamp=True, background=bkg_cube,
+                                   badpix=bad_img, flat=None, output=output);
 
     # Get dimensions
     log.info ('Data size: '+str(cube.shape));
@@ -494,8 +494,8 @@ def compute_preproc (hdrs,bkg,flat,bmaps,output='output_preproc'):
     flat_img = flat_img[idy,:][:,idx];
         
     # Load files
-    hdr,cube = files.load_raw (hdrs, background=bkg_cube,
-                               badpix=bad_img, flat=None, output=output);
+    hdr,cube,mjd = files.load_raw (hdrs, background=bkg_cube,
+                                   badpix=bad_img, flat=None, output=output);
 
     # Get dimensions
     log.info ('Data size: '+str(cube.shape));
@@ -579,6 +579,15 @@ def compute_preproc (hdrs,bkg,flat,bmaps,output='output_preproc'):
     ax.set_ylabel ('adu/pix/fr');
     ax.legend ();
     files.write (fig, output+'_spectra.png');
+
+    # Time continuity
+    fig,ax = plt.subplots();
+    fig.suptitle (headers.summary (hdr));
+    time_ms = (mjd - mjd[0,0]) * 24*3600*1e3;
+    ax.plot (np.diff(time_ms.flatten()));
+    ax.set_xlabel ('frame number');
+    ax.set_ylabel ('delta time in ms');
+    files.write (fig, output+'_timecont.png');
     
     # File
     log.info ('Create file');
@@ -602,9 +611,15 @@ def compute_preproc (hdrs,bkg,flat,bmaps,output='output_preproc'):
     hdu1.header['BUNIT'] = 'adu/pixel/frame';
     hdu1.header['EXTNAME'] = 'PHOTOMETRY_PREPROC';
     hdu1.header['SHAPE'] = '(nt,nr,nf,ny,nx)';
+
+    # Third HDU with MJD
+    hdu2 = pyfits.ImageHDU (mjd);
+    hdu2.header['BUNIT'] = 'day';
+    hdu2.header['EXTNAME'] = 'MJD';
+    hdu2.header['SHAPE'] = '(nt,nr)';
     
     # Write file
-    hdulist = pyfits.HDUList ([hdu0,hdu1]);
+    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2]);
     files.write (hdulist, output+'.fits');
     
     plt.close("all");
