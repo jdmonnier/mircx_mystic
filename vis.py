@@ -961,9 +961,8 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     base_flag1 = base_flag.copy ();
     base_flag[base_flag == 0.0] = np.nan;
 
-    # Compute the time stamp of each ramp.
-    # FIXME: improve this time
-    time = np.ones (base_dft.shape[0]) * hdr['MJD-OBS'];
+    # Compute the time stamp of each ramp
+    mjd_ramp = mjd.mean (axis=1);
 
     # Save the options in file HEADER
     hdr[HMP+'NCOHER'] = (ncoher,'[frame] coherent integration');
@@ -978,7 +977,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     
     p_flux = np.nanmean (photo, axis=1);
     
-    oifits.add_flux (hdulist, time, p_flux, output=output,y0=y0);
+    oifits.add_flux (hdulist, mjd_ramp, p_flux, output=output,y0=y0);
 
     # Compute OI_VIS2
     if ncs > 0:
@@ -997,7 +996,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     l_power = 4 * l_power[:,:,:,:,0] * l_power[:,:,:,:,1] * attenuation**2;
     l_power = np.nanmean (l_power*base_flag, axis=1);
 
-    oifits.add_vis2 (hdulist, time, u_power, l_power, output=output, y0=y0);
+    oifits.add_vis2 (hdulist, mjd_ramp, u_power, l_power, output=output, y0=y0);
     
     # Compute OI_VIS
     log.info ('Compute Vis by removing the mean GD and mean phase');
@@ -1017,7 +1016,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     c_norm = np.sqrt (np.maximum (c_norm, 0));
     c_norm = np.nanmean (c_norm*base_flag, axis=1);
     
-    oifits.add_vis (hdulist, time, c_cpx, c_norm, output=output, y0=y0);
+    oifits.add_vis (hdulist, mjd_ramp, c_cpx, c_norm, output=output, y0=y0);
 
     # Compute OI_T3
     if nbs > 0:
@@ -1038,7 +1037,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     t_cpx = np.nanmean (t_cpx, axis=1);
     t_norm = np.nanmean (t_norm * t_att, axis=1);
 
-    oifits.add_t3 (hdulist, time, t_cpx, t_norm, output=output, y0=y0);
+    oifits.add_t3 (hdulist, mjd_ramp, t_cpx, t_norm, output=output, y0=y0);
 
     # Figures
     log.info ('Figures');
