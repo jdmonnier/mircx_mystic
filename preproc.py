@@ -412,6 +412,8 @@ def compute_beammap (hdrs,bkg,flat,output='output_beammap'):
     ax[0].imshow (fmap);
     ax[1].plot (fx, label='Medfilt Data');
     ax[1].plot (x,ffit(x), label='Gaussian');
+    # ax[1].plot (cmean[int(fyc-ns):int(fyc+ns+1)+1,:].mean(axis=0), label='Raw Data');
+    # ax[1].set_ylim (bottom=0, top=1.2*ffit(x).max());
     ax[1].set_ylabel ('adu/pix/fr');
     ax[1].legend ();
     ax[2].imshow (fmap[int(fyc-ns):int(fyc+ns+1)+1,int(fxc-2*fxw):int(fxc+2*fxw)]);
