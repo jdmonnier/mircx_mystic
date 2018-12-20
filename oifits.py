@@ -48,7 +48,7 @@ def create (hdr,lbd,y0=None):
 
     # Create OI_TARGET table
     name = hdr['OBJECT'];
-    coord = SkyCoord(hdr['RA'],hdr['DEC'], unit=(units.hourangle, units.deg));
+    coord = SkyCoord (hdr['RA'],hdr['DEC'], unit=(units.hourangle, units.deg));
     ra0  = coord.ra.to('deg').value;
     dec0 = coord.dec.to('deg').value;
     parallax = hdr['PARALLAX'] * units.arcsec.to('deg');
