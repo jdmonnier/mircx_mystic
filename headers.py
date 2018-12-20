@@ -246,6 +246,28 @@ def load (files, hlog=[]):
     log.info ('%i headers loaded'%len(hdrs));
     return hdrs;
 
+def frame_mjd (hdr):
+    '''
+    Compute MJD time for each frame from STARTFR to LASTFR.
+    Assumig STARTFR has the MJD-OBS and the time between
+    frame is given by HIERARCH MIRC FRAME_RATE.
+    '''
+
+    # Check consistency
+    if hdr['LASTFR'] < hdr['STARTFR']:
+        raise ValueError ('LASTFR is smaller than STARTFR');
+
+    # Number of frame since start
+    counter = np.arange (0, hdr['LASTFR'] - hdr['STARTFR'] + 1);
+
+    # Time step between frames in [d]
+    delta = 1./hdr['HIERARCH MIRC FRAME_RATE'] / 24/3600;
+
+    # Compute assuming MJD-OBS is time of first frame
+    mjd = hdr['MJD-OBS'] + delta * counter;
+
+    return mjd;
+
 def match (h1,h2,keys,delta):
     '''
     Return True fs all keys are the same in header h1
