@@ -1,8 +1,13 @@
 import numpy as np;
 import os;
 
+from astropy.coordinates import EarthLocation, Angle;
+from astropy import units;
+from astropy.time import Time;
+
 from .headers import HM, HMQ, HMP, HMW, HC, rep_nan;
 from . import log;
+
 
 # Definition of setups
 global detwin;
@@ -298,6 +303,72 @@ def base_uv (hdr):
     # CHARA tel of the CHARA beams
     return u,v;
 
+def beam_xyz (hdr):
+    '''
+    Return a dictionary with the telescope positions
+    read from header, ez, nz, uz in [m]. The output
+    is of shape (6,3). The beams are ordered for MIRCX.
+    '''
+
+    # Default from 2010Jul20 (JDM)
+    default = {};
+    default['S1'] = [0.0,0.0,0.0];
+    default['S2'] = [  -5.746854437,  33.580641636,    0.63671908];
+    default['E1'] = [ 125.333989819, 305.932632737,  -5.909735735];
+    default['W1'] = [-175.073332211, 216.320434499, -10.791111235];
+    default['W2'] = [ -69.093582796, 199.334733235,   0.467336023];
+    default['E2'] = [  70.396607118, 269.713272258,  -2.796743436];
+
+    # Get the telescope names of each base
+    pos = 0.0 * np.zeros ((6,3));
+    for i,t in enumerate (beam_tel (hdr)):
+        try:
+            x = hdr['HIERARCH CHARA '+t+'_BASELINE_X'];
+            y = hdr['HIERARCH CHARA '+t+'_BASELINE_Y'];
+            z = hdr['HIERARCH CHARA '+t+'_BASELINE_Z'];
+            pos[i,:] = x,y,z;
+        except:
+            log.warning ('Cannot read XYZ of '+t+' (use default)');
+            pos[i,:] = default[t];
+
+    return pos;
+
+def compute_base_uv (hdr,mjd=None):
+    '''
+    Return the uv coordinages of all 15 baselines
+    ucoord[nbase],vcoord[nbase]
+    '''
+
+    # Default for time
+    if mjd is None: mjd = np.ones (15) * hdr['MJD-OBS'];
+    obstime = Time (mjd, format='mjd');
+
+    # Get the physical baseline (read from header)
+    xyz = beam_xyz (hdr);
+    baseline = np.array ([xyz[t1,:] - xyz[t2,:] for t1,t2 in base_beam()]);
+
+    # CHARA site
+    lat = EarthLocation.of_site ('CHARA').lat;
+    lon = EarthLocation.of_site ('CHARA').lon;
+    # lon = Angle (-118.059166, unit=units.deg);
+    # lat = Angle (34.231666, unit=units.deg);
+    
+    # HA and DEC
+    ra  = Angle (hdr['RA'], unit=units.hourangle);
+    dec = Angle (hdr['DEC'], unit=units.deg);
+    ha  = obstime.sidereal_time ('apparent', longitude=lon) - ra;
+    
+    # Project baseline on sky
+    bx = -np.sin (lat.rad) * baseline[:,1] + np.cos (lat.rad) * baseline[:,2];
+    by = baseline[:,0]
+    bz = np.cos (lat.rad) * baseline[:,1] + np.sin (lat.rad) * baseline[:,2];
+
+    # Now convert bx,by,bz to (u,v,w)
+    u =  np.sin (ha.rad) * bx + np.cos (ha.rad) * by;
+    v = -np.sin (dec.rad) * np.cos (ha.rad) * bx + np.sin (dec.rad) * np.sin (ha.rad) * by + np.cos (dec.rad) * bz;
+
+    return u,v;
+
 def crop_ids (hdr):
     '''
     Read the cropping parameter of the HDR
@@ -320,3 +391,4 @@ def crop_ids (hdr):
         idy = np.append (idy, np.arange (int(a), int(b)+1));
 
     return idy,idx;
+ 
