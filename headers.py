@@ -181,24 +181,24 @@ def load (files, hlog=[]):
 
             # Compute MJD from linux time
             try:    
-                mjdl = Time (hdr['TIME_S']+hdr['TIME_US']*1e-6,format='unix').mjd;
+                mjdl = Time (hdr['TIME_S']+hdr['TIME_US']*1e-9,format='unix').mjd;
             except:
                 mjdl = 0.;
                 
             # Check time difference
             delta = np.abs (mjd-mjdl) * 24 * 3600;
             if (delta > 5):
-                log.warning ('UTC-OBS and TIME_S are different by %.1fs!!'%delta);
+                log.warning ('UTC-OBS and TIME are different by %.1fs!!'%delta);
 
             # Set MJD-OBS in header
             if 'MJD-OBS' not in hdr:
-                # Check MJD-OBS
-                if mjd%1 == 0:
-                    log.warning ('UTC-OBS is zero, use unix time instead');
-                    hdr['MJD-OBS'] = (mjdl, '[mjd] Observing time (UTC)');
+                if mjdl != 0:
+                    hdr['MJD-OBS'] = (mjdl, '[mjd] Observing time (UTC Linux)');
+                elif mjd%1 == 0:
+                    log.warning ('UTC-OBS is zero, and no linux time');
+                    hdr['MJD-OBS'] = (mjd, '[mjd] Wrong observing time (UTC)');
                 else:
                     hdr['MJD-OBS'] = (mjd, '[mjd] Observing time (UTC)');
-
 
             # Add the loading time
             hdr['MJD-LOAD'] =  (Time.now().mjd, '[mjd] Last loading time (UTC)');
