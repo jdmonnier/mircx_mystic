@@ -349,21 +349,30 @@ def base_uv (hdr):
 
     return np.array ([u,v]);
 
-def compute_base_uv (hdr,mjd=None):
+def compute_base_uv (hdr,mjd=None,baseid='base'):
     '''
     Return the uv coordinages of all 15 baselines
     ucoord[nbase],vcoord[nbase]
     '''
     log.info ('Compute uv');
 
-    # Default for time
-    if mjd is None: mjd = np.ones (15) * hdr['MJD-OBS'];
-    obstime = Time (mjd, format='mjd');
-
-    # Get the physical baseline (read from header)
+    # Get the physical telescope position (read from header)
     xyz = beam_xyz (hdr);
-    baseline = np.array ([xyz[t1,:] - xyz[t2,:] for t1,t2 in base_beam()]);
 
+    # Physical baseline
+    if baseid == 'base':
+        baseline = np.array ([xyz[t1,:]-xyz[t2,:] for t1,t2 in base_beam()]);
+    elif baseid == 'base1':
+        baseline = np.array ([xyz[t1,:]-xyz[t2,:] for t1,t2,t3 in triplet_beam()]);
+    elif baseid == 'base2':
+        baseline = np.array ([xyz[t2,:]-xyz[t3,:] for t1,t2,t3 in triplet_beam()]);
+    else:
+        raise ValueError ('baseid is not valid');
+
+    # Default for time
+    if mjd is None: mjd = np.ones (baseline.shape[0]) * hdr['MJD-OBS'];
+    obstime = Time (mjd, format='mjd');
+    
     # CHARA site
     lon, lat = chara_coord (hdr);
 

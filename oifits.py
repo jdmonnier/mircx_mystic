@@ -443,11 +443,12 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     time = mjd * 0.0;
     staindex = setup.beam_index (hdr)[setup.triplet_beam()];
     # ucoord, vcoord = setup.base_uv (hdr);
-    ucoord, vcoord = setup.compute_base_uv (hdr, mjd=mjd);
-    u1coord = ucoord[setup.triplet_base()[:,0]];
-    v1coord = vcoord[setup.triplet_base()[:,0]];
-    u2coord = ucoord[setup.triplet_base()[:,1]];
-    v2coord = vcoord[setup.triplet_base()[:,1]];
+    # u1coord = ucoord[setup.triplet_base()[:,0]];
+    # v1coord = vcoord[setup.triplet_base()[:,0]];
+    # u2coord = ucoord[setup.triplet_base()[:,1]];
+    # v2coord = vcoord[setup.triplet_base()[:,1]];
+    u1coord, v1coord = setup.compute_base_uv (hdr, mjd=mjd, baseid='base1');
+    u2coord, v2coord = setup.compute_base_uv (hdr, mjd=mjd, baseid='base2');
 
     # Flag data
     flag = ~np.isfinite (t3phi) + ~np.isfinite (t3phiErr);
