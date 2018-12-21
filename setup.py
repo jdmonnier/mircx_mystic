@@ -10,7 +10,7 @@ from .headers import HM, HMQ, HMP, HMW, HC, rep_nan;
 from . import log;
 
 # Default value for the IERS server
-astropy.utils.iers.conf.iers_auto_url = 'ftp://ftp.iers.org/products/eop/rapid/standard/finals2000A.data';
+# astropy.utils.iers.conf.iers_auto_url = 'ftp://ftp.iers.org/products/eop/rapid/standard/finals2000A.data';
 # astropy.utils.iers.conf.iers_auto_url = 'http://maia.usno.navy.mil/ser7/finals2000A.all';
 
 # Definition of setups
