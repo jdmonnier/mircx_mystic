@@ -161,7 +161,8 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
     target_id = np.ones (nb).astype(int);
     time = mjd * 0.0;
     staindex = setup.beam_index(hdr)[setup.base_beam()];
-    ucoord, vcoord = setup.base_uv (hdr);
+    # ucoord, vcoord = setup.base_uv (hdr);
+    ucoord, vcoord = setup.compute_base_uv (hdr, mjd=mjd);
     
     # Flag data
     flag = ~np.isfinite (vis2) + ~np.isfinite (vis2err);
@@ -288,7 +289,8 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
     target_id = np.ones (nb).astype(int);
     time = mjd * 0.0;
     staindex = setup.beam_index(hdr)[setup.base_beam()];
-    ucoord, vcoord = setup.base_uv (hdr);
+    # ucoord, vcoord = setup.base_uv (hdr);
+    ucoord, vcoord = setup.compute_base_uv (hdr, mjd=mjd);
     
     # Flag data
     flag = ~np.isfinite (visPhi) + ~np.isfinite (visPhierr);
@@ -440,7 +442,8 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     target_id = np.ones (nt).astype(int);
     time = mjd * 0.0;
     staindex = setup.beam_index (hdr)[setup.triplet_beam()];
-    ucoord, vcoord = setup.base_uv (hdr);
+    # ucoord, vcoord = setup.base_uv (hdr);
+    ucoord, vcoord = setup.compute_base_uv (hdr, mjd=mjd);
     u1coord = ucoord[setup.triplet_base()[:,0]];
     v1coord = vcoord[setup.triplet_base()[:,0]];
     u2coord = ucoord[setup.triplet_base()[:,1]];
