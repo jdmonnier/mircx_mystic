@@ -18,14 +18,20 @@ else:
     BLUE    = col.Fore.BLUE;
     GREEN   = col.Fore.GREEN;
 
-# Get the logger
+# Create the logger
 logger = logging.getLogger ('mircx_pipeline');
+logger.setLevel(logging.INFO);
 
-# Setup the configuration to log in the consol
-logging.basicConfig (
-     level=logging.INFO,
-     format="[%(color)s%(levelname)-7.7s"+RESET+"] %(asctime)s.%(msecs)03d [%(memory)s]: %(message)s",
+# Create the handler for stream
+logStream = logging.StreamHandler();
+logger.addHandler (logStream);
+
+# Set the formater for this handler
+formatter = logging.Formatter (
+     "[%(color)s%(levelname)-7.7s"+RESET+"] %(asctime)s.%(msecs)03d [%(memory)s]: %(message)s",
      datefmt='%Y-%m-%dT%H:%M:%S');
+logStream.setFormatter (formatter);
+logStream.setLevel (logging.INFO);
 
 def setFile (filename):
     '''
@@ -33,7 +39,8 @@ def setFile (filename):
     to be writable by all group.
     '''
     for h in logger.handlers:
-        logger.removeHandler (h);
+        if type(h) == logging.FileHandler:
+            logger.removeHandler (h);
 
     # Create logfile and set permission
     info ('Set logFile: '+filename);
@@ -55,7 +62,8 @@ def closeFile ():
     Stop logging in files
     '''
     for h in logger.handlers:
-        logger.removeHandler (h);
+        if type(h) == logging.FileHandler:
+            logger.removeHandler (h);
 
 def memory ():
     '''
