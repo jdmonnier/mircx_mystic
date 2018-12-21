@@ -2,7 +2,7 @@ import numpy as np;
 import os;
 
 import astropy;
-from astropy.coordinates import EarthLocation, Angle, SkyCoord, ITRS;
+from astropy.coordinates import EarthLocation, Angle, SkyCoord, ICRS, ITRS;
 from astropy import units;
 from astropy.time import Time;
 
@@ -321,11 +321,47 @@ def chara_coord (hdr):
         return c.lon, c.lat;
     else:
         return c.longitude, c.latitude;
+
+def sky_coord (hdr):
+    '''
+    Return the SkyCoord of the target in header,
+    in the ICRS and at the mjd defined in header.
+    '''
+    
+    # Read coordinate
+    dec_icrs = Angle (hdr['DEC'], unit=units.deg);
+    ra_icrs  = Angle (hdr['RA'], unit=units.hourangle);
+    distance = 1./hdr['PARALLAX'] * units.pc;
+
+    try:
+        # Read velocities
+        pm_ra    = hdr['PM_RA'] * units.rad/units.yr;
+        pm_dec   = hdr['PM_DEC'] * units.rad/units.yr;
+        rad_vel  = 0.0 * units.km / units.s;
+
+        # Build structure
+        coord_icrs = SkyCoord (dec=dec_icrs,ra=ra_icrs,distance=distance,
+                               radial_velocity=rad_vel,
+                               pm_ra_cosdec=pm_ra,pm_dec=pm_dec,
+                               obstime='J2000', frame="icrs");
+        
+        # Evolve at the time
+        meantime    = Time (hdr['MJD-OBS'], format='mjd');
+        coord_icrs = coord_icrs.apply_space_motion (new_obstime=meantime);
+    
+    except:
+        log.info ('Cannot propagate PM_RA and PM_DEC in coordinates');
+        
+        # Build structure
+        coord_icrs = SkyCoord (dec=dec_icrs,ra=ra_icrs,distance=distance, 
+                               obstime='J2000', frame="icrs");
+
+    return coord_icrs;
     
 def base_uv (hdr):
     '''
     Return the uv coordinages of all 15 baselines
-    ucoord[nbase],vcoord[nbase]
+    ucoord[nbase],vcoord[nbase] read from HEADER
     '''
     
     # Get the telescope names of each base
@@ -351,8 +387,17 @@ def base_uv (hdr):
 
 def compute_base_uv (hdr,mjd=None,baseid='base'):
     '''
-    Return the uv coordinages of all 15 baselines
-    ucoord[nbase],vcoord[nbase]
+    Return the uv coordinages of the CHARA baselines
+    ucoord[nbase],vcoord[nbase] at the time of observation.
+
+    baseid='base' returns the uv-plan of the 15 baselines
+    that is the UCOORD and VCOORD of OIFITS definition.
+    baseid='base1' returns return the uv-plan of the first
+    baselines of the 20 closures (U1COORD, U2COORD). Same
+    for 'base2'.
+
+    If given, the mdj parameter should match the number
+    of computed baseline (either 15 or 20).
     '''
     log.info ('Compute uv');
 
@@ -373,13 +418,15 @@ def compute_base_uv (hdr,mjd=None,baseid='base'):
     if mjd is None: mjd = np.ones (baseline.shape[0]) * hdr['MJD-OBS'];
     obstime = Time (mjd, format='mjd');
     
+    # Mean time for ERFA update
+    meantime = Time (np.mean (obstime.mjd), format='mjd');
+
     # CHARA site
     lon, lat = chara_coord (hdr);
 
-    # HA and DEC of object in ICRS
-    dec_icrs = Angle (hdr['DEC'], unit=units.deg);
-    ra_icrs  = Angle (hdr['RA'], unit=units.hourangle);
-    coord_icrs = SkyCoord (dec=dec_icrs,ra=ra_icrs,frame="icrs");
+    # Object position in ICRS, at the
+    # time of observation
+    coord_icrs = sky_coord (hdr);
 
     # HA and DEC of object in ITRS
     coord_itrs = coord_icrs.transform_to (ITRS(obstime=obstime));
@@ -396,7 +443,7 @@ def compute_base_uv (hdr,mjd=None,baseid='base'):
     v = -np.sin (dec.rad) * np.cos (ha.rad) * bx + np.sin (dec.rad) * np.sin (ha.rad) * by + np.cos (dec.rad) * bz;
 
     return np.array ([u,v]);
-
+    
 def crop_ids (hdr):
     '''
     Read the cropping parameter of the HDR
