@@ -2,7 +2,7 @@ import numpy as np;
 import os;
 
 import astropy;
-from astropy.coordinates import EarthLocation, Angle;
+from astropy.coordinates import EarthLocation, Angle, SkyCoord, ITRS;
 from astropy import units;
 from astropy.time import Time;
 
@@ -347,7 +347,6 @@ def base_uv (hdr):
         if u[b] == v[b]:
             log.warning ('ucoord == vcoord base %i (%s-%s) in header.'%(b,t[0],t[1]));
 
-    # CHARA tel of the CHARA beams
     return np.array ([u,v]);
 
 def compute_base_uv (hdr,mjd=None):
@@ -367,11 +366,16 @@ def compute_base_uv (hdr,mjd=None):
 
     # CHARA site
     lon, lat = chara_coord (hdr);
-    
-    # HA and DEC
-    dec = Angle (hdr['DEC'], unit=units.deg);
-    ra  = Angle (hdr['RA'], unit=units.hourangle);
-    ha  = obstime.sidereal_time ('apparent', longitude=lon) - ra;
+
+    # HA and DEC of object in ICRS
+    dec_icrs = Angle (hdr['DEC'], unit=units.deg);
+    ra_icrs  = Angle (hdr['RA'], unit=units.hourangle);
+    coord_icrs = SkyCoord (dec=dec_icrs,ra=ra_icrs,frame="icrs");
+
+    # HA and DEC of object in ITRS
+    coord_itrs = coord_icrs.transform_to (ITRS(obstime=obstime));
+    dec = coord_itrs.spherical.lat;
+    ha  = lon - coord_itrs.spherical.lon;
     
     # Project baseline on sky
     bx = -np.sin (lat.rad) * baseline[:,1] + np.cos (lat.rad) * baseline[:,2];
