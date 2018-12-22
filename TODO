@@ -51,8 +51,6 @@ Because the SNR on the edges is really small.
 Deal with coherent integration as time quantities
 Flatten the time ?
 
-Better MJD, better INT_TIME, better UCOORD,VCOORD
-
 * Speed-up
 
 - QC of dc is too long
@@ -64,8 +62,5 @@ Better MJD, better INT_TIME, better UCOORD,VCOORD
 Propagate uncertainties on transfer function
 and calibrated product with non-linear propagation
 (compute at + and - sigma).
-
-Add the beamorder in the setup for viscal... as a 
-reconfiguration is not catched yet.
 
 
