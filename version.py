@@ -1,4 +1,5 @@
 import os;
+import matplotlib as mpl;
 
 def get_from_dir (arg):
     '''
@@ -18,6 +19,7 @@ def info ():
     print ('Please report any bug to lebouquj@umich.edu');
     print ('Git branch: %s'%git_branch);
     print ('Git last commit: %s'%git_date);
+    print ('Matplotlib backend: '+mpl.get_backend());
     print ('---------------------------------------------');
 
 # Revision hardcoded name
