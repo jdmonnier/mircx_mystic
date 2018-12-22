@@ -1,6 +1,22 @@
+import os,sys;
+import matplotlib as mpl;
 
+#
+# Set the backend to Agg if do display
+#
+test_display = os.system('{0} -c "import matplotlib.pyplot as plt;'
+                         'plt.figure()"'.format(sys.executable));
+
+if test_display != 0:
+    print ('WARNING: cannot detect display, use Agg backend for matplotlib');
+    print ('WARNING: this could have side effect with already imported matplotlib');
+    mpl.use ('Agg');
+else:
+    print ('Use default backend for matplotlib');    
+
+#
 # Customise the matplotlib
-import matplotlib as mpl
+#
 mpl.rcParams['image.interpolation'] = 'nearest';
 mpl.rcParams['axes.grid'] = True;
 mpl.rcParams['legend.framealpha'] = 0.5;
