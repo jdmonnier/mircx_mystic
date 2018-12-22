@@ -20,7 +20,7 @@ else:
 
 # Create the logger
 logger = logging.getLogger ('mircx_pipeline');
-logger.setLevel(logging.INFO);
+logger.setLevel (logging.INFO);
 
 # Create the handler for stream
 logStream = logging.StreamHandler();
