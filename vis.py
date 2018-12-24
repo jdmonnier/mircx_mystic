@@ -809,6 +809,10 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     nr,nf,ny,nb = base_dft.shape;
     log.info ('Data size: '+str(base_dft.shape));
 
+    # Check parameters consistency
+    if ncs + ncoher + 2 > nf:
+        raise ValueError ('ncs+ncoher+2 should be less than nf (nf=%i)'%nf);
+
     # Compute lbd0 and dlbd    
     if hdr['CONF_NA'] == 'H_PRISM20' :
         lbd0 = np.mean (lbd);
@@ -868,6 +872,16 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     # Smooth photometry over the same amount (FIXME: be be discussed)
     log.info ('Smoothing of photometry over %i frames'%ncoher);
     photo = uniform_filter (photo,(0,ncoher,0,0),mode='constant');
+
+    #  Remove edges
+    log.info ('Remove edge of coherence integration for each ramp');
+    edge = int(ncoher/2);
+    base_dft = base_dft[:,edge:nf-edge,:,:];
+    bias_dft = bias_dft[:,edge:nf-edge,:,:];
+    photo    = photo[:,edge:nf-edge,:,:];
+
+    # New size
+    nr,nf,ny,nb = base_dft.shape;
 
     # Add QC
     qc.flux (hdr, y0, photo);
@@ -991,7 +1005,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
 
     n_power = np.mean (b_power, axis=-1, keepdims=True);
     u_power = np.nanmean ((t_power - n_power)*base_flag, axis=1);
-    
+
     l_power = photo[:,:,:,setup.base_beam ()];
     l_power = 4 * l_power[:,:,:,:,0] * l_power[:,:,:,:,1] * attenuation**2;
     l_power = np.nanmean (l_power*base_flag, axis=1);
