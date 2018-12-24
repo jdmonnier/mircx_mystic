@@ -924,7 +924,9 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     base_snr = base_powerbb / bias_powerbb;
     base_snr[~np.isfinite (base_snr)] = 0.0;
 
-    # Smooth SNR along the ramp (if not done yet)
+    # Smooth SNR along the ramp (if not done yet) FIXME: this smoothing of GD
+    # should be done in complex plan, weighted by SNR. Or even better, should
+    # be done in the FFT plan before we compute GD !
     log.info ('Smooth SNR over one ramp');
     base_snr = np.mean (base_snr,axis=1,keepdims=True);
     base_gd  = np.mean (base_gd,axis=1,keepdims=True);
@@ -996,21 +998,21 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     # Compute OI_VIS2
     if ncs > 0:
         log.info ('Compute Cross Spectrum with offset of %i frames'%ncs);
-        b_power = np.real (bias_dft[:,ncs:,:,:] * np.conj(bias_dft[:,0:-ncs,:,:]));
-        t_power = np.real (base_dft[:,ncs:,:,:] * np.conj(base_dft[:,0:-ncs,:,:]));
+        bias_power = np.real (bias_dft[:,ncs:,:,:] * np.conj(bias_dft[:,0:-ncs,:,:]));
+        base_power = np.real (base_dft[:,ncs:,:,:] * np.conj(base_dft[:,0:-ncs,:,:]));
     else:
         log.info ('Compute Cross Spectrum without offset');
-        b_power = np.abs (bias_dft)**2;
-        t_power = np.abs (base_dft)**2;
+        bias_power = np.abs (bias_dft)**2;
+        base_power = np.abs (base_dft)**2;
 
-    n_power = np.mean (b_power, axis=-1, keepdims=True);
-    u_power = np.nanmean ((t_power - n_power)*base_flag, axis=1);
+    base_power = np.nanmean (base_power*base_flag, axis=1);
+    bias_power = np.nanmean (bias_power*base_flag, axis=1);
 
-    l_power = photo[:,:,:,setup.base_beam ()];
-    l_power = 4 * l_power[:,:,:,:,0] * l_power[:,:,:,:,1] * attenuation**2;
-    l_power = np.nanmean (l_power*base_flag, axis=1);
+    photo_power = photo[:,:,:,setup.base_beam ()];
+    photo_power = 4 * photo_power[:,:,:,:,0] * photo_power[:,:,:,:,1] * attenuation**2;
+    photo_power = np.nanmean (photo_power*base_flag, axis=1);
 
-    oifits.add_vis2 (hdulist, mjd_ramp, u_power, l_power, output=output, y0=y0);
+    oifits.add_vis2 (hdulist, mjd_ramp, base_power, bias_power, photo_power, output=output, y0=y0);
     
     # Compute OI_VIS
     log.info ('Compute Vis by removing the mean GD and mean phase');
@@ -1072,17 +1074,6 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     for i,ax in enumerate (axes.flatten()): ax.imshow (bias_scan[:,0,:,i].T,aspect='auto');
     files.write (fig,output+'_bias_trend.png');
 
-    # Pseudo PSD
-    fig,ax = plt.subplots (2,2, sharey='row',sharex='col');
-    fig.suptitle (headers.summary (hdr));
-    ax[0,0].imshow (np.mean (t_power, axis=(0,1)),aspect='auto');
-    ax[0,1].imshow (np.mean (b_power, axis=(0,1)),aspect='auto');
-    ax[1,0].plot (np.mean (t_power, axis=(0,1)).T);
-    ax[1,1].plot (np.mean (b_power, axis=(0,1)).T);
-    ax[0,0].set_title ('Fringe frequencies');
-    ax[0,1].set_title ('Bias frequencies');
-    files.write (fig,output+'_psd.png');
-    
     # SNR
     fig,axes = plt.subplots (5,3, sharex=True);
     fig.suptitle ('SNR versus ramp \n' + headers.summary (hdr));

@@ -119,10 +119,10 @@ def create (hdr,lbd,y0=None):
     return hdulist;
 
 
-def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
+def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None):
     '''
     Compute the OI_VIS2 table from a sample of observations
-    u_power and l_power shall be (sample, lbd, base)
+    u_power, b_power, l_power shall be (sample, lbd, base)
     mjd shall be (sample)
     '''
 
@@ -137,18 +137,31 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
     old_np_setting = np.seterr (divide='ignore',invalid='ignore');
 
     # How many valid frame
-    valid = np.isfinite (u_power) * np.isfinite (l_power);
+    valid = np.isfinite (u_power) * np.isfinite (l_power) * np.isfinite (b_power);
     nvalid = np.nansum (1. * valid, axis=0);
 
     # Compute bootstrap sample
     boot = (np.random.random ((ns,20)) * ns).astype(int);
     boot[:,0] = range (ns);
 
+    # Compute mean bias over spatial frequencies
+    bm_power = np.mean (b_power, axis=-1, keepdims=True);
+    ub_power = u_power - bm_power;
+
     # Compute mean vis2
-    vis2 = np.nanmean (u_power[boot,:,:], axis=0) / np.nanmean (l_power[boot,:,:], axis=0);
+    vis2 = np.nanmean (ub_power[boot,:,:], axis=0) / np.nanmean (l_power[boot,:,:], axis=0);
     vis2err = np.nanstd (vis2, axis=0);
     vis2 = vis2[0,:,:];
-    
+
+    # Systematic due to bias spatial structure
+    vis2sys = np.std (np.nanmean (b_power, axis=0), axis=-1, keepdims=True) \
+            / np.nanmean (l_power, axis=0);
+
+    # Enlarge error with systematics. FIXME: this somewhat conservative
+    # as we estimate the bias with several frequencies.
+    log.info ('Enlarge statistical errors with systematics');
+    vis2err = np.sqrt (vis2err**2 + vis2sys**2);
+
     # Construct mjd[ns,ny,nb]
     mjd = mjd0[:,None,None] * np.ones (valid.shape);
     mjd[~valid] = np.nan;
@@ -190,9 +203,9 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
     # QC for VIS2
     for b,name in enumerate (setup.base_name ()):
         hdr[HMQ+'REJECTED'+name] = (1.0*(ns - nvalid[y0,b])/ns,'fraction of rejected');
-        val = rep_nan (np.nanmean (u_power[:,y0,b]));
+        val = rep_nan (np.nanmean (ub_power[:,y0,b]));
         hdr[HMQ+'UPOWER'+name+' MEAN'] = (val,'unbiased power at lbd0');
-        val = rep_nan (np.nanstd (u_power[:,y0,b]));
+        val = rep_nan (np.nanstd (ub_power[:,y0,b]));
         hdr[HMQ+'UPOWER'+name+' STD'] = (val,'unbiased power at lbd0');
         val = rep_nan (np.nanmean (l_power[:,y0,b]));
         hdr[HMQ+'LPOWER'+name+' MEAN'] = (val,'unbiased power at lbd0');
@@ -209,7 +222,6 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
         val = rep_nan (np.sqrt(ucoord[b]**2 + vcoord[b]**2));
         hdr[HMQ+'BASELENGTH'+name] = (val,'[m] uv coordinate');
         
-    
     # Correlation plot
     log.info ('Correlation plots');
     fig,axes = plt.subplots (5,3, sharex=True);
@@ -221,7 +233,7 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
     for b,ax in enumerate(axes.flatten()):
         
         datax = l_power[:,y0,b];
-        datay = u_power[:,y0,b];
+        datay = ub_power[:,y0,b];
     
         scalex = rep_nan (np.abs (np.nanmax (datax)), 1.);
         scaley = rep_nan (np.abs (np.nanmax (datay)), 1.);
@@ -241,6 +253,17 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
                   '--r', alpha=0.5);
 
     files.write (fig,output+'_norm_power.png');
+
+    # Pseudo PSD
+    fig,ax = plt.subplots (2,2, sharey='row',sharex='col');
+    fig.suptitle (headers.summary (hdr));
+    ax[0,0].imshow (np.nanmean (u_power, axis=0),aspect='auto');
+    ax[0,1].imshow (np.nanmean (b_power, axis=0),aspect='auto');
+    ax[1,0].plot (np.nanmean (u_power, axis=0).T);
+    ax[1,1].plot (np.nanmean (b_power, axis=0).T);
+    ax[0,0].set_title ('Fringe frequencies');
+    ax[0,1].set_title ('Bias frequencies');
+    files.write (fig,output+'_psd.png');
 
     # Reset warning
     np.seterr (**old_np_setting);
