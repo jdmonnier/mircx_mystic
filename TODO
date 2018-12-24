@@ -51,6 +51,10 @@ Because the SNR on the edges is really small.
 Deal with coherent integration as time quantities
 Flatten the time ?
 
+Implement tunable incoherent integration
+Smooth much more the SNR
+Smooth GD in complex plan with SNR ??
+
 * Speed-up
 
 - QC of dc is too long
