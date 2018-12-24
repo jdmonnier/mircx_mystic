@@ -116,6 +116,9 @@ oifits.add_argument ("--oifits-dir", dest="oifits_dir",default='./oifits/',type=
 oifits.add_argument ("--ncoherent", dest="ncoherent", type=int,
                      default=5, help="number of frames for coherent integration [%(default)s]");
 
+oifits.add_argument ("--nincoherent", dest="nincoherent", type=int,
+                     default=5, help="number of ramps for incoherent integration [%(default)s]");
+
 oifits.add_argument ("--ncs", dest="ncs", type=int,
                      default=1, help="number of frame-offset for cross-spectrum [%(default)s]");
 
@@ -440,6 +443,7 @@ if argopt.oifits != 'FALSE':
 
             log.setFile (output+'.log');
             mrx.compute_vis (gp, output=output, ncoher=argopt.ncoherent,
+                             nincoher=argopt.nincoherent,
                              ncs=argopt.ncs, nbs=argopt.nbs,
                              threshold=argopt.snr_threshold,
                              gdAttenuation=argopt.gd_attenuation);

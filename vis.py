@@ -769,7 +769,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     plt.close("all");
     return hdulist;
 
-def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
+def compute_vis (hdrs, output='output_oifits', ncoher=3, nincoher=5, threshold=3.0,
                  avgphot=True, ncs=2, nbs=2, gdAttenuation=True):
     '''
     Compute the OIFITS from the RTS
@@ -906,9 +906,15 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
         base_scan = np.mean (np.abs(base_scan)**2,axis=1, keepdims=True);
         bias_scan = np.mean (np.abs(bias_scan)**2,axis=1, keepdims=True);
 
-    log.info ('Compute SNR and GD (alternate)');
-    
-    # Alternate SNR, whose statistic is independent of averaging
+    # Incoherent integration over several ramp
+    if nincoher > 0:
+        log.info ('Incoherent integration over %i ramps'%nincoher);
+        base_scan = signal.uniform_filter (base_scan,(nincoher,0,0,0),mode='constant');
+        bias_scan = signal.uniform_filter (bias_scan,(nincoher,0,0,0),mode='constant');
+    else:
+        log.info ('Incoherent integration over 1 ramp');
+
+    # Observed noise, whose statistic is independent of averaging
     base_scan -= np.median (base_scan, axis=2, keepdims=True);
     bias_scan -= np.median (bias_scan, axis=2, keepdims=True);
     base_powerbb_np = base_scan[:,:,int(nscan/2),:][:,:,None,:];
@@ -916,20 +922,19 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     bias_powerbb    = np.mean (np.max (bias_scan, axis=2, keepdims=True), axis=-1, keepdims=True);
 
     # Scale for gd in [um]
+    log.info ('Compute GD');
     scale_gd = 1. / (lbd0**-1 - (lbd0+dlbd)**-1) / nscan;
     base_gd  = (np.argmax (base_scan, axis=2)[:,:,None,:] - int(nscan/2)) * scale_gd;
     gd_range = scale_gd * nscan / 2;
     
     # Broad-band SNR
+    log.info ('Compute SNR');
     base_snr = base_powerbb / bias_powerbb;
     base_snr[~np.isfinite (base_snr)] = 0.0;
 
-    # Smooth SNR along the ramp (if not done yet) FIXME: this smoothing of GD
-    # should be done in complex plan, weighted by SNR. Or even better, should
-    # be done in the FFT plan before we compute GD !
-    log.info ('Smooth SNR over one ramp');
-    base_snr = np.mean (base_snr,axis=1,keepdims=True);
-    base_gd  = np.mean (base_gd,axis=1,keepdims=True);
+    # Smooth SNR along the ramp (actually done before)
+    # base_snr = np.mean (base_snr,axis=1,keepdims=True);
+    # base_gd  = np.mean (base_gd,axis=1,keepdims=True);
 
     # Copy before bootstrap
     base_snr0 = base_snr.copy ();
