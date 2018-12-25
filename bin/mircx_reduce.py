@@ -463,3 +463,9 @@ if argopt.oifits != 'FALSE':
             
     log.info ('Cleanup memory');
     del hdrs, gps;
+
+
+    
+# Delete elog to have final
+# pring of execution time
+del elog;
