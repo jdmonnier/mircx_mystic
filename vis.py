@@ -1011,7 +1011,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, nincoher=5, threshold=3
         base_power = np.abs (base_dft)**2;
 
     base_power = np.nanmean (base_power*base_flag, axis=1);
-    bias_power = np.nanmean (bias_power*base_flag, axis=1);
+    bias_power = np.nanmean (bias_power, axis=1);
 
     photo_power = photo[:,:,:,setup.base_beam ()];
     photo_power = 4 * photo_power[:,:,:,:,0] * photo_power[:,:,:,:,1] * attenuation**2;
