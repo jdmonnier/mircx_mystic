@@ -36,7 +36,7 @@ def summary (hdr):
                                  hdr.get('MJD-OBS',0.0),hdr.get('OBJECT','unknown'));
 
     if 'HIERARCH MIRC PRO NCOHER' in hdr:
-        value += ' NCOHER=%.2f'%(hdr.get('HIERARCH MIRC PRO NCOHER',0.0));
+        value += ' NCOHER=%i'%(hdr.get('HIERARCH MIRC PRO NCOHER',0));
 
     return value;
 
