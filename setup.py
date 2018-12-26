@@ -416,11 +416,10 @@ def compute_base_uv (hdr,mjd=None,baseid='base'):
 
     # Default for time
     if mjd is None: mjd = np.ones (baseline.shape[0]) * hdr['MJD-OBS'];
+
+    # Time as a valid Time object
     obstime = Time (mjd, format='mjd');
     
-    # Mean time for ERFA update
-    meantime = Time (np.mean (obstime.mjd), format='mjd');
-
     # CHARA site
     lon, lat = chara_coord (hdr);
 
