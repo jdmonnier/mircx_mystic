@@ -13,6 +13,8 @@ I confirm that the noise in increasing in the fringe window.
 This is almost invisible in the flux and err however.
 (2017Oct06/reduced_jb/*bkg_noise.png)
 
+=> probably there is flux in the first files
+
 * Cascade
 
 It would be easier if the PREPROC would be truly static windows…
@@ -36,7 +38,7 @@ Think on the dimensions...
 
 Which frequency to retroject the DC residual ??
 
-Shall we retroproject the DC residual for
+Shall we retroject the DC residual for
 each wavelength independently ??
 
 How to deal with the kappa ? Wouldn't the DC projection be sufficient
@@ -51,20 +53,20 @@ Because the SNR on the edges is really small.
 Deal with coherent integration as time quantities
 Flatten the time ?
 
-Implement tunable incoherent integration
-Smooth much more the SNR
-Smooth GD in complex plan with SNR ??
 
 * Speed-up
 
 - QC of dc is too long
 - Apply thresholding (force zeros) is too long
-- Add option to rereduce only part of the night
+- Add option to re-reduce only part of the night
 
 * VISCAL
 
 Propagate uncertainties on transfer function
 and calibrated product with non-linear propagation
 (compute at + and - sigma).
+
+Skip part of the night, part of the spectral channels, part of the baselines.
+Or have a script to do so (FLAG=T), but this would be irreversible.
 
 
