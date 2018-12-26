@@ -282,7 +282,8 @@ def beam_index (hdr):
 def tel_xyz (hdr):
     '''
     Return a dictionary with the telescope positions
-    read from header, ez, nz, uz in [m].
+    read from header, ez, nz, uz in [m]. If keys are
+    not existing, they are created with default.
     '''
     
     # Default from 2010Jul20 (JDM)
@@ -302,6 +303,9 @@ def tel_xyz (hdr):
             default[t] = x,y,z;
         except:
             log.warning ('Cannot read XYZ of '+t+' (use default)');
+            hdr['HIERARCH CHARA '+t+'_BASELINE_X'] = x;
+            hdr['HIERARCH CHARA '+t+'_BASELINE_Y'] = y;
+            hdr['HIERARCH CHARA '+t+'_BASELINE_Z'] = z;
             
     return default
 
