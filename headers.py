@@ -345,11 +345,12 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
     groups = [g for g in groups if g != []];
     
     # For the BACKGROUND, remove the first file if there is more than 3 files
+    # because it is often contaminated with light (slow shutter)
     if mtype == 'BACKGROUND':
         for i in range(np.shape(groups)[0]):
             if np.shape(groups[i])[0] > 3:
                 groups[i] = groups[i][1:];
-                log.info('More than 3 BACKGROUND files,so the first one is ignored')
+                log.info ('Ignore the first BACKGROUND files (more than 3)');
     
     return groups;
 
