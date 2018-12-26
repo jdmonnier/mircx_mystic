@@ -170,6 +170,9 @@ def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None):
     int_time = (np.nanmax (mjd, axis=(0,1)) - np.nanmin (mjd, axis=(0,1))) * 24 * 3600;
     mjd = np.nanmean (mjd, axis=(0,1));
 
+    # Baseline fully rejected should have a MJD anyway
+    mjd[~np.isfinite(mjd)] = hdr['MJD-OBS'];
+    
     # Create OI_VIS table
     target_id = np.ones (nb).astype(int);
     time = mjd * 0.0;
@@ -308,6 +311,9 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
     int_time = (np.nanmax (mjd, axis=(0,1)) - np.nanmin (mjd, axis=(0,1))) * 24 * 3600;
     mjd = np.nanmean (mjd, axis=(0,1));
 
+    # Baseline fully rejected should have a MJD anyway
+    mjd[~np.isfinite(mjd)] = hdr['MJD-OBS'];
+    
     # Create OI_VIS table
     target_id = np.ones (nb).astype(int);
     time = mjd * 0.0;
@@ -382,6 +388,9 @@ def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
     int_time = (np.nanmax (mjd, axis=(0,1)) - np.nanmin (mjd, axis=(0,1))) * 24 * 3600;
     mjd = np.nanmean (mjd, axis=(0,1));
 
+    # Baseline fully rejected should have a MJD anyway
+    mjd[~np.isfinite(mjd)] = hdr['MJD-OBS'];
+    
     # Create OI_FLUX table
     target_id = np.ones (nt).astype(int);
     time = mjd * 0.0;
@@ -459,7 +468,10 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     
     # Average MJD per baseline
     int_time = (np.nanmax (mjd, axis=(0,1)) - np.nanmin (mjd, axis=(0,1))) * 24 * 3600;
-    mjd = np.nanmean (mjd, axis=(0,1));
+    mjd  = np.nanmean (mjd, axis=(0,1));
+
+    # Baseline fully rejected should have a MJD anyway
+    mjd[~np.isfinite(mjd)] = hdr['MJD-OBS'];
     
     # Create OI_T3 table
     target_id = np.ones (nt).astype(int);
