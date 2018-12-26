@@ -102,15 +102,16 @@ def debug(msg):
     
 # Trace class (measure time until killed)
 class trace:
-    def __init__(self, funcname):
-        mem = memory ();
-        logger.info('Start '+funcname,extra={'color':GREEN,'memory':mem});
+    def __init__(self, funcname,color=True):
+        self.color = GREEN if color else BLUE;
         self.funcname = funcname;
+        mem = memory ();
+        logger.info('Start '+funcname,extra={'color':self.color,'memory':mem});
         self.stime = timer();
 
     def __del__(self):
         if self.stime is not None and self.funcname is not None:
             mem = memory ();
             msg = 'End '+self.funcname+' in %.2fs'%(timer()-self.stime);
-            logger.info (msg,extra={'color':GREEN,'memory':mem});
+            logger.info (msg,extra={'color':self.color,'memory':mem});
         
