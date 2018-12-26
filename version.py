@@ -1,4 +1,4 @@
-import os;
+import os, psutil;
 import matplotlib as mpl;
 
 def get_from_dir (arg):
@@ -20,6 +20,7 @@ def info ():
     print ('Git branch: %s'%git_branch);
     print ('Git last commit: %s'%git_date);
     print ('Matplotlib backend: '+mpl.get_backend());
+    print ('Total memory: %.1fG'%(psutil.virtual_memory().total/1e9));
     print ('---------------------------------------------');
 
 # Revision hardcoded name
