@@ -36,6 +36,7 @@ def create (hdr,lbd,y0=None):
     hdulist = pyfits.HDUList ([hdu0]);
 
     # Create OI_WAVELENGTH table
+    log.info ('Create OI_WAVELENGTH table');
     dlbd = np.abs (lbd * 0 + np.mean (np.diff(lbd)));
     tbhdu = pyfits.BinTableHDU.from_columns ( \
             [pyfits.Column (name='EFF_WAVE', format='1E', array=lbd, unit='m'), \
@@ -47,6 +48,7 @@ def create (hdr,lbd,y0=None):
     hdulist.append(tbhdu);
 
     # Create OI_TARGET table
+    log.info ('Create OI_TARGET table');
     name = hdr['OBJECT'];
     coord = SkyCoord (hdr['RA'],hdr['DEC'], unit=(units.hourangle, units.deg));
     ra0  = coord.ra.to('deg').value;
@@ -80,6 +82,7 @@ def create (hdr,lbd,y0=None):
     hdulist.append(tbhdu);
 
     # Create OI_ARRAY table
+    log.info ('Create OI_ARRAY table');
     diameter = np.ones (6) * 1.0;
     staindex = range (1,7);
     telname = ['S1','S2','E1','E2','W1','W2'];

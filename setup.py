@@ -302,7 +302,8 @@ def tel_xyz (hdr):
             z = hdr['HIERARCH CHARA '+t+'_BASELINE_Z'];
             default[t] = x,y,z;
         except:
-            log.warning ('Cannot read XYZ of '+t+' (use default)');
+            log.warning ('Cannot read XYZ of '+t+' (use default and set in header)');
+            x,y,z = default[t];
             hdr['HIERARCH CHARA '+t+'_BASELINE_X'] = x;
             hdr['HIERARCH CHARA '+t+'_BASELINE_Y'] = y;
             hdr['HIERARCH CHARA '+t+'_BASELINE_Z'] = z;
