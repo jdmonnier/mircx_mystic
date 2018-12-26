@@ -87,15 +87,9 @@ def create (hdr,lbd,y0=None):
     fov     = np.ones (6) * 0.320;
     fovtype = ['FWHM','FWHM','FWHM','FWHM','FWHM','FWHM'];
 
-    # Check if staxyz in in header
-    staxyz = np.zeros ((6,3));
-    for i,c in enumerate('XYZ'):
-        for j,t in enumerate(telname):
-            name = 'HIERARCH CHARA '+t+'_BASELINE_'+c;
-            if name in hdr:
-                staxyz[j,i] = hdr[name];
-            else:
-                log.warning ('Missing keyword (replace by 0.0): '+name);
+    # Get staxyz from header or default
+    telpos = setup.tel_xyz (hdr);
+    staxyz = np.array ([telpos[t] for t in telname]);
 
     tbhdu = pyfits.BinTableHDU.from_columns ([\
              pyfits.Column (name='TEL_NAME',  format='A16', array=telname), \

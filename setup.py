@@ -279,13 +279,12 @@ def beam_index (hdr):
     # CHARA tel of the CHARA beams
     return cidx[cbeam];
 
-def beam_xyz (hdr):
+def tel_xyz (hdr):
     '''
     Return a dictionary with the telescope positions
-    read from header, ez, nz, uz in [m]. The output
-    is of shape (6,3). The beams are ordered for MIRCX.
+    read from header, ez, nz, uz in [m].
     '''
-
+    
     # Default from 2010Jul20 (JDM)
     default = {};
     default['S1'] = [0.0,0.0,0.0];
@@ -295,19 +294,16 @@ def beam_xyz (hdr):
     default['W2'] = [ -69.093582796, 199.334733235,   0.467336023];
     default['E2'] = [  70.396607118, 269.713272258,  -2.796743436];
 
-    # Get the telescope names of each base
-    pos = 0.0 * np.zeros ((6,3));
-    for i,t in enumerate (beam_tel (hdr)):
+    for t in default.keys():
         try:
             x = hdr['HIERARCH CHARA '+t+'_BASELINE_X'];
             y = hdr['HIERARCH CHARA '+t+'_BASELINE_Y'];
             z = hdr['HIERARCH CHARA '+t+'_BASELINE_Z'];
-            pos[i,:] = x,y,z;
+            default[t] = x,y,z;
         except:
             log.warning ('Cannot read XYZ of '+t+' (use default)');
-            pos[i,:] = default[t];
-
-    return pos;
+            
+    return default
 
 def chara_coord (hdr):
     '''
@@ -402,7 +398,8 @@ def compute_base_uv (hdr,mjd=None,baseid='base'):
     log.info ('Compute uv');
 
     # Get the physical telescope position (read from header)
-    xyz = beam_xyz (hdr);
+    telpos = tel_xyz (hdr);
+    xyz = np.array ([telpos[t] for t in beam_tel (hdr)]);
 
     # Physical baseline
     if baseid == 'base':
