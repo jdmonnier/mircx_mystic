@@ -222,7 +222,7 @@ def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None):
         val = rep_nan (np.sqrt(ucoord[b]**2 + vcoord[b]**2));
         hdr[HMQ+'BASELENGTH'+name] = (val,'[m] uv coordinate');
         
-    log.info ('OI_VIS plots');
+    log.info ('OI_VIS2 plots');
     
     # Correlation plot
     fig,axes = plt.subplots (5,3, sharex=True);
