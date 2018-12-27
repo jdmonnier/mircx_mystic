@@ -222,8 +222,9 @@ def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None):
         val = rep_nan (np.sqrt(ucoord[b]**2 + vcoord[b]**2));
         hdr[HMQ+'BASELENGTH'+name] = (val,'[m] uv coordinate');
         
+    log.info ('OI_VIS plots');
+    
     # Correlation plot
-    log.info ('Correlation plots');
     fig,axes = plt.subplots (5,3, sharex=True);
     fig.subplots_adjust (wspace=0.3, hspace=0.1);
     fig.suptitle (headers.summary (hdr));
@@ -254,6 +255,20 @@ def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None):
 
     files.write (fig,output+'_norm_power.png');
 
+    # Summary plot
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.subplots_adjust (wspace=0.3, hspace=0.1);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+
+    x = np.arange (ny);
+    for b,ax in enumerate(axes.flatten()):
+        bars = ax.errorbar (x,vis2[:,b],yerr=vis2err[:,b],fmt='o-',ms=2)[2];
+        for bar in bars: bar.set_alpha(0.25);
+
+    files.write (fig,output+'_vis2.png');
+    
     # Pseudo PSD
     fig,ax = plt.subplots (2,2, sharey='row',sharex='col');
     fig.suptitle (headers.summary (hdr));
@@ -297,8 +312,8 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
     vis = np.nanmean (c_cpx[boot,:,:], axis=0) / np.nanmean (c_norm[boot,:,:], axis=0);
     visAmp = np.abs (vis[0,:,:]);
     visAmperr = np.nanstd (np.abs (vis), axis=0);
-    visPhi = np.angle (vis[0,:,:], deg=True);
-    visPhierr = np.nanstd (np.angle (vis, deg=True), axis=0);
+    visPhi = np.angle (vis[0,:,:]);
+    visPhierr = np.nanstd (np.angle (vis), axis=0);
     
     # Construct mjd[ns,ny,nb]
     mjd = mjd0[:,None,None] * np.ones (valid.shape);
@@ -321,13 +336,14 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
     # Flag data
     flag = ~np.isfinite (visPhi) + ~np.isfinite (visPhierr);
 
+    r2d = units.rad.to('deg');
     tbhdu = pyfits.BinTableHDU.from_columns ([\
              pyfits.Column (name='TARGET_ID', format='I', array=target_id), \
              pyfits.Column (name='TIME', format='D', array=time, unit='s'), \
              pyfits.Column (name='MJD', format='D', array=mjd,unit='day'), \
              pyfits.Column (name='INT_TIME', format='D', array=int_time, unit='s'), \
-             pyfits.Column (name='VISPHI', format='%iD'%ny, array=visPhi.T,unit='deg'), \
-             pyfits.Column (name='VISPHIERR', format='%iD'%ny, array=visPhierr.T,unit='deg'), \
+             pyfits.Column (name='VISPHI', format='%iD'%ny, array=visPhi.T*r2d,unit='deg'), \
+             pyfits.Column (name='VISPHIERR', format='%iD'%ny, array=visPhierr.T*r2d,unit='deg'), \
              pyfits.Column (name='VISAMP', format='%iD'%ny, array=visAmp.T), \
              pyfits.Column (name='VISAMPERR', format='%iD'%ny, array=visAmperr.T), \
              pyfits.Column (name='UCOORD', format='D', array=ucoord, unit='m'), \
@@ -343,6 +359,52 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
     tbhdu.header['DATE-OBS'] = hdr['DATE-OBS'];
     hdulist.append(tbhdu);
 
+    log.info ('OI_VIS plots');
+    
+    # Correlation plot
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.subplots_adjust (wspace=0.6, hspace=0.1);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+
+    for b,ax in enumerate(axes.flatten()):
+        data = c_cpx[:,y0,b];
+        scale = np.nanmax (np.abs (data));
+        
+        ax.plot (data.real/scale, data.imag/scale, '+', alpha=0.75, ms=4);
+                
+        ax.set_xlim (-1.05, +1.05);
+        ax.set_ylim (-1.05, +1.05);
+        plot.scale (ax, scale);
+        
+        ax.plot ([0], [0], '+r', alpha=0.75, ms=4);
+        ax.plot ([0,2.*np.cos(visPhi[y0,b])], \
+                 [0,2.*np.sin(visPhi[y0,b])], \
+                 '-r', alpha=0.5);
+        ax.plot ([0,2.*np.cos((visPhi+visPhierr)[y0,b])], \
+                 [0,2.*np.sin((visPhi+visPhierr)[y0,b])], \
+                 '--r', alpha=0.5);
+        ax.plot ([0,2.*np.cos((visPhi-visPhierr)[y0,b])], \
+                 [0,2.*np.sin((visPhi-visPhierr)[y0,b])], \
+                 '--r', alpha=0.5);
+
+    files.write (fig,output+'_rivis.png');
+
+    # Summary plot
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.subplots_adjust (wspace=0.3, hspace=0.1);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+
+    x = np.arange (ny);
+    for b,ax in enumerate(axes.flatten()):
+        bars = ax.errorbar (x,visPhi[:,b]*r2d,yerr=visPhierr[:,b]*r2d,fmt='o-',ms=2)[2];
+        for bar in bars: bar.set_alpha(0.25);
+
+    files.write (fig,output+'_visPhi.png');
+    
     # Reset warning
     np.seterr (**old_np_setting);
 
@@ -484,14 +546,15 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
 
     # Flag data
     flag = ~np.isfinite (t3phi) + ~np.isfinite (t3phiErr);
-    
+
+    r2d = units.rad.to('deg');
     tbhdu = pyfits.BinTableHDU.from_columns ([\
              pyfits.Column (name='TARGET_ID', format='I', array=target_id), \
              pyfits.Column (name='TIME', format='D', array=time, unit='s'), \
              pyfits.Column (name='MJD', format='D', array=mjd,unit='day'), \
              pyfits.Column (name='INT_TIME', format='D', array=int_time, unit='s'), \
-             pyfits.Column (name='T3PHI', format='%iD'%ny, array=t3phi.T*180/np.pi, unit='deg'), \
-             pyfits.Column (name='T3PHIERR', format='%iD'%ny, array=t3phiErr.T*180/np.pi, unit='deg'), \
+             pyfits.Column (name='T3PHI', format='%iD'%ny, array=t3phi.T*r2d, unit='deg'), \
+             pyfits.Column (name='T3PHIERR', format='%iD'%ny, array=t3phiErr.T*r2d, unit='deg'), \
              pyfits.Column (name='T3AMP', format='%iD'%ny, array=t3amp.T), \
              pyfits.Column (name='T3AMPERR', format='%iD'%ny, array=t3ampErr.T), \
              pyfits.Column (name='U1COORD', format='D', array=u1coord, unit='m'), \
@@ -512,13 +575,14 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     # QC for T3
     for t,name in enumerate (setup.triplet_name()):
         hdr[HMQ+'REJECTED'+name] = (1.0*(ns - nvalid[y0,t])/ns,'fraction of rejected');
-        val = rep_nan (t3phi[y0,t])*180/np.pi;
+        val = rep_nan (t3phi[y0,t])*r2d;
         hdr[HMQ+'T3PHI'+name+' MEAN'] = (val,'[deg] tphi at lbd0');
-        val = rep_nan (t3phiErr[y0,t])*180/np.pi;
+        val = rep_nan (t3phiErr[y0,t])*r2d;
         hdr[HMQ+'T3PHI'+name+' ERR'] = (val,'[deg] visibility at lbd0');
     
+    log.info ('OI_T3 plots');
+    
     # Correlation plot
-    log.info ('Correlation plots');
     fig,axes = plt.subplots (5,4, sharex=True, sharey=True);
     fig.subplots_adjust (wspace=0.2, hspace=0.1);
     fig.suptitle (headers.summary (hdr));
@@ -547,6 +611,21 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
                  '--r', alpha=0.5);
 
     files.write (fig,output+'_bispec.png');
+
+    # Summary plot
+    fig,axes = plt.subplots (5,4, sharex=True);
+    fig.subplots_adjust (wspace=0.3, hspace=0.1);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+
+    x = np.arange (ny);
+    for t,ax in enumerate(axes.flatten()):
+        bars = ax.errorbar (x,t3phi[:,t]*r2d,yerr=t3phiErr[:,t]*r2d,fmt='o-',ms=2)[2];
+        for bar in bars: bar.set_alpha(0.25);
+
+    files.write (fig,output+'_t3Phi.png');
+    
 
     # Reset warning
     np.seterr (**old_np_setting);
