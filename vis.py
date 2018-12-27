@@ -987,6 +987,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, nincoher=5, threshold=3
 
     # Save the options in file HEADER
     hdr[HMP+'NCOHER'] = (ncoher,'[frame] coherent integration');
+    hdr[HMP+'NINCOHER'] = (nincoher,'[ramp] incoherent integration');
     hdr[HMP+'NCS'] = (ncs,'[frame] cross-spectrum shift');
     hdr[HMP+'NBS'] = (nbs,'[frame] bi-spectrum shift');
     
@@ -1020,15 +1021,13 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, nincoher=5, threshold=3
     oifits.add_vis2 (hdulist, mjd_ramp, base_power, bias_power, photo_power, output=output, y0=y0);
     
     # Compute OI_VIS
-    log.info ('Compute Vis by removing the mean GD and mean phase');
+    log.info ('Compute Vis by removing GD and mean smoothed phase');
 
     c_cpx  = base_dft.copy ();
-    phigd = np.mean (c_cpx[:,:,1:,:] * np.conj(c_cpx[:,:,:-1,:]), axis=2, keepdims=True);
-    # smooth phigd before removing it ??
-    c_cpx *= np.exp (-1.j * np.angle (phigd) * np.arange (ny)[None,None,:,None]);
-
-    phi = np.mean (c_cpx, axis=2,keepdims=True);
-    # smooth phi before removing it ??
+    c_cpx *= np.exp (2.j*np.pi * base_gd / lbd[None,None,:,None]);
+    
+    phi = np.mean (c_cpx, axis=2, keepdims=True);
+    phi = signal.uniform_filter_cpx (phi, (0,ncoher,0,0), mode='constant');
     c_cpx *= np.exp (-1.j * np.angle (phi));
     c_cpx  = np.nanmean (c_cpx * base_flag, axis=1);
     
