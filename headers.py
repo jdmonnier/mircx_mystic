@@ -213,7 +213,7 @@ def load (files, hlog=[]):
             hdr['ORIGNAME'] = f;
 
             # Test if FRAME_RATE is in header
-            if 'HIERARCH MIRC FRAME_RATE' not in hdr:
+            if 'HIERARCH MIRC FRAME_RATE' not in hdr and 'EXPOSURE' in hdr:
                 log.warning ('Assume FRAME_RATE is 1/EXPOSURE');
                 hdr['HIERARCH MIRC FRAME_RATE'] = 1e3/hdr['EXPOSURE'];
 
