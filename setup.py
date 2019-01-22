@@ -332,7 +332,10 @@ def sky_coord (hdr):
     # Read coordinate
     dec_icrs = Angle (hdr['DEC'], unit=units.deg);
     ra_icrs  = Angle (hdr['RA'], unit=units.hourangle);
-    distance = 1./hdr['PARALLAX'] * units.pc;
+
+    # Get distance from PARALLAX (sec)
+    plx = hdr.get ('PARALLAX', 0.0);
+    distance = 1./max(plx, 1e-6) * units.pc;
 
     try:
         # Read velocities
