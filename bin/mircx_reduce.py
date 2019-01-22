@@ -126,7 +126,10 @@ oifits.add_argument ("--nbs", dest="nbs", type=int,
                      default=4, help="number of frame-offset for bi-spectrum [%(default)s]");
 
 oifits.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
-                     default=2.0, help="SNR threshold for fringe selection [%(default)s]");
+                     default=2.0, help="SNR threshold for fringe rejection [%(default)s]");
+
+oifits.add_argument ("--flux-threshold", dest="flux_threshold", type=float,
+                     default=20.0, help="FLUX threshold for rejection [%(default)s]");
 
 oifits.add_argument ("--gd-attenuation", dest="gd_attenuation",default='TRUE',
                      choices=TrueFalse,
@@ -445,7 +448,8 @@ if argopt.oifits != 'FALSE':
             mrx.compute_vis (gp, output=output, ncoher=argopt.ncoherent,
                              nincoher=argopt.nincoherent,
                              ncs=argopt.ncs, nbs=argopt.nbs,
-                             threshold=argopt.snr_threshold,
+                             snr_threshold=argopt.snr_threshold,
+                             flux_threshold=argopt.flux_threshold,
                              gdAttenuation=argopt.gd_attenuation);
             
             # If remove RTS

@@ -385,14 +385,13 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     # Plot photometry versus time
     log.info ('Plot photometry');
     fig,axes = plt.subplots (3,2,sharex=True);
-    fig.suptitle (headers.summary (hdr));
+    fig.suptitle ('Xchan flux (adu) \n' + headers.summary (hdr));
     plot.compact (axes);
     for b in range (6):
         data = np.mean (photo[b,:,:,:], axis=(1,2));
         ax = axes.flatten()[b];
         ax.plot (data);
         ax.set_ylim (np.minimum (np.min (data), 0.0));
-    ax.set_ylabel ('Xchan flux (adu)');
     ax.set_xlabel ('Ramp #');
     files.write (fig,output+'_photo.png');
 
@@ -769,7 +768,8 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     plt.close("all");
     return hdulist;
 
-def compute_vis (hdrs, output='output_oifits', ncoher=3, nincoher=5, threshold=3.0,
+def compute_vis (hdrs, output='output_oifits', ncoher=3, nincoher=5,
+                 snr_threshold=3.0, flux_threshold=20.0,
                  avgphot=True, ncs=2, nbs=2, gdAttenuation=True):
     '''
     Compute the OIFITS from the RTS
@@ -960,13 +960,23 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, nincoher=5, threshold=3
         attenuation = base_gd * 0.0 + 1.0;
 
     # Compute selection flag from SNR
-    log.info ('SNR selection > %.2f'%threshold);
-    hdr[HMQ+'SNR_THRESHOLD'] = (threshold, 'to accept fringe');
-    base_flag  = 1. * (base_snr > threshold);
+    log.info ('SNR selection > %.2f'%snr_threshold);
+    hdr[HMQ+'SNR_THRESHOLD'] = (snr_threshold, 'to accept fringe');
+    base_flag  = 1. * (base_snr > snr_threshold);
 
     # Compute selection flag from GD
     log.info ('GD selection: enveloppe > 0.2');
     base_flag *= (attenuation**2 > 0.2);
+
+    # Mean flux
+    bbeam = setup.base_beam ();
+    photo_mean = np.nanmean (photo, axis=(1,2), keepdims=True);
+    
+    # Compute selection flag from SNR
+    log.info ('Flux selection > %.2f'%flux_threshold);
+    hdr[HMQ+'FLUX_THRESHOLD'] = (flux_threshold, 'to accept fringe');
+    base_flag  *= (photo_mean[:,:,:,bbeam[:,0]] > flux_threshold);
+    base_flag  *= (photo_mean[:,:,:,bbeam[:,1]] > flux_threshold);
 
     # TODO: Add selection on mean flux in ramp, gd...
 
@@ -1085,10 +1095,13 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, nincoher=5, threshold=3
     plot.compact (axes);
     d0 = np.mean (base_snr0,axis=(1,2));
     d1 = np.mean (base_snr,axis=(1,2));
-    for b in range (15): axes.flatten()[b].axhline (threshold,color='r', alpha=0.2);
-    for b in range (15): axes.flatten()[b].plot (d1[:,b]);
-    for b in range (15): axes.flatten()[b].plot (d0[:,b],'--', alpha=0.5);
-    for b in range (15): axes.flatten()[b].set_yscale ('log');
+    for b in range (15):
+        ax = axes.flatten()[b];
+        ax.axhline (snr_threshold,color='r', alpha=0.2);
+        ax.plot (d1[:,b]);
+        ax.plot (d0[:,b],'--', alpha=0.5);
+        ax.set_yscale ('log');
+    ax.set_xlabel ('Ramp #');
     files.write (fig,output+'_snr.png');
 
     # GD
@@ -1100,12 +1113,29 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, nincoher=5, threshold=3
     d1 = np.mean (base_gd,axis=(1,2)) * 1e6;
     lim = 1.05 * gd_range * 1e6;
     for b in range (15):
+        ax = axes.flatten()[b];
         # lim = 1.05 * np.max (np.abs (d0[:,b]));
-        axes.flatten()[b].plot (d1[:,b]);
-        axes.flatten()[b].plot (d0[:,b],'--', alpha=0.5);
-        axes.flatten()[b].set_ylim (-lim,+lim);
+        ax.plot (d1[:,b]);
+        ax.plot (d0[:,b],'--', alpha=0.5);
+        ax.set_ylim (-lim,+lim);
+    ax.set_xlabel ('Ramp #');
     files.write (fig,output+'_gd.png');
 
+    # Photo
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle ('Flux in fringe \n' + headers.summary (hdr));
+    plot.compact (axes);
+    for b in range (15):
+        ax = axes.flatten()[b];
+        data = np.nanmean (photo_mean[:,:,:,bbeam[b,:]], axis=(1,2));
+        ax.plot (data[:,0]);
+        ax.plot (data[:,1]);
+        ax.axhline (flux_threshold,color='r', alpha=0.2);
+        ax.set_ylim (1.0);
+        ax.set_yscale ('log');
+    ax.set_xlabel ('Ramp #');
+    files.write (fig,output+'_flux.png');
+    
     # Plot the fringe selection
     fig,axes = plt.subplots (5,3, sharex=True);
     fig.suptitle (headers.summary (hdr));
@@ -1126,7 +1156,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, nincoher=5, threshold=3
     d1 = np.mean (base_snr0,axis=(1,2));
     lim = 1.05 * gd_range * 1e6;
     for b in range (15):
-        axes.flatten()[b].axhline (threshold,color='r', alpha=0.2);
+        axes.flatten()[b].axhline (snr_threshold,color='r', alpha=0.2);
         axes.flatten()[b].plot (d0[:,b], d1[:,b],'+');
         axes.flatten()[b].set_xlim (-lim,+lim);
     files.write (fig,output+'_snrgd.png');
