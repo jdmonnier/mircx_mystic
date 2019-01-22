@@ -212,6 +212,11 @@ def load (files, hlog=[]):
             # Add file name
             hdr['ORIGNAME'] = f;
 
+            # Test if FRAME_RATE is in header
+            if 'HIERARCH MIRC FRAME_RATE' not in hdr and 'EXPOSURE' in hdr:
+                log.warning ('Assume FRAME_RATE is 1/EXPOSURE');
+                hdr['HIERARCH MIRC FRAME_RATE'] = 1e3/hdr['EXPOSURE'];
+
             # Check change of card
             if 'ENDFR' in hdr:
                 log.warning ('Old data with ENDFR');
@@ -262,7 +267,7 @@ def frame_mjd (hdr):
 
     # Time step between frames in [d]
     delta = 1./hdr['HIERARCH MIRC FRAME_RATE'] / 24/3600;
-
+    
     # Compute assuming MJD-OBS is time of first frame
     mjd = hdr['MJD-OBS'] + delta * counter;
 
