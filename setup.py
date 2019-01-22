@@ -33,10 +33,7 @@ global beamorder;
 beamorder = ['BEAMORD0','BEAMORD1','BEAMORD2','BEAMORD3','BEAMORD4','BEAMORD5'];
 
 global pop;
-if HC+"S1_POP" == True:
-    pop = [HC+"S1_POP", HC+"S2_POP", HC+"E1_POP", HC+"E2_POP", HC+"W1_POP", HC+"W2_POP"]
-else:
-    pop = False
+pop = [HC+"S1_POP", HC+"S2_POP", HC+"E1_POP", HC+"E2_POP", HC+"W1_POP", HC+"W2_POP"];
 
 # Directory for static calibration
 global static;

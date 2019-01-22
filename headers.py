@@ -364,15 +364,17 @@ def assoc (h, allh, tag, keys=[], which='closest', required=0, quality=None):
     Search for headers with tag and matching criteria
     '''
 
-    # Keep only the requested tag matching the criteria
+    # Keep only the requested tag
     atag = [a for a in allh if a['FILETYPE']==tag]
-    out = []
+    
+    # Keep only the requested criteria
+    out = [];
     for a in atag:
-        tmp = True
+        tmp = True;
         for k in keys:
-            tmp *= (h[k] == a[k])
+            tmp *= (h.get(k,None) == a.get(k,None));
         if tmp:
-            out.append(a)
+            out.append(a);
 
     # Keep only the requested quality
     l1 = len (out);
