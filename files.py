@@ -152,6 +152,11 @@ def load_raw (hdrs, differentiate=True,
         # Close file
         hdulist.close();
 
+        # Integrity check
+        if np.min (data) == np.max (data):
+            log.error ('All values are egual');
+            raise ValueError ('RAW data are corupted')
+
         # Dimensions
         nr,nf,ny,nx = data.shape;
 
