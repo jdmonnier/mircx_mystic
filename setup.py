@@ -123,10 +123,10 @@ def fiber_pos(hdr):
     
     # Fiber position in new MIRC-X
     if ('P_ION' in hdr) == True :
-        pos = np.array([4,6,13,18,24,28])
+        pos = np.array([4,6,13,18,24,28]);
     # Fiber position in old MIRC
     else :
-        pos = np.array([9,3,1,21,14,18])
+        pos = np.array([9,3,1,21,14,18]);
         
     return pos
 
