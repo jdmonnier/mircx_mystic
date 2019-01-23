@@ -396,11 +396,11 @@ def estimate_windows (cmean, hdr, output='outout_window'):
 
     return pmap, fmap;
     
-def compute_beam_preproc (hdrs,bkg,flat,output='output_beam_preproc'):
+def compute_beam_map (hdrs,bkg,flat,output='output_beam_map'):
     '''
-    Compute BEAM_PREPROC product.
+    Compute BEAM_MAP product.
     '''
-    elog = log.trace ('compute_beam_preproc');
+    elog = log.trace ('compute_beam_map');
 
     # Check inputs
     headers.check_input (hdrs, required=1);
@@ -448,7 +448,7 @@ def compute_beam_preproc (hdrs,bkg,flat,output='output_beam_preproc'):
     # First HDU
     hdu0 = pyfits.PrimaryHDU (csum[None,None,:,:]);
     hdu0.header = hdr;
-    hdu0.header['FILETYPE'] = 'BEAM%i_PREPROC'%headers.get_beam (hdrs[0]);
+    hdu0.header['FILETYPE'] = 'BEAM%i_MAP'%headers.get_beam (hdrs[0]);
     hdu0.header['BUNIT'] = ('adu/pixel','sum over ramp and frame');
     hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';    
 
@@ -462,14 +462,14 @@ def compute_beam_preproc (hdrs,bkg,flat,output='output_beam_preproc'):
     plt.close("all");
     return hdulist;
     
-def compute_beam_map (hdrs,output='output_beammap',filetype='MAP'):
+def compute_beam_profile (hdrs,output='output_beam_profile',filetype='PROFILE'):
     '''
-    Compute BEAM_MAP product, by simply summing the BEAM_PREPROC.
+    Compute BEAM_PROFILE product, by simply summing the BEAM_MAP.
     The output product contains
     keywords defining the fringe window and the photometric
     windows, as well as the spectral shift between them.
     '''
-    elog = log.trace ('compute_beam_map');
+    elog = log.trace ('compute_beam_profile');
 
     # Check inputs
     headers.check_input (hdrs, required=1);
