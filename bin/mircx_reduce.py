@@ -91,7 +91,7 @@ rts.add_argument ("--rts-dir", dest="rts_dir",default='./rts/',type=str,
                   help="directory of products [%(default)s]");
 
 rts.add_argument ("--beam-quality", dest="beam_quality", type=float,
-                  default=0.5, help="minimum quality to consider the beammap as valid [%(default)s]");
+                  default=0.5, help="minimum quality to consider the BEAM_MAP as valid [%(default)s]");
 
 rts.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
                   choices=TrueFalse,
@@ -214,7 +214,7 @@ if argopt.preproc != 'FALSE':
     del gps;
     
     #
-    # Compute BEAMi_MAP
+    # Compute BEAMi_PREPROC
     #
 
     # List inputs
@@ -231,8 +231,7 @@ if argopt.preproc != 'FALSE':
         try:
             log.info ('Compute BEAM_MAP {0} over {1} '.format(i+1,len(gps)));
 
-            name = gp[0]['FILETYPE'].lower()+'map';
-            output = mrx.files.output (argopt.preproc_dir, gp[0], name);
+            output = mrx.files.output (argopt.preproc_dir, gp[0], 'preproc');
             if os.path.exists (output+'.fits') and overwrite is False:
                 log.info ('Product already exists');
                 continue;
@@ -247,8 +246,79 @@ if argopt.preproc != 'FALSE':
             # Associate best FLAT based in gain
             flat = mrx.headers.assoc_flat (gp[0], hdrs_static);
 
+            # Compute the BEAM_PREPROC
+            mrx.compute_beam_preproc (gp[0:argopt.max_file], bkg, flat, output=output);
+            
+        except Exception as exc:
+            log.error ('Cannot compute BEAM_PREPROC: '+str(exc));
+            if argopt.debug == 'TRUE': raise;
+        finally:
+            log.closeFile ();
+        
+    log.info ('Cleanup memory');
+    del hdrs_calib, gps;
+    
+    #
+    # Compute BEAM_MEAN
+    #
+    
+    # List inputs
+    hdrs_calib = mrx.headers.loaddir (argopt.preproc_dir);
+    
+    # Group all DATA
+    keys = setup.detwin + setup.insmode;
+    gps = mrx.headers.group (hdrs_calib, 'BEAM._PREPROC', keys=keys,
+                             delta=1e20, Delta=1e20,
+                             continuous=False);
+
+    # Compute all
+    for i,gp in enumerate(gps):
+        try:
+            log.info ('Compute BEAM_MEAN {0} over {1} '.format(i+1,len(gps)));
+
+            output = mrx.files.output (argopt.preproc_dir, gp[0], 'mean');
+            if os.path.exists (output+'.fits') and overwrite is False:
+                log.info ('Product already exists');
+                continue;
+            
+            log.setFile (output+'.log');
+
             # Compute the BEAM_MAP
-            mrx.compute_beammap (gp[0:argopt.max_file], bkg, flat, output=output);
+            mrx.compute_beam_map (gp[0:argopt.max_file], output=output, filetype='MEAN');
+            
+        except Exception as exc:
+            log.error ('Cannot compute BEAM_MEAN: '+str(exc));
+            if argopt.debug == 'TRUE': raise;
+        finally:
+            log.closeFile ();
+        
+    log.info ('Cleanup memory');
+    del gps;
+
+    #
+    # Compute BEAM_MAP
+    #
+    
+    # Group all DATA
+    keys = setup.detwin + setup.detmode + setup.insmode;
+    gps = mrx.headers.group (hdrs_calib, 'BEAM._PREPROC', keys=keys,
+                             delta=1e20, Delta=1e20,
+                             continuous=False);
+
+    # Compute all 
+    for i,gp in enumerate(gps):
+        try:
+            log.info ('Compute BEAM_PREPROC {0} over {1} '.format(i+1,len(gps)));
+
+            output = mrx.files.output (argopt.preproc_dir, gp[0], 'map');
+            if os.path.exists (output+'.fits') and overwrite is False:
+                log.info ('Product already exists');
+                continue;
+            
+            log.setFile (output+'.log');
+
+            # Compute the BEAM_MAP
+            mrx.compute_beam_map (gp[0:argopt.max_file], output=output);
             
         except Exception as exc:
             log.error ('Cannot compute BEAM_MAP: '+str(exc));
@@ -258,7 +328,7 @@ if argopt.preproc != 'FALSE':
         
     log.info ('Cleanup memory');
     del hdrs_calib, gps;
-    
+
     #
     # Compute PREPROC
     #
@@ -292,11 +362,11 @@ if argopt.preproc != 'FALSE':
             # Associate best FLAT based in gain
             flat = mrx.headers.assoc_flat (gp[0], hdrs_static);
                 
-            # Associate BEAM_MAP (best of the night)
+            # Associate BEAM_MEAN (best of the night)
             bmaps = [];
             for i in range(1,7):
                 keys = setup.detwin + setup.insmode;
-                tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MAP'%i,
+                tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MEAN'%i,
                                          keys=keys, which='best', required=1,
                                          quality=0.01);
                 bmaps.extend (tmp);
@@ -390,13 +460,13 @@ if argopt.rts != 'FALSE':
                                          quality=0.01);
                 profiles.extend (tmp);
 
-            # Associate KAPPA (closest BEAM_MAP in time, in this setup,
+            # Associate KAPPA (closest BEAM_PREPROC in time, in this setup,
             # with sufficient quality)
             kappas = [];
             for i in range(1,7):
                 keys = setup.detwin + setup.detmode + setup.insmode;
                 if argopt.kappa_gain == 'FALSE': keys.remove ('GAIN');
-                tmp = mrx.headers.assoc (gp[0], hdrs, 'BEAM%i_MAP'%i,
+                tmp = mrx.headers.assoc (gp[0], hdrs, 'BEAM%i_PREPROC'%i,
                                          keys=keys, quality=argopt.beam_quality,
                                          which='closest', required=1);
                 kappas.extend (tmp);

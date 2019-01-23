@@ -24,7 +24,7 @@ def info ():
     print ('---------------------------------------------');
 
 # Revision hardcoded name
-revision = '1.0.6';
+revision = '1.1.0';
 
 # some information from the GIT repository, if available
 git_date = get_from_dir ('git log -1 --format=%cd --date=format:%Y-%M-%dT%H:%M:%S');

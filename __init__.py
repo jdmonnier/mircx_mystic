@@ -8,7 +8,8 @@ from . import headers, setup, files, oifits, signal, catalog;
 # High levels routines to process RAW
 # data into BEAMMAP and PREPROC
 from .preproc import compute_background
-from .preproc import compute_beammap
+from .preproc import compute_beam_preproc
+from .preproc import compute_beam_map
 from .preproc import compute_preproc
 
 # High levels routines to extract vis

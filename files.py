@@ -40,12 +40,20 @@ def output (outputDir,hdr,suffix):
     if name[-5:] == '.fits':
         name = name[0:-5];
 
+    # If this is a beam, we add this beam in the suffix
+    beam = headers.get_beam (hdr);
+    if beam is not None:
+        beam = 'beam%i'%beam
+        suffix = beam + suffix;
+        if beam in name:
+            name = name.split (beam)[0][:-1];
+
     # Clean from stuff added already
     for test in ['_vis','_rts','_preproc']:
         if len(name) < len(test): continue;
         if name[-len(test):] == test:
             name = name[:-len(test)];
-    
+
     # Return
     output = outputDir + '/' + name + '_' + suffix;
     return output;
@@ -243,9 +251,12 @@ def load_raw (hdrs, differentiate=True,
         hdr['HIERARCH MIRC QC NRAMP'] += data.shape[0];
 
         # Co-add ramp if required
-        if coaddRamp is True:
+        if coaddRamp is 'mean':
             data = np.mean (data,axis=0,keepdims=True);
             mjd  = np.mean (mjd, axis=0,keepdims=True);
+        elif coaddRamp is 'sum':
+            data = np.sum (data,axis=0,keepdims=True);
+            mjd  = np.sum (mjd, axis=0,keepdims=True);
 
         # Append the data in the final cube
         cube.append  (data);

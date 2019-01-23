@@ -47,6 +47,16 @@ def setup (hdr, params):
     value = ' / '.join([str(hdr.get(p,'--')) for p in params]);
     return value;
 
+def get_beam (hdr):
+    '''
+    Return the i of BEAMi
+    '''
+    n = hdr if type(hdr) is str else hdr['FILETYPE'];
+    for i in range(1,7):
+        if 'beam%i'%i in n: return i;
+        if 'BEAM%i'%i in n: return i;
+    return None;
+
 def clean_date_obs (hdr):
     '''
     Clean DATE-OBS keyword to always match

@@ -120,7 +120,7 @@ def compute_background (hdrs,output='output_bkg'):
     headers.check_input (hdrs, required=1);
 
     # Load files
-    hdr,cube,mjd = files.load_raw (hdrs, coaddRamp=True, saturationThreshold=False, continuityThreshold=False);
+    hdr,cube,mjd = files.load_raw (hdrs, coaddRamp='mean', saturationThreshold=False, continuityThreshold=False);
     log.info ('Data size: '+str(cube.shape));
 
     # Background mean
@@ -129,7 +129,7 @@ def compute_background (hdrs,output='output_bkg'):
     bkg_err  = np.std (cube, axis=0) / np.sqrt (cube.shape[0]);
 
     # Load all ramp of first file to measure readout noise
-    __,cube,__ = files.load_raw (hdrs[0:1], coaddRamp=False, saturationThreshold=False, continuityThreshold=False);
+    __,cube,__ = files.load_raw (hdrs[0:1], coaddRamp='none', saturationThreshold=False, continuityThreshold=False);
 
     # Compute temporal rms
     log.info ('Compute rms over ramp/frame of first file');
@@ -263,54 +263,19 @@ def compute_background (hdrs,output='output_bkg'):
     plt.close ("all");
     return hdulist;
 
-def compute_beammap (hdrs,bkg,flat,output='output_beammap'):
+def estimate_windows (cmean, hdr, output='outout_window'):
     '''
-    Compute BEAM_MAP product. The output product contains
-    keywords defining the fringe window and the photometric
-    windows, as well as the spectral shift between them.
+    Estimate the position of the fringe and xchan in the 2D image cmean
+    It fills many QC parameters in hdr.
     '''
-    elog = log.trace ('compute_beammap');
-
-    # Check inputs
-    headers.check_input (hdrs, required=1);
-    headers.check_input (bkg, required=1, maximum=1);
-    headers.check_input (flat, required=1, maximum=1);
     
-    # Load background
-    log.info ('Load background %s'%bkg[0]['ORIGNAME']);
-    bkg_cube = pyfits.getdata (bkg[0]['ORIGNAME'],0);
-    
-    # Compute bad pixels position from background
-    bad_img = define_badpixels (bkg);
-
-    # Load flat
-    log.info ('Load flat %s'%flat[0]['ORIGNAME']);
-    flat_img = pyfits.getdata (flat[0]['ORIGNAME'],'FLAT');
-
-    # Crop the FLAT image. For now, this is not working.
-    # Either the image are not defined with the same orientation,
-    # or the flat is not valid anymores
-    idy, idx = setup.crop_ids (hdrs[0]);
-    flat_img = flat_img[idy,:][:,idx];
-
-    # Load files
-    hdr,cube,mjd = files.load_raw (hdrs, coaddRamp=True, background=bkg_cube,
-                                   badpix=bad_img, flat=None, output=output);
-
     # Get dimensions
-    log.info ('Data size: '+str(cube.shape));
-    nr,nf,ny,nx = cube.shape;
-
-    # Check background subtraction in empty region
-    check_empty_window (cube, hdr);
+    log.info ('Size of cmean: '+str(cmean.shape));
+    ny,nx = cmean.shape;
 
     # Number of spectral channels to extract on plots
     ns = int(setup.nspec (hdr)/2 + 0.5) + 1;
     x  = np.arange (nx);
-
-    # Compute the sum
-    log.info ('Compute mean over ramps and frames');
-    cmean = np.mean (cube, axis=(0,1));
 
     # Compute the flux in fringe window
     # (suposedly smoothed in x) 
@@ -429,33 +394,113 @@ def compute_beammap (hdrs,bkg,flat,output='output_beammap'):
     ax[1].legend ();
     files.write (fig, output+'_cut.png');
 
+    return pmap, fmap;
+    
+def compute_beam_preproc (hdrs,bkg,flat,output='output_beam_preproc'):
+    '''
+    Compute BEAM_PREPROC product.
+    '''
+    elog = log.trace ('compute_beam_preproc');
+
+    # Check inputs
+    headers.check_input (hdrs, required=1);
+    headers.check_input (bkg, required=1, maximum=1);
+    headers.check_input (flat, required=1, maximum=1);
+    
+    # Load background
+    log.info ('Load %s'%bkg[0]['ORIGNAME']);
+    bkg_cube = pyfits.getdata (bkg[0]['ORIGNAME'],0);
+    
+    # Compute bad pixels position from background
+    bad_img = define_badpixels (bkg);
+
+    # Load flat
+    log.info ('Load %s'%flat[0]['ORIGNAME']);
+    flat_img = pyfits.getdata (flat[0]['ORIGNAME'],'FLAT');
+
+    # Crop the FLAT image. For now, this is not working.
+    # Either the image are not defined with the same orientation,
+    # or the flat is not valid anymores
+    idy, idx = setup.crop_ids (hdrs[0]);
+    flat_img = flat_img[idy,:][:,idx];
+
+    # Load files
+    hdr,cube,mjd = files.load_raw (hdrs, coaddRamp='sum', background=bkg_cube,
+                                   badpix=bad_img, flat=None, output=output);
+
+    # Check background subtraction in empty region
+    check_empty_window (cube, hdr);
+    
+    # Get dimensions
+    log.info ('Data size: '+str(cube.shape));
+    nr,nf,ny,nx = cube.shape;
+
+    # Compute the sum
+    log.info ('Compute sum over ramps and frames');
+    csum = np.sum (cube, axis=(0,1));
+
+    # Estimate windows position
+    pmap, fmap = estimate_windows (csum, hdr, output=output);
+
     # File
     log.info ('Create file');
     
     # First HDU
-    hdu0 = pyfits.PrimaryHDU (cmean[None,None,:,:]);
+    hdu0 = pyfits.PrimaryHDU (csum[None,None,:,:]);
     hdu0.header = hdr;
-    hdu0.header['FILETYPE'] = hdrs[0]['FILETYPE']+'_MAP';
-    hdu0.header['BUNIT'] = ('adu/pixel/frame','mean over ramp and frame');
-    hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';
+    hdu0.header['FILETYPE'] = 'BEAM%i_PREPROC'%headers.get_beam (hdrs[0]);
+    hdu0.header['BUNIT'] = ('adu/pixel','sum over ramp and frame');
+    hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';    
 
     # Set files
     hdu0.header[HMP+'BACKGROUND_MEAN'] = os.path.basename (bkg[0]['ORIGNAME'])[-40:];
-
-    # Second HDU
-    hdu1 = pyfits.ImageHDU (fmap[None,None,:,:]);
-    hdu1.header['EXTNAME'] = ('FRINGE_MAP','imprint of fringe flux');
-    hdu1.header['BUNIT'] = ('adu/pixel/frame','mean over ramp and frame');
-    hdu1.header['SHAPE'] = '(nr,nf,ny,nx)';
-
-    # Third HDU
-    hdu2 = pyfits.ImageHDU (pmap[None,None,:,:]);
-    hdu2.header['EXTNAME'] = ('PHOTOMETRY_MAP','imprint of photometry flux');
-    hdu2.header['BUNIT'] = ('adu/pixel/frame','mean over ramp and frame');
-    hdu2.header['SHAPE'] = '(nr,nf,ny,nx)';
     
     # Write output file
-    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2]);
+    hdulist = pyfits.HDUList ([hdu0]);
+    files.write (hdulist, output+'.fits');
+    
+    plt.close("all");
+    return hdulist;
+    
+def compute_beam_map (hdrs,output='output_beammap',filetype='MAP'):
+    '''
+    Compute BEAM_MAP product, by simply summing the BEAM_PREPROC.
+    The output product contains
+    keywords defining the fringe window and the photometric
+    windows, as well as the spectral shift between them.
+    '''
+    elog = log.trace ('compute_beam_map');
+
+    # Check inputs
+    headers.check_input (hdrs, required=1);
+
+    # Load header
+    hdr = pyfits.getheader (hdrs[0]['ORIGNAME']);
+
+    # For sum over all files 
+    csum = 0.0;
+    
+    # Load data as images
+    for h in hdrs:
+        f = h['ORIGNAME'];
+        log.info ('Load file %s'%f);
+        csum = csum + pyfits.getdata (f).astype(float).sum (axis=(0,1));
+
+    # Estimate windows position
+    pmap, fmap = estimate_windows (csum, hdr, output=output);
+
+    # File
+    log.info ('Create file');
+    
+    # First HDU
+    hdu0 = pyfits.PrimaryHDU (csum[None,None,:,:]);
+    hdu0.header = hdr;
+    hdu0.header['FILETYPE'] = 'BEAM%i_'%headers.get_beam (hdrs[0])+filetype;
+    hdu0.header['BUNIT'] = ('adu/pixel','sum over ramp and frame');
+    hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';
+
+    # Write output file
+    hdulist = pyfits.HDUList ([hdu0]);
     files.write (hdulist, output+'.fits');
     
     plt.close("all");
@@ -477,14 +522,14 @@ def compute_preproc (hdrs,bkg,flat,bmaps,output='output_preproc'):
     headers.check_input (bmaps, required=1, maximum=6);
 
     # Load background
-    log.info ('Load background %s'%bkg[0]['ORIGNAME']);
+    log.info ('Load %s'%bkg[0]['ORIGNAME']);
     bkg_cube = pyfits.getdata (bkg[0]['ORIGNAME'],0);
     
     # Compute bad pixels position
     bad_img = define_badpixels (bkg);
 
     # Load flat
-    log.info ('Load flat %s'%flat[0]['ORIGNAME']);
+    log.info ('Load %s'%flat[0]['ORIGNAME']);
     flat_img = pyfits.getdata (flat[0]['ORIGNAME'],'FLAT');
 
     # Crop the FLAT image. For now, this is not working.
