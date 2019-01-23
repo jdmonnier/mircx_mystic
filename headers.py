@@ -25,7 +25,7 @@ def getval (hdrs, key, default=np.nan):
     '''
     Return a numpy array with the values in header
     '''
-    return np.array ([h[key] if key in h else default for h in hdrs]);
+    return np.array ([h.get(key,default) for h in hdrs]);
 
 def summary (hdr):
     '''
