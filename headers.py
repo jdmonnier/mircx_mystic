@@ -292,10 +292,10 @@ def match (h1,h2,keys,delta):
     # Check all keywords are the same
     answer = True;
     for k in keys:
-        answer *= (h1[k] == h2[k]);
+        answer *= (h1.get(k,None) == h2.get(k,None));
 
     # Check time is close-by
-    answer *= (np.abs(h1['MJD-OBS'] - h2['MJD-OBS'])*24.*3600 < delta);
+    answer *= (np.abs(h1.get('MJD-OBS',0.0) - h2.get('MJD-OBS',0.0))*24.*3600 < delta);
 
     # Ensure binary output
     return True if answer else False;
