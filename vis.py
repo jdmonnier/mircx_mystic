@@ -209,13 +209,13 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096, fitord
 
     # Polynomial fit
     fig,ax = plt.subplots (2,sharex=True);
-    fig.suptitle ('Polynomial fit');
+    fig.suptitle ('Polynomial fit\n(dark blue=poly, cyan=valid channels, light cyan = all channels)');
     ax[0].plot (yfit[is_fit],lbdfit[is_fit] * 1e6,'-', c='blue', alpha=1);
     ax[0].plot (yfit[is_valid],lbdlaw[is_valid] * 1e6,'o-', c='cyan', alpha=0.25);
     ax[0].plot (yfit,lbdlaw * 1e6,'o-', c='cyan', alpha=0.15);
-    ax[1].plot (yfit[is_fit],(lbdlaw[is_fit]-lbdfit[is_fit]) * 1e6,'o-', c='cyan');
-    ax[0].set_ylabel ('Polynomial fit');
-    ax[1].set_ylabel ('Residual [um]');
+    ax[1].plot (yfit[is_fit],(lbdlaw[is_fit]-lbdfit[is_fit]) * 1e9,'o-', c='cyan');
+    ax[0].set_ylabel ('Polynomial fit [um]');
+    ax[1].set_ylabel ('Residual [nm]');
     ax[1].set_xlabel ('Detector line (python-def)');
     files.write (fig,output+'_polynomial.png');
     
