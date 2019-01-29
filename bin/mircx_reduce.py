@@ -135,6 +135,10 @@ oifits.add_argument ("--gd-attenuation", dest="gd_attenuation",default='TRUE',
                      choices=TrueFalse,
                      help="correct from the attenuation due to GD [%(default)s]");
 
+oifits.add_argument ("--vis-reference", dest="vis_reference",default='self',
+                     choices=['self','spec-diff'],
+                     help="phase reference for VIS estimator [%(default)s]");
+
 oifits.add_argument ("--rm-rts", dest="rm_rts",default='FALSE',
                      choices=TrueFalse,
                      help="rm the RTS file after computing the OIFITS [%(default)s]");
@@ -520,7 +524,8 @@ if argopt.oifits != 'FALSE':
                              ncs=argopt.ncs, nbs=argopt.nbs,
                              snr_threshold=argopt.snr_threshold,
                              flux_threshold=argopt.flux_threshold,
-                             gdAttenuation=argopt.gd_attenuation);
+                             gdAttenuation=argopt.gd_attenuation,
+                             vis_reference=argopt.vis_reference);
             
             # If remove RTS
             if argopt.rm_rts == 'TRUE':

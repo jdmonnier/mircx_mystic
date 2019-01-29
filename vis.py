@@ -784,7 +784,8 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
 
 def compute_vis (hdrs, output='output_oifits', ncoher=3, nincoher=5,
                  snr_threshold=3.0, flux_threshold=20.0,
-                 avgphot=True, ncs=2, nbs=2, gdAttenuation=True):
+                 avgphot=True, ncs=2, nbs=2, gdAttenuation=True,
+                 vis_reference='self'):
     '''
     Compute the OIFITS from the RTS
     '''
@@ -1044,17 +1045,27 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, nincoher=5,
 
     oifits.add_vis2 (hdulist, mjd_ramp, base_power, bias_power, photo_power, output=output, y0=y0);
     
-    # Compute OI_VIS
-    log.info ('Compute Vis by removing GD and mean smoothed phase');
-
     c_cpx  = base_dft.copy ();
-    c_cpx *= np.exp (2.j*np.pi * base_gd / lbd[None,None,:,None]);
     
-    phi = np.mean (c_cpx, axis=2, keepdims=True);
-    phi = signal.uniform_filter_cpx (phi, (0,ncoher,0,0), mode='constant');
-    c_cpx *= np.exp (-1.j * np.angle (phi));
-    c_cpx  = np.nanmean (c_cpx * base_flag, axis=1);
-    
+    # Compute OI_VIS
+
+    if vis_reference == 'self':
+        log.info ('Compute VIS by self-tracking');
+        c_cpx *= np.exp (2.j*np.pi * base_gd / lbd[None,None,:,None]);
+        phi = np.mean (c_cpx, axis=2, keepdims=True);
+        phi = signal.uniform_filter_cpx (phi, (0,ncoher,0,0), mode='constant');
+        c_cpx *= np.exp (-1.j * np.angle (phi));
+        c_cpx  = np.nanmean (c_cpx * base_flag, axis=1);
+
+    elif vis_reference == 'spec-diff':
+        log.info ('Compute VIS by taking spectral-differential');
+        c_cpx = c_cpx[:,:,1:,:] * np.conj(c_cpx[:,:,:-1,:]);
+        c_cpx = np.insert(c_cpx,np.size(c_cpx,2),0,axis=2);
+        c_cpx = np.nanmean (c_cpx * base_flag, axis=1);
+
+    else:
+        raise ValueError("vis_reference is unknown");
+        
     c_norm = photo[:,:,:,setup.base_beam ()];
     c_norm = 4 * c_norm[:,:,:,:,0] * c_norm[:,:,:,:,1] * attenuation**2;
     c_norm = np.sqrt (np.maximum (c_norm, 0));
