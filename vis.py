@@ -214,6 +214,9 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096, fitord
     ax[0].plot (yfit[is_valid],lbdlaw[is_valid] * 1e6,'o-', c='cyan', alpha=0.25);
     ax[0].plot (yfit,lbdlaw * 1e6,'o-', c='cyan', alpha=0.15);
     ax[1].plot (yfit[is_fit],(lbdlaw[is_fit]-lbdfit[is_fit]) * 1e6,'o-', c='cyan');
+    ax[0].set_ylabel ('Polynomial fit');
+    ax[1].set_ylabel ('Residual [um]');
+    ax[1].set_xlabel ('Detector line (python-def)');
     files.write (fig,output+'_polynomial.png');
     
     # Spectrum
@@ -221,6 +224,8 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096, fitord
     fig.suptitle ('Mean Spectrum of all observations');
     ax.plot (spectrum,'o-', alpha=0.3);
     ax.plot (spectrum / is_valid,'o-');
+    ax.set_ylabel ('Mean spectrum');
+    ax.set_xlabel ('Detector line (python-def)');
     files.write (fig,output+'_spectrum.png');
     
     # Figures of PSD with model
