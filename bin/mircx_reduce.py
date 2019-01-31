@@ -97,6 +97,10 @@ rts.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
                   choices=TrueFalse,
                   help="use GAIN to associate kappa [%(default)s]");
 
+rts.add_argument ("--save-all-freqs", dest="save_all_freqs",default='FALSE',
+                  choices=TrueFalse,
+                  help="save the entire FFTs in RTS file [%(default)s]");
+
 rts.add_argument ("--rm-preproc", dest="rm_preproc",default='FALSE',
                   choices=TrueFalse,
                   help="rm the PREPROC file after computing the RTS [%(default)s]");
@@ -475,7 +479,8 @@ if argopt.rts != 'FALSE':
                                          which='closest', required=1);
                 kappas.extend (tmp);
                 
-            mrx.compute_rts (gp, profiles, kappas, speccal, output=output);
+            mrx.compute_rts (gp, profiles, kappas, speccal, output=output,
+                             save_all_freqs=argopt.save_all_freqs);
 
             # If remove PREPROC
             if argopt.rm_preproc == 'TRUE':

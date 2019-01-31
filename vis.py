@@ -291,13 +291,16 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096, fitord
     plt.close ("all");
     return hdulist;
     
-def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2):
+def compute_rts (hdrs, profiles, kappas, speccal,
+                 output='output_rts', psmooth=2,
+                 save_all_freqs=False):
     '''
     Compute the RTS
     '''
     elog = log.trace ('compute_rts');
 
     # Check inputs
+    save_all_freqs = headers.clean_option (save_all_freqs);
     headers.check_input (hdrs,  required=1);
     headers.check_input (profiles, required=1, maximum=6);
     headers.check_input (kappas, required=1, maximum=6);
@@ -598,8 +601,13 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
         cf[:,y,1:] = cfc[:,1:nfq+1] - 1.j * cfc[:,nfq+1:];
     cf.shape = (nr,nf,ny,nfq+1);
 
-    log.info ('Free fringe');
-    del fringe;
+    # Free input fringes images
+    if (save_all_freqs == False):
+        log.info ('Free fringe');
+        del fringe;
+    else:
+        fringe_sum = fringe.sum (axis=3);
+        
 
     # DFT at fringe frequencies
     log.info ('Extract fringe frequency');
@@ -618,8 +626,10 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     cf_upsd  = np.abs(cf[:,:,:,0:int(nx/2)])**2;
     cf_upsd -= np.mean (cf_upsd[:,:,:,ibias],axis=-1,keepdims=True);
 
-    log.info ('Free cf');
-    del cf;
+    # Free DFT images
+    if (save_all_freqs == False):
+        log.info ('Free cf');
+        del cf;
 
     log.info ('Compute crude vis2 with various coherent');
         
@@ -720,63 +730,106 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     log.info ('Create file');
 
     # First HDU
-    hdu0 = pyfits.PrimaryHDU ([]);
-    hdu0.header = hdr;
-    hdu0.header['FILETYPE'] = 'RTS';
-    hdu0.header[HMP+'PREPROC'] = os.path.basename (hdrs[0]['ORIGNAME'])[-30:];
+    hdu = pyfits.PrimaryHDU ([]);
+    hdu.header = hdr;
+    hdu.header['FILETYPE'] = 'RTS';
+    hdu.header[HMP+'PREPROC'] = os.path.basename (hdrs[0]['ORIGNAME'])[-30:];
 
     # Set the input calibration file
     for pro in profiles:
         name = pro['FILETYPE'].split('_')[0]+'_PROFILE';
-        hdu0.header[HMP+name] = os.path.basename (pro['ORIGNAME'])[-30:];
+        hdu.header[HMP+name] = os.path.basename (pro['ORIGNAME'])[-30:];
 
     # Set the input calibration file
     for kap in kappas:
         name = kap['FILETYPE'].split('_')[0]+'_KAPPA';
-        hdu0.header[HMP+name] = os.path.basename (kap['ORIGNAME'])[-30:];
+        hdu.header[HMP+name] = os.path.basename (kap['ORIGNAME'])[-30:];
+
+    # Start a list
+    hdus = [hdu];
 
     # Set DFT of fringes, bias, photometry and lbd
-    hdu1 = pyfits.ImageHDU (base_dft.real.astype('float32'));
-    hdu1.header['EXTNAME'] = ('BASE_DFT_REAL','total flux in the fringe envelope');
-    hdu1.header['BUNIT'] = 'adu';
-    hdu1.header['SHAPE'] = '(nr,nf,ny,nb)';
+    hdu = pyfits.ImageHDU (base_dft.real.astype('float32'));
+    hdu.header['EXTNAME'] = ('BASE_DFT_REAL','total flux in the fringe envelope');
+    hdu.header['BUNIT'] = 'adu';
+    hdu.header['SHAPE'] = '(nr,nf,ny,nb)';
+    hdus.append (hdu);
     
-    hdu2 = pyfits.ImageHDU (base_dft.imag.astype('float32'));
-    hdu2.header['EXTNAME'] = ('BASE_DFT_IMAG','total flux in the fringe envelope');
-    hdu2.header['BUNIT'] = 'adu'
-    hdu2.header['SHAPE'] = '(nr,nf,ny,nb)';
+    hdu = pyfits.ImageHDU (base_dft.imag.astype('float32'));
+    hdu.header['EXTNAME'] = ('BASE_DFT_IMAG','total flux in the fringe envelope');
+    hdu.header['BUNIT'] = 'adu'
+    hdu.header['SHAPE'] = '(nr,nf,ny,nb)';
+    hdus.append (hdu);
     
-    hdu3 = pyfits.ImageHDU (bias_dft.real.astype('float32'));
-    hdu3.header['EXTNAME'] = ('BIAS_DFT_REAL','total flux in the fringe envelope');
-    hdu3.header['BUNIT'] = 'adu';
-    hdu3.header['SHAPE'] = '(nr,nf,ny,nbias)';
+    hdu = pyfits.ImageHDU (bias_dft.real.astype('float32'));
+    hdu.header['EXTNAME'] = ('BIAS_DFT_REAL','total flux in the fringe envelope');
+    hdu.header['BUNIT'] = 'adu';
+    hdu.header['SHAPE'] = '(nr,nf,ny,nbias)';
+    hdus.append (hdu);
     
-    hdu4 = pyfits.ImageHDU (bias_dft.imag.astype('float32'));
-    hdu4.header['EXTNAME'] = ('BIAS_DFT_IMAG','total flux in the fringe envelope');
-    hdu4.header['BUNIT'] = 'adu';
-    hdu4.header['SHAPE'] = '(nr,nf,ny,nbias)';
+    hdu = pyfits.ImageHDU (bias_dft.imag.astype('float32'));
+    hdu.header['EXTNAME'] = ('BIAS_DFT_IMAG','total flux in the fringe envelope');
+    hdu.header['BUNIT'] = 'adu';
+    hdu.header['SHAPE'] = '(nr,nf,ny,nbias)';
+    hdus.append (hdu);
     
-    hdu5 = pyfits.ImageHDU (np.transpose (photok0,axes=(1,2,3,0)).astype('float32'));
-    hdu5.header['EXTNAME'] = ('PHOTOMETRY','total flux in the fringe envelope');
-    hdu5.header['BUNIT'] = 'adu'
-    hdu5.header['SHAPE'] = '(nr,nf,ny,nt)';
+    hdu = pyfits.ImageHDU (np.transpose (photok0,axes=(1,2,3,0)).astype('float32'));
+    hdu.header['EXTNAME'] = ('PHOTOMETRY','total flux in the fringe envelope');
+    hdu.header['BUNIT'] = 'adu'
+    hdu.header['SHAPE'] = '(nr,nf,ny,nt)';
+    hdus.append (hdu);
     
-    hdu6 = pyfits.ImageHDU (lbd);
-    hdu6.header['EXTNAME'] = ('WAVELENGTH','effective wavelength');
-    hdu6.header['BUNIT'] = 'm';
-    hdu6.header['SHAPE'] = '(ny)';
+    hdu = pyfits.ImageHDU (lbd);
+    hdu.header['EXTNAME'] = ('WAVELENGTH','effective wavelength');
+    hdu.header['BUNIT'] = 'm';
+    hdu.header['SHAPE'] = '(ny)';
+    hdus.append (hdu);
 
-    hdu7 = pyfits.ImageHDU (np.transpose (kappa,axes=(1,2,3,0)));
-    hdu7.header['EXTNAME'] = ('KAPPA','ratio total_fringe/total_photo');
-    hdu7.header['SHAPE'] = '(nr,nf,ny,nt)';
+    hdu = pyfits.ImageHDU (np.transpose (kappa,axes=(1,2,3,0)));
+    hdu.header['EXTNAME'] = ('KAPPA','ratio total_fringe/total_photo');
+    hdu.header['SHAPE'] = '(nr,nf,ny,nt)';
+    hdus.append (hdu);
 
-    hdu8 = pyfits.ImageHDU (mjd);
-    hdu8.header['EXTNAME'] = ('MJD','time of each frame');
-    hdu8.header['BUNIT'] = 'day';
-    hdu8.header['SHAPE'] = '(nr,nf)';
+    hdu = pyfits.ImageHDU (mjd);
+    hdu.header['EXTNAME'] = ('MJD','time of each frame');
+    hdu.header['BUNIT'] = 'day';
+    hdu.header['SHAPE'] = '(nr,nf)';
+    hdus.append (hdu);
     
+    hdu = pyfits.ImageHDU (ifreqs);
+    hdu.header['EXTNAME'] = ('IFREQ','spatial frequencies of fringes');
+    hdu.header['BUNIT'] = 'pix';
+    hdu.header['SHAPE'] = '(nf)';
+    hdus.append (hdu);
+    
+    hdu = pyfits.ImageHDU (ibias);
+    hdu.header['EXTNAME'] = ('IBIAS','spatial frequencies for bias');
+    hdu.header['BUNIT'] = 'pix';
+    hdu.header['SHAPE'] = '(nf)';
+    hdus.append (hdu);
+
+    if (save_all_freqs):
+        log.info ("Save all frequencies for John's test");
+        hdu = pyfits.ImageHDU (cf.real.astype('float32'));
+        hdu.header['EXTNAME'] = ('ALL_DFT_REAL','total flux in the fringe envelope');
+        hdu.header['BUNIT'] = 'adu';
+        hdu.header['SHAPE'] = '(nr,nf,ny,nb)';
+        hdus.append (hdu);
+    
+        hdu = pyfits.ImageHDU (cf.imag.astype('float32'));
+        hdu.header['EXTNAME'] = ('ALL_DFT_IMAG','total flux in the fringe envelope');
+        hdu.header['BUNIT'] = 'adu'
+        hdu.header['SHAPE'] = '(nr,nf,ny,nb)';
+        hdus.append (hdu);
+
+        hdu = pyfits.ImageHDU (fringe_sum.astype('float32'));
+        hdu.header['EXTNAME'] = ('FRINGE_SUM','total flux in the fringe');
+        hdu.header['BUNIT'] = 'adu'
+        hdu.header['SHAPE'] = '(nr,nf,ny)';
+        hdus.append (hdu);
+
     # Write file
-    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2,hdu3,hdu4,hdu5,hdu6,hdu7,hdu8]);
+    hdulist = pyfits.HDUList (hdus);
     files.write (hdulist, output+'.fits');
                 
     plt.close("all");

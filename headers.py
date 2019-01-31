@@ -437,6 +437,13 @@ def assoc_flat (h, allh):
     log.info ('Find 1 FLAT (%s)'%os.path.basename(flat['ORIGNAME']));
     return [flat];
 
+def clean_option (opt):
+    '''
+    Check options
+    '''
+    if opt == 'FALSE': return False;
+    if opt == 'TRUE':  return True;
+
 def check_input (hdrs, required=1, maximum=100000):
     '''
     Check the input when provided as hdrs
