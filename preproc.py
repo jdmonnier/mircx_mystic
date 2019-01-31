@@ -108,7 +108,7 @@ def check_empty_window (cube, hdr):
     
     return empty;
 
-def compute_background (hdrs,output='output_bkg'):
+def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN'):
     '''
     Compute BACKGROUND_MEAN file from a sequence of
     BACKGROUND. The output file had the mean and rms over
@@ -168,7 +168,7 @@ def compute_background (hdrs,output='output_bkg'):
     hdu0.header = hdr;
 
     # Update header
-    hdu0.header['FILETYPE'] = 'BACKGROUND_MEAN';
+    hdu0.header['FILETYPE'] = filetype;
     hdu0.header['BUNIT'] = 'adu/pixel/frame';
     hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';
 
@@ -396,7 +396,7 @@ def estimate_windows (cmean, hdr, output='outout_window'):
 
     return pmap, fmap;
     
-def compute_beam_map (hdrs,bkg,flat,output='output_beam_map'):
+def compute_beam_map (hdrs,bkg,flat,output='output_beam_map',filetype='BEAM_MAP'):
     '''
     Compute BEAM_MAP product.
     '''
@@ -448,7 +448,7 @@ def compute_beam_map (hdrs,bkg,flat,output='output_beam_map'):
     # First HDU
     hdu0 = pyfits.PrimaryHDU (csum[None,None,:,:]);
     hdu0.header = hdr;
-    hdu0.header['FILETYPE'] = 'BEAM%i_MAP'%headers.get_beam (hdrs[0]);
+    hdu0.header['FILETYPE'] = filetype;
     hdu0.header['BUNIT'] = ('adu/pixel','sum over ramp and frame');
     hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';    
 
@@ -462,7 +462,7 @@ def compute_beam_map (hdrs,bkg,flat,output='output_beam_map'):
     plt.close("all");
     return hdulist;
     
-def compute_beam_profile (hdrs,output='output_beam_profile',filetype='PROFILE'):
+def compute_beam_profile (hdrs,output='output_beam_profile',filetype='BEAM_PROFILE'):
     '''
     Compute BEAM_PROFILE product, by simply summing the BEAM_MAP.
     The output product contains
@@ -495,7 +495,7 @@ def compute_beam_profile (hdrs,output='output_beam_profile',filetype='PROFILE'):
     # First HDU
     hdu0 = pyfits.PrimaryHDU (csum[None,None,:,:]);
     hdu0.header = hdr;
-    hdu0.header['FILETYPE'] = 'BEAM%i_'%headers.get_beam (hdrs[0])+filetype;
+    hdu0.header['FILETYPE'] = filetype;
     hdu0.header['BUNIT'] = ('adu/pixel','sum over ramp and frame');
     hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';
 
@@ -506,7 +506,7 @@ def compute_beam_profile (hdrs,output='output_beam_profile',filetype='PROFILE'):
     plt.close("all");
     return hdulist;
 
-def compute_preproc (hdrs,bkg,flat,bmaps,output='output_preproc'):
+def compute_preproc (hdrs,bkg,flat,bmaps,output='output_preproc',filetype='PREPROC'):
     '''
     Compute preproc file. The first HDU contains the
     fringe window. The second HDU contains the 6 photometries
@@ -641,7 +641,7 @@ def compute_preproc (hdrs,bkg,flat,bmaps,output='output_preproc'):
     hdu0 = pyfits.PrimaryHDU (fringe.astype('float32'));
     hdu0.header = hdr;
     hdu0.header['BUNIT'] = 'adu/pixel/frame';
-    hdu0.header['FILETYPE'] += '_PREPROC';
+    hdu0.header['FILETYPE'] = filetype;
     hdu0.header['SHAPE'] = '(nr,nf,ny,nx)';
     
     # Set files

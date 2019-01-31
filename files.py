@@ -40,16 +40,17 @@ def output (outputDir,hdr,suffix):
     if name[-5:] == '.fits':
         name = name[0:-5];
 
-    # If this is a beam, we add this beam in the suffix
-    beam = headers.get_beam (hdr);
-    if beam is not None:
-        beam = 'beam%i'%beam
-        suffix = beam + suffix;
-        if beam in name:
-            name = name.split (beam)[0][:-1];
+    # Clean as lower and continuous
+    suffix = suffix.lower().replace('_','');
 
     # Clean from stuff added already
-    for test in ['_vis','_rts','_preproc']:
+    for test in ['_datapreproc','_foregroundpreproc',
+                 '_datarts','_foregroundrts',
+                 '_beam1map','_beam2map','_beam3map','_beam4map','_beam5map','_beam6map',
+                 '_beam1mean','_beam2mean','_beam3mean','_beam4mean','_beam5mean','_beam6mean',
+                 '_beam1profile','_beam2profile','_beam3profile',
+                 '_beam4profile','_beam5profile','_beam6profile',
+                 '_vis','_rts','_preproc']:
         if len(name) < len(test): continue;
         if name[-len(test):] == test:
             name = name[:-len(test)];

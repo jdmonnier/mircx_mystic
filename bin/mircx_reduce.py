@@ -202,15 +202,18 @@ if argopt.preproc != 'FALSE':
     for i,gp in enumerate(gps):
         try:
             log.info ('Compute BACKGROUND_MEAN {0} over {1} '.format(i+1,len(gps)));
-            
+
+            filetype = 'BACKGROUND_MEAN';
             output = mrx.files.output (argopt.preproc_dir, gp[0], 'bkg');
+            
             if os.path.exists (output+'.fits') and overwrite is False:
                 log.info ('Product already exists');
                 continue;
                 
             log.setFile (output+'.log');
 
-            mrx.compute_background (gp[0:argopt.max_file], output=output);
+            mrx.compute_background (gp[0:argopt.max_file],
+                                    output=output, filetype=filetype);
             
         except Exception as exc:
             log.error ('Cannot compute BACKGROUND_MEAN: '+str(exc));
@@ -238,8 +241,10 @@ if argopt.preproc != 'FALSE':
     for i,gp in enumerate(gps):
         try:
             log.info ('Compute BEAM_MAP {0} over {1} '.format(i+1,len(gps)));
-
-            output = mrx.files.output (argopt.preproc_dir, gp[0], 'map');
+            
+            filetype = 'BEAM%i_MAP'%mrx.headers.get_beam (gp[0]);
+            output = mrx.files.output (argopt.preproc_dir, gp[0], filetype);
+            
             if os.path.exists (output+'.fits') and overwrite is False:
                 log.info ('Product already exists');
                 continue;
@@ -255,7 +260,8 @@ if argopt.preproc != 'FALSE':
             flat = mrx.headers.assoc_flat (gp[0], hdrs_static);
 
             # Compute the BEAM_MAP
-            mrx.compute_beam_map (gp[0:argopt.max_file], bkg, flat, output=output);
+            mrx.compute_beam_map (gp[0:argopt.max_file], bkg, flat,
+                                  output=output, filetype=filetype);
             
         except Exception as exc:
             log.error ('Cannot compute BEAM_MAP: '+str(exc));
@@ -284,7 +290,9 @@ if argopt.preproc != 'FALSE':
         try:
             log.info ('Compute BEAM_MEAN {0} over {1} '.format(i+1,len(gps)));
 
-            output = mrx.files.output (argopt.preproc_dir, gp[0], 'mean');
+            filetype = 'BEAM%i_MEAN'%mrx.headers.get_beam (gp[0]);
+            output = mrx.files.output (argopt.preproc_dir, gp[0], filetype);
+            
             if os.path.exists (output+'.fits') and overwrite is False:
                 log.info ('Product already exists');
                 continue;
@@ -292,7 +300,8 @@ if argopt.preproc != 'FALSE':
             log.setFile (output+'.log');
 
             # Compute the BEAM_MAP
-            mrx.compute_beam_profile (gp[0:argopt.max_file], output=output, filetype='MEAN');
+            mrx.compute_beam_profile (gp[0:argopt.max_file],
+                                      output=output, filetype=filetype);
             
         except Exception as exc:
             log.error ('Cannot compute BEAM_MEAN: '+str(exc));
@@ -318,7 +327,9 @@ if argopt.preproc != 'FALSE':
         try:
             log.info ('Compute BEAM_PROFILE {0} over {1} '.format(i+1,len(gps)));
 
-            output = mrx.files.output (argopt.preproc_dir, gp[0], 'profile');
+            filetype = 'BEAM%i_PROFILE'%mrx.headers.get_beam (gp[0]);
+            output = mrx.files.output (argopt.preproc_dir, gp[0], filetype);
+            
             if os.path.exists (output+'.fits') and overwrite is False:
                 log.info ('Product already exists');
                 continue;
@@ -326,7 +337,8 @@ if argopt.preproc != 'FALSE':
             log.setFile (output+'.log');
 
             # Compute the BEAM_PROFILE
-            mrx.compute_beam_profile (gp[0:argopt.max_file], output=output, filetype='PROFILE');
+            mrx.compute_beam_profile (gp[0:argopt.max_file],
+                                      output=output, filetype=filetype);
             
         except Exception as exc:
             log.error ('Cannot compute BEAM_PROFILE: '+str(exc));
@@ -343,6 +355,7 @@ if argopt.preproc != 'FALSE':
 
     # List inputs
     hdrs_calib = mrx.headers.loaddir (argopt.preproc_dir);
+    
 
     # Group all DATA
     keys = setup.detwin + setup.detmode + setup.insmode;
@@ -350,12 +363,16 @@ if argopt.preproc != 'FALSE':
                              delta=120, Delta=argopt.max_integration_time,
                              continuous=True);
 
+    # Also group the FOREGROUND
+
     # Compute 
     for i,gp in enumerate(gps):
         try:
             log.info ('Compute PREPROC {0} over {1} '.format(i+1,len(gps)));
+
+            filetype = 'DATA_PREPROC';
+            output = mrx.files.output (argopt.preproc_dir, gp[0], filetype);
             
-            output = mrx.files.output (argopt.preproc_dir, gp[0], 'preproc');
             if os.path.exists (output+'.fits') and overwrite is False:
                 log.info ('Product already exists');
                 continue;
@@ -380,7 +397,8 @@ if argopt.preproc != 'FALSE':
                 bmaps.extend (tmp);
 
             # Compute PREPROC
-            mrx.compute_preproc (gp[0:argopt.max_file], bkg, flat, bmaps, output=output);
+            mrx.compute_preproc (gp[0:argopt.max_file], bkg, flat, bmaps,
+                                 output=output, filetype=filetype);
             
         except Exception as exc:
             log.error ('Cannot compute PREPROC: '+str(exc));
@@ -409,14 +427,17 @@ if argopt.preproc != 'FALSE':
         try:
             log.info ('Compute SPEC_CAL {0} over {1} '.format(i+1,len(gps)));
             
-            output = mrx.files.output (argopt.preproc_dir, gp[0], 'speccal');
+            filetype = 'SPEC_CAL';
+            output = mrx.files.output (argopt.preproc_dir, gp[0], filetype);
+            
             if os.path.exists (output+'.fits') and overwrite is False:
                 log.info ('Product already exists');
                 continue;
 
             log.setFile (output+'.log');
             
-            mrx.compute_speccal (gp[0:argopt.max_file], output=output);
+            mrx.compute_speccal (gp[0:argopt.max_file],
+                                 output=output, filetype=filetype);
             
         except Exception as exc:
             log.error ('Cannot compute SPEC_CAL: '+str(exc));
@@ -446,8 +467,10 @@ if argopt.rts != 'FALSE':
     for i,gp in enumerate(gps):
         try:
             log.info ('Compute RTS {0} over {1} '.format(i+1,len(gps)));
+
+            filetype = 'DATA_RTS';
+            output = mrx.files.output (argopt.rts_dir, gp[0], filetype);
             
-            output = mrx.files.output (argopt.rts_dir, gp[0], 'rts');
             if os.path.exists (output+'.fits') and overwrite is False:
                 log.info ('Product already exists');
                 continue;
@@ -479,7 +502,8 @@ if argopt.rts != 'FALSE':
                                          which='closest', required=1);
                 kappas.extend (tmp);
                 
-            mrx.compute_rts (gp, profiles, kappas, speccal, output=output,
+            mrx.compute_rts (gp, profiles, kappas, speccal,
+                             output=output, filetype=filetype,
                              save_all_freqs=argopt.save_all_freqs);
 
             # If remove PREPROC
@@ -510,7 +534,7 @@ if argopt.oifits != 'FALSE':
 
     # Group all DATA
     keys = setup.detwin + setup.detmode + setup.insmode + setup.fringewin;
-    gps = mrx.headers.group (hdrs, 'RTS', delta=120,
+    gps = mrx.headers.group (hdrs, 'DATA_RTS', delta=120,
                              Delta=argopt.max_integration_time, keys=keys);
 
     # Compute 
@@ -518,13 +542,16 @@ if argopt.oifits != 'FALSE':
         try:
             log.info ('Compute OIFITS {0} over {1} '.format(i+1,len(gps)));
             
-            output = mrx.files.output (argopt.oifits_dir, gp[0], 'oifits');
+            filetype = 'OIFITS';
+            output = mrx.files.output (argopt.oifits_dir, gp[0], filetype);
+            
             if os.path.exists (output+'.fits') and overwrite is False:
                 log.info ('Product already exists');
                 continue;
 
             log.setFile (output+'.log');
-            mrx.compute_vis (gp, output=output, ncoher=argopt.ncoherent,
+            mrx.compute_vis (gp, output=output, filetype=filetype,
+                             ncoher=argopt.ncoherent,
                              nincoher=argopt.nincoherent,
                              ncs=argopt.ncs, nbs=argopt.nbs,
                              snr_threshold=argopt.snr_threshold,

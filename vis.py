@@ -54,7 +54,8 @@ def extract_maps (hdr, bmaps):
 
     return fringe_map, photo_map;
 
-def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096, fitorder=2):
+def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
+                     ncoher=3, nfreq=4096, fitorder=2):
     '''
     Compute the SPEC_CAL from list of PREPROC
     '''
@@ -263,7 +264,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096, fitord
     # First HDU
     hdu0 = pyfits.PrimaryHDU (lbdlaw);
     hdu0.header = hdr;
-    hdu0.header['FILETYPE'] = 'SPEC_CAL';
+    hdu0.header['FILETYPE'] = filetype;
     hdu0.header['BUNIT'] = 'm';
 
     # Save input files
@@ -292,7 +293,8 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096, fitord
     return hdulist;
     
 def compute_rts (hdrs, profiles, kappas, speccal,
-                 output='output_rts', psmooth=2,
+                 output='output_rts', filetype='RTS',
+                 psmooth=2,
                  save_all_freqs=False):
     '''
     Compute the RTS
@@ -732,7 +734,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     # First HDU
     hdu = pyfits.PrimaryHDU ([]);
     hdu.header = hdr;
-    hdu.header['FILETYPE'] = 'RTS';
+    hdu.header['FILETYPE'] = filetype;
     hdu.header[HMP+'PREPROC'] = os.path.basename (hdrs[0]['ORIGNAME'])[-30:];
 
     # Set the input calibration file
@@ -835,7 +837,8 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     plt.close("all");
     return hdulist;
 
-def compute_vis (hdrs, output='output_oifits', ncoher=3, nincoher=5,
+def compute_vis (hdrs, output='output_oifits', filetype='OIFITS',
+                 ncoher=3, nincoher=5,
                  snr_threshold=3.0, flux_threshold=20.0,
                  avgphot=True, ncs=2, nbs=2, gdAttenuation=True,
                  vis_reference='self'):
@@ -1258,7 +1261,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, nincoher=5,
     log.info ('Create file');
 
     # First HDU
-    hdulist[0].header['FILETYPE'] = 'OIFITS';
+    hdulist[0].header['FILETYPE'] = filetype;
     hdulist[0].header[HMP+'RTS'] = os.path.basename (hdrs[0]['ORIGNAME'])[-30:];
     
     # Write file
