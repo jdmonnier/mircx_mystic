@@ -363,14 +363,17 @@ if argopt.preproc != 'FALSE':
                              delta=120, Delta=argopt.max_integration_time,
                              continuous=True);
 
-    # Also group the FOREGROUND
+    # Also reduce the FOREGROUND
+    gps += mrx.headers.group (hdrs, 'FOREGROUND', keys=keys,
+                              delta=120, Delta=argopt.max_integration_time,
+                              continuous=True);
 
     # Compute 
     for i,gp in enumerate(gps):
         try:
             log.info ('Compute PREPROC {0} over {1} '.format(i+1,len(gps)));
 
-            filetype = 'DATA_PREPROC';
+            filetype = gp[0]['FILETYPE']+'_PREPROC';
             output = mrx.files.output (argopt.preproc_dir, gp[0], filetype);
             
             if os.path.exists (output+'.fits') and overwrite is False:
@@ -463,12 +466,16 @@ if argopt.rts != 'FALSE':
     gps = mrx.headers.group (hdrs, 'DATA_PREPROC', delta=120,
                              Delta=argopt.max_integration_time, keys=keys);
 
+    # Group all FOREGROUND
+    gps += mrx.headers.group (hdrs, 'FOREGROUND_PREPROC', delta=120,
+                              Delta=argopt.max_integration_time, keys=keys);
+
     # Compute 
     for i,gp in enumerate(gps):
         try:
             log.info ('Compute RTS {0} over {1} '.format(i+1,len(gps)));
 
-            filetype = 'DATA_RTS';
+            filetype = gp[0]['FILETYPE'].replace('_PREPROC','_RTS');
             output = mrx.files.output (argopt.rts_dir, gp[0], filetype);
             
             if os.path.exists (output+'.fits') and overwrite is False:
