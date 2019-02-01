@@ -150,6 +150,10 @@ oifits.add_argument ("--rm-rts", dest="rm_rts",default='FALSE',
 
 advanced = parser.add_argument_group ('advanced user arguments');
                                          
+advanced.add_argument ("--reduce-foreground", dest="reduce_foreground",default='FALSE',
+                     choices=TrueFalse,
+                     help="reduce the FOREGROUND as DATA [%(default)s]");
+
 advanced.add_argument ("--debug", dest="debug",default='FALSE',
                      choices=TrueFalse,
                      help="stop on error [%(default)s]");
@@ -364,9 +368,10 @@ if argopt.preproc != 'FALSE':
                              continuous=True);
 
     # Also reduce the FOREGROUND
-    gps += mrx.headers.group (hdrs, 'FOREGROUND', keys=keys,
-                              delta=120, Delta=argopt.max_integration_time,
-                              continuous=True);
+    if argopt.reduce_foreground == 'TRUE':
+        gps += mrx.headers.group (hdrs, 'FOREGROUND', keys=keys,
+                                  delta=120, Delta=argopt.max_integration_time,
+                                  continuous=True);
 
     # Compute 
     for i,gp in enumerate(gps):
@@ -467,8 +472,9 @@ if argopt.rts != 'FALSE':
                              Delta=argopt.max_integration_time, keys=keys);
 
     # Group all FOREGROUND
-    gps += mrx.headers.group (hdrs, 'FOREGROUND_PREPROC', delta=120,
-                              Delta=argopt.max_integration_time, keys=keys);
+    if argopt.reduce_foreground == 'TRUE':
+        gps += mrx.headers.group (hdrs, 'FOREGROUND_PREPROC', delta=120,
+                                  Delta=argopt.max_integration_time, keys=keys);
 
     # Compute 
     for i,gp in enumerate(gps):
