@@ -538,6 +538,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     cont_img   = np.mean (cont, axis=(0,1));
     fringe_img = np.mean (fringe, axis=(0,1));
     fringe_spectra = np.mean (fringe_img, axis=1);
+    fringe_sum = fringe.sum (axis=3);
 
     # Subtract continuum
     log.info ('Subtract dc');
@@ -606,10 +607,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     # Free input fringes images
     if (save_all_freqs == False):
         log.info ('Free fringe');
-        del fringe;
-    else:
-        fringe_sum = fringe.sum (axis=3);
-        
+        del fringe;        
 
     # DFT at fringe frequencies
     log.info ('Extract fringe frequency');
