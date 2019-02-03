@@ -372,6 +372,12 @@ if argopt.preproc != 'FALSE':
         gps += mrx.headers.group (hdrs, 'FOREGROUND', keys=keys,
                                   delta=120, Delta=argopt.max_integration_time,
                                   continuous=True);
+        
+    # Also reduce the BACKGROUND
+    if argopt.reduce_foreground == 'TRUE':
+        gps += mrx.headers.group (hdrs, 'BACKGROUND', keys=keys,
+                                  delta=120, Delta=argopt.max_integration_time,
+                                  continuous=True);
 
     # Compute 
     for i,gp in enumerate(gps):
@@ -466,16 +472,21 @@ if argopt.rts != 'FALSE':
     # List inputs
     hdrs = mrx.headers.loaddir (argopt.preproc_dir);
 
-    # Group all DATA
+    # Reduce DATA
     keys = setup.detwin + setup.detmode + setup.insmode + setup.fringewin;
     gps = mrx.headers.group (hdrs, 'DATA_PREPROC', delta=120,
                              Delta=argopt.max_integration_time, keys=keys);
 
-    # Group all FOREGROUND
+    # Reduce FOREGROUND
     if argopt.reduce_foreground == 'TRUE':
         gps += mrx.headers.group (hdrs, 'FOREGROUND_PREPROC', delta=120,
                                   Delta=argopt.max_integration_time, keys=keys);
 
+    # Reduce BACKGROUND
+    if argopt.reduce_foreground == 'TRUE':
+        gps += mrx.headers.group (hdrs, 'BACKGROUND_PREPROC', keys=keys,
+                                  delta=120, Delta=argopt.max_integration_time,
+                                  continuous=True);
     # Compute 
     for i,gp in enumerate(gps):
         try:

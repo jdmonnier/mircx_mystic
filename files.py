@@ -44,8 +44,8 @@ def output (outputDir,hdr,suffix):
     suffix = suffix.lower().replace('_','');
 
     # Clean from stuff added already
-    for test in ['_datapreproc','_foregroundpreproc',
-                 '_datarts','_foregroundrts',
+    for test in ['_datapreproc','_foregroundpreproc','_backgroundpreproc',
+                 '_datarts','_foregroundrts','_backgroundrts',
                  '_beam1map','_beam2map','_beam3map','_beam4map','_beam5map','_beam6map',
                  '_beam1mean','_beam2mean','_beam3mean','_beam4mean','_beam5mean','_beam6mean',
                  '_beam1profile','_beam2profile','_beam3profile',
