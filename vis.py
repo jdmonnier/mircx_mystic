@@ -533,6 +533,10 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     ax.legend (loc=2);
     files.write (fig,output+'_dccorr.png');
 
+    # Normalise the DC estimate to exactly
+    # match the fringe mean flux.
+    log.info ('FIXME: normalise the DC estimate with fringe mean');
+
     # Save integrated spectra and profile before
     # subtracting the continuum
     cont_img   = np.mean (cont, axis=(0,1));
