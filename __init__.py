@@ -14,6 +14,7 @@ from .preproc import compute_preproc
 
 # High levels routines to extract vis
 # from BEAMMAP and PREPROC data
+from .bbias import compute_bbias_coeff
 from .vis import compute_speccal
 from .vis import compute_rts
 from .vis import compute_vis

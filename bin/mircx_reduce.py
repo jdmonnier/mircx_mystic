@@ -154,6 +154,10 @@ advanced.add_argument ("--reduce-foreground", dest="reduce_foreground",default='
                      choices=TrueFalse,
                      help="reduce the FOREGROUND as DATA [%(default)s]");
 
+advanced.add_argument ("--bbias", dest="bbias",default='FALSE',
+                     choices=TrueFalseOverwrite,
+                     help="compute the BBIAS_COEFF product [%(default)s]");
+
 advanced.add_argument ("--debug", dest="debug",default='FALSE',
                      choices=TrueFalse,
                      help="stop on error [%(default)s]");
@@ -462,6 +466,8 @@ if argopt.preproc != 'FALSE':
     log.info ('Cleanup memory');
     del hdrs, gps;
 
+    
+
 #
 # Compute RTS
 #
@@ -546,6 +552,62 @@ if argopt.rts != 'FALSE':
     log.info ('Cleanup memory');
     del hdrs, gps;
     
+
+#
+# Compute BBIAS_COEFF
+#
+
+if argopt.bbias != 'FALSE':
+    overwrite = (argopt.bbias == 'OVERWRITE');
+
+    # List inputs
+    hdrs = mrx.headers.loaddir (argopt.rts_dir);
+
+    # Group all DATA_RTS
+    keys = setup.detwin + setup.detmode + setup.insmode + setup.fringewin;
+    gps = mrx.headers.group (hdrs, 'DATA_RTS', keys=keys,
+                             delta=1e20, Delta=1e20,
+                             continuous=False);
+    
+    # Compute 
+    for i,gp in enumerate(gps):
+        try:
+            log.info ('Compute BBIAS_COEFF {0} over {1} '.format(i+1,len(gps)));
+
+            filetype = 'BBIAS_COEFF';
+            output = mrx.files.output (argopt.rts_dir, gp[0], filetype);
+            
+            if os.path.exists (output+'.fits') and overwrite is False:
+                log.info ('Product already exists');
+                continue;
+
+            log.setFile (output+'.log');
+
+            # Associate BACKGROUND_RTS
+            keys = setup.detwin + setup.detmode + setup.insmode;
+            bkg = mrx.headers.assoc (gp[0], hdrs, 'BACKGROUND_RTS',
+                                     keys=keys, which='all', required=1);
+
+            # Associate BACKGROUND_RTS
+            keys = setup.detwin + setup.detmode + setup.insmode;
+            fg = mrx.headers.assoc (gp[0], hdrs, 'FOREGROUND_RTS',
+                                   keys=keys, which='all', required=1);
+
+            # Making the computation
+            log.info ('FIXME: make the computation');
+            mrx.compute_bbias_coeff (gp, bkg, fg, output=output,
+                                     filetype=filetype);
+
+        except Exception as exc:
+            log.error ('Cannot compute '+filetype+': '+str(exc));
+            if argopt.debug == 'TRUE': raise;
+        finally:
+            log.closeFile ();
+            
+    log.info ('Cleanup memory');
+    del hdrs, gps;
+
+            
 #
 # Compute OIFITS
 #
