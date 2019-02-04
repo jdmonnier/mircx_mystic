@@ -1123,7 +1123,7 @@ def compute_vis (hdrs, output='output_oifits', filetype='OIFITS',
     elif vis_reference == 'spec-diff':
         log.info ('Compute VIS by taking spectral-differential');
         c_cpx = c_cpx[:,:,1:,:] * np.conj(c_cpx[:,:,:-1,:]);
-        c_cpx = np.insert(c_cpx,np.size(c_cpx,2),0,axis=2);
+        c_cpx = np.insert(c_cpx,np.size(c_cpx,2),np.nan,axis=2);
         c_cpx = np.nanmean (c_cpx * base_flag, axis=1);
 
     else:
