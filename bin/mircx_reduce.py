@@ -636,7 +636,14 @@ if argopt.oifits != 'FALSE':
                 continue;
 
             log.setFile (output+'.log');
-            mrx.compute_vis (gp, output=output, filetype=filetype,
+
+            # Associate BBIAS_COEFF
+            keys = setup.detwin + setup.detmode + setup.insmode;
+            coeff = mrx.headers.assoc (gp[0], hdrs, 'BBIAS_COEFF',
+                                       keys=keys, which='best', required=0);
+            
+            mrx.compute_vis (gp, coeff, output=output,
+                             filetype=filetype,
                              ncoher=argopt.ncoherent,
                              nincoher=argopt.nincoherent,
                              ncs=argopt.ncs, nbs=argopt.nbs,

@@ -410,7 +410,7 @@ def assoc (h, allh, tag, keys=[], which='closest', required=0, quality=None):
     # Check required
     if len (out) < required:
         log.warning ('Cannot find %i %s (%i rejected for quality)'%(required,tag,l1-len(out)))
-    else:
+    elif required > 0:
         log.info ('Find %i %s (%s ...)'%(len(out),tag,out[0]['ORIGNAME']));
         
     return out

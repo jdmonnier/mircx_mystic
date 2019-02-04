@@ -844,7 +844,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     plt.close("all");
     return hdulist;
 
-def compute_vis (hdrs, output='output_oifits', filetype='OIFITS',
+def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
                  ncoher=3, nincoher=5,
                  snr_threshold=3.0, flux_threshold=20.0,
                  avgphot=True, ncs=2, nbs=2, gdAttenuation=True,
@@ -856,6 +856,7 @@ def compute_vis (hdrs, output='output_oifits', filetype='OIFITS',
 
     # Check inputs
     headers.check_input (hdrs, required=1);
+    headers.check_input (coeff, required=0, maximum=1);
 
     # Get data
     f = hdrs[0]['ORIGNAME'];
@@ -887,6 +888,19 @@ def compute_vis (hdrs, output='output_oifits', filetype='OIFITS',
     nr,nf,ny,nb = base_dft.shape;
     log.info ('Data size: '+str(base_dft.shape));
 
+    # Load BBIAS_COEFF
+    if coeff == []:
+        log.info ('No BBIAS_COEFF file');
+        bbias_coeff0 = np.zeros (ny);
+        bbias_coeff1 = np.zeros (ny);
+        bbias_coeff2 = np.zeros (ny);
+    else:
+        f = coeff[0]['ORIGNAME'];
+        log.info ('Load BBIAS_COEFF file %s'%f);
+        bbias_coeff0 = pyfits.getdata (f, 'C0');
+        bbias_coeff1 = pyfits.getdata (f, 'C1');
+        bbias_coeff2 = pyfits.getdata (f, 'C2');
+        
     # Check parameters consistency
     if ncs + ncoher + 2 > nf:
         raise ValueError ('ncs+ncoher+2 should be less than nf (nf=%i)'%nf);
@@ -1099,9 +1113,11 @@ def compute_vis (hdrs, output='output_oifits', filetype='OIFITS',
         bias_power = np.abs (bias_dft)**2;
         base_power = np.abs (base_dft)**2;
 
+    # Average over the frames in ramp
     base_power = np.nanmean (base_power*base_flag, axis=1);
     bias_power = np.nanmean (bias_power, axis=1);
 
+    # Average over the frames in ramp
     photo_power = photo[:,:,:,setup.base_beam ()];
     photo_power = 4 * photo_power[:,:,:,:,0] * photo_power[:,:,:,:,1] * attenuation**2;
     photo_power = np.nanmean (photo_power*base_flag, axis=1);
@@ -1146,6 +1162,23 @@ def compute_vis (hdrs, output='output_oifits', filetype='OIFITS',
         t_cpx = (base_dft*base_flag)[:,:,:,setup.triplet_base()];
         t_cpx = t_cpx[:,:,:,:,0] * t_cpx[:,:,:,:,1] * np.conj (t_cpx[:,:,:,:,2]);
 
+        # Debias with C0
+        log.info ('Debias with C0');
+        t_cpx -= bbias_coeff0[None,None,:,None];
+
+        # Debias with C1
+        log.info ('Debias with C1');
+        Ntotal = photo.sum (axis=-1,keepdims=True);
+        t_cpx -= bbias_coeff1[None,None,:,None] * Ntotal;
+    
+        # Debias with C2
+        log.info ('Debias with C2');
+        Ptotal  = np.abs (base_dft)**2;
+        Ptotal -= np.median (np.abs (bias_dft)**2, axis=-1, keepdims=True);
+        Ptotal = Ptotal[:,:,:,setup.triplet_base()].sum (axis=-1);
+        t_cpx -= bbias_coeff2[None,None,:,None] * Ptotal;
+    
+    # Normalisation, FIXME: take care of the shift
     t_norm = photo[:,:,:,setup.triplet_beam()];
     t_norm = t_norm[:,:,:,:,0] * t_norm[:,:,:,:,1] * t_norm[:,:,:,:,2];
 

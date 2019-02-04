@@ -43,6 +43,8 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, output='output_bbias', filetype='BBIAS
         
         # Load file
         log.info ('Load DATA_RTS file %i over %i (%s)'%(ih+1,len(hdrs),f));
+        # base_dft  = pyfits.getdata (f, 'BASE_DFT_IMAG').astype(float) * 1.j;
+        # base_dft += pyfits.getdata (f, 'BASE_DFT_REAL').astype(float);
         # ....
 
     # Loop on BACKGROUND_RTS files
@@ -52,6 +54,8 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, output='output_bbias', filetype='BBIAS
         
         # Load file
         log.info ('Load BACKGROUND_RTS file %i over %i (%s)'%(ih+1,len(bkgs),f));
+        base_dft  = pyfits.getdata (f, 'BASE_DFT_IMAG').astype(float) * 1.j;
+        base_dft += pyfits.getdata (f, 'BASE_DFT_REAL').astype(float);
         # ....
 
     # Loop on BACKGROUND_RTS files
@@ -61,17 +65,19 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, output='output_bbias', filetype='BBIAS
         
         # Load file
         log.info ('Load FOREGROUND_RTS file %i over %i (%s)'%(ih+1,len(fgs),f));
+        # base_dft  = pyfits.getdata (f, 'BASE_DFT_IMAG').astype(float) * 1.j;
+        # base_dft += pyfits.getdata (f, 'BASE_DFT_REAL').astype(float);
         # ....
         
     # Hardcod the size (ramps, frame-in-ramp, nchannel, nbaselines)
     # FIXME: read from data
-    nr,nf,ny,nb = 100,80,9,15;
+    nr,nf,ny,nb = base_dft.shape;
     
     # Outputs
     log.info ('FIXME: do the computation');
     C0 = np.zeros (ny);
-    C1 = np.ones (ny);
-    C2 = np.ones (ny);
+    C1 = np.zeros (ny);
+    C2 = np.zeros (ny);
 
     # Figures
     log.info ('Figures');
@@ -88,6 +94,7 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, output='output_bbias', filetype='BBIAS
     hdu0 = pyfits.PrimaryHDU ([]);
     hdu0.header = hdr;
     hdu0.header['FILETYPE'] = filetype;
+    hdu0.header[HMQ+'QUALITY'] = (1.0, 'quality of data');
 
     # Other HDU
     hdu1 = pyfits.ImageHDU (C0);
