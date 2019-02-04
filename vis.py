@@ -294,7 +294,7 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
     
 def compute_rts (hdrs, profiles, kappas, speccal,
                  output='output_rts', filetype='RTS',
-                 psmooth=2,
+                 psmooth=0,
                  save_all_freqs=False):
     '''
     Compute the RTS
@@ -493,8 +493,9 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     photok0 = photok.copy();
 
     # Smooth photometry
-    log.info ('Smooth photometry by sigma=%i frames'%psmooth);
-    photok = gaussian_filter (photok,(0,0,psmooth,0),mode='constant');
+    if psmooth > 0:
+        log.info ('Smooth photometry by sigma=%i frames'%psmooth);
+        photok = gaussian_filter (photok,(0,0,psmooth,0),mode='constant');
 
     # Warning because of saturation
     log.info ('Deal with saturation in the filtering');
@@ -533,10 +534,6 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     ax.legend (loc=2);
     files.write (fig,output+'_dccorr.png');
 
-    # Normalise the DC estimate to exactly
-    # match the fringe mean flux.
-    log.info ('FIXME: normalise the DC estimate with fringe mean');
-
     # Save integrated spectra and profile before
     # subtracting the continuum
     cont_img   = np.mean (cont, axis=(0,1));
@@ -544,10 +541,18 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     fringe_spectra = np.mean (fringe_img, axis=1);
     fringe_sum = fringe.sum (axis=3);
 
-    # Subtract continuum
-    log.info ('Subtract dc');
+    # Remove the DC predicted from xchan
+    log.info ('Subtract dc with profiles predicted from xchan');
     fringe -= cont;
-    cont = [];
+    del cont;
+
+    # Remove the residual DC with a mean profile
+    log.info ('Subtract residual dc with mean profile');
+    fringe_meanmap = fringe_map.mean (axis=0);
+    fringe_meanmap /= np.sum (fringe_meanmap, axis=-1, keepdims=True) + 1e-20;
+    dcres = fringe.sum (axis=-1, keepdims=True);
+    fringe -= dcres * fringe_meanmap;
+    del dcres, fringe_meanmap;
 
     # Check residual
     log.info ('Figure of DC residual');
@@ -556,7 +561,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     axes[0].plot (fringe_img[int(ny/2),:], label='fringe');
     axes[0].plot (cont_img[int(ny/2),:], label='cont');
     axes[0].legend();
-    axes[1].plot ((fringe_img-cont_img)[int(ny/2),:], label='res');
+    axes[1].plot (np.mean (fringe[int(ny/2),:],axis=(0,1)), label='res');
     axes[1].set_xlabel('x (spatial direction)');
     axes[1].legend();
     files.write (fig,output+'_dcres.png');
