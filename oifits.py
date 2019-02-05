@@ -36,7 +36,8 @@ def create (hdr,lbd,y0=None):
     hdulist = pyfits.HDUList ([hdu0]);
 
     # Create OI_WAVELENGTH table
-    dlbd = lbd * 0 + np.mean (np.diff(lbd));
+    log.info ('Create OI_WAVELENGTH table');
+    dlbd = np.abs (lbd * 0 + np.mean (np.diff(lbd)));
     tbhdu = pyfits.BinTableHDU.from_columns ( \
             [pyfits.Column (name='EFF_WAVE', format='1E', array=lbd, unit='m'), \
              pyfits.Column (name='EFF_BAND', format='1E', array=dlbd, unit='m')]);
@@ -47,8 +48,9 @@ def create (hdr,lbd,y0=None):
     hdulist.append(tbhdu);
 
     # Create OI_TARGET table
+    log.info ('Create OI_TARGET table');
     name = hdr['OBJECT'];
-    coord = SkyCoord(hdr['RA'],hdr['DEC'], unit=(units.hourangle, units.deg));
+    coord = SkyCoord (hdr['RA'],hdr['DEC'], unit=(units.hourangle, units.deg));
     ra0  = coord.ra.to('deg').value;
     dec0 = coord.dec.to('deg').value;
     parallax = hdr['PARALLAX'] * units.arcsec.to('deg');
@@ -80,45 +82,44 @@ def create (hdr,lbd,y0=None):
     hdulist.append(tbhdu);
 
     # Create OI_ARRAY table
+    log.info ('Create OI_ARRAY table');
     diameter = np.ones (6) * 1.0;
     staindex = range (1,7);
     telname = ['S1','S2','E1','E2','W1','W2'];
     staname = telname;
+    fov     = np.ones (6) * 0.320;
+    fovtype = ['FWHM','FWHM','FWHM','FWHM','FWHM','FWHM'];
 
-    # Check if staxyz in in header
-    staxyz = np.zeros ((6,3));
-    for i,c in enumerate('XYZ'):
-        for j,t in enumerate(telname):
-            name = 'HIERARCH CHARA '+t+'_BASELINE_'+c;
-            if name in hdr:
-                staxyz[j,i] = hdr[name];
-            else:
-                log.warning ('Missing keyword (replace by 0.0): '+name);
-    
+    # Get staxyz from header or default
+    telpos = setup.tel_xyz (hdr);
+    staxyz = np.array ([telpos[t] for t in telname]);
+
     tbhdu = pyfits.BinTableHDU.from_columns ([\
              pyfits.Column (name='TEL_NAME',  format='A16', array=telname), \
              pyfits.Column (name='STA_NAME',  format='A16', array=staname), \
              pyfits.Column (name='STA_INDEX', format='I', array=staindex), \
              pyfits.Column (name='DIAMETER', format='E', array=diameter, unit='m'), \
-             pyfits.Column (name='STAXYZ', format='3D', dim='(3)', array=staxyz, unit='m')]);
+             pyfits.Column (name='STAXYZ', format='3D', dim='(3)', array=staxyz, unit='m'), \
+             pyfits.Column (name='FOV', format='D', array=fov, unit='arc sec'), \
+             pyfits.Column (name='FOVTYPE', format='A6', array=fovtype)]);
     
     tbhdu.header['EXTNAME'] = 'OI_ARRAY';
     tbhdu.header['ARRNAME'] = 'CHARA';
     tbhdu.header['OI_REVN'] = 2;
     tbhdu.header['FRAME'] = 'GEOCENTRIC';
-    tbhdu.header['ARRAYX'] = 0.0;
-    tbhdu.header['ARRAYY'] = 0.0;
-    tbhdu.header['ARRAYZ'] = 0.0;
+    tbhdu.header['ARRAYX'] = (-2476998.047780,'[m]');
+    tbhdu.header['ARRAYY'] = (-4647390.089884,'[m]');
+    tbhdu.header['ARRAYZ'] = (3582240.612296,'[m]');
     
     hdulist.append(tbhdu);
     
     return hdulist;
 
 
-def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
+def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None):
     '''
     Compute the OI_VIS2 table from a sample of observations
-    u_power and l_power shall be (sample, lbd, base)
+    u_power, b_power, l_power shall be (sample, lbd, base)
     mjd shall be (sample)
     '''
 
@@ -133,31 +134,48 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
     old_np_setting = np.seterr (divide='ignore',invalid='ignore');
 
     # How many valid frame
-    valid = np.isfinite (u_power) * np.isfinite (l_power);
+    valid = np.isfinite (u_power) * np.isfinite (l_power) * np.isfinite (b_power);
     nvalid = np.nansum (1. * valid, axis=0);
 
     # Compute bootstrap sample
     boot = (np.random.random ((ns,20)) * ns).astype(int);
     boot[:,0] = range (ns);
 
+    # Compute mean bias over spatial frequencies
+    bm_power = np.mean (b_power, axis=-1, keepdims=True);
+    ub_power = u_power - bm_power;
+
     # Compute mean vis2
-    vis2 = np.nanmean (u_power[boot,:,:], axis=0) / np.nanmean (l_power[boot,:,:], axis=0);
+    vis2 = np.nanmean (ub_power[boot,:,:], axis=0) / np.nanmean (l_power[boot,:,:], axis=0);
     vis2err = np.nanstd (vis2, axis=0);
     vis2 = vis2[0,:,:];
-    
+
+    # Systematic due to bias spatial structure
+    vis2sys = np.std (np.nanmean (b_power, axis=0), axis=-1, keepdims=True) \
+            / np.nanmean (l_power, axis=0);
+
+    # Enlarge error with systematics. FIXME: this somewhat conservative
+    # as we estimate the bias with several frequencies.
+    log.info ('Enlarge statistical errors with systematics');
+    vis2err = np.sqrt (vis2err**2 + vis2sys**2);
+
     # Construct mjd[ns,ny,nb]
     mjd = mjd0[:,None,None] * np.ones (valid.shape);
     mjd[~valid] = np.nan;
     
     # Average MJD per baseline
-    int_time = np.nanmax (mjd, axis=(0,1)) - np.nanmin (mjd, axis=(0,1));
+    int_time = (np.nanmax (mjd, axis=(0,1)) - np.nanmin (mjd, axis=(0,1))) * 24 * 3600;
     mjd = np.nanmean (mjd, axis=(0,1));
 
+    # Baseline fully rejected should have a MJD anyway
+    mjd[~np.isfinite(mjd)] = hdr['MJD-OBS'];
+    
     # Create OI_VIS table
     target_id = np.ones (nb).astype(int);
     time = mjd * 0.0;
     staindex = setup.beam_index(hdr)[setup.base_beam()];
-    ucoord, vcoord = setup.base_uv (hdr);
+    # ucoord, vcoord = setup.base_uv (hdr);
+    ucoord, vcoord = setup.compute_base_uv (hdr, mjd=mjd);
     
     # Flag data
     flag = ~np.isfinite (vis2) + ~np.isfinite (vis2err);
@@ -185,9 +203,9 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
     # QC for VIS2
     for b,name in enumerate (setup.base_name ()):
         hdr[HMQ+'REJECTED'+name] = (1.0*(ns - nvalid[y0,b])/ns,'fraction of rejected');
-        val = rep_nan (np.nanmean (u_power[:,y0,b]));
+        val = rep_nan (np.nanmean (ub_power[:,y0,b]));
         hdr[HMQ+'UPOWER'+name+' MEAN'] = (val,'unbiased power at lbd0');
-        val = rep_nan (np.nanstd (u_power[:,y0,b]));
+        val = rep_nan (np.nanstd (ub_power[:,y0,b]));
         hdr[HMQ+'UPOWER'+name+' STD'] = (val,'unbiased power at lbd0');
         val = rep_nan (np.nanmean (l_power[:,y0,b]));
         hdr[HMQ+'LPOWER'+name+' MEAN'] = (val,'unbiased power at lbd0');
@@ -204,9 +222,9 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
         val = rep_nan (np.sqrt(ucoord[b]**2 + vcoord[b]**2));
         hdr[HMQ+'BASELENGTH'+name] = (val,'[m] uv coordinate');
         
+    log.info ('OI_VIS2 plots');
     
     # Correlation plot
-    log.info ('Correlation plots');
     fig,axes = plt.subplots (5,3, sharex=True);
     fig.subplots_adjust (wspace=0.3, hspace=0.1);
     fig.suptitle (headers.summary (hdr));
@@ -216,14 +234,15 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
     for b,ax in enumerate(axes.flatten()):
         
         datax = l_power[:,y0,b];
-        datay = u_power[:,y0,b];
+        datay = ub_power[:,y0,b];
     
         scalex = rep_nan (np.abs (np.nanmax (datax)), 1.);
         scaley = rep_nan (np.abs (np.nanmax (datay)), 1.);
+        scale  = rep_nan (scaley/scalex, 1.);
         ax.plot (datax/scalex, datay/scalex, '+', alpha=0.75, ms=4);
 
         ax.set_xlim (-0.1,1.1);
-        ax.set_ylim (-0.1*scaley/scalex,1.1*scaley/scalex);
+        ax.set_ylim (-0.1*scale,1.1*scale);
         plot.scale (ax, scalex);
         
         ax.plot ([0], [0], '+r', alpha=0.75, ms=4);
@@ -235,6 +254,31 @@ def add_vis2 (hdulist,mjd0,u_power,l_power,output='output',y0=None):
                   '--r', alpha=0.5);
 
     files.write (fig,output+'_norm_power.png');
+
+    # Summary plot
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.subplots_adjust (wspace=0.3, hspace=0.1);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+
+    x = np.arange (ny);
+    for b,ax in enumerate(axes.flatten()):
+        bars = ax.errorbar (x,vis2[:,b],yerr=vis2err[:,b],fmt='o-',ms=2)[2];
+        for bar in bars: bar.set_alpha(0.25);
+
+    files.write (fig,output+'_vis2.png');
+    
+    # Pseudo PSD
+    fig,ax = plt.subplots (2,2, sharey='row',sharex='col');
+    fig.suptitle (headers.summary (hdr));
+    ax[0,0].imshow (np.nanmean (u_power, axis=0),aspect='auto');
+    ax[0,1].imshow (np.nanmean (b_power, axis=0),aspect='auto');
+    ax[1,0].plot (np.nanmean (u_power, axis=0).T);
+    ax[1,1].plot (np.nanmean (b_power, axis=0).T);
+    ax[0,0].set_title ('Fringe frequencies');
+    ax[0,1].set_title ('Bias frequencies');
+    files.write (fig,output+'_psd.png');
 
     # Reset warning
     np.seterr (**old_np_setting);
@@ -268,33 +312,38 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
     vis = np.nanmean (c_cpx[boot,:,:], axis=0) / np.nanmean (c_norm[boot,:,:], axis=0);
     visAmp = np.abs (vis[0,:,:]);
     visAmperr = np.nanstd (np.abs (vis), axis=0);
-    visPhi = np.angle (vis[0,:,:], deg=True);
-    visPhierr = np.nanstd (np.angle (vis, deg=True), axis=0);
+    visPhi = np.angle (vis[0,:,:]);
+    visPhierr = np.nanstd (np.angle (vis), axis=0);
     
     # Construct mjd[ns,ny,nb]
     mjd = mjd0[:,None,None] * np.ones (valid.shape);
     mjd[~valid] = np.nan;
     
     # Average MJD per baseline
-    int_time = np.nanmax (mjd, axis=(0,1)) - np.nanmin (mjd, axis=(0,1));
+    int_time = (np.nanmax (mjd, axis=(0,1)) - np.nanmin (mjd, axis=(0,1))) * 24 * 3600;
     mjd = np.nanmean (mjd, axis=(0,1));
 
+    # Baseline fully rejected should have a MJD anyway
+    mjd[~np.isfinite(mjd)] = hdr['MJD-OBS'];
+    
     # Create OI_VIS table
     target_id = np.ones (nb).astype(int);
     time = mjd * 0.0;
     staindex = setup.beam_index(hdr)[setup.base_beam()];
-    ucoord, vcoord = setup.base_uv (hdr);
+    # ucoord, vcoord = setup.base_uv (hdr);
+    ucoord, vcoord = setup.compute_base_uv (hdr, mjd=mjd);
     
     # Flag data
     flag = ~np.isfinite (visPhi) + ~np.isfinite (visPhierr);
 
+    r2d = units.rad.to('deg');
     tbhdu = pyfits.BinTableHDU.from_columns ([\
              pyfits.Column (name='TARGET_ID', format='I', array=target_id), \
              pyfits.Column (name='TIME', format='D', array=time, unit='s'), \
              pyfits.Column (name='MJD', format='D', array=mjd,unit='day'), \
              pyfits.Column (name='INT_TIME', format='D', array=int_time, unit='s'), \
-             pyfits.Column (name='VISPHI', format='%iD'%ny, array=visPhi.T), \
-             pyfits.Column (name='VISPHIERR', format='%iD'%ny, array=visPhierr.T), \
+             pyfits.Column (name='VISPHI', format='%iD'%ny, array=visPhi.T*r2d,unit='deg'), \
+             pyfits.Column (name='VISPHIERR', format='%iD'%ny, array=visPhierr.T*r2d,unit='deg'), \
              pyfits.Column (name='VISAMP', format='%iD'%ny, array=visAmp.T), \
              pyfits.Column (name='VISAMPERR', format='%iD'%ny, array=visAmperr.T), \
              pyfits.Column (name='UCOORD', format='D', array=ucoord, unit='m'), \
@@ -310,6 +359,52 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
     tbhdu.header['DATE-OBS'] = hdr['DATE-OBS'];
     hdulist.append(tbhdu);
 
+    log.info ('OI_VIS plots');
+    
+    # Correlation plot
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.subplots_adjust (wspace=0.6, hspace=0.1);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+
+    for b,ax in enumerate(axes.flatten()):
+        data = c_cpx[:,y0,b];
+        scale = np.nanmax (np.abs (data));
+        
+        ax.plot (data.real/scale, data.imag/scale, '+', alpha=0.75, ms=4);
+                
+        ax.set_xlim (-1.05, +1.05);
+        ax.set_ylim (-1.05, +1.05);
+        plot.scale (ax, scale);
+        
+        ax.plot ([0], [0], '+r', alpha=0.75, ms=4);
+        ax.plot ([0,2.*np.cos(visPhi[y0,b])], \
+                 [0,2.*np.sin(visPhi[y0,b])], \
+                 '-r', alpha=0.5);
+        ax.plot ([0,2.*np.cos((visPhi+visPhierr)[y0,b])], \
+                 [0,2.*np.sin((visPhi+visPhierr)[y0,b])], \
+                 '--r', alpha=0.5);
+        ax.plot ([0,2.*np.cos((visPhi-visPhierr)[y0,b])], \
+                 [0,2.*np.sin((visPhi-visPhierr)[y0,b])], \
+                 '--r', alpha=0.5);
+
+    files.write (fig,output+'_rivis.png');
+
+    # Summary plot
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.subplots_adjust (wspace=0.3, hspace=0.1);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+
+    x = np.arange (ny);
+    for b,ax in enumerate(axes.flatten()):
+        bars = ax.errorbar (x,visPhi[:,b]*r2d,yerr=visPhierr[:,b]*r2d,fmt='o-',ms=2)[2];
+        for bar in bars: bar.set_alpha(0.25);
+
+    files.write (fig,output+'_visPhi.png');
+    
     # Reset warning
     np.seterr (**old_np_setting);
 
@@ -349,9 +444,12 @@ def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
     mjd[~valid] = np.nan;
     
     # Average MJD per baseline
-    int_time = np.nanmax (mjd, axis=(0,1)) - np.nanmin (mjd, axis=(0,1));
+    int_time = (np.nanmax (mjd, axis=(0,1)) - np.nanmin (mjd, axis=(0,1))) * 24 * 3600;
     mjd = np.nanmean (mjd, axis=(0,1));
 
+    # Baseline fully rejected should have a MJD anyway
+    mjd[~np.isfinite(mjd)] = hdr['MJD-OBS'];
+    
     # Create OI_FLUX table
     target_id = np.ones (nt).astype(int);
     time = mjd * 0.0;
@@ -428,29 +526,35 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     mjd[~valid] = np.nan;
     
     # Average MJD per baseline
-    int_time = np.nanmax (mjd, axis=(0,1)) - np.nanmin (mjd, axis=(0,1));
-    mjd = np.nanmean (mjd, axis=(0,1));
+    int_time = (np.nanmax (mjd, axis=(0,1)) - np.nanmin (mjd, axis=(0,1))) * 24 * 3600;
+    mjd  = np.nanmean (mjd, axis=(0,1));
+
+    # Baseline fully rejected should have a MJD anyway
+    mjd[~np.isfinite(mjd)] = hdr['MJD-OBS'];
     
     # Create OI_T3 table
     target_id = np.ones (nt).astype(int);
     time = mjd * 0.0;
     staindex = setup.beam_index (hdr)[setup.triplet_beam()];
-    ucoord, vcoord = setup.base_uv (hdr);
-    u1coord = ucoord[setup.triplet_base()[:,0]];
-    v1coord = vcoord[setup.triplet_base()[:,0]];
-    u2coord = ucoord[setup.triplet_base()[:,1]];
-    v2coord = vcoord[setup.triplet_base()[:,1]];
+    # ucoord, vcoord = setup.base_uv (hdr);
+    # u1coord = ucoord[setup.triplet_base()[:,0]];
+    # v1coord = vcoord[setup.triplet_base()[:,0]];
+    # u2coord = ucoord[setup.triplet_base()[:,1]];
+    # v2coord = vcoord[setup.triplet_base()[:,1]];
+    u1coord, v1coord = setup.compute_base_uv (hdr, mjd=mjd, baseid='base1');
+    u2coord, v2coord = setup.compute_base_uv (hdr, mjd=mjd, baseid='base2');
 
     # Flag data
     flag = ~np.isfinite (t3phi) + ~np.isfinite (t3phiErr);
-    
+
+    r2d = units.rad.to('deg');
     tbhdu = pyfits.BinTableHDU.from_columns ([\
              pyfits.Column (name='TARGET_ID', format='I', array=target_id), \
              pyfits.Column (name='TIME', format='D', array=time, unit='s'), \
              pyfits.Column (name='MJD', format='D', array=mjd,unit='day'), \
              pyfits.Column (name='INT_TIME', format='D', array=int_time, unit='s'), \
-             pyfits.Column (name='T3PHI', format='%iD'%ny, array=t3phi.T*180/np.pi, unit='deg'), \
-             pyfits.Column (name='T3PHIERR', format='%iD'%ny, array=t3phiErr.T*180/np.pi, unit='deg'), \
+             pyfits.Column (name='T3PHI', format='%iD'%ny, array=t3phi.T*r2d, unit='deg'), \
+             pyfits.Column (name='T3PHIERR', format='%iD'%ny, array=t3phiErr.T*r2d, unit='deg'), \
              pyfits.Column (name='T3AMP', format='%iD'%ny, array=t3amp.T), \
              pyfits.Column (name='T3AMPERR', format='%iD'%ny, array=t3ampErr.T), \
              pyfits.Column (name='U1COORD', format='D', array=u1coord, unit='m'), \
@@ -471,13 +575,14 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     # QC for T3
     for t,name in enumerate (setup.triplet_name()):
         hdr[HMQ+'REJECTED'+name] = (1.0*(ns - nvalid[y0,t])/ns,'fraction of rejected');
-        val = rep_nan (t3phi[y0,t])*180/np.pi;
+        val = rep_nan (t3phi[y0,t])*r2d;
         hdr[HMQ+'T3PHI'+name+' MEAN'] = (val,'[deg] tphi at lbd0');
-        val = rep_nan (t3phiErr[y0,t])*180/np.pi;
+        val = rep_nan (t3phiErr[y0,t])*r2d;
         hdr[HMQ+'T3PHI'+name+' ERR'] = (val,'[deg] visibility at lbd0');
     
+    log.info ('OI_T3 plots');
+    
     # Correlation plot
-    log.info ('Correlation plots');
     fig,axes = plt.subplots (5,4, sharex=True, sharey=True);
     fig.subplots_adjust (wspace=0.2, hspace=0.1);
     fig.suptitle (headers.summary (hdr));
@@ -507,12 +612,46 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
 
     files.write (fig,output+'_bispec.png');
 
+    # Summary plot
+    fig,axes = plt.subplots (5,4, sharex=True);
+    fig.subplots_adjust (wspace=0.3, hspace=0.1);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+
+    x = np.arange (ny);
+    for t,ax in enumerate(axes.flatten()):
+        bars = ax.errorbar (x,t3phi[:,t]*r2d,yerr=t3phiErr[:,t]*r2d,fmt='o-',ms=2)[2];
+        for bar in bars: bar.set_alpha(0.25);
+
+    files.write (fig,output+'_t3Phi.png');
+    
+
     # Reset warning
     np.seterr (**old_np_setting);
 
 
-def getdata (hdus,ext,names):
+def getdata (hdus,ext,names,flag=True):
     '''
+    Get the data of many OIFITS handler and return as an array
+    (actually a tupple of array since names is multiple entries).
+
+    If the option flag is True, the flagged data are replaced by nan.
     '''
-    return [np.array([h[ext].data[n] for h in hdus]) for n in names];
+    out = [];
+
+    # Read flag if needed
+    if flag:
+        ff = np.array ([h[ext].data['FLAG'] for h in hdus]);
+
+    # Loop on variables to be read
+    for n in names:
+        d = np.array ([h[ext].data[n] for h in hdus]);
+        if flag and d.shape == ff.shape: d[ff] = np.nan;
+        out.append (d);
+        
+    return out;
+
+    # Old code
+    # return [np.array([h[ext].data[n] for h in hdus]) for n in names];
 

@@ -221,6 +221,7 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
                           outputSetup='calibration_setup',
                           overwrite=True,
                           lbdMin=1.0, lbdMax=2.0,
+                          flagEdges=False,
                           keys=visparam):
     '''
     Cross-calibrate the OIFITS in hdrs. The choice of SCI and CAL, and the diameter
@@ -249,9 +250,13 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         log.info ('Load %s (%s)'%(f,calib['FILETYPE']));
         hdulist = pyfits.open (f);
 
+        if calib[HMP+'CALIB MODEL_NAME'] != 'UD_H':
+           log.warning ('MODEL_NAME is not supported');
+           continue;
+
         # Get diameter in [rad]
-        diam = calib[HMP+'CALIB DIAM'] * 4.84813681109536e-09;
-        diamErr = calib[HMP+'CALIB DIAMERR'] * 4.84813681109536e-09;
+        diam = calib[HMP+'CALIB PARAM1'] * 4.84813681109536e-09;
+        diamErr = calib[HMP+'CALIB PARAM2'] * 4.84813681109536e-09;
 
         # Compute the VIS2 TF
         log.info ('Compute vis2 TF');
@@ -272,12 +277,18 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         hdulist[0].header['FILETYPE'] = 'OIFITS_CAL_TF';
         hdutf.append (hdulist);
 
+    # Number of TF
+    ntf = len (hdutf);
+    
     # Loop on OIFITS_SCI to calibrate them
     hdusci, hdutfs = [], [];
     for sci in scis:
     
         log.info ('Load SCI %s'%(sci['ORIGNAME']));
         hdus = pyfits.open (sci['ORIGNAME']);
+
+        # Check
+        if ntf == 0: continue;
 
         # Define output name
         output = files.output (outputDir,sci,'viscal');
@@ -286,11 +297,18 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         hdutfsi = tf_time_weight (hdus, hdutf, deltaTf);
         hdulist = tf_divide (hdus, hdutfsi);
 
-        # Ignore wavelengths
+        # Flag wavelengths
         lbd = hdulist['OI_WAVELENGTH'].data['EFF_WAVE'] * 1e6;
         flag = (lbd < lbdMin) + (lbd > lbdMax);
         hdulist['OI_VIS2'].data['FLAG'] += flag[None,:];
+        hdulist['OI_VIS'].data['FLAG'] += flag[None,:];
         hdulist['OI_T3'].data['FLAG'] += flag[None,:];
+
+        # Flag edges
+        if flagEdges:
+            hdulist['OI_VIS2'].data['FLAG'][:,[0,-1]] += True;
+            hdulist['OI_VIS'].data['FLAG'][:,[0,-1]] += True;
+            hdulist['OI_T3'].data['FLAG'][:,[0,-1]] += True;
 
         # First HDU
         hdulist[0].header['FILETYPE'] = 'OIFITS_CALIBRATED';
@@ -300,10 +318,9 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         # Write file
         files.write (hdulist, output+'.fits');
     
-        # Append OIFITS_SCI and OIFITS_SCI_TF, to allow a plot
-        # of a trend over the night for this setup
-        hdusci.append (hdus);
+        # Append OIFITS_SCI OIFITS_SCI_TF for the trend
         hdutfs.append (hdutfsi);
+        hdusci.append (hdus);
         
         # VIS2
         fig,axes = plt.subplots ();
@@ -311,8 +328,10 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         x  = get_spfreq (hdulist,'OI_VIS2');
         y  = hdulist['OI_VIS2'].data['VIS2DATA'];
         dy = hdulist['OI_VIS2'].data['VIS2ERR'];
+        y[hdulist['OI_VIS2'].data['FLAG']] = np.nan;
         for b in range (15):
-            axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o',ms=1);
+            bars = axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o-',ms=2)[2];
+            for bar in bars: bar.set_alpha(0.15);
         axes.set_ylim (-0.1,1.2);
         axes.set_xlim (0);
         axes.set_xlabel ('sp. freq. (Mlbd)');
@@ -321,10 +340,26 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
          
         plt.close ("all");
         
+        # CP
+        fig,axes = plt.subplots ();
+        fig.suptitle (headers.summary (sci));
+        x  = np.max (get_spfreq (hdulist,'OI_T3'), axis=0);
+        y  = hdulist['OI_T3'].data['T3PHI'];
+        dy = hdulist['OI_T3'].data['T3PHIERR'];
+        y[hdulist['OI_T3'].data['FLAG']] = np.nan;
+        for b in range (20):
+            bars = axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o-',ms=2)[2];
+            for bar in bars: bar.set_alpha(0.15);
+        axes.set_xlim (0);
+        axes.set_xlabel ('max sp. freq. (M$\lambda$)');
+        axes.set_ylabel ('T3PHI (deg)');
+        files.write (fig,output+'_t3phi.png');
+        
+        plt.close ("all");
+    
     log.info ('Figures for the trends');
     
     # Check of amount of files to plot
-    ntf = len (hdutf);
     log.info ('Number of transfer function %i'%ntf);
     if ntf == 0:
         raise ValueError ('No calibrator for this setup');
@@ -343,6 +378,7 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
     xtf, ytf, dytf = oifits.getdata (hdutf,'OI_VIS2',names);
     xts, yts, dyts = oifits.getdata (hdutfs,'OI_VIS2',names);
     xsc, ysc, dysc = oifits.getdata (hdusci,'OI_VIS2',names);
+    
 
     # Get station name for labels (assume the same for all files,
     # and assume the OI_ARRAY is ordered starting with 1)

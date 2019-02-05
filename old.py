@@ -271,3 +271,32 @@ def tfs_time_weight (hdus, hdutf, delta):
             hdu[o[0]].data['FLAG'] += ~np.isfinite (tf);
             
     return hdutfs;
+
+
+def linux_to_mjd (hdr, default=0.0):
+    '''
+    Return the MJD-OBS as computed by Linux time
+    TIME_S + 1e-9 * TIME_US
+    '''
+    try:    
+        return Time (hdr['TIME_S']+hdr['TIME_US']*1e-9,format='unix').mjd;
+    except:
+        return default;
+    
+def utc_to_mjd (hdr, default=0.0):
+    '''
+    Return the MJD-OBS as computed by CHARA GPS time
+    DATE-OBS + UTC-OBS
+    '''
+    try:    
+        return Time (hdr['DATE-OBS'] + 'T'+ hdr['UTC-OBS'], format='isot', scale='utc').mjd;
+    except:
+        return default;
+
+
+'HIERARCH MIRC REF FRAME START'
+'HIERARCH MIRC REF FRAME END'
+'HIERARCH MIRC REF TIME_S START'
+'HIERARCH MIRC REF TIME_S END'
+'HIERARCH MIRC REF TIME_NS START'
+'HIERARCH MIRC REF TIME_NS END'

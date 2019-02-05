@@ -13,6 +13,8 @@ I confirm that the noise in increasing in the fringe window.
 This is almost invisible in the flux and err however.
 (2017Oct06/reduced_jb/*bkg_noise.png)
 
+=> probably there is flux in the first files
+
 * Cascade
 
 It would be easier if the PREPROC would be truly static windows…
@@ -22,24 +24,21 @@ It would be easier if the PREPROC would be truly static windows…
 Propagate the frame_numer and all counters
 Use a flat-field and bad pixel
 
-Compute preproc per RAW file, to better allow selection.
-
 The interference removal create correlation between the photometric flux.
-This is *not* good for normalisation power.
+This is *not* good for normalisation power. Maybe add backgroud-subtraction
+for each xchan ?
 
 Compute the QUALITY of beam based on SNR of the x-chan fit, not mean flux.
 Because integrating many frames should help.
 
 * RTS
 
-Or load various RTS into a single VIS.
-
 Photometry extraction:
 Think on the dimensions...
 
 Which frequency to retroject the DC residual ??
 
-Shall we retroproject the DC residual for
+Shall we retroject the DC residual for
 each wavelength independently ??
 
 How to deal with the kappa ? Wouldn't the DC projection be sufficient
@@ -54,13 +53,12 @@ Because the SNR on the edges is really small.
 Deal with coherent integration as time quantities
 Flatten the time ?
 
-Better MJD, better INT_TIME, better UCOORD,VCOORD
 
 * Speed-up
 
 - QC of dc is too long
 - Apply thresholding (force zeros) is too long
-- Add option to rereduce only part of the night
+- Add option to re-reduce only part of the night
 
 * VISCAL
 
@@ -68,7 +66,7 @@ Propagate uncertainties on transfer function
 and calibrated product with non-linear propagation
 (compute at + and - sigma).
 
-Add the beamorder in the setup for viscal... as a 
-reconfiguration is not catched yet.
+Skip part of the night, part of the spectral channels, part of the baselines.
+Or have a script to do so (FLAG=T), but this would be irreversible.
 
 

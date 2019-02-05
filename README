@@ -8,6 +8,10 @@ We use it to explore the performances of the detectors.
 python3 in anaconda3
 some packages (all from anaconda3)
 
+conda install matplotlib
+conda install astropy
+conda install -c astropy astroquery
+
 * Usage
 
 Connect on orthanc.

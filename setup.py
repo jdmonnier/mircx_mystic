@@ -1,7 +1,17 @@
 import numpy as np;
+import os;
 
-from .headers import HM, HMQ, HMP, HMW, rep_nan;
+import astropy;
+from astropy.coordinates import EarthLocation, Angle, SkyCoord, ICRS, ITRS;
+from astropy import units;
+from astropy.time import Time;
+
+from .headers import HM, HMQ, HMP, HMW, HC, rep_nan;
 from . import log;
+
+# Default value for the IERS server
+# astropy.utils.iers.conf.iers_auto_url = 'ftp://ftp.iers.org/products/eop/rapid/standard/finals2000A.data';
+# astropy.utils.iers.conf.iers_auto_url = 'http://maia.usno.navy.mil/ser7/finals2000A.all';
 
 # Definition of setups
 global detwin;
@@ -21,6 +31,13 @@ visparam = [HMP+'NCOHER'];
 
 global beamorder;
 beamorder = ['BEAMORD0','BEAMORD1','BEAMORD2','BEAMORD3','BEAMORD4','BEAMORD5'];
+
+global pop;
+pop = [HC+"S1_POP", HC+"S2_POP", HC+"E1_POP", HC+"E2_POP", HC+"W1_POP", HC+"W2_POP"];
+
+# Directory for static calibration
+global static;
+static = os.path.dirname (os.path.abspath(__file__))+'/static/';
 
 def nspec (hdr):
     '''
@@ -106,10 +123,10 @@ def fiber_pos(hdr):
     
     # Fiber position in new MIRC-X
     if ('P_ION' in hdr) == True :
-        pos = np.array([4,6,13,18,24,28])
+        pos = np.array([4,6,13,18,24,28]);
     # Fiber position in old MIRC
     else :
-        pos = np.array([9,3,1,21,14,18])
+        pos = np.array([9,3,1,21,14,18]);
         
     return pos
 
@@ -122,10 +139,13 @@ def beam_freq (hdr):
     '''
     # Scaling in pix/fringe at highest spatial frequency
     # and for wavelength defined as lbd0
+    # 2018-11-20, the scale is multiplied by 1./1.014 to match
+    # the absolute calibration by John on iotaPeg.
     
     # Check if it's old MIRC or new MIRC-X data
     if ('P_ION' in hdr) == True :
-        scale = 2.78999;
+        # scale = 2.78999;
+        scale = 2.75147; 
         # Fiber position in v-groove
         tmp = np.array([4,6,13,18,24,28]) * 1.0 - 1.0;
         # Fiber position in fringe/pix
@@ -259,10 +279,93 @@ def beam_index (hdr):
     # CHARA tel of the CHARA beams
     return cidx[cbeam];
 
+def tel_xyz (hdr):
+    '''
+    Return a dictionary with the telescope positions
+    read from header, ez, nz, uz in [m]. If keys are
+    not existing, they are created with default.
+    '''
+    
+    # Default from 2010Jul20 (JDM)
+    default = {};
+    default['S1'] = [0.0,0.0,0.0];
+    default['S2'] = [  -5.746854437,  33.580641636,    0.63671908];
+    default['E1'] = [ 125.333989819, 305.932632737,  -5.909735735];
+    default['W1'] = [-175.073332211, 216.320434499, -10.791111235];
+    default['W2'] = [ -69.093582796, 199.334733235,   0.467336023];
+    default['E2'] = [  70.396607118, 269.713272258,  -2.796743436];
+
+    for t in default.keys():
+        try:
+            x = hdr['HIERARCH CHARA '+t+'_BASELINE_X'];
+            y = hdr['HIERARCH CHARA '+t+'_BASELINE_Y'];
+            z = hdr['HIERARCH CHARA '+t+'_BASELINE_Z'];
+            default[t] = x,y,z;
+        except:
+            log.warning ('Cannot read XYZ of '+t+' (use default and set in header)');
+            x,y,z = default[t];
+            hdr['HIERARCH CHARA '+t+'_BASELINE_X'] = x;
+            hdr['HIERARCH CHARA '+t+'_BASELINE_Y'] = y;
+            hdr['HIERARCH CHARA '+t+'_BASELINE_Z'] = z;
+            
+    return default
+
+def chara_coord (hdr):
+    '''
+    Return the longitude and latitude of CHARA
+    '''
+    # lon = Angle (-118.059166, unit=units.deg);
+    # lat = Angle (34.231666, unit=units.deg);
+    
+    c = EarthLocation.of_site ('CHARA');
+    if hasattr (c, 'lon'):
+        return c.lon, c.lat;
+    else:
+        return c.longitude, c.latitude;
+
+def sky_coord (hdr):
+    '''
+    Return the SkyCoord of the target in header,
+    in the ICRS and at the mjd defined in header.
+    '''
+    
+    # Read coordinate
+    dec_icrs = Angle (hdr['DEC'], unit=units.deg);
+    ra_icrs  = Angle (hdr['RA'], unit=units.hourangle);
+
+    # Get distance from PARALLAX (sec)
+    plx = hdr.get ('PARALLAX', 0.0);
+    distance = 1./max(plx, 1e-6) * units.pc;
+
+    try:
+        # Read velocities
+        pm_ra    = hdr['PM_RA'] * units.rad/units.yr;
+        pm_dec   = hdr['PM_DEC'] * units.rad/units.yr;
+        rad_vel  = 0.0 * units.km / units.s;
+
+        # Build structure
+        coord_icrs = SkyCoord (dec=dec_icrs,ra=ra_icrs,distance=distance,
+                               radial_velocity=rad_vel,
+                               pm_ra_cosdec=pm_ra,pm_dec=pm_dec,
+                               obstime='J2000', frame="icrs");
+        
+        # Evolve at the time
+        meantime    = Time (hdr['MJD-OBS'], format='mjd');
+        coord_icrs = coord_icrs.apply_space_motion (new_obstime=meantime);
+    
+    except:
+        log.info ('Cannot propagate PM_RA and PM_DEC in coordinates');
+        
+        # Build structure
+        coord_icrs = SkyCoord (dec=dec_icrs,ra=ra_icrs,distance=distance, 
+                               obstime='J2000', frame="icrs");
+
+    return coord_icrs;
+    
 def base_uv (hdr):
     '''
     Return the uv coordinages of all 15 baselines
-    ucoord[nbase],vcoord[nbase]
+    ucoord[nbase],vcoord[nbase] read from HEADER
     '''
     
     # Get the telescope names of each base
@@ -284,5 +387,87 @@ def base_uv (hdr):
         if u[b] == v[b]:
             log.warning ('ucoord == vcoord base %i (%s-%s) in header.'%(b,t[0],t[1]));
 
-    # CHARA tel of the CHARA beams
-    return u,v;
+    return np.array ([u,v]);
+
+def compute_base_uv (hdr,mjd=None,baseid='base'):
+    '''
+    Return the uv coordinages of the CHARA baselines
+    ucoord[nbase],vcoord[nbase] at the time of observation.
+
+    baseid='base' returns the uv-plan of the 15 baselines
+    that is the UCOORD and VCOORD of OIFITS definition.
+    baseid='base1' returns return the uv-plan of the first
+    baselines of the 20 closures (U1COORD, U2COORD). Same
+    for 'base2'.
+
+    If given, the mdj parameter should match the number
+    of computed baseline (either 15 or 20).
+    '''
+    log.info ('Compute uv');
+
+    # Get the physical telescope position (read from header)
+    telpos = tel_xyz (hdr);
+    xyz = np.array ([telpos[t] for t in beam_tel (hdr)]);
+
+    # Physical baseline
+    if baseid == 'base':
+        baseline = np.array ([xyz[t1,:]-xyz[t2,:] for t1,t2 in base_beam()]);
+    elif baseid == 'base1':
+        baseline = np.array ([xyz[t1,:]-xyz[t2,:] for t1,t2,t3 in triplet_beam()]);
+    elif baseid == 'base2':
+        baseline = np.array ([xyz[t2,:]-xyz[t3,:] for t1,t2,t3 in triplet_beam()]);
+    else:
+        raise ValueError ('baseid is not valid');
+
+    # Default for time
+    if mjd is None: mjd = np.ones (baseline.shape[0]) * hdr['MJD-OBS'];
+
+    # Time as a valid Time object
+    obstime = Time (mjd, format='mjd');
+    
+    # CHARA site
+    lon, lat = chara_coord (hdr);
+
+    # Object position in ICRS, at the
+    # time of observation
+    coord_icrs = sky_coord (hdr);
+
+    # HA and DEC of object in ITRS
+    coord_itrs = coord_icrs.transform_to (ITRS(obstime=obstime));
+    dec = coord_itrs.spherical.lat;
+    ha  = lon - coord_itrs.spherical.lon;
+    
+    # Project baseline on sky
+    bx = -np.sin (lat.rad) * baseline[:,1] + np.cos (lat.rad) * baseline[:,2];
+    by = baseline[:,0]
+    bz = np.cos (lat.rad) * baseline[:,1] + np.sin (lat.rad) * baseline[:,2];
+
+    # Now convert bx,by,bz to (u,v,w)
+    u =  np.sin (ha.rad) * bx + np.cos (ha.rad) * by;
+    v = -np.sin (dec.rad) * np.cos (ha.rad) * bx + np.sin (dec.rad) * np.sin (ha.rad) * by + np.cos (dec.rad) * bz;
+
+    return np.array ([u,v]);
+    
+def crop_ids (hdr):
+    '''
+    Read the cropping parameter of the HDR
+    and return the ids to crop a full-frame
+    '''
+
+    croprows = hdr['CROPROWS'].split(',');
+    cropcols = hdr['CROPCOLS'];
+
+    # Spatial direction
+    if cropcols != '1-10':
+        raise ValueError ('CROPCOLS of 1-10 supported only');
+    else:
+        idx = np.arange (0, 320);
+
+    # Spectral direction
+    idy = np.array([], dtype=int);
+    for win in croprows:
+        a,b = win.split('-');
+        idy = np.append (idy, np.arange (int(a), int(b)+1));
+
+    return idy,idx;
+ 

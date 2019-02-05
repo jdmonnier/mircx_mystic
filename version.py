@@ -1,4 +1,5 @@
-import os;
+import os, psutil;
+import matplotlib as mpl;
 
 def get_from_dir (arg):
     '''
@@ -18,10 +19,14 @@ def info ():
     print ('Please report any bug to lebouquj@umich.edu');
     print ('Git branch: %s'%git_branch);
     print ('Git last commit: %s'%git_date);
+    print ('Matplotlib backend: '+mpl.get_backend());
+    print ('Total memory: %.1fG'%(psutil.virtual_memory().total/1e9));
     print ('---------------------------------------------');
 
-revision = '1.0.1';
+# Revision hardcoded name
+revision = '1.1.2';
 
+# some information from the GIT repository, if available
 git_date = get_from_dir ('git log -1 --format=%cd --date=format:%Y-%M-%dT%H:%M:%S');
 
 git_hash = get_from_dir ('git log -1 --format=%H');

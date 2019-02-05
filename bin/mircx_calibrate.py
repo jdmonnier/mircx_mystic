@@ -72,6 +72,10 @@ parser.add_argument ("--lbd-min", dest="lbd_min",default=1.5,
 parser.add_argument ("--lbd-max", dest="lbd_max",default=1.72,
                      type=float, help="maximum wavelenght in um [%(default)s]");
 
+parser.add_argument ("--flag-edges", dest="flag_edges",default='TRUE',
+                    choices=TrueFalse,
+                    help="flag first and last channels [%(default)s]");
+
 parser.add_argument ("--use-detmode", dest="use_detmode",default='TRUE',
                     choices=TrueFalse,
                     help="use detector parameters to associate calibrators [%(default)s]");
@@ -97,7 +101,7 @@ if argopt.oifitscalib != 'FALSE':
     hdrs = mrx.headers.loaddir (argopt.oifits_dir);
 
     # Define the calibratable setups
-    keys = setup.detwin + setup.insmode + \
+    keys = setup.detwin + setup.insmode + setup.pop + \
            setup.fringewin + setup.visparam + setup.beamorder;
            
     if argopt.use_detmode == 'TRUE': keys += setup.detmode;
@@ -108,6 +112,9 @@ if argopt.oifitscalib != 'FALSE':
 
     # Parse input catalog
     catalog = mrx.headers.parse_argopt_catalog (argopt.calibrators);
+    
+    # Update missing information by on-line query
+    # mrx.headers.update_diam_from_jmmc (catalog);
 
     # Compute 
     for i,gp in enumerate (gps):
@@ -124,6 +131,7 @@ if argopt.oifitscalib != 'FALSE':
                                       deltaTf=argopt.delta_tf,
                                       lbdMin=argopt.lbd_min,
                                       lbdMax=argopt.lbd_max,
+                                      flagEdges=argopt.flag_edges,
                                       keys=keys);
 
         except Exception as exc:
