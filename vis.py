@@ -1162,21 +1162,21 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
         t_cpx = (base_dft*base_flag)[:,:,:,setup.triplet_base()];
         t_cpx = t_cpx[:,:,:,:,0] * t_cpx[:,:,:,:,1] * np.conj (t_cpx[:,:,:,:,2]);
 
-        # Debias with C0
-        log.info ('Debias with C0');
-        t_cpx -= bbias_coeff0[None,None,:,None];
+    # Debias with C0
+    log.info ('Debias with C0');
+    t_cpx -= bbias_coeff0[None,None,:,None];
 
-        # Debias with C1
-        log.info ('Debias with C1');
-        Ntotal = photo.sum (axis=-1,keepdims=True);
-        t_cpx -= bbias_coeff1[None,None,:,None] * Ntotal;
+    # Debias with C1
+    log.info ('Debias with C1');
+    Ntotal = photo.sum (axis=-1,keepdims=True);
+    t_cpx -= bbias_coeff1[None,None,:,None] * Ntotal[:,:np.size(t_cpx,1),:,:];
     
-        # Debias with C2
-        log.info ('Debias with C2');
-        Ptotal  = np.abs (base_dft)**2;
-        Ptotal -= np.median (np.abs (bias_dft)**2, axis=-1, keepdims=True);
-        Ptotal = Ptotal[:,:,:,setup.triplet_base()].sum (axis=-1);
-        t_cpx -= bbias_coeff2[None,None,:,None] * Ptotal;
+    # Debias with C2
+    log.info ('Debias with C2');
+    Ptotal  = np.abs (base_dft)**2;
+    Ptotal -= np.median (np.abs (bias_dft)**2, axis=-1, keepdims=True);
+    Ptotal = Ptotal[:,:,:,setup.triplet_base()].sum (axis=-1);
+    t_cpx -= bbias_coeff2[None,None,:,None] * Ptotal[:,:np.size(t_cpx,1),:,:];
     
     # Normalisation, FIXME: take care of the shift
     t_norm = photo[:,:,:,setup.triplet_beam()];
