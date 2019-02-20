@@ -21,7 +21,7 @@ from scipy.ndimage.morphology import binary_dilation, binary_erosion;
 from . import log, files, headers, setup, oifits, signal, plot, qc;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
-from lmfit import minimize, Minimizer, Parameters;
+# from lmfit import minimize, Minimizer, Parameters;
 
 def bispectrum_minimizer (params,bs,photo,tri_sumv2):
     c0 = params['c0'];
