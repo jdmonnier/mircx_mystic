@@ -1170,13 +1170,15 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
     log.info ('Debias with C1');
     Ntotal = photo.sum (axis=-1,keepdims=True);
     t_cpx -= bbias_coeff1[None,None,:,None] * Ntotal[:,:np.size(t_cpx,1),:,:];
+    t_cpx = t_cpx[:,:-1,:,:]
     
     # Debias with C2
     log.info ('Debias with C2');
-    Ptotal  = np.abs (base_dft)**2;
-    Ptotal -= np.median (np.abs (bias_dft)**2, axis=-1, keepdims=True);
-    Ptotal = Ptotal[:,:,:,setup.triplet_base()].sum (axis=-1);
-    t_cpx -= bbias_coeff2[None,None,:,None] * Ptotal[:,:np.size(t_cpx,1),:,:];
+    xps = np.real (base_dft[:,ncs:,:,:] * np.conj(base_dft[:,0:-ncs,:,:]));
+    xps0 = np.real (bias_dft[:,ncs:,:,:] * np.conj(bias_dft[:,0:-ncs,:,:]));
+    xps -= np.mean (xps0, axis=-1, keepdims=True);
+    Ptotal = xps[:,:,:,setup.triplet_base()].sum (axis=-1);
+    t_cpx -= bbias_coeff2[None,None,:,None] * Ptotal[:,:,:,:];
     
     # Normalisation, FIXME: take care of the shift
     t_norm = photo[:,:,:,setup.triplet_beam()];

@@ -74,13 +74,12 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         b0=75;
         b1=99;
         tri_list = [];
-        for i in np.arange(6,b0-2,3):
-            for j in np.arange(4,b1+1,3):
+        for i in np.arange(6,b0-6,3):
+            for j in np.arange(i,b1-3,3):
                 k=i+j;
                 if k>=b0 and k<=b1:
                     tri_list.append([i,j,k]);
         tri_list = np.array(tri_list)
-        tri_list = tri_list - 1 #python indices
 
         # Smooth DATA,BG,FG
         log.info('NCOHERENT %s'%ncoher)
@@ -111,12 +110,12 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         # based on cross-spectrum with 1-shift
         log.info('Compute unbiased visibility of DATA');
         data_xps = np.real (all_dft_data[:,1:,:,:] * np.conj(all_dft_data[:,:-1,:,:]));
-        #data_xps = data_xps[:,new_frms,:,:]#*ncoher*ncoher
+        data_xps = data_xps[:,new_frms,:,:]#*ncoher*ncoher
         data_xps0 = np.mean(data_xps[:,:,:,b0:b1+1],axis=-1,keepdims=True);
         data_xps = data_xps - data_xps0;
 
         # Compute unbiased visibility of FG
-        #log.info('Compute unbiased visibility of FOREGROUND');
+        log.info('Compute unbiased visibility of FOREGROUND');
         fg_xps = np.real (all_dft_fg[:,1:,:,:] * np.conj(all_dft_fg[:,:-1,:,:]));
         fg_xps = fg_xps[:,new_frms,:,:]#*ncoher*ncoher
         fg_xps0 = np.mean(fg_xps[:,:,:,b0:b1+1],axis=-1,keepdims=True)
@@ -148,17 +147,9 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         data_tri_sumv2=np.moveaxis(np.array(data_tri_sumv2),0,-1);
         fg_tri_sumv2=np.moveaxis(np.array(fg_tri_sumv2),0,-1);
 
-        # Prune measured bispectrum
+        # Resample measured bispectrum
         data_bs = data_bs[:,new_frms,:,:]#*ncoher*ncoher*ncoher
         fg_bs = fg_bs[:,new_frms,:,:]#*ncoher*ncoher*ncoher
-
-        # Prepare data for minimizer
-        fg_photo = fg_photo[:,:,:,:];
-        fg_bs = fg_bs[:,:,:,:];
-        fg_tri_sumv2 = fg_tri_sumv2[:,:,:,:];
-        data_photo = data_photo[:,:,:,:];
-        data_bs = data_bs[:,:,:,:];
-        data_tri_sumv2 = data_tri_sumv2[:,:,:,:];
 
         # Average over Frms
         data_bs = np.mean(data_bs,axis=1)
@@ -170,8 +161,8 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
 
         # Average over ramps
         nramps=15
-        new_frms_data = np.arange(int(np.size(data_bs,0)/nramps))*nramps
-        new_frms_fg = np.arange(int(np.size(fg_bs,0)/nramps))*nramps
+        new_frms_data = np.arange(int(np.size(data_bs,0)/nramps))*nramps+1
+        new_frms_fg = np.arange(int(np.size(fg_bs,0)/nramps))*nramps+1
 
         data_bs = signal.uniform_filter_cpx (data_bs,(nramps,0,0),mode='constant');
         fg_bs = signal.uniform_filter_cpx (fg_bs,(nramps,0,0),mode='constant');
@@ -198,9 +189,6 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         bs = np.concatenate([fg_bs,data_bs]);
         photo = np.concatenate([fg_photo,data_photo]);
         tri_sumv2 = np.concatenate([fg_tri_sumv2,data_tri_sumv2]);
-        log.info(bs.shape)
-        log.info(photo.shape)
-        log.info(tri_sumv2.shape)
 
         # Fit to model - each spectral channel
         log.info ('Fit coefficients');
@@ -212,7 +200,7 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
             params.add('c0',value=1e6);
             params.add('c1',value=1e3);
             params.add('c2',value=10);
-            minner = Minimizer(bispectrum_minimizer,params,fcn_args=(bs.real[:,i],photo[:,i],tri_sumv2[:,i]),nan_policy='omit');
+            minner = Minimizer(bispectrum_minimizer,params,fcn_args=(bs[:,i].real,photo[:,i],tri_sumv2[:,i]),nan_policy='omit');
             result = minner.minimize();
             C0.append(result.params['c0'].value);
             C1.append(result.params['c1'].value);
