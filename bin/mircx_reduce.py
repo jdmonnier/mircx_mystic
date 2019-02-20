@@ -588,14 +588,13 @@ if argopt.bbias != 'FALSE':
             bkg = mrx.headers.assoc (gp[0], hdrs, 'BACKGROUND_RTS',
                                      keys=keys, which='all', required=1);
 
-            # Associate BACKGROUND_RTS
+            # Associate FOREGROUND_RTS
             keys = setup.detwin + setup.detmode + setup.insmode;
             fg = mrx.headers.assoc (gp[0], hdrs, 'FOREGROUND_RTS',
                                    keys=keys, which='all', required=1);
 
             # Making the computation
-            log.info ('FIXME: make the computation');
-            mrx.compute_bbias_coeff (gp, bkg, fg, output=output,
+            mrx.compute_bbias_coeff (gp, bkg, fg, argopt.ncoherent, output=output,
                                      filetype=filetype);
 
         except Exception as exc:
@@ -622,6 +621,17 @@ if argopt.oifits != 'FALSE':
     keys = setup.detwin + setup.detmode + setup.insmode + setup.fringewin;
     gps = mrx.headers.group (hdrs, 'DATA_RTS', delta=120,
                              Delta=argopt.max_integration_time, keys=keys);
+
+    # Include FOREGROUND
+    if argopt.reduce_foreground == 'TRUE':
+        gps += mrx.headers.group (hdrs, 'FOREGROUND_RTS', delta=120,
+                                  Delta=argopt.max_integration_time, keys=keys);
+
+    # Reduce BACKGROUND
+    if argopt.reduce_foreground == 'TRUE':
+        gps += mrx.headers.group (hdrs, 'BACKGROUND_RTS', keys=keys,
+                                  delta=120, Delta=argopt.max_integration_time,
+                                  continuous=True);
 
     # Compute 
     for i,gp in enumerate(gps):
