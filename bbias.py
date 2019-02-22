@@ -64,7 +64,7 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         # Load all_dft photometry
         photo  = pyfits.getdata (f1, 'PHOTOMETRY').astype(float);
 
-        ny = photo.shape[-1];
+        ny = all_dft.shape[-2];
         if bispectrum is None:
             bispectrum = np.empty((0,ny),int);
             photometry = np.empty((0,ny),int);
@@ -152,20 +152,22 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
     C2 = np.array(C2)
 
     # Figures
-    #log.info ('Figures');
-    #fig,ax = plt.subplots ();
-    #fig.suptitle ('Foreground Data');
-    #ax.plot(np.ndarray.flatten(fg_photo),np.ndarray.flatten(fg_bs),'.')
-    #ax.set_xlabel('Photometry')
-    #ax.set_ylabel('Bispectrum')
-    #files.write (fig,output+'_fgbispec.png');
+    bs_model = C0 + C1*photometry + C2*sum_vis2
+    resid = bispectrum - bs_model
+    log.info ('Figures');
+    fig,ax = plt.subplots ();
+    fig.suptitle ('Photometry');
+    ax.plot(np.ndarray.flatten(photometry),np.ndarray.flatten(resid),'.')
+    ax.set_xlabel('Photometry')
+    ax.set_ylabel('Residual')
+    files.write (fig,output+'_photoresid.png');
 
-    #fig,ax = plt.subplots ();
-    #fig.suptitle ('Foreground Data');
-    #ax.plot(np.ndarray.flatten(fg_tri_sumv2),np.ndarray.flatten(fg_bs),'.')
-    #ax.set_ylabel('FG BS')
-    #ax.set_xlabel('FG SumV2')
-    #files.write (fig,output+'_fgsumv2.png');
+    fig,ax = plt.subplots ();
+    fig.suptitle ('Vis2 Sum');
+    ax.plot(np.ndarray.flatten(sum_vis2),np.ndarray.flatten(resid),'.')
+    ax.set_ylabel('Residual')
+    ax.set_xlabel('SumV2')
+    files.write (fig,output+'_sumv2resid.png');
 
     # File
     log.info ('Create file');
