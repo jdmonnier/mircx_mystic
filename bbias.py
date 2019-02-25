@@ -64,7 +64,7 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         # Load all_dft photometry
         photo  = pyfits.getdata (f1, 'PHOTOMETRY').astype(float);
 
-        ny = all_dft.shape[-2];
+        nr,nf,ny,nb = all_dft.shape;
         if bispectrum is None:
             bispectrum = np.empty((0,ny),int);
             photometry = np.empty((0,ny),int);
@@ -131,6 +131,14 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         bs = np.mean(bs,axis=-1);
         photo = photo[:,:,0];
         tri_sumv2 = np.mean(tri_sumv2,axis=-1);
+
+        ## Take median over channels
+        bs = np.median(bs,axis=-1,keepdims=True)
+        photo = np.median(photo,-1,keepdims=True)
+        tri_sumv2 = np.median(tri_sumv2,axis=-1,keepdims=True)
+        bs = np.repeat(bs,ny,axis=-1)
+        photo = np.repeat(photo,ny,axis=-1)
+        tri_sumv2 = np.repeat(tri_sumv2,ny,axis=-1)
 
         bispectrum=np.append(bispectrum,bs,axis=0);
         photometry=np.append(photometry,photo,axis=0);

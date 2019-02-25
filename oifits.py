@@ -512,9 +512,12 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     boot[:,0] = range (ns);
 
     # Compute mean phase
-    t3phi = np.angle (np.nanmean (t_product[boot,:,:], axis=0));
-    t3phiErr = np.nanstd (t3phi, axis=0);
-    t3phi = t3phi[0,:,:];
+    t_boot = np.nanmean (t_product[boot,:,:], axis=0);
+    t3phi  = np.angle (t_boot[0,:,:]);
+
+    # Compute phase uncertainty by first centering
+    # the statistic on the mean phase
+    t3phiErr = np.nanstd (np.angle(t_boot * np.conj(t_boot[0,None,:,:])), axis=0);
 
     # Compute mean norm
     t3amp = np.abs (np.nanmean (t_product[boot,:,:], axis=0)) / np.nanmean (t_norm[boot,:,:], axis=0);
