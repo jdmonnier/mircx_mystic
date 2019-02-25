@@ -313,7 +313,7 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
     visAmp = np.abs (vis[0,:,:]);
     visAmperr = np.nanstd (np.abs (vis), axis=0);
     visPhi = np.angle (vis[0,:,:]);
-    visPhierr = np.nanstd (np.angle (vis), axis=0);
+    visPhierr = np.nanstd (np.angle(vis * np.conj(vis[0,None,:,:])), axis=0);
     
     # Construct mjd[ns,ny,nb]
     mjd = mjd0[:,None,None] * np.ones (valid.shape);
