@@ -20,7 +20,7 @@ from . import log, files, headers, setup, oifits, signal, plot;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
     
-def define_badpixels (bkg):
+def define_badpixels (bkg, threshold=5.):
     '''
     Define bad pixels from a cube, given an input background
     on which the bad-pixels are detected.
@@ -29,12 +29,30 @@ def define_badpixels (bkg):
     # Set log in input header
     hdr = bkg[0];
 
+    # Get bad pixels from rms of polyfit
+    bkg_noise = pyfits.getdata (bkg[0]['ORIGNAME'],0);
+    rms = [];
+    ny = bkg_noise.shape[2];
+    nx = bkg_noise.shape[3];
+    for i in np.arange(ny):
+        for j in np.arange(nx):
+            pixel = bkg_noise[0,:,i,j];
+            frame = np.arange(len(pixel));
+            p,res,_,_,_ = np.polyfit(frame,pixel,2,full=True);
+            rms.append(res);
+    rms = np.sqrt(np.array(rms)/len(rms));
+    rms_std = np.std(rms);
+    rms = rms.reshape(ny,nx);
+    thr = threshold;
+    bad_rms = rms > rms_std*thr;
+    log.info ('Found %i bad pixels in RMS'%np.sum (bad_rms));
+
     # Load background error
     bkg_noise = pyfits.getdata (bkg[0]['ORIGNAME'],0);
     bkg_noise = np.mean (bkg_noise, (0,1));
     delta = bkg_noise - medfilt (bkg_noise, (3,3));
     stat = sigma_clipped_stats (delta);
-    thr_mean = 40.0;
+    thr_mean = threshold;
     bad_mean = np.abs(delta-stat[0])/stat[2] > thr_mean;
 
     hdr[HMQ+'BADPIX MEAN_THRESHOLD'] = (thr_mean, 'threshold in sigma');
@@ -46,7 +64,7 @@ def define_badpixels (bkg):
     bkg_noise = np.mean (bkg_noise, (0,1));
     delta = bkg_noise - medfilt (bkg_noise, (3,3));
     stat = sigma_clipped_stats (delta);
-    thr_err = 20.0;
+    thr_err = threshold;
     bad_err = np.abs(delta-stat[0])/stat[2] > thr_err;
 
     hdr[HMQ+'BADPIX ERR_THRESHOLD'] = (thr_err, 'threshold in sigma');
@@ -58,7 +76,7 @@ def define_badpixels (bkg):
     bkg_noise = np.mean (bkg_noise, (0,1));
     delta = bkg_noise - medfilt (bkg_noise, (3,3));
     stat = sigma_clipped_stats (delta);
-    thr_noise = 15.0;
+    thr_noise = threshold;
     bad_noise = np.abs(delta-stat[0])/stat[2] > thr_noise;
 
     hdr[HMQ+'BADPIX NOISE_THRESHOLD'] = (thr_noise, 'threshold in sigma');
@@ -66,7 +84,7 @@ def define_badpixels (bkg):
     log.info ('Found %i bad pixels in NOISE'%np.sum (bad_noise));
 
     # Ignore the badpixels on the edges
-    bad = bad_mean + bad_err + bad_noise;
+    bad = bad_mean + bad_err + bad_noise + bad_rms;
     bad[0,:] = False; bad[-1,:] = False;
     bad[:,0] = False; bad[:,-1] = False;
 
@@ -396,7 +414,7 @@ def estimate_windows (cmean, hdr, output='outout_window'):
 
     return pmap, fmap;
     
-def compute_beam_map (hdrs,bkg,flat,output='output_beam_map',filetype='BEAM_MAP'):
+def compute_beam_map (hdrs,bkg,flat,threshold,output='output_beam_map',filetype='BEAM_MAP'):
     '''
     Compute BEAM_MAP product.
     '''
@@ -412,7 +430,7 @@ def compute_beam_map (hdrs,bkg,flat,output='output_beam_map',filetype='BEAM_MAP'
     bkg_cube = pyfits.getdata (bkg[0]['ORIGNAME'],0);
     
     # Compute bad pixels position from background
-    bad_img = define_badpixels (bkg);
+    bad_img = define_badpixels (bkg,threshold);
 
     # Load flat
     log.info ('Load %s'%flat[0]['ORIGNAME']);
@@ -506,7 +524,7 @@ def compute_beam_profile (hdrs,output='output_beam_profile',filetype='BEAM_PROFI
     plt.close("all");
     return hdulist;
 
-def compute_preproc (hdrs,bkg,flat,bmaps,output='output_preproc',filetype='PREPROC'):
+def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filetype='PREPROC'):
     '''
     Compute preproc file. The first HDU contains the
     fringe window. The second HDU contains the 6 photometries
@@ -526,7 +544,7 @@ def compute_preproc (hdrs,bkg,flat,bmaps,output='output_preproc',filetype='PREPR
     bkg_cube = pyfits.getdata (bkg[0]['ORIGNAME'],0);
     
     # Compute bad pixels position
-    bad_img = define_badpixels (bkg);
+    bad_img = define_badpixels (bkg,threshold);
 
     # Load flat
     log.info ('Load %s'%flat[0]['ORIGNAME']);

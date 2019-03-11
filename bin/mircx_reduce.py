@@ -78,6 +78,9 @@ preproc.add_argument ("--max-integration-time", dest="max_integration_time",defa
                      help='maximum integration into a single file, in (s).\n'
                      'This apply to PREPROC, RTS and OIFITS steps [%(default)s]');
 
+preproc.add_argument ("--threshold", dest="threshold",default=5.,type=float,
+                     help='threshold in sigma for identifying bad pixels [%(default)s]');
+
 rts = parser.add_argument_group ('(2) rts',
                   '\nCreates RTS intermediate products, which are the\n'
                   'coherent flux and the photometric flux in real time,\n'
@@ -185,6 +188,13 @@ argopt = parser.parse_args ();
 
 # Verbose
 elog = log.trace ('mircx_reduce');
+
+## force choices when --bbias=TRUE
+if argopt.bbias=='TRUE':
+    argopt.reduce_foreground='TRUE'
+    argopt.save_all_freqs='TRUE'
+    argopt.ncs=1
+    argopt.nbs=0
     
 if argopt.preproc != 'FALSE':
     overwrite = (argopt.preproc == 'OVERWRITE');
@@ -268,7 +278,7 @@ if argopt.preproc != 'FALSE':
             flat = mrx.headers.assoc_flat (gp[0], hdrs_static);
 
             # Compute the BEAM_MAP
-            mrx.compute_beam_map (gp[0:argopt.max_file], bkg, flat,
+            mrx.compute_beam_map (gp[0:argopt.max_file], bkg, flat,argopt.threshold,
                                   output=output, filetype=filetype);
             
         except Exception as exc:
@@ -415,7 +425,7 @@ if argopt.preproc != 'FALSE':
                 bmaps.extend (tmp);
 
             # Compute PREPROC
-            mrx.compute_preproc (gp[0:argopt.max_file], bkg, flat, bmaps,
+            mrx.compute_preproc (gp[0:argopt.max_file], bkg, flat, bmaps,argopt.threshold,
                                  output=output, filetype=filetype);
             
         except Exception as exc:

@@ -47,11 +47,8 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
     tri_list = np.array(tri_list);
 
     # Loop on DATA,FG,BG files
-    all = hdrs + bkgs + fgs;
-
-    # FIXME: read channel size from data (hardcoded right now)
+    all = hdrs + fgs + bkgs;
     bispectrum = None;
-
     for ih,h1 in enumerate(all):
         # filename
         f1 = h1['ORIGNAME'];
@@ -63,12 +60,6 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
 
         # Load all_dft photometry
         photo  = pyfits.getdata (f1, 'PHOTOMETRY').astype(float);
-
-        nr,nf,ny,nb = all_dft.shape;
-        if bispectrum is None:
-            bispectrum = np.empty((0,ny),int);
-            photometry = np.empty((0,ny),int);
-            sum_vis2 = np.empty((0,ny),int);
 
         # Smooth DATA,PHOTO
         log.info('NCOHERENT %s'%ncoher);
@@ -140,40 +131,74 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         photo = np.repeat(photo,ny,axis=-1)
         tri_sumv2 = np.repeat(tri_sumv2,ny,axis=-1)
 
+        if bispectrum is None:
+            bispectrum = np.empty((0,bs.shape[1]),int);
+            photometry = np.empty((0,photo.shape[1]),int);
+            sum_vis2 = np.empty((0,tri_sumv2.shape[1]),int);
+
         bispectrum=np.append(bispectrum,bs,axis=0);
         photometry=np.append(photometry,photo,axis=0);
         sum_vis2=np.append(sum_vis2,tri_sumv2,axis=0);
+
+        log.info ('Cleanup memory');
+        del bs, photo, tri_sumv2, all_dft, data_xps, data_xps0, t_cpx, sumv2;
 
     ## measure coefficients
     C0 = []
     C1 = []
     C2 = []
     for i in np.arange(np.size(bispectrum,-1)):
-        unit = photometry[:,i]*0. + 1.;
-        A = np.array([unit,photometry[:,i],sum_vis2[:,i]]);
-        result = np.linalg.lstsq(A.T,bispectrum[:,i].real);
-        C0.append(result[0][0])
-        C1.append(result[0][1])
-        C2.append(result[0][2])
+        p = photometry[:,i]
+        if np.isfinite(p).all()==False:
+            C0.append(np.nan)
+            C1.append(np.nan)
+            C2.append(np.nan)
+        else:
+            unit = photometry[:,i]*0. + 1.;
+            A = np.array([unit,photometry[:,i],sum_vis2[:,i]]);
+            result = np.linalg.lstsq(A.T,bispectrum[:,i].real);
+            C0.append(result[0][0])
+            C1.append(result[0][1])
+            C2.append(result[0][2])
     C0 = np.array(C0)
     C1 = np.array(C1)
     C2 = np.array(C2)
 
+    nx,ny = bispectrum.shape
     # Figures
-    bs_model = C0 + C1*photometry + C2*sum_vis2
-    resid = bispectrum - bs_model
     log.info ('Figures');
     fig,ax = plt.subplots ();
-    fig.suptitle ('Photometry');
-    ax.plot(np.ndarray.flatten(photometry),np.ndarray.flatten(resid),'.')
+    fig.suptitle ('Bispectrum - Photometry');
+    ax.plot(photometry[:,int(ny/2)],bispectrum[:,int(ny/2)].real,'.')
     ax.set_xlabel('Photometry')
-    ax.set_ylabel('Residual')
+    ax.set_ylabel('Bispectrum')
+    files.write (fig,output+'_bispec.png');
+
+    ## check for crazy vis2 measurement
+    log.info ('Figures');
+    fig,ax = plt.subplots ();
+    fig.suptitle ('Bispectrum - SumV2');
+    ax.plot(sum_vis2[:,int(ny/2)],bispectrum[:,int(ny/2)].real,'.')
+    ax.set_xlabel('SumV2')
+    ax.set_ylabel('Bispectrum')
+    files.write (fig,output+'_sumv2.png');
+
+    ## photometry resids
+    bs_model = C0 + C1*photometry + C2*sum_vis2
+    resid = (bispectrum.real - bs_model) / ((bispectrum.real+bs_model)/2) * 100 
+    log.info ('Figures');
+    fig,ax = plt.subplots ();
+    fig.suptitle ('Photometry Residuals');
+    ax.plot(photometry[:,int(ny/2)],resid[:,int(ny/2)],'.')
+    ax.set_xlabel('Photometry')
+    ax.set_ylabel('Residual (%)')
     files.write (fig,output+'_photoresid.png');
 
+    ## sumvis2 resids
     fig,ax = plt.subplots ();
-    fig.suptitle ('Vis2 Sum');
-    ax.plot(np.ndarray.flatten(sum_vis2),np.ndarray.flatten(resid),'.')
-    ax.set_ylabel('Residual')
+    fig.suptitle ('SumV2 Residuals');
+    ax.plot(sum_vis2[:,int(ny/2)],resid[:,int(ny/2)],'.')
+    ax.set_ylabel('Residual (%)')
     ax.set_xlabel('SumV2')
     files.write (fig,output+'_sumv2resid.png');
 
