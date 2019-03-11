@@ -644,7 +644,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
         
     # Compute crude normalisation for vis2
     bbeam = setup.base_beam ();
-    norm = np.mean (photok0[:,:,int(ny/2),:], axis=(0,1));
+    norm = np.mean (photok0[:,:,:,int(ny/2)], axis=(1,2));
     norm = 4. * norm[bbeam[:,0]] * norm[bbeam[:,1]];
     
     # Compute the coherent flux for various integration
