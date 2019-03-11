@@ -124,6 +124,7 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         tri_sumv2 = np.mean(tri_sumv2,axis=-1);
 
         ## Take median over channels
+        nx,ny = bs.shape
         bs = np.median(bs,axis=-1,keepdims=True)
         photo = np.median(photo,-1,keepdims=True)
         tri_sumv2 = np.median(tri_sumv2,axis=-1,keepdims=True)
