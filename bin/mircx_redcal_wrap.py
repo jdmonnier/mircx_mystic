@@ -5,6 +5,9 @@
 # Uploaded to mircx_pipeline: 2018 Nov 27
 # Summary of changes:
 #
+# 2019-03-14: added argument --bbias for consistency with
+# updates to mircx_reduce.py script
+#
 
 import argparse, subprocess, os, glob, sys
 from mircx_pipeline import lookup, summarise, mailfile, headers, log
@@ -67,13 +70,17 @@ parser.add_argument("--reduce",dest="reduce",default='TRUE',
 parser.add_argument("--calibrate",dest="calibrate",default='TRUE',
             choices=TrueFalseOverwrite,
             help="(re)do the calibration process [%(default)s]")
-parser.add_argument("--targ-list",dest="targ_list",default='mircx_targets.list',
-            type=str,
+parser.add_argument("--targ-list",dest="targ_list",default='mircx_targets.list',type=str,
             help="local database to query to identify SCI and CAL targets [%(default)s]")
 parser.add_argument("--email",dest="email",type=str,default='', 
             help='email address to send summary report file TO [%(default)s]')
 parser.add_argument("--sender",dest="sender",type=str,default='mircx.mystic@gmail.com',
             help='email address to send summary report file FROM [%(default)s]')
+parser.add_argument("--max-integration-time",dest="max_int_time",type=str,default='300',
+            help='maximum integration into a single file, in (s).\n'
+           'This applies to PREPROC, RTS and OIFITS steps [%(default)s]')
+parser.add_argument ("--bbias", dest="bbias",default='FALSE',choices=TrueFalseOverwrite,
+            help="compute the BBIAS_COEFF product [%(default)s]")
 
 #####################################################
 # Set-up script:
@@ -189,7 +196,7 @@ for d in argopt.dates.split(','):
             with cd(redDir):
                 com  = "mircx_reduce.py "+redOpt+" --raw-dir="+rawDir
                 ma = " --preproc-dir="+redDir+"/preproc --rts-dir="+redDir+"/rts"
-                nd = " --oifits-dir="+redDir+"/oifits"
+                nd = " --oifits-dir="+redDir+"/oifits --bbias="+str(argopt.bbias)
                 pipe = "> nohup_reduce.out"
                 with open('nohup_reduce.out', 'w') as output:
                     output.write('\n')
