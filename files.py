@@ -40,12 +40,21 @@ def output (outputDir,hdr,suffix):
     if name[-5:] == '.fits':
         name = name[0:-5];
 
+    # Clean as lower and continuous
+    suffix = suffix.lower().replace('_','');
+
     # Clean from stuff added already
-    for test in ['_vis','_rts','_preproc']:
+    for test in ['_datapreproc','_foregroundpreproc','_backgroundpreproc',
+                 '_datarts','_foregroundrts','_backgroundrts',
+                 '_beam1map','_beam2map','_beam3map','_beam4map','_beam5map','_beam6map',
+                 '_beam1mean','_beam2mean','_beam3mean','_beam4mean','_beam5mean','_beam6mean',
+                 '_beam1profile','_beam2profile','_beam3profile',
+                 '_beam4profile','_beam5profile','_beam6profile',
+                 '_vis','_rts','_preproc']:
         if len(name) < len(test): continue;
         if name[-len(test):] == test:
             name = name[:-len(test)];
-    
+
     # Return
     output = outputDir + '/' + name + '_' + suffix;
     return output;
@@ -105,7 +114,11 @@ def load_raw (hdrs, differentiate=True,
     from the data.
 
     If coaddRamp==True, the ramps inside each file are averaged together.
-    Thus the resulting cube is of shape [nfile, nframes, ny, ny]    
+    Thus the resulting cube is of shape [nfile, nframes, ny, ny]
+
+    Return (hdr, cubenp, cubemp) where hdr is the header of file, cubenp
+    is the data as shape [nfile*nramp, nframes, ny, ny], and cubemp is
+    the MJD of each frame as shape [nfile*nramp, nframes]
     '''
     log.info ('Load RAW files in mode coaddRamp=%s'%str(coaddRamp));
 
@@ -117,7 +130,10 @@ def load_raw (hdrs, differentiate=True,
     hdr[HMQ+'NSAT']  = (0,'total number of saturated frames');
     hdr['BZERO'] = 0;
 
-    cube = [];
+    cube  = [];
+    cubem = [];
+
+    # Loop on files
     for h in hdrs:
         fileinfo = h['ORIGNAME'] + ' (' +h['FILETYPE']+')';
         log.info ('Load %s'%fileinfo);
@@ -145,8 +161,17 @@ def load_raw (hdrs, differentiate=True,
         # Close file
         hdulist.close();
 
+        # Integrity check
+        if np.min (data) == np.max (data):
+            log.error ('All values are egual');
+            raise ValueError ('RAW data are corupted')
+
         # Dimensions
         nr,nf,ny,nx = data.shape;
+
+        #  MJD of each frame
+        mjd = headers.frame_mjd (h);
+        mjd = mjd.reshape (nr,nf);
 
         # flag for invalid frames
         flag = np.zeros ((nr,nf), dtype=bool);
@@ -186,6 +211,7 @@ def load_raw (hdrs, differentiate=True,
         # Take difference of consecutive frames
         if differentiate is True:
             data = np.diff (data,axis=1)[:,0:-1,:,:];
+            mjd = 0.5 * (mjd[:,0:-1] + mjd[:,1:])[:,0:-1];
         
         # Remove bias. Note that the median should be taken
         # with an odd number of samples, to be unbiased.
@@ -226,30 +252,38 @@ def load_raw (hdrs, differentiate=True,
         hdr['HIERARCH MIRC QC NRAMP'] += data.shape[0];
 
         # Co-add ramp if required
-        if coaddRamp is True:
+        if coaddRamp is 'mean':
             data = np.mean (data,axis=0,keepdims=True);
+            mjd  = np.mean (mjd, axis=0,keepdims=True);
+        elif coaddRamp is 'sum':
+            data = np.sum (data,axis=0,keepdims=True);
+            mjd  = np.sum (mjd, axis=0,keepdims=True);
 
         # Append the data in the final cube
-        cube.append (data);
+        cube.append  (data);
+        cubem.append (mjd);
 
     # Allocate memory
     log.info ('Allocate memory');
     shape = cube[0].shape;
     nramp = sum ([c.shape[0] for c in cube]);
     cubenp = np.zeros ((nramp,shape[1],shape[2],shape[3]),dtype='float32');
+    cubemp = np.zeros ((nramp,shape[1]));
 
     # Set data in cube, and free initial memory in its way
     log.info ('Set data in cube');
     ramp = 0;
     for c in range (len(cube)):
         cubenp[ramp:ramp+cube[c].shape[0],:,:,:] = cube[c];
+        cubemp[ramp:ramp+cube[c].shape[0],:]     = cubem[c];
         ramp += cube[c].shape[0];
-        cube[c] = None;
+        cube[c]  = None;
+        cubem[c] = None;
 
     # Apply flat
     if flat is not None:
         log.info ('Apply flat');
-        data /= flat[None,None,:,:];
+        cubenp /= flat[None,None,:,:];
     else:
         log.info ('No flat applied');
 
@@ -284,4 +318,4 @@ def load_raw (hdrs, differentiate=True,
     log.check (fsat,'Fraction of saturated frames = %.3f'%fsat);
     hdr[HMQ+'FSAT']  = (fsat,'fraction of saturated frames');
 
-    return hdr,cubenp;
+    return hdr,cubenp,cubemp;

@@ -25,7 +25,7 @@ def getval (hdrs, key, default=np.nan):
     '''
     Return a numpy array with the values in header
     '''
-    return np.array ([h[key] if key in h else default for h in hdrs]);
+    return np.array ([h.get(key,default) for h in hdrs]);
 
 def summary (hdr):
     '''
@@ -36,7 +36,7 @@ def summary (hdr):
                                  hdr.get('MJD-OBS',0.0),hdr.get('OBJECT','unknown'));
 
     if 'HIERARCH MIRC PRO NCOHER' in hdr:
-        value += ' NCOHER=%.2f'%(hdr.get('HIERARCH MIRC PRO NCOHER',0.0));
+        value += ' NCOHER=%i'%(hdr.get('HIERARCH MIRC PRO NCOHER',0));
 
     return value;
 
@@ -46,6 +46,76 @@ def setup (hdr, params):
     '''
     value = ' / '.join([str(hdr.get(p,'--')) for p in params]);
     return value;
+
+def get_beam (hdr):
+    '''
+    Return the i of BEAMi
+    '''
+    n = hdr if type(hdr) is str else hdr['FILETYPE'];
+    for i in range(1,7):
+        if 'beam%i'%i in n: return i;
+        if 'BEAM%i'%i in n: return i;
+    return None;
+
+def clean_date_obs (hdr):
+    '''
+    Clean DATE-OBS keyword to always match
+    ISO format YYYY-MM-DD
+    '''
+    if 'DATE-OBS' not in hdr:
+        return;
+    
+    if hdr['DATE-OBS'][4] == '/':
+        # Reformat DATE-OBS YYYY/MM/DD -> YYYY-MM-DD
+        hdr['DATE-OBS'] = hdr['DATE-OBS'][0:4] + '-' + \
+          hdr['DATE-OBS'][5:7] + '-' + \
+          hdr['DATE-OBS'][8:10];
+    elif hdr['DATE-OBS'][2] == '/':
+        # Reformat DATE-OBS MM/DD/YYYY -> YYYY-MM-DD
+        hdr['DATE-OBS'] = hdr['DATE-OBS'][6:10] + '-' + \
+          hdr['DATE-OBS'][0:2] + '-' + \
+          hdr['DATE-OBS'][3:5];
+
+def get_mjd (hdr, origin=['linux','gps','mjd'], check=2.0):
+    '''
+    Return the MJD-OBS as computed either by Linux time
+    TIME_S + 1e-9 * TIME_US  (note than TIME_US is actually
+    nanosec) or by GPS time DATE-OBS + UTC-OBS, or by an
+    existing keyword 'MJD-OBS'.
+    '''
+
+    # Check input
+    if type(origin) is not list: origin = [origin];
+        
+    # Read header silently
+    try:    
+        mjdu = Time (hdr['DATE-OBS'] + 'T'+ hdr['UTC-OBS'], format='isot', scale='utc').mjd;
+    except:
+        mjdu = 0.0;
+    try:    
+        mjdl = Time (hdr['TIME_S']+hdr['TIME_US']*1e-9,format='unix').mjd;
+    except:
+        mjdl = 0.0;
+    try:    
+        mjd  = hdr['MJD-OBS'];
+    except:
+        mjd  = 0.0;
+
+    # Check the difference in [s]
+    delta = np.abs (mjdu-mjdl) * 24 * 3600;
+    if (delta > check):
+        log.warning ('UTC-OBS and TIME are different by %.1f s!!'%delta);
+
+    # Return the requested one
+    for o in origin:
+        if o == 'linux' and mjdl != 0.0:
+            return mjdl;
+        if o == 'gps' and mjdu != 0.0:
+            return mjdu;
+        if o == 'mjd' and mjd != 0.0:
+            return mjd;
+    
+    return 0.0;
     
 def loaddir (dirs, uselog=True):
     '''
@@ -88,18 +158,21 @@ def loaddir (dirs, uselog=True):
                 with open (fpkl) as file:
                     hlog = [pyfits.Header.fromstring (l) for l in file];
             except:
-                log.info ('Failed to load...');
+                log.info ('Failed to load log (continue anyway)');
 
         # Load header
         hdrs_here = load (files, hlog=hlog);
                 
         # Dump log
         if uselog:
-            log.info ('Write header log %s'%fpkl);
-            if os.path.isfile (fpkl): os.remove (fpkl);
-            # pickle.dump (hdrs_here, open(fpkl, 'wb'), -1);
-            with open (fpkl,'w') as file:
-                for h in hdrs_here: file.write (h.tostring()); file.write('\n');
+            try:
+                log.info ('Write header log %s'%fpkl);
+                if os.path.isfile (fpkl): os.remove (fpkl);
+                # pickle.dump (hdrs_here, open(fpkl, 'wb'), -1);
+                with open (fpkl,'w') as file:
+                    for h in hdrs_here: file.write (h.tostring()); file.write('\n');
+            except:
+                log.info ('Failed to write log (continue anyway)');
         
         # Append headers
         hdrs.extend (hdrs_here);
@@ -133,9 +206,9 @@ def load (files, hlog=[]):
                 # Look for it
                 hdr = hlog[filesin.index (os.path.split (f)[1])];
                 # Check if not modified since last loaded
-                tmod  = Time(os.path.getmtime(f),format='unix',scale='utc').mjd;
+                tmod  = Time (os.path.getmtime(f),format='unix',scale='utc').mjd;
                 if (tmod > hdr['MJD-LOAD']): raise;
-                log.info('Recover header %i over %i (%s)'%(fn+1,len(files),f));
+                log.info ('Recover header %i over %i (%s)'%(fn+1,len(files),f));
             # Read header from file
             except:
                 # Read compressed file
@@ -149,6 +222,11 @@ def load (files, hlog=[]):
             # Add file name
             hdr['ORIGNAME'] = f;
 
+            # Test if FRAME_RATE is in header
+            if 'HIERARCH MIRC FRAME_RATE' not in hdr and 'EXPOSURE' in hdr:
+                log.warning ('Assume FRAME_RATE is 1/EXPOSURE');
+                hdr['HIERARCH MIRC FRAME_RATE'] = 1e3/hdr['EXPOSURE'];
+
             # Check change of card
             if 'ENDFR' in hdr:
                 log.warning ('Old data with ENDFR');
@@ -159,28 +237,14 @@ def load (files, hlog=[]):
                 log.warning ('Old data with no NBIN (set to one)');
                 hdr['NBIN'] = 1;
 
-            if 'MJD-OBS' not in hdr:
-                if hdr['DATE-OBS'][4] == '/':
-                    # Reformat DATE-OBS YYYY/MM/DD -> YYYY-MM-DD
-                    hdr['DATE-OBS'] = hdr['DATE-OBS'][0:4] + '-' + \
-                     hdr['DATE-OBS'][5:7] + '-' + \
-                     hdr['DATE-OBS'][8:10];
-                elif hdr['DATE-OBS'][2] == '/':
-                    # Reformat DATE-OBS MM/DD/YYYY -> YYYY-MM-DD
-                    hdr['DATE-OBS'] = hdr['DATE-OBS'][6:10] + '-' + \
-                     hdr['DATE-OBS'][0:2] + '-' + \
-                     hdr['DATE-OBS'][3:5];
+            # Reformat DATE-OBS
+            clean_date_obs (hdr);
 
-                # Compute MJD-OBS
-                mjd = Time(hdr['DATE-OBS'] + 'T'+ hdr['UTC-OBS'], format='isot', scale='utc').mjd;
+            # Compute MJD from information in header
+            mjd = get_mjd (hdr);
 
-                # Check MJD-OBS
-                if mjd%1 == 0:
-                    log.warning ('UTC-OBS is zero, use unix time instead');
-                    mjd = Time(hdr['TIME_S'],format='unix').mjd;
-
-                # Set in header
-                hdr['MJD-OBS'] = (mjd, '[mjd] Observing time (UTC)');
+            # Set in header
+            hdr['MJD-OBS'] = (mjd, '[mjd] Observing time');
 
             # Add the loading time
             hdr['MJD-LOAD'] =  (Time.now().mjd, '[mjd] Last loading time (UTC)');
@@ -197,6 +261,28 @@ def load (files, hlog=[]):
     log.info ('%i headers loaded'%len(hdrs));
     return hdrs;
 
+def frame_mjd (hdr):
+    '''
+    Compute MJD time for each frame from STARTFR to LASTFR.
+    Assumig STARTFR has the MJD-OBS and the time between
+    frame is given by HIERARCH MIRC FRAME_RATE.
+    '''
+
+    # Check consistency
+    if hdr['LASTFR'] < hdr['STARTFR']:
+        raise ValueError ('LASTFR is smaller than STARTFR');
+
+    # Number of frame since start
+    counter = np.arange (0, hdr['LASTFR'] - hdr['STARTFR'] + 1);
+
+    # Time step between frames in [d]
+    delta = 1./hdr['HIERARCH MIRC FRAME_RATE'] / 24/3600;
+    
+    # Compute assuming MJD-OBS is time of first frame
+    mjd = hdr['MJD-OBS'] + delta * counter;
+
+    return mjd;
+
 def match (h1,h2,keys,delta):
     '''
     Return True fs all keys are the same in header h1
@@ -206,10 +292,10 @@ def match (h1,h2,keys,delta):
     # Check all keywords are the same
     answer = True;
     for k in keys:
-        answer *= (h1[k] == h2[k]);
+        answer *= (h1.get(k,None) == h2.get(k,None));
 
     # Check time is close-by
-    answer *= (np.abs(h1['MJD-OBS'] - h2['MJD-OBS'])*24.*3600 < delta);
+    answer *= (np.abs(h1.get('MJD-OBS',0.0) - h2.get('MJD-OBS',0.0))*24.*3600 < delta);
 
     # Ensure binary output
     return True if answer else False;
@@ -274,11 +360,12 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
     groups = [g for g in groups if g != []];
     
     # For the BACKGROUND, remove the first file if there is more than 3 files
+    # because it is often contaminated with light (slow shutter)
     if mtype == 'BACKGROUND':
         for i in range(np.shape(groups)[0]):
             if np.shape(groups[i])[0] > 3:
                 groups[i] = groups[i][1:];
-                log.info('More than 3 BACKGROUND files,so the first one is ignored')
+                log.info ('Ignore the first BACKGROUND files (more than 3)');
     
     return groups;
 
@@ -287,15 +374,17 @@ def assoc (h, allh, tag, keys=[], which='closest', required=0, quality=None):
     Search for headers with tag and matching criteria
     '''
 
-    # Keep only the requested tag matching the criteria
+    # Keep only the requested tag
     atag = [a for a in allh if a['FILETYPE']==tag]
-    out = []
+    
+    # Keep only the requested criteria
+    out = [];
     for a in atag:
-        tmp = True
+        tmp = True;
         for k in keys:
-            tmp *= (h[k] == a[k])
+            tmp *= (h.get(k,None) == a.get(k,None));
         if tmp:
-            out.append(a)
+            out.append(a);
 
     # Keep only the requested quality
     l1 = len (out);
@@ -321,7 +410,7 @@ def assoc (h, allh, tag, keys=[], which='closest', required=0, quality=None):
     # Check required
     if len (out) < required:
         log.warning ('Cannot find %i %s (%i rejected for quality)'%(required,tag,l1-len(out)))
-    else:
+    elif required > 0:
         log.info ('Find %i %s (%s ...)'%(len(out),tag,out[0]['ORIGNAME']));
         
     return out
@@ -347,6 +436,13 @@ def assoc_flat (h, allh):
     # Return
     log.info ('Find 1 FLAT (%s)'%os.path.basename(flat['ORIGNAME']));
     return [flat];
+
+def clean_option (opt):
+    '''
+    Check options
+    '''
+    if opt == 'FALSE': return False;
+    if opt == 'TRUE':  return True;
 
 def check_input (hdrs, required=1, maximum=100000):
     '''

@@ -54,7 +54,8 @@ def extract_maps (hdr, bmaps):
 
     return fringe_map, photo_map;
 
-def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096, fitorder=2):
+def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
+                     ncoher=3, nfreq=4096, fitorder=2):
     '''
     Compute the SPEC_CAL from list of PREPROC
     '''
@@ -207,11 +208,25 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096, fitord
 
     log.info ('Figures');
 
+    # Polynomial fit
+    fig,ax = plt.subplots (2,sharex=True);
+    fig.suptitle ('Polynomial fit\n(dark blue=poly, cyan=valid channels, light cyan = all channels)');
+    ax[0].plot (yfit[is_fit],lbdfit[is_fit] * 1e6,'-', c='blue', alpha=1);
+    ax[0].plot (yfit[is_valid],lbdlaw[is_valid] * 1e6,'o-', c='cyan', alpha=0.25);
+    ax[0].plot (yfit,lbdlaw * 1e6,'o-', c='cyan', alpha=0.15);
+    ax[1].plot (yfit[is_fit],(lbdlaw[is_fit]-lbdfit[is_fit]) * 1e9,'o-', c='cyan');
+    ax[0].set_ylabel ('Polynomial fit [um]');
+    ax[1].set_ylabel ('Residual [nm]');
+    ax[1].set_xlabel ('Detector line (python-def)');
+    files.write (fig,output+'_polynomial.png');
+    
     # Spectrum
     fig,ax = plt.subplots ();
     fig.suptitle ('Mean Spectrum of all observations');
     ax.plot (spectrum,'o-', alpha=0.3);
     ax.plot (spectrum / is_valid,'o-');
+    ax.set_ylabel ('Mean spectrum');
+    ax.set_xlabel ('Detector line (python-def)');
     files.write (fig,output+'_spectrum.png');
     
     # Figures of PSD with model
@@ -249,7 +264,7 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096, fitord
     # First HDU
     hdu0 = pyfits.PrimaryHDU (lbdlaw);
     hdu0.header = hdr;
-    hdu0.header['FILETYPE'] = 'SPEC_CAL';
+    hdu0.header['FILETYPE'] = filetype;
     hdu0.header['BUNIT'] = 'm';
 
     # Save input files
@@ -277,13 +292,17 @@ def compute_speccal (hdrs, output='output_speccal', ncoher=3, nfreq=4096, fitord
     plt.close ("all");
     return hdulist;
     
-def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2):
+def compute_rts (hdrs, profiles, kappas, speccal,
+                 output='output_rts', filetype='RTS',
+                 psmooth=0,
+                 save_all_freqs=False):
     '''
     Compute the RTS
     '''
     elog = log.trace ('compute_rts');
 
     # Check inputs
+    save_all_freqs = headers.clean_option (save_all_freqs);
     headers.check_input (hdrs,  required=1);
     headers.check_input (profiles, required=1, maximum=6);
     headers.check_input (kappas, required=1, maximum=6);
@@ -304,6 +323,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     hdr = pyfits.getheader (f);
     fringe = pyfits.getdata (f).astype(float);
     photo  = pyfits.getdata (f, 'PHOTOMETRY_PREPROC').astype(float);
+    mjd    = pyfits.getdata (f, 'MJD');
 
     # Load other files if any
     for h in hdrs[1:]:
@@ -311,6 +331,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
         log.info ('Load PREPROC file %s'%f);
         fringe = np.append (fringe, pyfits.getdata (f).astype(float), axis=0);
         photo  = np.append (photo, pyfits.getdata (f, 'PHOTOMETRY_PREPROC').astype(float), axis=1);
+        mjd    = np.append (mjd, pyfits.getdata (f, 'MJD'), axis=0);
 
     # Dimensions
     nr,nf,ny,nx = fringe.shape
@@ -383,14 +404,13 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     # Plot photometry versus time
     log.info ('Plot photometry');
     fig,axes = plt.subplots (3,2,sharex=True);
-    fig.suptitle (headers.summary (hdr));
+    fig.suptitle ('Xchan flux (adu) \n' + headers.summary (hdr));
     plot.compact (axes);
     for b in range (6):
         data = np.mean (photo[b,:,:,:], axis=(1,2));
         ax = axes.flatten()[b];
         ax.plot (data);
         ax.set_ylim (np.minimum (np.min (data), 0.0));
-    ax.set_ylabel ('Xchan flux (adu)');
     ax.set_xlabel ('Ramp #');
     files.write (fig,output+'_photo.png');
 
@@ -473,8 +493,9 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     photok0 = photok.copy();
 
     # Smooth photometry
-    log.info ('Smooth photometry by sigma=%i frames'%psmooth);
-    photok = gaussian_filter (photok,(0,0,psmooth,0),mode='constant');
+    if psmooth > 0:
+        log.info ('Smooth photometry by sigma=%i frames'%psmooth);
+        photok = gaussian_filter (photok,(0,0,psmooth,0),mode='constant');
 
     # Warning because of saturation
     log.info ('Deal with saturation in the filtering');
@@ -518,20 +539,29 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     cont_img   = np.mean (cont, axis=(0,1));
     fringe_img = np.mean (fringe, axis=(0,1));
     fringe_spectra = np.mean (fringe_img, axis=1);
+    fringe_sum = fringe.sum (axis=3);
 
-    # Subtract continuum
-    log.info ('Subtract dc');
+    # Remove the DC predicted from xchan
+    log.info ('Subtract dc with profiles predicted from xchan');
     fringe -= cont;
-    cont = [];
+    del cont;
+
+    # Remove the residual DC with a mean profile
+    log.info ('Subtract residual dc with mean profile');
+    fringe_meanmap = fringe_map.mean (axis=0);
+    fringe_meanmap /= np.sum (fringe_meanmap, axis=-1, keepdims=True) + 1e-20;
+    dcres = fringe.sum (axis=-1, keepdims=True);
+    fringe -= dcres * fringe_meanmap;
+    del dcres, fringe_meanmap;
 
     # Check residual
     log.info ('Figure of DC residual');
     fig,axes = plt.subplots (2, 1, sharex=True);
     fig.suptitle (headers.summary (hdr));
-    axes[0].plot (fringe_img[ny/2,:], label='fringe');
-    axes[0].plot (cont_img[ny/2,:], label='cont');
+    axes[0].plot (fringe_img[int(ny/2),:], label='fringe');
+    axes[0].plot (cont_img[int(ny/2),:], label='cont');
     axes[0].legend();
-    axes[1].plot ((fringe_img-cont_img)[ny/2,:], label='res');
+    axes[1].plot (np.mean (fringe[int(ny/2),:],axis=(0,1)), label='res');
     axes[1].set_xlabel('x (spatial direction)');
     axes[1].legend();
     files.write (fig,output+'_dcres.png');
@@ -583,8 +613,10 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
         cf[:,y,1:] = cfc[:,1:nfq+1] - 1.j * cfc[:,nfq+1:];
     cf.shape = (nr,nf,ny,nfq+1);
 
-    log.info ('Free fringe');
-    del fringe;
+    # Free input fringes images
+    if (save_all_freqs == False):
+        log.info ('Free fringe');
+        del fringe;        
 
     # DFT at fringe frequencies
     log.info ('Extract fringe frequency');
@@ -595,7 +627,7 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     base_dft[:,:,:,idx] = np.conj(base_dft[:,:,:,idx]);
 
     # DFT at bias frequencies
-    ibias = np.abs (ifreqs).max() + 4 + np.arange (24);
+    ibias = np.abs (ifreqs).max() + 4 + np.arange (15);
     bias_dft  = cf[:,:,:,ibias];
 
     # Compute unbiased PSD for plots (without coherent average
@@ -603,14 +635,16 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     cf_upsd  = np.abs(cf[:,:,:,0:int(nx/2)])**2;
     cf_upsd -= np.mean (cf_upsd[:,:,:,ibias],axis=-1,keepdims=True);
 
-    log.info ('Free cf');
-    del cf;
+    # Free DFT images
+    if (save_all_freqs == False):
+        log.info ('Free cf');
+        del cf;
 
     log.info ('Compute crude vis2 with various coherent');
         
     # Compute crude normalisation for vis2
     bbeam = setup.base_beam ();
-    norm = np.mean (photok0[:,:,int(ny/2),:], axis=(0,1));
+    norm = np.mean (photok0[:,:,:,int(ny/2)], axis=(1,2));
     norm = 4. * norm[bbeam[:,0]] * norm[bbeam[:,1]];
     
     # Compute the coherent flux for various integration
@@ -705,66 +739,116 @@ def compute_rts (hdrs, profiles, kappas, speccal, output='output_rts', psmooth=2
     log.info ('Create file');
 
     # First HDU
-    hdu0 = pyfits.PrimaryHDU ([]);
-    hdu0.header = hdr;
-    hdu0.header['FILETYPE'] = 'RTS';
-    hdu0.header[HMP+'PREPROC'] = os.path.basename (hdrs[0]['ORIGNAME'])[-30:];
+    hdu = pyfits.PrimaryHDU ([]);
+    hdu.header = hdr;
+    hdu.header['FILETYPE'] = filetype;
+    hdu.header[HMP+'PREPROC'] = os.path.basename (hdrs[0]['ORIGNAME'])[-30:];
 
     # Set the input calibration file
     for pro in profiles:
         name = pro['FILETYPE'].split('_')[0]+'_PROFILE';
-        hdu0.header[HMP+name] = os.path.basename (pro['ORIGNAME'])[-30:];
+        hdu.header[HMP+name] = os.path.basename (pro['ORIGNAME'])[-30:];
 
     # Set the input calibration file
     for kap in kappas:
         name = kap['FILETYPE'].split('_')[0]+'_KAPPA';
-        hdu0.header[HMP+name] = os.path.basename (kap['ORIGNAME'])[-30:];
+        hdu.header[HMP+name] = os.path.basename (kap['ORIGNAME'])[-30:];
+
+    # Start a list
+    hdus = [hdu];
 
     # Set DFT of fringes, bias, photometry and lbd
-    hdu1 = pyfits.ImageHDU (base_dft.real.astype('float32'));
-    hdu1.header['EXTNAME'] = ('BASE_DFT_REAL','total flux in the fringe envelope');
-    hdu1.header['BUNIT'] = 'adu';
-    hdu1.header['SHAPE'] = '(nr,nf,ny,nb)';
+    hdu = pyfits.ImageHDU (base_dft.real.astype('float32'));
+    hdu.header['EXTNAME'] = ('BASE_DFT_REAL','total flux in the fringe envelope');
+    hdu.header['BUNIT'] = 'adu';
+    hdu.header['SHAPE'] = '(nr,nf,ny,nb)';
+    hdus.append (hdu);
     
-    hdu2 = pyfits.ImageHDU (base_dft.imag.astype('float32'));
-    hdu2.header['EXTNAME'] = ('BASE_DFT_IMAG','total flux in the fringe envelope');
-    hdu2.header['BUNIT'] = 'adu'
-    hdu2.header['SHAPE'] = '(nr,nf,ny,nb)';
+    hdu = pyfits.ImageHDU (base_dft.imag.astype('float32'));
+    hdu.header['EXTNAME'] = ('BASE_DFT_IMAG','total flux in the fringe envelope');
+    hdu.header['BUNIT'] = 'adu'
+    hdu.header['SHAPE'] = '(nr,nf,ny,nb)';
+    hdus.append (hdu);
     
-    hdu3 = pyfits.ImageHDU (bias_dft.real.astype('float32'));
-    hdu3.header['EXTNAME'] = ('BIAS_DFT_REAL','total flux in the fringe envelope');
-    hdu3.header['BUNIT'] = 'adu';
-    hdu3.header['SHAPE'] = '(nr,nf,ny,nbias)';
+    hdu = pyfits.ImageHDU (bias_dft.real.astype('float32'));
+    hdu.header['EXTNAME'] = ('BIAS_DFT_REAL','total flux in the fringe envelope');
+    hdu.header['BUNIT'] = 'adu';
+    hdu.header['SHAPE'] = '(nr,nf,ny,nbias)';
+    hdus.append (hdu);
     
-    hdu4 = pyfits.ImageHDU (bias_dft.imag.astype('float32'));
-    hdu4.header['EXTNAME'] = ('BIAS_DFT_IMAG','total flux in the fringe envelope');
-    hdu4.header['BUNIT'] = 'adu';
-    hdu4.header['SHAPE'] = '(nr,nf,ny,nbias)';
+    hdu = pyfits.ImageHDU (bias_dft.imag.astype('float32'));
+    hdu.header['EXTNAME'] = ('BIAS_DFT_IMAG','total flux in the fringe envelope');
+    hdu.header['BUNIT'] = 'adu';
+    hdu.header['SHAPE'] = '(nr,nf,ny,nbias)';
+    hdus.append (hdu);
     
-    hdu5 = pyfits.ImageHDU (np.transpose (photok0,axes=(1,2,3,0)).astype('float32'));
-    hdu5.header['EXTNAME'] = ('PHOTOMETRY','total flux in the fringe envelope');
-    hdu5.header['BUNIT'] = 'adu'
-    hdu5.header['SHAPE'] = '(nr,nf,ny,nt)';
+    hdu = pyfits.ImageHDU (np.transpose (photok0,axes=(1,2,3,0)).astype('float32'));
+    hdu.header['EXTNAME'] = ('PHOTOMETRY','total flux in the fringe envelope');
+    hdu.header['BUNIT'] = 'adu'
+    hdu.header['SHAPE'] = '(nr,nf,ny,nt)';
+    hdus.append (hdu);
     
-    hdu6 = pyfits.ImageHDU (lbd);
-    hdu6.header['EXTNAME'] = ('WAVELENGTH','effective wavelength');
-    hdu6.header['BUNIT'] = 'm';
-    hdu6.header['SHAPE'] = '(ny)';
+    hdu = pyfits.ImageHDU (lbd);
+    hdu.header['EXTNAME'] = ('WAVELENGTH','effective wavelength');
+    hdu.header['BUNIT'] = 'm';
+    hdu.header['SHAPE'] = '(ny)';
+    hdus.append (hdu);
 
-    hdu7 = pyfits.ImageHDU (np.transpose (kappa,axes=(1,2,3,0)));
-    hdu7.header['EXTNAME'] = ('KAPPA','ratio total_fringe/total_photo');
-    hdu7.header['SHAPE'] = '(nr,nf,ny,nt)';
+    hdu = pyfits.ImageHDU (np.transpose (kappa,axes=(1,2,3,0)));
+    hdu.header['EXTNAME'] = ('KAPPA','ratio total_fringe/total_photo');
+    hdu.header['SHAPE'] = '(nr,nf,ny,nt)';
+    hdus.append (hdu);
+
+    hdu = pyfits.ImageHDU (mjd);
+    hdu.header['EXTNAME'] = ('MJD','time of each frame');
+    hdu.header['BUNIT'] = 'day';
+    hdu.header['SHAPE'] = '(nr,nf)';
+    hdus.append (hdu);
+    
+    hdu = pyfits.ImageHDU (ifreqs);
+    hdu.header['EXTNAME'] = ('IFREQ','spatial frequencies of fringes');
+    hdu.header['BUNIT'] = 'pix';
+    hdu.header['SHAPE'] = '(nf)';
+    hdus.append (hdu);
+    
+    hdu = pyfits.ImageHDU (ibias);
+    hdu.header['EXTNAME'] = ('IBIAS','spatial frequencies for bias');
+    hdu.header['BUNIT'] = 'pix';
+    hdu.header['SHAPE'] = '(nf)';
+    hdus.append (hdu);
+
+    if (save_all_freqs):
+        log.info ("Save all frequencies for John's test");
+        hdu = pyfits.ImageHDU (cf.real.astype('float32'));
+        hdu.header['EXTNAME'] = ('ALL_DFT_REAL','total flux in the fringe envelope');
+        hdu.header['BUNIT'] = 'adu';
+        hdu.header['SHAPE'] = '(nr,nf,ny,nb)';
+        hdus.append (hdu);
+    
+        hdu = pyfits.ImageHDU (cf.imag.astype('float32'));
+        hdu.header['EXTNAME'] = ('ALL_DFT_IMAG','total flux in the fringe envelope');
+        hdu.header['BUNIT'] = 'adu'
+        hdu.header['SHAPE'] = '(nr,nf,ny,nb)';
+        hdus.append (hdu);
+
+        hdu = pyfits.ImageHDU (fringe_sum.astype('float32'));
+        hdu.header['EXTNAME'] = ('FRINGE_SUM','total flux in the fringe');
+        hdu.header['BUNIT'] = 'adu'
+        hdu.header['SHAPE'] = '(nr,nf,ny)';
+        hdus.append (hdu);
 
     # Write file
-    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2,hdu3,hdu4,hdu5,hdu6,hdu7]);
+    hdulist = pyfits.HDUList (hdus);
     files.write (hdulist, output+'.fits');
-    
                 
     plt.close("all");
     return hdulist;
 
-def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
-                 avgphot=True, ncs=2, nbs=2, gdAttenuation=True):
+def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
+                 ncoher=3, nincoher=5,
+                 snr_threshold=3.0, flux_threshold=20.0,
+                 avgphot=True, ncs=2, nbs=2, gdAttenuation=True,
+                 vis_reference='self'):
     '''
     Compute the OIFITS from the RTS
     '''
@@ -772,6 +856,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
 
     # Check inputs
     headers.check_input (hdrs, required=1);
+    headers.check_input (coeff, required=0, maximum=1);
 
     # Get data
     f = hdrs[0]['ORIGNAME'];
@@ -782,6 +867,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     bias_dft  = pyfits.getdata (f, 'BIAS_DFT_IMAG').astype(float) * 1.j;
     bias_dft += pyfits.getdata (f, 'BIAS_DFT_REAL').astype(float);
     photo     = pyfits.getdata (f, 'PHOTOMETRY').astype(float);
+    mjd       = pyfits.getdata (f, 'MJD');
     lbd       = pyfits.getdata (f, 'WAVELENGTH').astype(float);
 
     # Load other files if any
@@ -796,10 +882,15 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
                    pyfits.getdata (f, 'BIAS_DFT_REAL').astype(float), axis=0);
         photo    = np.append (photo, \
                    pyfits.getdata (f, 'PHOTOMETRY').astype(float), axis=0);
+        mjd      = np.append (mjd, pyfits.getdata (f, 'MJD'), axis=0);
                    
     # Dimensions
     nr,nf,ny,nb = base_dft.shape;
     log.info ('Data size: '+str(base_dft.shape));
+        
+    # Check parameters consistency
+    if ncs + ncoher + 2 > nf:
+        raise ValueError ('ncs+ncoher+2 should be less than nf (nf=%i)'%nf);
 
     # Compute lbd0 and dlbd    
     if hdr['CONF_NA'] == 'H_PRISM20' :
@@ -861,6 +952,16 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     log.info ('Smoothing of photometry over %i frames'%ncoher);
     photo = uniform_filter (photo,(0,ncoher,0,0),mode='constant');
 
+    #  Remove edges
+    log.info ('Remove edge of coherence integration for each ramp');
+    edge = int(ncoher/2);
+    base_dft = base_dft[:,edge:nf-edge,:,:];
+    bias_dft = bias_dft[:,edge:nf-edge,:,:];
+    photo    = photo[:,edge:nf-edge,:,:];
+
+    # New size
+    nr,nf,ny,nb = base_dft.shape;
+
     # Add QC
     qc.flux (hdr, y0, photo);
 
@@ -884,9 +985,15 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
         base_scan = np.mean (np.abs(base_scan)**2,axis=1, keepdims=True);
         bias_scan = np.mean (np.abs(bias_scan)**2,axis=1, keepdims=True);
 
-    log.info ('Compute SNR and GD (alternate)');
-    
-    # Alternate SNR, whose statistic is independent of averaging
+    # Incoherent integration over several ramp
+    if nincoher > 0:
+        log.info ('Incoherent integration over %i ramps'%nincoher);
+        base_scan = signal.uniform_filter (base_scan,(nincoher,0,0,0),mode='constant');
+        bias_scan = signal.uniform_filter (bias_scan,(nincoher,0,0,0),mode='constant');
+    else:
+        log.info ('Incoherent integration over 1 ramp');
+
+    # Observed noise, whose statistic is independent of averaging
     base_scan -= np.median (base_scan, axis=2, keepdims=True);
     bias_scan -= np.median (bias_scan, axis=2, keepdims=True);
     base_powerbb_np = base_scan[:,:,int(nscan/2),:][:,:,None,:];
@@ -894,18 +1001,19 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     bias_powerbb    = np.mean (np.max (bias_scan, axis=2, keepdims=True), axis=-1, keepdims=True);
 
     # Scale for gd in [um]
+    log.info ('Compute GD');
     scale_gd = 1. / (lbd0**-1 - (lbd0+dlbd)**-1) / nscan;
     base_gd  = (np.argmax (base_scan, axis=2)[:,:,None,:] - int(nscan/2)) * scale_gd;
     gd_range = scale_gd * nscan / 2;
     
     # Broad-band SNR
+    log.info ('Compute SNR');
     base_snr = base_powerbb / bias_powerbb;
     base_snr[~np.isfinite (base_snr)] = 0.0;
 
-    # Smooth SNR along the ramp (if not done yet)
-    log.info ('Smooth SNR over one ramp');
-    base_snr = np.mean (base_snr,axis=1,keepdims=True);
-    base_gd  = np.mean (base_gd,axis=1,keepdims=True);
+    # Smooth SNR along the ramp (actually done before)
+    # base_snr = np.mean (base_snr,axis=1,keepdims=True);
+    # base_gd  = np.mean (base_gd,axis=1,keepdims=True);
 
     # Copy before bootstrap
     base_snr0 = base_snr.copy ();
@@ -931,13 +1039,23 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
         attenuation = base_gd * 0.0 + 1.0;
 
     # Compute selection flag from SNR
-    log.info ('SNR selection > %.2f'%threshold);
-    hdr[HMQ+'SNR_THRESHOLD'] = (threshold, 'to accept fringe');
-    base_flag  = 1. * (base_snr > threshold);
+    log.info ('SNR selection > %.2f'%snr_threshold);
+    hdr[HMQ+'SNR_THRESHOLD'] = (snr_threshold, 'to accept fringe');
+    base_flag  = 1. * (base_snr > snr_threshold);
 
     # Compute selection flag from GD
     log.info ('GD selection: enveloppe > 0.2');
     base_flag *= (attenuation**2 > 0.2);
+
+    # Mean flux
+    bbeam = setup.base_beam ();
+    photo_mean = np.nanmean (photo, axis=(1,2), keepdims=True);
+    
+    # Compute selection flag from SNR
+    log.info ('Flux selection > %.2f'%flux_threshold);
+    hdr[HMQ+'FLUX_THRESHOLD'] = (flux_threshold, 'to accept fringe');
+    base_flag  *= (photo_mean[:,:,:,bbeam[:,0]] > flux_threshold);
+    base_flag  *= (photo_mean[:,:,:,bbeam[:,1]] > flux_threshold);
 
     # TODO: Add selection on mean flux in ramp, gd...
 
@@ -954,10 +1072,11 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     base_flag[base_flag == 0.0] = np.nan;
 
     # Compute the time stamp of each ramp
-    time = np.ones (base_dft.shape[0]) * hdr['MJD-OBS'];
+    mjd_ramp = mjd.mean (axis=1);
 
     # Save the options in file HEADER
     hdr[HMP+'NCOHER'] = (ncoher,'[frame] coherent integration');
+    hdr[HMP+'NINCOHER'] = (nincoher,'[ramp] incoherent integration');
     hdr[HMP+'NCS'] = (ncs,'[frame] cross-spectrum shift');
     hdr[HMP+'NBS'] = (nbs,'[frame] bi-spectrum shift');
     
@@ -969,46 +1088,56 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     
     p_flux = np.nanmean (photo, axis=1);
     
-    oifits.add_flux (hdulist, time, p_flux, output=output,y0=y0);
+    oifits.add_flux (hdulist, mjd_ramp, p_flux, output=output,y0=y0);
 
     # Compute OI_VIS2
     if ncs > 0:
         log.info ('Compute Cross Spectrum with offset of %i frames'%ncs);
-        b_power = np.real (bias_dft[:,ncs:,:,:] * np.conj(bias_dft[:,0:-ncs,:,:]));
-        t_power = np.real (base_dft[:,ncs:,:,:] * np.conj(base_dft[:,0:-ncs,:,:]));
+        bias_power = np.real (bias_dft[:,ncs:,:,:] * np.conj(bias_dft[:,0:-ncs,:,:]));
+        base_power = np.real (base_dft[:,ncs:,:,:] * np.conj(base_dft[:,0:-ncs,:,:]));
     else:
         log.info ('Compute Cross Spectrum without offset');
-        b_power = np.abs (bias_dft)**2;
-        t_power = np.abs (base_dft)**2;
+        bias_power = np.abs (bias_dft)**2;
+        base_power = np.abs (base_dft)**2;
 
-    n_power = np.mean (b_power, axis=-1, keepdims=True);
-    u_power = np.nanmean ((t_power - n_power)*base_flag, axis=1);
+    # Average over the frames in ramp
+    base_power = np.nanmean (base_power*base_flag, axis=1);
+    bias_power = np.nanmean (bias_power, axis=1);
+
+    # Average over the frames in ramp
+    photo_power = photo[:,:,:,setup.base_beam ()];
+    photo_power = 4 * photo_power[:,:,:,:,0] * photo_power[:,:,:,:,1] * attenuation**2;
+    photo_power = np.nanmean (photo_power*base_flag, axis=1);
+
+    oifits.add_vis2 (hdulist, mjd_ramp, base_power, bias_power, photo_power, output=output, y0=y0);
     
-    l_power = photo[:,:,:,setup.base_beam ()];
-    l_power = 4 * l_power[:,:,:,:,0] * l_power[:,:,:,:,1] * attenuation**2;
-    l_power = np.nanmean (l_power*base_flag, axis=1);
-
-    oifits.add_vis2 (hdulist, time, u_power, l_power, output=output, y0=y0);
+    c_cpx  = base_dft.copy ();
     
     # Compute OI_VIS
-    log.info ('Compute Vis by removing the mean GD and mean phase');
 
-    c_cpx  = base_dft.copy ();
-    phigd = np.mean (c_cpx[:,:,1:,:] * np.conj(c_cpx[:,:,:-1,:]), axis=2, keepdims=True);
-    # smooth phigd before removing it ??
-    c_cpx *= np.exp (-1.j * np.angle (phigd) * np.arange (ny)[None,None,:,None]);
+    if vis_reference == 'self':
+        log.info ('Compute VIS by self-tracking');
+        c_cpx *= np.exp (2.j*np.pi * base_gd / lbd[None,None,:,None]);
+        phi = np.mean (c_cpx, axis=2, keepdims=True);
+        phi = signal.uniform_filter_cpx (phi, (0,ncoher,0,0), mode='constant');
+        c_cpx *= np.exp (-1.j * np.angle (phi));
+        c_cpx  = np.nanmean (c_cpx * base_flag, axis=1);
 
-    phi = np.mean (c_cpx, axis=2,keepdims=True);
-    # smooth phi before removing it ??
-    c_cpx *= np.exp (-1.j * np.angle (phi));
-    c_cpx  = np.nanmean (c_cpx * base_flag, axis=1);
-    
+    elif vis_reference == 'spec-diff':
+        log.info ('Compute VIS by taking spectral-differential');
+        c_cpx = c_cpx[:,:,1:,:] * np.conj(c_cpx[:,:,:-1,:]);
+        c_cpx = np.insert(c_cpx,np.size(c_cpx,2),np.nan,axis=2);
+        c_cpx = np.nanmean (c_cpx * base_flag, axis=1);
+
+    else:
+        raise ValueError("vis_reference is unknown");
+        
     c_norm = photo[:,:,:,setup.base_beam ()];
     c_norm = 4 * c_norm[:,:,:,:,0] * c_norm[:,:,:,:,1] * attenuation**2;
     c_norm = np.sqrt (np.maximum (c_norm, 0));
     c_norm = np.nanmean (c_norm*base_flag, axis=1);
     
-    oifits.add_vis (hdulist, time, c_cpx, c_norm, output=output, y0=y0);
+    oifits.add_vis (hdulist, mjd_ramp, c_cpx, c_norm, output=output, y0=y0);
 
     # Compute OI_T3
     if nbs > 0:
@@ -1020,6 +1149,35 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
         t_cpx = (base_dft*base_flag)[:,:,:,setup.triplet_base()];
         t_cpx = t_cpx[:,:,:,:,0] * t_cpx[:,:,:,:,1] * np.conj (t_cpx[:,:,:,:,2]);
 
+    # Load BBIAS_COEFF
+    if coeff == []:
+        log.info ('No BBIAS_COEFF file');
+    else:
+        f = coeff[0]['ORIGNAME'];
+        log.info ('Load BBIAS_COEFF file %s'%f);
+        bbias_coeff0 = pyfits.getdata (f, 'C0');
+        bbias_coeff1 = pyfits.getdata (f, 'C1');
+        bbias_coeff2 = pyfits.getdata (f, 'C2');
+
+        # Debias with C0
+        log.info ('Debias with C0');
+        t_cpx -= bbias_coeff0[None,None,:,None]/(ncoher*ncoher*ncoher);
+
+        # Debias with C1
+        log.info ('Debias with C1');
+        Ntotal = photo.sum (axis=-1,keepdims=True);
+        t_cpx -= bbias_coeff1[None,None,:,None] * Ntotal[:,:np.size(t_cpx,1),:,:]/(ncoher*ncoher);
+
+        # Debias with C2
+        log.info ('Debias with C2');
+        xps = np.real (base_dft[:,ncs:,:,:] * np.conj(base_dft[:,0:-ncs,:,:]));
+        xps0 = np.real (bias_dft[:,ncs:,:,:] * np.conj(bias_dft[:,0:-ncs,:,:]));
+        xps -= np.mean (xps0, axis=-1, keepdims=True);
+        Ptotal = xps[:,:,:,setup.triplet_base()].sum (axis=-1);
+        t_cpx = t_cpx[:,:-1,:,:];
+        t_cpx -= bbias_coeff2[None,None,:,None] * Ptotal[:,:,:,:]/ncoher;
+    
+    # Normalisation, FIXME: take care of the shift
     t_norm = photo[:,:,:,setup.triplet_beam()];
     t_norm = t_norm[:,:,:,:,0] * t_norm[:,:,:,:,1] * t_norm[:,:,:,:,2];
 
@@ -1029,7 +1187,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     t_cpx = np.nanmean (t_cpx, axis=1);
     t_norm = np.nanmean (t_norm * t_att, axis=1);
 
-    oifits.add_t3 (hdulist, time, t_cpx, t_norm, output=output, y0=y0);
+    oifits.add_t3 (hdulist, mjd_ramp, t_cpx, t_norm, output=output, y0=y0);
 
     # Figures
     log.info ('Figures');
@@ -1050,17 +1208,6 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     for i,ax in enumerate (axes.flatten()): ax.imshow (bias_scan[:,0,:,i].T,aspect='auto');
     files.write (fig,output+'_bias_trend.png');
 
-    # Pseudo PSD
-    fig,ax = plt.subplots (2,2, sharey='row',sharex='col');
-    fig.suptitle (headers.summary (hdr));
-    ax[0,0].imshow (np.mean (t_power, axis=(0,1)),aspect='auto');
-    ax[0,1].imshow (np.mean (b_power, axis=(0,1)),aspect='auto');
-    ax[1,0].plot (np.mean (t_power, axis=(0,1)).T);
-    ax[1,1].plot (np.mean (b_power, axis=(0,1)).T);
-    ax[0,0].set_title ('Fringe frequencies');
-    ax[0,1].set_title ('Bias frequencies');
-    files.write (fig,output+'_psd.png');
-    
     # SNR
     fig,axes = plt.subplots (5,3, sharex=True);
     fig.suptitle ('SNR versus ramp \n' + headers.summary (hdr));
@@ -1068,10 +1215,13 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     plot.compact (axes);
     d0 = np.mean (base_snr0,axis=(1,2));
     d1 = np.mean (base_snr,axis=(1,2));
-    for b in range (15): axes.flatten()[b].axhline (threshold,color='r', alpha=0.2);
-    for b in range (15): axes.flatten()[b].plot (d1[:,b]);
-    for b in range (15): axes.flatten()[b].plot (d0[:,b],'--', alpha=0.5);
-    for b in range (15): axes.flatten()[b].set_yscale ('log');
+    for b in range (15):
+        ax = axes.flatten()[b];
+        ax.axhline (snr_threshold,color='r', alpha=0.2);
+        ax.plot (d1[:,b]);
+        ax.plot (d0[:,b],'--', alpha=0.5);
+        ax.set_yscale ('log');
+    ax.set_xlabel ('Ramp #');
     files.write (fig,output+'_snr.png');
 
     # GD
@@ -1083,12 +1233,29 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     d1 = np.mean (base_gd,axis=(1,2)) * 1e6;
     lim = 1.05 * gd_range * 1e6;
     for b in range (15):
+        ax = axes.flatten()[b];
         # lim = 1.05 * np.max (np.abs (d0[:,b]));
-        axes.flatten()[b].plot (d1[:,b]);
-        axes.flatten()[b].plot (d0[:,b],'--', alpha=0.5);
-        axes.flatten()[b].set_ylim (-lim,+lim);
+        ax.plot (d1[:,b]);
+        ax.plot (d0[:,b],'--', alpha=0.5);
+        ax.set_ylim (-lim,+lim);
+    ax.set_xlabel ('Ramp #');
     files.write (fig,output+'_gd.png');
 
+    # Photo
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.suptitle ('Flux in fringe \n' + headers.summary (hdr));
+    plot.compact (axes);
+    for b in range (15):
+        ax = axes.flatten()[b];
+        data = np.nanmean (photo_mean[:,:,:,bbeam[b,:]], axis=(1,2));
+        ax.plot (data[:,0]);
+        ax.plot (data[:,1]);
+        ax.axhline (flux_threshold,color='r', alpha=0.2);
+        ax.set_ylim (1.0);
+        ax.set_yscale ('log');
+    ax.set_xlabel ('Ramp #');
+    files.write (fig,output+'_flux.png');
+    
     # Plot the fringe selection
     fig,axes = plt.subplots (5,3, sharex=True);
     fig.suptitle (headers.summary (hdr));
@@ -1109,7 +1276,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     d1 = np.mean (base_snr0,axis=(1,2));
     lim = 1.05 * gd_range * 1e6;
     for b in range (15):
-        axes.flatten()[b].axhline (threshold,color='r', alpha=0.2);
+        axes.flatten()[b].axhline (snr_threshold,color='r', alpha=0.2);
         axes.flatten()[b].plot (d0[:,b], d1[:,b],'+');
         axes.flatten()[b].set_xlim (-lim,+lim);
     files.write (fig,output+'_snrgd.png');
@@ -1133,7 +1300,7 @@ def compute_vis (hdrs, output='output_oifits', ncoher=3, threshold=3.0,
     log.info ('Create file');
 
     # First HDU
-    hdulist[0].header['FILETYPE'] = 'OIFITS';
+    hdulist[0].header['FILETYPE'] = filetype;
     hdulist[0].header[HMP+'RTS'] = os.path.basename (hdrs[0]['ORIGNAME'])[-30:];
     
     # Write file
