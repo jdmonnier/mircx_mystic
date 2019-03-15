@@ -144,7 +144,7 @@ else:
 for d in argopt.dates.split(','):
     opt = []
     for i in range(0, len(nco)):
-        opt.append([str(nco[i]),str(ncs[i]),str(nbs[i]),str(snr[i]).replace('.','p'),str(bias[i])[0]])
+        opt.append([str(nco[i]),str(ncs[i]),str(nbs[i]),str(snr[i]).replace('.','p'),str(bias[i])])
     # Save a target summary for the observation date to file:
     targs = lookup.targList(d,rawBase,redBase,opt)
     
@@ -154,7 +154,7 @@ for d in argopt.dates.split(','):
     redoRed, redoCal = [], []
     for i in range(0, len(nco)):
         # Build the suffix for the directory name:
-        suff = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]+'bbias'+opt[i][4]
+        suff = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]+'bbias'+opt[i][4][0]
         # Check whether user wished for reduction to be (re)done:
         if argopt.reduce != 'FALSE':
             # Check whether the directory exists and whether the files 
