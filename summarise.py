@@ -216,7 +216,7 @@ def texSumTitle(direc,hdrs,opt,redF,calF):
         - redF and calF are flags for if the reduction
         and/or calibration process failed;
     """
-    auth = 'ncohrent='+opt[0]+'; ncs='+opt[1]+'; nbs='+opt[2]+'; snr\\_threshold='+opt[3].replace('p','.')
+    auth = 'ncohrent='+opt[0]+'; ncs='+opt[1]+'; nbs='+opt[2]+'; snr\\_threshold='+opt[3].replace('p','.')+'; bbias='+str(opt[4])
     suf = direc.split('/')[-1]
     outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
     # ^-- outFiles[0] is not to be emailed. It exceeds the 10MB gmail attachment limit.

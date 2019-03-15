@@ -25,7 +25,7 @@ def targList(d,rawBase,redBase,opt):
     dotargList = 'no'
     for i in range(0, len(opt)):
         # create file suffix from parsed options:
-        suf = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]
+        suf = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]+'bbias'+opt[i][4][0]
         # Check to see whether summary files already exist (do nothing if true):
         if os.path.isfile(redBase+'/'+d+suf+'/'+d+'_targets.list') != True:
             dotargList = 'yes'
@@ -49,7 +49,7 @@ def targList(d,rawBase,redBase,opt):
         
         objs = list(set(objs))
         for i in range(0, len(opt)):
-            suf = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]
+            suf = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]+'bbias'+opt[i][4][0]
             # Check to see whether summary file already exists (do nothing if true):
             if os.path.isfile(redBase+'/'+d+suf+'/'+d+'_targets.list') != True:
                 # create directory for d+suf/, if required
