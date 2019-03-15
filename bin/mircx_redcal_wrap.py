@@ -190,7 +190,7 @@ for d in argopt.dates.split(','):
     for i in range(0, len(nco)):
         redF = True
         calF = True
-        suf    = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]
+        suf    = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]+'bbias'+opt[i][4][0]
         redOpt = '--ncoherent='+opt[i][0]+' --ncs='+opt[i][1]+' --nbs='+opt[i][2]+' --snr-threshold='+opt[i][3].replace('p','.')+" --bbias="+str(opt[i][4]) 
         rawDir = rawBase+'/'+d[0:7]+'/'+d
         redDir = redBase+'/'+d+suf
