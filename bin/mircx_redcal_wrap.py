@@ -8,6 +8,7 @@
 # 2019-03-14: added argument --bbias for consistency with
 # updates to mircx_reduce.py script
 #
+# 2019-03-15: ensured bbias input is appended to directory name
 
 import argparse, subprocess, os, glob, sys
 from mircx_pipeline import lookup, summarise, mailfile, headers, log
@@ -80,7 +81,7 @@ parser.add_argument("--max-integration-time",dest="max_int_time",type=str,defaul
             help='maximum integration into a single file, in (s).\n'
            'This applies to PREPROC, RTS and OIFITS steps [%(default)s]')
 parser.add_argument ("--bbias", dest="bbias",default='FALSE',choices=TrueFalseOverwrite,
-            help="compute the BBIAS_COEFF product [%(default)s]")
+            help="list of bools (compute the BBIAS_COEFF product [%(default)s]?)")
 
 #####################################################
 # Set-up script:
@@ -93,10 +94,11 @@ nco = str(argopt.ncoherent).split(',')
 ncs = str(argopt.ncs).split(',')
 nbs = str(argopt.nbs).split(',')
 snr = str(argopt.snr_threshold).split(',')
-if len(nco) == len(ncs) == len(nbs) == len(snr):
+bias = str(argopt.bbias).split(',')
+if len(nco) == len(ncs) == len(nbs) == len(snr) == len(bias):
     log.info('Length of reduction options checked: ok')
 else:
-    log.error('Error in setup: length of ncoherent, ncs, nbs, snr_threshold not equal!')
+    log.error('Error in setup: length of ncoherent, ncs, nbs, snr_threshold and bbias not equal!')
     sys.exit()
 
 try:
@@ -142,7 +144,7 @@ else:
 for d in argopt.dates.split(','):
     opt = []
     for i in range(0, len(nco)):
-        opt.append([str(nco[i]),str(ncs[i]),str(nbs[i]),str(snr[i]).replace('.','p')])
+        opt.append([str(nco[i]),str(ncs[i]),str(nbs[i]),str(snr[i]).replace('.','p'),str(bias[i])[0]])
     # Save a target summary for the observation date to file:
     targs = lookup.targList(d,rawBase,redBase,opt)
     
@@ -152,7 +154,7 @@ for d in argopt.dates.split(','):
     redoRed, redoCal = [], []
     for i in range(0, len(nco)):
         # Build the suffix for the directory name:
-        suff = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]
+        suff = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]+'bbias'+opt[i][4]
         # Check whether user wished for reduction to be (re)done:
         if argopt.reduce != 'FALSE':
             # Check whether the directory exists and whether the files 
@@ -189,14 +191,14 @@ for d in argopt.dates.split(','):
         redF = True
         calF = True
         suf    = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]
-        redOpt = '--ncoherent='+opt[i][0]+' --ncs='+opt[i][1]+' --nbs='+opt[i][2]+' --snr-threshold='+opt[i][3].replace('p','.')
+        redOpt = '--ncoherent='+opt[i][0]+' --ncs='+opt[i][1]+' --nbs='+opt[i][2]+' --snr-threshold='+opt[i][3].replace('p','.')+" --bbias="+str(opt[i][4]) 
         rawDir = rawBase+'/'+d[0:7]+'/'+d
         redDir = redBase+'/'+d+suf
         if redoRed[i] == True:
             with cd(redDir):
                 com  = "mircx_reduce.py "+redOpt+" --raw-dir="+rawDir
                 ma = " --preproc-dir="+redDir+"/preproc --rts-dir="+redDir+"/rts"
-                nd = " --oifits-dir="+redDir+"/oifits --bbias="+str(argopt.bbias)
+                nd = " --oifits-dir="+redDir+"/oifits"
                 pipe = "> nohup_reduce.out"
                 with open('nohup_reduce.out', 'w') as output:
                     output.write('\n')
