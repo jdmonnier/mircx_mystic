@@ -316,26 +316,26 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
             outtex.write('Filter & seeing \\\\ \n')
             outtex.write('    & (UTC) & num. & & & & & $/$reset & & \\\\ \n    \\hline\n')
             keys = ['DATE','HIERARCH MIRC PRO RTS','OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
-            tabRows = [[str(h.get(k,'--')) for k in keys] for h in redhdrs]
-            for row in tabRows:
-                row[0] = row[0].split('T')[1]
-                row[1] = row[1].split('/')[-1].split('mircx')[1].split('_')[0]
-            if redF == False:
+            try:
+                tabRows = [[str(h.get(k,'--')) for k in keys] for h in redhdrs]
+                for row in tabRows:
+                    row[0] = row[0].split('T')[1]
+                    row[1] = row[1].split('/')[-1].split('mircx')[1].split('_')[0]
                 skipd = 17
-            else:
+                for r in range(0, len(tabRows)-1):
+                    if r == 0:
+                        outtex.write('        '+str(r)+' & '+' & '.join(str(s).replace('_',' ') for s in tabRows[r])+'\\\\ \n')
+                    else:
+                        nextrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r+1])
+                        thisrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r])
+                        if nextrow[skipd:] != thisrow[skipd:]:
+                            outtex.write('        '+str(r)+' & '+nextrow+'\\\\ \n')
+                        del nextrow, thisrow
+                del tabRows
+                log.info('Cleanup memory')
+            except:
                 skipd = 11
-            for r in range(0, len(tabRows)-1):
-                if r == 0:
-                    outtex.write('        '+str(r)+' & '+' & '.join(str(s).replace('_',' ') for s in tabRows[r])+'\\\\ \n')
-                else:
-                    nextrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r+1])
-                    thisrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r])
-                    if nextrow[skipd:] != thisrow[skipd:]:
-                        outtex.write('        '+str(r)+' & '+nextrow+'\\\\ \n')
-                    del nextrow, thisrow
             outtex.write('    \\hline\n\\end{longtable}\n\n')
-            del tabRows
-    log.info('Cleanup memory')
     if redF == False:
         del redhdrs
     return

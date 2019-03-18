@@ -188,8 +188,8 @@ for d in argopt.dates.split(','):
     calInfo, scical = lookup.queryLocal(targs, localDB)
     
     for i in range(0, len(nco)):
-        redF = True
-        calF = True
+        redF = True # Did the reduction fail? ('Yes' is default)
+        calF = True # Did the calibration fail? ('Yes' is default)
         suf    = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]+'bbias'+opt[i][4][0]
         redOpt = '--ncoherent='+opt[i][0]+' --ncs='+opt[i][1]+' --nbs='+opt[i][2]+' --snr-threshold='+opt[i][3].replace('p','.')+" --bbias="+str(opt[i][4]) 
         rawDir = rawBase+'/'+d[0:7]+'/'+d
