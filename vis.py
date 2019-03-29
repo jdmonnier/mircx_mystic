@@ -177,15 +177,15 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
         projection = 0.0;
 
     # Set QC
-    hdr[HMQ+'QUALITY'] = (projection, 'quality of data');
-    hdr[HMQ+'DELTA MEDIAN'] = (delta, '[m] median difference');
+    hdr[HMQ+'QUALITY'] = (rep_nan (projection), 'quality of data');
+    hdr[HMQ+'DELTA MEDIAN'] = (rep_nan (delta), '[m] median difference');
 
     # Compute position on detector of lbd0
     lbd0 = 1.6e-6;
     s = np.argsort (lbdfit);
     try:     y0 = hdr[HMW+'FRINGE STARTY'] + np.interp (lbd0, lbdfit[s], yfit[s]);
     except:  y0 = -99.0
-    hdr[HMQ+'YLBD0'] = (y0, 'ypos of %.3fum in cropped window'%(lbd0*1e6));
+    hdr[HMQ+'YLBD0'] = (rep_nan (y0), 'ypos of %.3fum in cropped window'%(lbd0*1e6));
     log.info (HMQ+'YLBD0 = %e'%y0);
 
     # Compute a better version of the wavelength
@@ -673,12 +673,12 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     for b,name in enumerate (setup.base_name ()):
         # Time where we lose half the coherence
         vis2h[b] = np.interp (0.5 * vis2[b,0], vis2[b,::-1], time[::-1]);
-        hdr[HMQ+'DECOHER'+name+'_HALF'] = (vis2h[b], '[ms] time for half V2');
+        hdr[HMQ+'DECOHER'+name+'_HALF'] = (rep_nan (vis2h[b]), '[ms] time for half V2');
         # Tau0 from model assuming 5/3
         try:
             popt, pcov = curve_fit (signal.decoherence, time, vis2[b,:], p0=[vis2[b,0], 0.01]);
             vis2m[b,:] = signal.decoherence (timem, popt[0], popt[1]);
-            hdr[HMQ+'DECOHER'+name+'_TAU0'] = (popt[1], '[ms] coherence time with 5/3');
+            hdr[HMQ+'DECOHER'+name+'_TAU0'] = (rep_nan (popt[1]), '[ms] coherence time with 5/3');
         except:
             log.warning ("Fail to fit on baseline %i, continue anyway"%b);
         
