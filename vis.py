@@ -389,7 +389,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
         shifty[b] = register_translation (lower[b,:,None],upper[b,:,None],
                                               upsample_factor=100)[0][0];
 
-    # Re-align photometry (all with the same)
+    # Re-align photometry
     log.info ('Register photometry to fringe');
     for b in range(6):
         photo[b,:,:,:] = subpix_shift (photo[b,:,:,:], [0,0,-shifty[b]]);
@@ -561,7 +561,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     axes[0].plot (fringe_img[int(ny/2),:], label='fringe');
     axes[0].plot (cont_img[int(ny/2),:], label='cont');
     axes[0].legend();
-    axes[1].plot (np.mean (fringe[int(ny/2),:],axis=(0,1)), label='res');
+    axes[1].plot (np.mean (fringe[:,:,int(ny/2),:],axis=(0,1)), label='res');
     axes[1].set_xlabel('x (spatial direction)');
     axes[1].legend();
     files.write (fig,output+'_dcres.png');
