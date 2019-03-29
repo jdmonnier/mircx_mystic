@@ -366,8 +366,11 @@ def estimate_windows (cmean, hdr, output='outout_window'):
     # Set in header
     hdr[HMW+'PHOTO SHIFTY'] = (shifty,'[pix] shift of PHOTO versus FRINGE');
 
-    # Define quality flag
-    quality = ffit.amplitude.value;
+    # Define quality flag as the SNR
+    # quality = ffit.amplitude.value;
+    quality = ffit.amplitude.value / np.std (fx - ffit(x));
+
+    # Set quality flag to 0 if bad fit
     if (fxc < 1) or (fxc > nx) or (fxw < 10) or (fxw > nx): quality = 0.0;
     if (pxc < 1) or (pxc > nx) or (pxw < 0.25) or (pxw > 10): quality = 0.0;
     
