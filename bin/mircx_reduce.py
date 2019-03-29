@@ -93,8 +93,11 @@ rts.add_argument ("--rts", dest="rts",default='TRUE',
 rts.add_argument ("--rts-dir", dest="rts_dir",default='./rts/',type=str,
                   help="directory of products [%(default)s]");
 
-rts.add_argument ("--beam-quality", dest="beam_quality", type=float,
-                  default=5.0, help="minimum quality to consider the BEAM_MAP as valid [%(default)s]");
+rts.add_argument ("--profile-quality", dest="profile_quality", type=float,
+                  default=20.0, help="minimum quality to consider the BEAM_PROFILE as a valid profile for extraction [%(default)s]");
+
+rts.add_argument ("--kappa-quality", dest="kappa_quality", type=float,
+                  default=5.0, help="minimum quality to consider the BEAM_MAP as a valid kappa matrix [%(default)s]");
 
 rts.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
                   choices=TrueFalse,
@@ -528,7 +531,7 @@ if argopt.rts != 'FALSE':
                 keys = setup.detwin + setup.detmode + setup.insmode;
                 tmp = mrx.headers.assoc (gp[0], hdrs, 'BEAM%i_PROFILE'%i,
                                          keys=keys, which='best', required=1,
-                                         quality=0.01);
+                                         quality=argopt.profile_quality);
                 profiles.extend (tmp);
 
             # Associate KAPPA (closest BEAM_MAP in time, in this setup,
@@ -538,7 +541,7 @@ if argopt.rts != 'FALSE':
                 keys = setup.detwin + setup.detmode + setup.insmode;
                 if argopt.kappa_gain == 'FALSE': keys.remove ('GAIN');
                 tmp = mrx.headers.assoc (gp[0], hdrs, 'BEAM%i_MAP'%i,
-                                         keys=keys, quality=argopt.beam_quality,
+                                         keys=keys, quality=argopt.kappa_quality,
                                          which='closest', required=1);
                 kappas.extend (tmp);
                 
