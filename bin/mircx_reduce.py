@@ -424,7 +424,7 @@ if argopt.preproc != 'FALSE':
                 keys = setup.detwin + setup.insmode;
                 tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MEAN'%i,
                                          keys=keys, which='best', required=1,
-                                         quality=0.01);
+                                         quality=3.0);
                 bmaps.extend (tmp);
 
             # Compute PREPROC
