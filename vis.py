@@ -44,10 +44,17 @@ def extract_maps (hdr, bmaps):
         mean_map = pyfits.getdata (bmap['ORIGNAME']);
         beam = int(bmap['FILETYPE'][4:5]) - 1;
 
+        # Check that this xchan was extracted in hdr
+        if HMW+'PHOTO%i STARTX'%(beam) not in hdr:
+            log.info ('Beam %i not preproc in this file, skip'%(beam+1));
+            continue;
+
+        # Crop fringe window
         fsx = hdr[HMW+'FRINGE STARTX'];
         fsy = hdr[HMW+'FRINGE STARTY'];
         fringe_map[beam,:,:,:,:] = mean_map[:,:,fsy:fsy+nfy,fsx:fsx+nfx];
-        
+
+        # Crop xchan window
         psx = hdr[HMW+'PHOTO%i STARTX'%(beam)];
         psy = hdr[HMW+'PHOTO%i STARTY'%(beam)];
         photo_map[beam,:,:,:,:] = mean_map[:,:,psy:psy+npy,psx:psx+npx];

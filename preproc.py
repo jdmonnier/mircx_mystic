@@ -570,15 +570,15 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     check_empty_window (cube, hdr);
 
     # Extract the fringe as the middle of all provided map
-    fxc0 = np.mean ([b['MIRC QC WIN FRINGE CENTERX'] for b in bmaps]);
-    fyc0 = np.mean ([b['MIRC QC WIN FRINGE CENTERY'] for b in bmaps]);
+    fxc0 = np.mean ([b['MIRC QC WIN FRINGE CENTERX'] for b in bmaps if b!=[]]);
+    fyc0 = np.mean ([b['MIRC QC WIN FRINGE CENTERY'] for b in bmaps if b!=[]]);
                    
     # Define the closest integer
     fxc = int(round(fxc0));
     fyc = int(round(fyc0));
     log.info ('FRINGE CENTERX/Y = %i,%i'%(fxc,fyc));
 
-    # Expected size on spatial and spectral direction are hardcoded 
+    # Expected size on spatial and spectral direction are hardcoded
     fxw = int(setup.fringe_widthx (hdr) / 2);
     pxw = int(setup.photo_widthx (hdr) / 2 + 1.5);
     ns  = int(setup.nspec (hdr)/2 + 2.5);

@@ -81,6 +81,9 @@ preproc.add_argument ("--max-integration-time", dest="max_integration_time",defa
 preproc.add_argument ("--threshold", dest="threshold",default=5.,type=float,
                      help='threshold in sigma for identifying bad pixels [%(default)s]');
 
+preproc.add_argument ("--mean-quality", dest="mean_quality", type=float,
+                     default=20.0, help="minimum quality to consider the BEAM_MEAN as a valid window for cropping the data in the preproc [%(default)s]");
+
 rts = parser.add_argument_group ('(2) rts',
                   '\nCreates RTS intermediate products, which are the\n'
                   'coherent flux and the photometric flux in real time,\n'
@@ -424,7 +427,7 @@ if argopt.preproc != 'FALSE':
                 keys = setup.detwin + setup.insmode;
                 tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MEAN'%i,
                                          keys=keys, which='best', required=1,
-                                         quality=3.0);
+                                         quality=argopt.mean_quality);
                 bmaps.extend (tmp);
 
             # Compute PREPROC
