@@ -638,17 +638,6 @@ if argopt.oifits != 'FALSE':
     gps = mrx.headers.group (hdrs, 'DATA_RTS', delta=120,
                              Delta=argopt.max_integration_time, keys=keys);
 
-    # Include FOREGROUND
-    if argopt.reduce_foreground == 'TRUE':
-        gps += mrx.headers.group (hdrs, 'FOREGROUND_RTS', delta=120,
-                                  Delta=argopt.max_integration_time, keys=keys);
-
-    # Reduce BACKGROUND
-    if argopt.reduce_foreground == 'TRUE':
-        gps += mrx.headers.group (hdrs, 'BACKGROUND_RTS', keys=keys,
-                                  delta=120, Delta=argopt.max_integration_time,
-                                  continuous=True);
-
     # Compute 
     for i,gp in enumerate(gps):
         try:
