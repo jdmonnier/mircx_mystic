@@ -159,13 +159,13 @@ oifits.add_argument ("--rm-rts", dest="rm_rts",default='FALSE',
 
 advanced = parser.add_argument_group ('advanced user arguments');
                                          
-advanced.add_argument ("--reduce-foreground", dest="reduce_foreground",default='FALSE',
-                     choices=TrueFalse,
-                     help="reduce the FOREGROUND as DATA [%(default)s]");
-
 advanced.add_argument ("--bbias", dest="bbias",default='FALSE',
                      choices=TrueFalseOverwrite,
                      help="compute the BBIAS_COEFF product [%(default)s]");
+
+advanced.add_argument ("--reduce-foreground", dest="reduce_foreground",default='FALSE',
+                     choices=TrueFalse,
+                     help="reduce the FOREGROUND into OIFITS [%(default)s]");
 
 advanced.add_argument ("--debug", dest="debug",default='FALSE',
                      choices=TrueFalse,
@@ -196,12 +196,17 @@ argopt = parser.parse_args ();
 elog = log.trace ('mircx_reduce');
 
 ## force choices when --bbias=TRUE
-if argopt.bbias=='TRUE':
-    argopt.reduce_foreground='TRUE'
-    argopt.save_all_freqs='TRUE'
-    argopt.ncs=1
-    argopt.nbs=0
+if argopt.bbias != 'FALSE':
+    log.info ('bbias is TRUE so force save-all-freqs=TRUE');
+    argopt.save_all_freqs = 'TRUE';
+    argopt.ncs = 1;
+    argopt.nbs = 0;
+
     
+#
+# Compute Preproc
+#
+
 if argopt.preproc != 'FALSE':
     overwrite = (argopt.preproc == 'OVERWRITE');
 
@@ -387,14 +392,12 @@ if argopt.preproc != 'FALSE':
                              delta=120, Delta=argopt.max_integration_time,
                              continuous=True);
 
-    # Also reduce the FOREGROUND
-    if argopt.reduce_foreground == 'TRUE':
+    # Also reduce the FOREGROUND and BACKGROUND
+    if argopt.bbias != 'FALSE':
         gps += mrx.headers.group (hdrs, 'FOREGROUND', keys=keys,
                                   delta=120, Delta=argopt.max_integration_time,
                                   continuous=True);
         
-    # Also reduce the BACKGROUND
-    if argopt.reduce_foreground == 'TRUE':
         gps += mrx.headers.group (hdrs, 'BACKGROUND', keys=keys,
                                   delta=120, Delta=argopt.max_integration_time,
                                   continuous=True);
@@ -499,13 +502,11 @@ if argopt.rts != 'FALSE':
     gps = mrx.headers.group (hdrs, 'DATA_PREPROC', delta=120,
                              Delta=argopt.max_integration_time, keys=keys);
 
-    # Reduce FOREGROUND
-    if argopt.reduce_foreground == 'TRUE':
+    # Reduce FOREGROUND and BACKGROUND
+    if argopt.bbias != 'FALSE':
         gps += mrx.headers.group (hdrs, 'FOREGROUND_PREPROC', delta=120,
                                   Delta=argopt.max_integration_time, keys=keys);
-
-    # Reduce BACKGROUND
-    if argopt.reduce_foreground == 'TRUE':
+        
         gps += mrx.headers.group (hdrs, 'BACKGROUND_PREPROC', keys=keys,
                                   delta=120, Delta=argopt.max_integration_time,
                                   continuous=True);
@@ -638,13 +639,11 @@ if argopt.oifits != 'FALSE':
     gps = mrx.headers.group (hdrs, 'DATA_RTS', delta=120,
                              Delta=argopt.max_integration_time, keys=keys);
 
-    # Include FOREGROUND
+    # Include FOREGROUND and BACKGROUND
     if argopt.reduce_foreground == 'TRUE':
         gps += mrx.headers.group (hdrs, 'FOREGROUND_RTS', delta=120,
                                   Delta=argopt.max_integration_time, keys=keys);
-
-    # Reduce BACKGROUND
-    if argopt.reduce_foreground == 'TRUE':
+        
         gps += mrx.headers.group (hdrs, 'BACKGROUND_RTS', keys=keys,
                                   delta=120, Delta=argopt.max_integration_time,
                                   continuous=True);
@@ -653,8 +652,12 @@ if argopt.oifits != 'FALSE':
     for i,gp in enumerate(gps):
         try:
             log.info ('Compute OIFITS {0} over {1} '.format(i+1,len(gps)));
-            
-            filetype = 'OIFITS';
+
+            if 'DATA' in gp[0]['FILETYPE']:
+                filetype = 'OIFITS';
+            else:
+                filetype = gp[0]['FILETYPE'].replace('_RTS','_OIFITS');
+                
             output = mrx.files.output (argopt.oifits_dir, gp[0], filetype);
             
             if os.path.exists (output+'.fits') and overwrite is False:
