@@ -198,6 +198,7 @@ elog = log.trace ('mircx_reduce');
 ## force choices when --bbias=TRUE
 if argopt.bbias != 'FALSE':
     log.info ('bbias is TRUE so force save-all-freqs=TRUE');
+    argopt.reduce_foreground = 'TRUE';
     argopt.save_all_freqs = 'TRUE';
     argopt.ncs = 1;
     argopt.nbs = 0;
@@ -582,6 +583,7 @@ if argopt.bbias != 'FALSE':
 
     # Group all DATA_RTS
     keys = setup.detwin + setup.detmode + setup.insmode + setup.fringewin;
+    #keys = setup.target_names
     gps = mrx.headers.group (hdrs, 'DATA_RTS', keys=keys,
                              delta=1e20, Delta=1e20,
                              continuous=False);
@@ -602,11 +604,13 @@ if argopt.bbias != 'FALSE':
 
             # Associate BACKGROUND_RTS
             keys = setup.detwin + setup.detmode + setup.insmode;
+            #keys = setup.target_names
             bkg = mrx.headers.assoc (gp[0], hdrs, 'BACKGROUND_RTS',
                                      keys=keys, which='all', required=1);
 
             # Associate FOREGROUND_RTS
             keys = setup.detwin + setup.detmode + setup.insmode;
+            #keys = setup.target_names
             fg = mrx.headers.assoc (gp[0], hdrs, 'FOREGROUND_RTS',
                                    keys=keys, which='all', required=1);
 
@@ -668,8 +672,11 @@ if argopt.oifits != 'FALSE':
 
             # Associate BBIAS_COEFF
             keys = setup.detwin + setup.detmode + setup.insmode;
-            coeff = mrx.headers.assoc (gp[0], hdrs, 'BBIAS_COEFF',
-                                       keys=keys, which='best', required=0);
+            if argopt.bbias == 'FALSE':
+                coeff = [];
+            else:
+                coeff = mrx.headers.assoc (gp[0], hdrs, 'BBIAS_COEFF',
+                                        keys=keys, which='best', required=0);
             
             mrx.compute_vis (gp, coeff, output=output,
                              filetype=filetype,

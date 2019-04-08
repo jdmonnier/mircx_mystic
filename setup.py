@@ -14,6 +14,9 @@ from . import log;
 # astropy.utils.iers.conf.iers_auto_url = 'http://maia.usno.navy.mil/ser7/finals2000A.all';
 
 # Definition of setups
+global target_names;
+target_names = ['OBJECT']
+
 global detwin;
 detwin = ['CROPROWS','CROPCOLS'];
 

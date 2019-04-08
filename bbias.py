@@ -27,6 +27,9 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
     '''
     elog = log.trace ('compute_bbias_coeff');
 
+    # FIXME: hardcode ncoherent for bbias computation (low is less noisy)
+    ncoher = 3
+
     # Check inputs
     headers.check_input (hdrs, required=1);
     headers.check_input (bkgs, required=1);
@@ -114,9 +117,9 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         photo = signal.uniform_filter (photo,(nramps,0,0),mode='constant');
         tri_sumv2 = signal.uniform_filter (tri_sumv2,(nramps,0,0),mode='constant');
 
-        bs = bs[new_frms_data,:,:]#*ncoher;
-        photo = photo[new_frms_data,:,:]#*ncoher;
-        tri_sumv2 = tri_sumv2[new_frms_data,:,:]#*ncoher;
+        bs = bs[new_frms_data,:,:];
+        photo = photo[new_frms_data,:,:];
+        tri_sumv2 = tri_sumv2[new_frms_data,:,:];
 
         ## Avg over triangles
         bs = np.mean(bs,axis=-1);
@@ -124,13 +127,13 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         tri_sumv2 = np.mean(tri_sumv2,axis=-1);
 
         ## Take median over channels
-        nx,ny = bs.shape
-        bs = np.median(bs,axis=-1,keepdims=True)
-        photo = np.median(photo,-1,keepdims=True)
-        tri_sumv2 = np.median(tri_sumv2,axis=-1,keepdims=True)
-        bs = np.repeat(bs,ny,axis=-1)
-        photo = np.repeat(photo,ny,axis=-1)
-        tri_sumv2 = np.repeat(tri_sumv2,ny,axis=-1)
+        #nx,ny = bs.shape
+        #bs = np.median(bs,axis=-1,keepdims=True)
+        #photo = np.median(photo,-1,keepdims=True)
+        #tri_sumv2 = np.median(tri_sumv2,axis=-1,keepdims=True)
+        #bs = np.repeat(bs,ny,axis=-1)
+        #photo = np.repeat(photo,ny,axis=-1)
+        #tri_sumv2 = np.repeat(tri_sumv2,ny,axis=-1)
 
         if bispectrum is None:
             bispectrum = np.empty((0,bs.shape[1]),int);
@@ -145,63 +148,74 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         del bs, photo, tri_sumv2, all_dft, data_xps, data_xps0, t_cpx, sumv2;
 
     ## measure coefficients
-    C0 = []
-    C1 = []
-    C2 = []
+    log.info('Measure bbias coefficients');
+    C0 = [];
+    C1 = [];
+    C2 = [];
     for i in np.arange(np.size(bispectrum,-1)):
-        p = photometry[:,i]
+        p = photometry[:,i];
+        b = bispectrum[:,i].real;
+        s = sum_vis2[:,i];
+        
         if np.isfinite(p).all()==False:
-            C0.append(np.nan)
-            C1.append(np.nan)
-            C2.append(np.nan)
+            C0.append(np.nan);
+            C1.append(np.nan);
+            C2.append(np.nan);
         else:
-            unit = photometry[:,i]*0. + 1.;
-            A = np.array([unit,photometry[:,i],sum_vis2[:,i]]);
-            result = np.linalg.lstsq(A.T,bispectrum[:,i].real);
-            C0.append(result[0][0])
-            C1.append(result[0][1])
-            C2.append(result[0][2])
-    C0 = np.array(C0)
-    C1 = np.array(C1)
-    C2 = np.array(C2)
+            # median filter to deal with outliers
+            b = medfilt(b,5);
+            s = medfilt(s,5);
+            p = medfilt(p,5);
 
-    nx,ny = bispectrum.shape
-    # Figures
-    log.info ('Figures');
-    fig,ax = plt.subplots ();
-    fig.suptitle ('Bispectrum - Photometry');
-    ax.plot(photometry[:,int(ny/2)],bispectrum[:,int(ny/2)].real,'.')
-    ax.set_xlabel('Photometry')
-    ax.set_ylabel('Bispectrum')
-    files.write (fig,output+'_bispec.png');
+            # Measure coefficients
+            unit = p*0. + 1.;
+            A = np.array([unit,p,s]);
+            result = np.linalg.lstsq(A.T,b);
+            C0.append(result[0][0]);
+            C1.append(result[0][1]);
+            C2.append(result[0][2]);
 
-    ## check for crazy vis2 measurement
-    log.info ('Figures');
-    fig,ax = plt.subplots ();
-    fig.suptitle ('Bispectrum - SumV2');
-    ax.plot(sum_vis2[:,int(ny/2)],bispectrum[:,int(ny/2)].real,'.')
-    ax.set_xlabel('SumV2')
-    ax.set_ylabel('Bispectrum')
-    files.write (fig,output+'_sumv2.png');
+            # Residuals 
+            bs_model = result[0][0] + result[0][1]*p+ result[0][2]*s;
+            resid = (b - bs_model) / ((b+bs_model)/2) * 100;
 
-    ## photometry resids
-    bs_model = C0 + C1*photometry + C2*sum_vis2
-    resid = (bispectrum.real - bs_model) / ((bispectrum.real+bs_model)/2) * 100 
-    log.info ('Figures');
-    fig,ax = plt.subplots ();
-    fig.suptitle ('Photometry Residuals');
-    ax.plot(photometry[:,int(ny/2)],resid[:,int(ny/2)],'.')
-    ax.set_xlabel('Photometry')
-    ax.set_ylabel('Residual (%)')
-    files.write (fig,output+'_photoresid.png');
+            # Figures
+            fig,ax = plt.subplots ();
+            fig.suptitle ('Bispectrum - Photometry');
+            ax.plot(p,b,'.');
+            ax.set_xlabel('Photometry');
+            ax.set_ylabel('Bispectrum');
+            files.write (fig,output+'_bispec_%s.png'%i);
 
-    ## sumvis2 resids
-    fig,ax = plt.subplots ();
-    fig.suptitle ('SumV2 Residuals');
-    ax.plot(sum_vis2[:,int(ny/2)],resid[:,int(ny/2)],'.')
-    ax.set_ylabel('Residual (%)')
-    ax.set_xlabel('SumV2')
-    files.write (fig,output+'_sumv2resid.png');
+            ## check for crazy vis2 measurement
+            log.info ('Figures');
+            fig,ax = plt.subplots ();
+            fig.suptitle ('Bispectrum - SumV2');
+            ax.plot(s,b,'.');
+            ax.set_xlabel('SumV2');
+            ax.set_ylabel('Bispectrum');
+            files.write (fig,output+'_sumv2_%s.png'%i);
+
+            ## photometry resids 
+            log.info ('Figures');
+            fig,ax = plt.subplots ();
+            fig.suptitle ('Photometry Residuals');
+            ax.plot(p,resid,'.');
+            ax.set_xlabel('Photometry');
+            ax.set_ylabel('Residual (%)');
+            files.write (fig,output+'_photoresid_%s.png'%i);
+
+            ## sumvis2 resids
+            fig,ax = plt.subplots ();
+            fig.suptitle ('SumV2 Residuals');
+            ax.plot(s,resid,'.');
+            ax.set_ylabel('Residual (%)');
+            ax.set_xlabel('SumV2');
+            files.write (fig,output+'_sumv2resid_%s.png'%i);
+
+    C0 = np.array(C0);
+    C1 = np.array(C1);
+    C2 = np.array(C2);
 
     # File
     log.info ('Create file');
@@ -228,5 +242,3 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
     plt.close ("all");
 
     return hdulist;
-
-    
