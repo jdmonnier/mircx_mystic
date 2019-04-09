@@ -101,7 +101,7 @@ if argopt.oifitscalib != 'FALSE':
     hdrs = mrx.headers.loaddir (argopt.oifits_dir);
 
     # Define the calibratable setups
-    keys = setup.detwin + setup.insmode + setup.pop + \
+    keys = setup.detwin + setup.insmode +  \
            setup.fringewin + setup.visparam + setup.beamorder;
            
     if argopt.use_detmode == 'TRUE': keys += setup.detmode;
