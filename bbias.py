@@ -111,6 +111,8 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
 
         # Average over ramps
         nramps=15;
+        if np.size(bs,0)<nramps:
+            nramps = np.size(bs,0)
         new_frms_data = np.arange(int(np.size(bs,0)/nramps))*nramps+1;
 
         bs = signal.uniform_filter_cpx (bs,(nramps,0,0),mode='constant');
