@@ -134,6 +134,7 @@ for h in hdrs:
     
     # If we have the info about this star
     #try:
+    diam  = objcat[h['OBJECT']]['UDDH'][0]
     Hmag    = float(objcat[h['OBJECT']]['Hmag'][0])
     fH      = Hzp * 10**(-Hmag/2.5)
     fExpect = fH * expT * bWid * telArea * iTQE # expected flux based on stellar flux and instrument sensitivity
