@@ -140,7 +140,7 @@ for h in hdrs:
         log.info('Expected flux = '+str(fExpect))
         
         # loop over the beams:
-        for b in range(0):
+        for b in range (6):
             fMeas = h[HMQ+'FLUX%i MEAN'%b] / gain
             h[HMQ+'TRANS%i'%b] = fMeas / fExpect  # transmission (% of expected stellar flux)
             log.info('Measured flux = '+str(fMeas))
