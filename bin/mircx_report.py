@@ -1,6 +1,10 @@
 #! /usr/bin/env python                                                          
 # -*- coding: iso-8859-15 -*-                                                   
 
+# Updates:
+# 2019 - 04 - 10: CLD incorporated instrument sensitivity assessment 
+#                 to convert transmission to units of % of expected stellar flux
+
 import mircx_pipeline as mrx;
 import argparse, glob, os;
 import numpy as np;
@@ -120,19 +124,25 @@ for obj in objlist:
 #
 # Compute the transmission and instrumental visibility
 #
+iTQE    = 0.5 # Tcamera * QEcamera (internal transmission and quantum efficiency) = 50% from Cyprien
+telArea = np.pi * 0.5*0.5 # collecting area of a 1m telescope (assuming circular aperture)
 
 for h in hdrs:
+    expT = h['EXPOSURE'] # exposure time in milliseconds
+    gain = 0.5 * h['GAIN'] # conversion gain from Cyprien
+    bWid = h['BANDWID']
     
     # If we have the info about this star
     try:
-        fluxm = Hzp * 10**(-objcat[h['OBJECT']]['Hmag'][0]/2.5);
-        diam  = objcat[h['OBJECT']]['UDDH'][0];
-
-        # Loop on beam 
-        for b in range (6):
-            flux = h[HMQ+'FLUX%i MEAN'%b];
-            h[HMQ+'TRANS%i'%b] = flux / fluxm;
-
+        Hmag    = objcat[h['OBJECT']]['Hmag'][0] 
+        fH      = Hzp * 10**(-Hmag/2.5)
+        fExpect = fH * expT * bWid * telArea * iTQE # expected flux based on stellar flux and instrument sensitivity
+        
+        # loop over the beams:
+        for b in range(0):
+            fMeas = h[HMQ+'FLUX%i MEAN'%b] / gain
+            h[HMQ+'TRANS%i'%b] = fMeas / fExpect  # transmission (% of expected stellar flux)
+        
         # Loop on baseline 
         for b in bname:
             vis2 = h[HMQ+'VISS'+b+' MEAN'];
@@ -202,7 +212,7 @@ files.write (fig,'report_tf2.png');
 
 # Trans
 fig,axes = plt.subplots (3,2,sharex=True);
-fig.suptitle ('Transmission [arbitrary units]');
+fig.suptitle ('Transmission [$\%$ of expected $F_\star$]');
 plot.compact (axes);
 
 for b in range (6):
