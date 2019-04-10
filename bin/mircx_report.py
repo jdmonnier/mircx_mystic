@@ -128,7 +128,7 @@ iTQE    = 0.5 # Tcamera * QEcamera (internal transmission and quantum efficiency
 telArea = np.pi * 0.5*0.5 # collecting area of a 1m telescope (assuming circular aperture)
 
 for h in hdrs:
-    expT = h['EXPOSURE']*1e3 # exposure time in seconds
+    expT = h['EXPOSURE'] # exposure time in milliseconds
     gain = 0.5 * h['GAIN'] # conversion gain from Cyprien
     bWid = h['BANDWID']
     
@@ -137,14 +137,11 @@ for h in hdrs:
         Hmag    = objcat[h['OBJECT']]['Hmag'][0] 
         fH      = Hzp * 10**(-Hmag/2.5)
         fExpect = fH * expT * bWid * telArea * iTQE # expected flux based on stellar flux and instrument sensitivity
-        log.info('Expected flux = '+str(fExpect))
         
         # loop over the beams:
         for b in range (6):
             fMeas = h[HMQ+'FLUX%i MEAN'%b] / gain
             h[HMQ+'TRANS%i'%b] = fMeas / fExpect  # transmission (% of expected stellar flux)
-            log.info('Measured flux = '+str(fMeas))
-            log.info('Transmission efficiency ='+str(fMeas/fExpect)+'%')
         
         # Loop on baseline 
         for b in bname:
@@ -220,7 +217,9 @@ plot.compact (axes);
 
 for b in range (6):
     data = headers.getval (hdrs, HMQ+'TRANS%i'%b);
+    print data
     data /= (data>0);
+    print data
     axes.flatten()[b].plot (data, 'o');
     
 files.write (fig,'report_trans.png');
