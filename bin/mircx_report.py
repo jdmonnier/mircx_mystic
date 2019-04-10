@@ -128,13 +128,13 @@ iTQE    = 0.5 # Tcamera * QEcamera (internal transmission and quantum efficiency
 telArea = np.pi * 0.5*0.5 # collecting area of a 1m telescope (assuming circular aperture)
 
 for h in hdrs:
-    expT = h['EXPOSURE'] # exposure time in milliseconds
+    expT = h['EXPOSURE']*1e-3 # exposure time in milliseconds
     gain = 0.5 * h['GAIN'] # conversion gain from Cyprien
-    bWid = h['BANDWID']
+    bWid = h['BANDWID']*1e6 # spectral bandwidth in metres
     
     # If we have the info about this star
     try:
-		diam  = objcat[h['OBJECT']]['UDDH'][0]
+		diam    = objcat[h['OBJECT']]['UDDH'][0]
 		Hmag    = float(objcat[h['OBJECT']]['Hmag'][0])
 		fH      = Hzp * 10**(-Hmag/2.5)
 		fExpect = fH * expT * bWid * telArea * iTQE # expected flux based on stellar flux and instrument sensitivity
