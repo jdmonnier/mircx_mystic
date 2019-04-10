@@ -144,7 +144,7 @@ for h in hdrs:
             fMeas = h[HMQ+'FLUX%i MEAN'%b] / gain
             h[HMQ+'TRANS%i'%b] = fMeas / fExpect  # transmission (% of expected stellar flux)
             log.info('Measured flux = '+str(fMeas))
-            log.info('Transmission efficiency ='+str(fMeas/fExpect)'+%')
+            log.info('Transmission efficiency ='+str(fMeas/fExpect)+'%')
         
         # Loop on baseline 
         for b in bname:
