@@ -142,7 +142,7 @@ for h in hdrs:
 		# loop over the beams:
 		for b in range (6):
 			fMeas = h[HMQ+'FLUX%i MEAN'%b] / gain
-			h[HMQ+'TRANS%i'%b] = fMeas / fExpect  # transmission (% of expected stellar flux)
+			h[HMQ+'TRANS%i'%b] = 100.* (fMeas / fExpect)  # transmission (% of expected stellar flux)
 	    
 		# Loop on baseline 
 		for b in bname:
