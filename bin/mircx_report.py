@@ -218,9 +218,7 @@ plot.compact (axes);
 
 for b in range (6):
     data = headers.getval (hdrs, HMQ+'TRANS%i'%b);
-    print data
     data /= (data>0);
-    print data
     axes.flatten()[b].plot (data, 'o');
     
 files.write (fig,'report_trans.png');
