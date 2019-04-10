@@ -133,32 +133,32 @@ for h in hdrs:
     bWid = h['BANDWID']
     
     # If we have the info about this star
-    #try:
-    diam  = objcat[h['OBJECT']]['UDDH'][0]
-    Hmag    = float(objcat[h['OBJECT']]['Hmag'][0])
-    fH      = Hzp * 10**(-Hmag/2.5)
-    fExpect = fH * expT * bWid * telArea * iTQE # expected flux based on stellar flux and instrument sensitivity
-    
-    # loop over the beams:
-    for b in range (6):
-        fMeas = h[HMQ+'FLUX%i MEAN'%b] / gain
-        h[HMQ+'TRANS%i'%b] = fMeas / fExpect  # transmission (% of expected stellar flux)
-    
-    # Loop on baseline 
-    for b in bname:
-        vis2 = h[HMQ+'VISS'+b+' MEAN'];
-        spf  = h[HMQ+'BASELENGTH'+b] / h['EFF_WAVE'];
-        vis2m = signal.airy (diam * spf * 4.84813681109536e-09)**2;
-        h[HMQ+'TF'+b+' MEAN'] = vis2/vis2m;
-        h[HMQ+'VISSM'+b+' MEAN'] = vis2m;
-    """
-    # If we don't have the info about this star
+    try:
+		diam  = objcat[h['OBJECT']]['UDDH'][0]
+		Hmag    = float(objcat[h['OBJECT']]['Hmag'][0])
+		fH      = Hzp * 10**(-Hmag/2.5)
+		fExpect = fH * expT * bWid * telArea * iTQE # expected flux based on stellar flux and instrument sensitivity
+	    
+		# loop over the beams:
+		for b in range (6):
+			fMeas = h[HMQ+'FLUX%i MEAN'%b] / gain
+			h[HMQ+'TRANS%i'%b] = fMeas / fExpect  # transmission (% of expected stellar flux)
+	    
+		# Loop on baseline 
+		for b in bname:
+			vis2 = h[HMQ+'VISS'+b+' MEAN'];
+			spf  = h[HMQ+'BASELENGTH'+b] / h['EFF_WAVE'];
+			vis2m = signal.airy (diam * spf * 4.84813681109536e-09)**2;
+			h[HMQ+'TF'+b+' MEAN'] = vis2/vis2m;
+			h[HMQ+'VISSM'+b+' MEAN'] = vis2m;
+		
+	# If we don't have the info about this star
     except:
         for b in range (6):
             h[HMQ+'TRANS%i'%b] = -1.0;
         for b in bname:
             h[HMQ+'TF'+b+' MEAN'] = -1.0;
-    """    
+
 
 #
 # Plots
