@@ -13,7 +13,7 @@ def flux (hdr, y0, photo):
     
     for t in range(6):
         val = np.mean (photo[:,:,y0,t], axis=(0,1));
-        hdr[HMQ+'FLUX%i MEAN'%t] = (val,'flux at lbd0');
+        hdr[HMQ+'FLUX%i MEAN'%t] = (val,'[adu/frame/channel] at lbd0');
 
 def snr (hdr, y0, base_snr0, base_snr):
     '''

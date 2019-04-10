@@ -454,6 +454,11 @@ def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
     target_id = np.ones (nt).astype(int);
     time = mjd * 0.0;
     staindex = setup.beam_index(hdr);
+
+    # Flux in adu/s
+    dit = hdr.get ('EXPOSURE', 0.0) * 1e-3;
+    flux    = flux / dit;
+    fluxerr = fluxerr / dit;
     
     # Flag data
     flag = ~np.isfinite (flux) + ~np.isfinite (fluxerr);
@@ -463,8 +468,8 @@ def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
              pyfits.Column (name='TIME', format='D', array=time, unit='s'), \
              pyfits.Column (name='MJD', format='D', array=mjd,unit='day'), \
              pyfits.Column (name='INT_TIME', format='D', array=int_time, unit='s'), \
-             pyfits.Column (name='FLUXDATA', format='%iD'%ny, array=flux.T, unit='adu'), \
-             pyfits.Column (name='FLUXERR', format='%iD'%ny, array=fluxerr.T, unit='adu'), \
+             pyfits.Column (name='FLUXDATA', format='%iD'%ny, array=flux.T, unit='adu/s'), \
+             pyfits.Column (name='FLUXERR', format='%iD'%ny, array=fluxerr.T, unit='adu/s'), \
              pyfits.Column (name='STA_INDEX', format='1I', array=staindex), \
              pyfits.Column (name='FLAG', format='%iL'%ny, array=flag.T)
              ]);
