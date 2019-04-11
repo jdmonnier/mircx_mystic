@@ -77,9 +77,6 @@ elog = log.trace ('mircx_report');
 # List of basename
 bname = setup.base_name ();
 
-# Zero point of Hband (arbitrary unit)
-Hzp = 1e5;
-
 # Load all the headers
 hdrs = mrx.headers.loaddir (argopt.oifits_dir);
 
@@ -124,26 +121,33 @@ for obj in objlist:
 #
 # Compute the transmission and instrumental visibility
 #
-iTQE    = 0.5 # Tcamera * QEcamera (internal transmission and quantum efficiency) = 50% from Cyprien
-telArea = np.pi * 0.5*0.5 # collecting area of a 1m telescope (assuming circular aperture)
+# Zero point of 2MASS:H from Cohen et al. (2003, AJ 126, 1090):
+Hzp = 9.464537e6 # [photons/millisec/m2/mircons]
+# internal transmission * quantum efficiency from Cyprien [dimensionless]:
+iTQE    = 0.5
+# collecting area of 1 telescope (assuming circular aperture) [m2]:
+telArea = np.pi * 0.5*0.5
 
 for h in hdrs:
-    expT = h['EXPOSURE']*1e-3 # exposure time in milliseconds
-    gain = 0.5 * h['GAIN'] # conversion gain from Cyprien
-    bWid = h['BANDWID']*1e6 # spectral bandwidth in metres
+    expT = h['EXPOSURE']   # exposure time in             [millisec]
+    bWid = h['BANDWID']    # spectral bandwidth           [microns]
+    gain = 0.5 * h['GAIN'] # conversion gain from Cyprien [ADU/e]
     
     # If we have the info about this star
     try:
-		diam    = objcat[h['OBJECT']]['UDDH'][0]
-		Hmag    = float(objcat[h['OBJECT']]['Hmag'][0])
-		fH      = Hzp * 10**(-Hmag/2.5)
-		fExpect = fH * expT * bWid * telArea * iTQE # expected flux based on stellar flux and instrument sensitivity
+		Hmag = float(objcat[h['OBJECT']]['Hmag'][0]) #    [mag]
+		fH   = Hzp * 10**(-Hmag/2.5)
+		# expected flux based on instrument sensitivity [photon/frame]:
+		fExpect = fH * expT * bWid * telArea * iTQE
 	    
 		# loop over the beams:
 		for b in range (6):
-			fMeas = h[HMQ+'FLUX%i MEAN'%b] / gain
-			h[HMQ+'TRANS%i'%b] = 100.* (fMeas / fExpect)  # transmission (% of expected stellar flux)
+		    # measured flux integrated over spectral band [photon/frame]:
+			fMeas = h[HMQ+'BANDFLUX%i MEAN'%b] / gain
+			# transmission [%]:
+			h[HMQ+'TRANS%i'%b] = 100.* (fMeas / fExpect)
 	    
+		diam    = objcat[h['OBJECT']]['UDDH'][0]
 		# Loop on baseline 
 		for b in bname:
 			vis2 = h[HMQ+'VISS'+b+' MEAN'];
