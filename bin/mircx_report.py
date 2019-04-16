@@ -128,6 +128,7 @@ iTQE    = 0.5
 # collecting area of 1 telescope (assuming circular aperture) [m2]:
 telArea = np.pi * 0.5*0.5
 
+kl = 0 # dummy character to avoid error message being output multiple times
 for h in hdrs:
     expT = h['EXPOSURE']   # exposure time in             [millisec]
     bWid = h['BANDWID']    # spectral bandwidth           [microns]
@@ -163,8 +164,11 @@ for h in hdrs:
         for b in bname:
             h[HMQ+'TF'+b+' MEAN'] = -1.0;
     except KeyError:
-        log.info('QC parameter BANDFLUX missing from header.')
-        log.info('Re-running the reduction is recommended.')
+        h[HMQ+'TRANS%i'%b] = -1.0
+        if kl == 0:
+            log.info('QC parameter BANDFLUX missing from header.')
+            log.info('Re-running the reduction is recommended.')
+            kl += 1
 
 #
 # Plots
