@@ -164,7 +164,8 @@ for h in hdrs:
         for b in bname:
             h[HMQ+'TF'+b+' MEAN'] = -1.0;
     except KeyError:
-        h[HMQ+'TRANS%i'%b] = -1.0
+        for b in range(6):
+            h[HMQ+'TRANS%i'%b] = -1.0
         if kl == 0:
             log.info('QC parameter BANDFLUX missing from header.')
             log.info('Re-running the reduction is recommended.')
