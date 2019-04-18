@@ -1,5 +1,5 @@
 import numpy as np;
-import os;
+import os, ssl;
 
 import astropy;
 from astropy.coordinates import EarthLocation, Angle, SkyCoord, ICRS, ITRS;
@@ -12,6 +12,10 @@ from . import log;
 # Default value for the IERS server
 # astropy.utils.iers.conf.iers_auto_url = 'ftp://ftp.iers.org/products/eop/rapid/standard/finals2000A.data';
 # astropy.utils.iers.conf.iers_auto_url = 'http://maia.usno.navy.mil/ser7/finals2000A.all';
+
+# ensure astropy.coordinates can query the online database of locations:
+if (not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverified_context', None)):
+    ssl._create_default_https_context = ssl._create_unverified_context
 
 # Definition of setups
 global target_names;
