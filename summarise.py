@@ -490,7 +490,8 @@ def texSumPlots(direc,redF,calF):
                     outtex.write('}\\\\ \n')
                 outtex.write('\\end{figure}\n\n')
         if int(float(num/30.)) == float(num/30.):
-            outtex.write('\\clearpage\n') # avoids latex 'too many unprocessed floats' error
+            with open(outFile, 'a') as outtex:
+                outtex.write('\\clearpage\n') # avoids latex 'too many unprocessed floats' error
     
     # Then append reduction QA plots to the file that won't be emailed:
     with open(outFiles[0], 'a') as outtex:
