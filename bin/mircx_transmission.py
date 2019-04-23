@@ -22,10 +22,13 @@ description:
 
 epilog = \
 """
-examples:
+examples: 
 
-   
+  python mircx_transmission.py --num-nights=10
 
+ or
+  
+  python mircx_transmission.py --date-from=2018Oct25 --date-to=2018Oct29
 
 """
 
@@ -152,7 +155,7 @@ telArea = np.pi * 0.5*0.5
 # ----------------------------
 # Set up the plot window:
 # ----------------------------
-fig,axes = plt.subplots(6,1,sharex=True,figsize=(16,8))
+fig,axes = plt.subplots(7,1,sharex=True,figsize=(16,9))
 plot.compact(axes)
 
 # ----------------------------
@@ -255,6 +258,7 @@ for d in dateList:
     countmin = count
     for h in hdrs:
         objname = headers.getval([h],'OBJECT')[0]
+        r0      = headers.getval([h],'R0')[0]
         if objname.replace('_', ' ') in calL and objname == cObj:
             # cal is the same as previous so colour must be maintained
             col = calCol[calColI]
@@ -274,10 +278,13 @@ for d in dateList:
             # target is sci, not cal
             col = 'k'
             mkr = '+'
+        # plot the seeing data:
+        axes.flatten()[0].plot(count,r0,marker=mkr,color=col,ls='None',ms=5)
+        # plot the transmission data:
         for b in range(6):
             transm = headers.getval([h], HMQ+'TRANS%i'%b)
             if transm > 0:
-                axes.flatten()[b].plot(count, transm, marker=mkr, color=col, ls='None', ms=5)
+                axes.flatten()[b+1].plot(count, transm, marker=mkr, color=col, ls='None', ms=5)
             try:
                 if transm > transmax:
                     transmax = max(transm)
@@ -290,8 +297,8 @@ for d in dateList:
     
     countmax = count
     # add vertical line to plot:
-    for b in range(6):
-        axes.flatten()[b].plot([count,count],[-0.1,transmax+1],ls='-.',color='k')
+    for b in range(7):
+        axes.flatten()[b].plot([count,count],[-0.1,18],ls='-.',color='k')
     count += 1
     
     tLoc.append(int(np.ceil((countmax-countmin)/2))+countmin)
@@ -302,7 +309,8 @@ for d in dateList:
 # -------------------------
 # edit the tick parameters and locations:
 # -------------------------
-axes.flatten()[0].set_title('Transmission [$\%$ of expected $F_\star$]')
+axes.flatten()[0].set_title('Mean seeing [10m average]')
+axes.flatten()[1].set_title('Transmission [$\%$ of expected $F_\star$]')
 axes.flatten()[5].set_xticks(tLoc)
 axes.flatten()[5].set_xticklabels(dateList,rotation=70, fontsize=12)
 
@@ -310,4 +318,5 @@ axes.flatten()[5].set_xticklabels(dateList,rotation=70, fontsize=12)
 # save the figure:
 # -------------------------
 plt.tight_layout()
-files.write (fig,'overview_transmission_'+dateList[0]+'_'+dateList[-1]+'.png')
+plt.show()
+#files.write (fig,'overview_transmission_'+dateList[0]+'_'+dateList[-1]+'.png')
