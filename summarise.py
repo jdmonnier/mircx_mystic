@@ -461,7 +461,7 @@ def texSumPlots(direc,redF,calF):
     # Read in mircx numbers of vis2 plots created in reduced and calibrated directories:
     redPlts = sorted(glob.glob(direc+'/oifits/*reduced_vis2.png'))
     redNum = [int(i.split('/')[-1].split('_')[0].split('x')[1]) for i in redPlts]
-    RTS_p  = sorted(glob.glob(direc+'/rts/*rts_psd.png')) # e.g. mircx00000_datarts_psd.png or mircx00000_foregroundrts_psd.png or mircx00000_backgroundrts_psd.png
+    RTS_p  = sorted(glob.glob(direc+'/rts/*datarts_psd.png')) # e.g. mircx00000_datarts_psd.png or mircx00000_foregroundrts_psd.png or mircx00000_backgroundrts_psd.png
     for num in range(0, len(redNum)):
         # ensure correct number of leading zeros are added to redNum for file name:
         strnum = '0'*(5-len(str(redNum[num])))+str(redNum[num])
@@ -517,7 +517,7 @@ def texSumPlots(direc,redF,calF):
          for snr in RTS_p[0:6]:
              outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, clip=true, ')
              outtex.write('width=0.49\\textwidth]{')
-             outtex.write(snr.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_snr').replace('foregroundrts_psd', 'oifits_snr').replace('backgroundrts_psd', 'oifits_snr'))
+             outtex.write(snr.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_snr'))
              outtex.write('}\n')
          if len(RTS_p) > 6:
              for n in range(1, int(np.ceil(len(RTS_p)/6.))):
@@ -528,7 +528,7 @@ def texSumPlots(direc,redF,calF):
                  for snr in RTS_p[6*n:6*(n+1)]:
                      outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, ')
                      outtex.write('clip=true, width=0.49\\textwidth]{')
-                     outtex.write(snr.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_snr').replace('foregroundrts_psd', 'oifits_snr').replace('backgroundrts_psd', 'oifits_snr'))
+                     outtex.write(snr.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_snr'))
                      outtex.write('}\n')
          outtex.write('\\end{figure}\n\n')
          outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
@@ -537,7 +537,7 @@ def texSumPlots(direc,redF,calF):
          for ba in RTS_p[0:6]:
              outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, clip=')
              outtex.write('true, width=0.49\\textwidth]{')
-             outtex.write(ba.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_base_trend').replace('foregroundrts_psd', 'oifits_base_trend').replace('backgroundrts_psd', 'oifits_base_trend'))
+             outtex.write(ba.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_base_trend'))
              outtex.write('}\n')
          if len(RTS_p) > 6:
              for n in range(1, int(np.ceil(len(RTS_p)/6.))):
@@ -548,7 +548,7 @@ def texSumPlots(direc,redF,calF):
                  for ba in RTS_p[6*n:6*(n+1)]:
                      outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, ')
                      outtex.write('clip=true, width=0.49\\textwidth]{')
-                     outtex.write(ba.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_base_trend').replace('foregroundrts_psd', 'oifits_base_trend').replace('backgroundrts_psd', 'oifits_base_trend'))
+                     outtex.write(ba.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_base_trend'))
                      outtex.write('}\n')
          outtex.write('\\end{figure}\n\n')
     for outFile in outFiles:
