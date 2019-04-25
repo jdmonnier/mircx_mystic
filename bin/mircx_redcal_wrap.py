@@ -169,6 +169,8 @@ for d in argopt.dates.split(','):
                     redoCal.append(False)
                 else:
                     redoCal.append(True)
+            else:
+                redoCal.append(False)
         else:
             # Someone has requested not to redo the reduction process:
             redoRed.append(False)
