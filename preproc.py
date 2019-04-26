@@ -46,7 +46,6 @@ def define_badpixels (bkg, threshold=5.):
     # thr = threshold;
     # bad_rms = rms > rms_std*thr;
     # log.info ('Found %i bad pixels in RMS'%np.sum (bad_rms));
-    bad_rms = 0;
 
     # Load background error
     bkg_noise = pyfits.getdata (bkg[0]['ORIGNAME'],0);
@@ -85,7 +84,7 @@ def define_badpixels (bkg, threshold=5.):
     log.info ('Found %i bad pixels in NOISE'%np.sum (bad_noise));
 
     # Ignore the badpixels on the edges
-    bad = bad_mean + bad_err + bad_noise + bad_rms;
+    bad = bad_mean + bad_err + bad_noise;
     bad[0,:] = False; bad[-1,:] = False;
     bad[:,0] = False; bad[:,-1] = False;
 
