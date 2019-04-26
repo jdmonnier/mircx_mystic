@@ -84,6 +84,10 @@ def lbd0 (hdr):
         dlbd = -8.2e-9;
     elif (hdr['CONF_NA'] == 'H_GRISM150'):
         dlbd = -8.2e-9;
+    elif (hdr['CONF_NA'] == 'H_GRISM'):
+        dlbd = -8.2e-9;
+    elif (hdr['CONF_NA'] == 'H_GRISM200                    S1=0,S2=1,E1=2,E2=3,W1=4,W2=5'):
+        dlbd = -8.2e-9
         
     # temporary configurations. Not sure
     # the sign is correct
