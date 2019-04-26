@@ -74,9 +74,10 @@ preproc.add_argument ("--raw-dir", dest="raw_dir",default='./',type=str,
 preproc.add_argument ("--preproc-dir", dest="preproc_dir",default='./preproc/',type=str,
                      help="directory of products [%(default)s]");
 
-preproc.add_argument ("--max-integration-time", dest="max_integration_time",default=300.,type=float,
-                     help='maximum integration into a single file, in (s).\n'
-                     'This apply to PREPROC, RTS and OIFITS steps [%(default)s]');
+preproc.add_argument ("--max-integration-time-preproc", dest="max_integration_time_preproc",
+                      default=30.,type=float,
+                      help='maximum integration into a single file, in (s).\n'
+                      'This apply to PREPROC, and RTS steps [%(default)s]');
 
 preproc.add_argument ("--threshold", dest="threshold",default=5.,type=float,
                      help='threshold in sigma for identifying bad pixels [%(default)s]');
@@ -126,6 +127,11 @@ oifits.add_argument ("--oifits", dest="oifits",default='TRUE',
 oifits.add_argument ("--oifits-dir", dest="oifits_dir",default='./oifits/',type=str,
                      help="directory of products [%(default)s]");
 
+oifits.add_argument ("--max-integration-time-oifits", dest="max_integration_time_oifits",
+                      default=150.,type=float,
+                      help='maximum integration into a single file, in (s).\n'
+                      'This apply to OIFITS steps [%(default)s]');
+
 oifits.add_argument ("--ncoherent", dest="ncoherent", type=int,
                      default=5, help="number of frames for coherent integration [%(default)s]");
 
@@ -136,7 +142,7 @@ oifits.add_argument ("--ncs", dest="ncs", type=int,
                      default=1, help="number of frame-offset for cross-spectrum [%(default)s]");
 
 oifits.add_argument ("--nbs", dest="nbs", type=int,
-                     default=4, help="number of frame-offset for bi-spectrum [%(default)s]");
+                     default=4, help='only used when bbias=FALSE, this is the shift for the bispectrum [%(default)s]');
 
 oifits.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
                      default=2.0, help="SNR threshold for fringe rejection [%(default)s]");
@@ -159,7 +165,7 @@ oifits.add_argument ("--rm-rts", dest="rm_rts",default='FALSE',
 
 advanced = parser.add_argument_group ('advanced user arguments');
                                          
-advanced.add_argument ("--bbias", dest="bbias",default='FALSE',
+advanced.add_argument ("--bbias", dest="bbias",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the BBIAS_COEFF product [%(default)s]");
 
@@ -172,8 +178,7 @@ advanced.add_argument ("--debug", dest="debug",default='FALSE',
                      help="stop on error [%(default)s]");
 
 advanced.add_argument ("--max-file", dest="max_file",default=3000,type=int,
-                     help="maximum number of file to load to build "
-                     "product (speed-up for tests) [%(default)s]");
+                     help=argparse.SUPPRESS);
 
 advanced.add_argument ('--help', action='help',
                      help=argparse.SUPPRESS);
@@ -198,7 +203,6 @@ elog = log.trace ('mircx_reduce');
 ## force choices when --bbias=TRUE
 if argopt.bbias != 'FALSE':
     log.info ('bbias is TRUE so force save-all-freqs=TRUE');
-    argopt.reduce_foreground = 'TRUE';
     argopt.save_all_freqs = 'TRUE';
     argopt.ncs = 1;
     argopt.nbs = 0;
@@ -390,17 +394,17 @@ if argopt.preproc != 'FALSE':
     # Group all DATA
     keys = setup.detwin + setup.detmode + setup.insmode;
     gps = mrx.headers.group (hdrs, 'DATA', keys=keys,
-                             delta=120, Delta=argopt.max_integration_time,
+                             delta=120, Delta=argopt.max_integration_time_preproc,
                              continuous=True);
 
     # Also reduce the FOREGROUND and BACKGROUND
     if argopt.bbias != 'FALSE':
         gps += mrx.headers.group (hdrs, 'FOREGROUND', keys=keys,
-                                  delta=120, Delta=argopt.max_integration_time,
+                                  delta=120, Delta=argopt.max_integration_time_preproc,
                                   continuous=True);
         
         gps += mrx.headers.group (hdrs, 'BACKGROUND', keys=keys,
-                                  delta=120, Delta=argopt.max_integration_time,
+                                  delta=120, Delta=argopt.max_integration_time_preproc,
                                   continuous=True);
 
     # Compute 
@@ -501,15 +505,15 @@ if argopt.rts != 'FALSE':
     # Reduce DATA
     keys = setup.detwin + setup.detmode + setup.insmode + setup.fringewin;
     gps = mrx.headers.group (hdrs, 'DATA_PREPROC', delta=120,
-                             Delta=argopt.max_integration_time, keys=keys);
+                             Delta=argopt.max_integration_time_preproc, keys=keys);
 
     # Reduce FOREGROUND and BACKGROUND
     if argopt.bbias != 'FALSE':
         gps += mrx.headers.group (hdrs, 'FOREGROUND_PREPROC', delta=120,
-                                  Delta=argopt.max_integration_time, keys=keys);
+                                  Delta=argopt.max_integration_time_preproc, keys=keys);
         
         gps += mrx.headers.group (hdrs, 'BACKGROUND_PREPROC', keys=keys,
-                                  delta=120, Delta=argopt.max_integration_time,
+                                  delta=120, Delta=argopt.max_integration_time_preproc,
                                   continuous=True);
     # Compute 
     for i,gp in enumerate(gps):
@@ -641,15 +645,15 @@ if argopt.oifits != 'FALSE':
     # Group all DATA
     keys = setup.detwin + setup.detmode + setup.insmode + setup.fringewin;
     gps = mrx.headers.group (hdrs, 'DATA_RTS', delta=120,
-                             Delta=argopt.max_integration_time, keys=keys);
+                             Delta=argopt.max_integration_time_oifits, keys=keys);
 
     # Include FOREGROUND and BACKGROUND
     if argopt.reduce_foreground == 'TRUE':
         gps += mrx.headers.group (hdrs, 'FOREGROUND_RTS', delta=120,
-                                  Delta=argopt.max_integration_time, keys=keys);
+                                  Delta=argopt.max_integration_time_oifits, keys=keys);
         
         gps += mrx.headers.group (hdrs, 'BACKGROUND_RTS', keys=keys,
-                                  delta=120, Delta=argopt.max_integration_time,
+                                  delta=120, Delta=argopt.max_integration_time_oifits,
                                   continuous=True);
 
     # Compute 

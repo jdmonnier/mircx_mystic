@@ -1167,13 +1167,13 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
         bbias_coeff2 = pyfits.getdata (f, 'C2');
 
         # Get rid of bad channels in bbias
-        mean0 = np.nanmean(bbias_coeff0);
-        std0 = np.nanstd(bbias_coeff0);
-        mean1 = np.nanmean(bbias_coeff1);
-        std1 = np.nanstd(bbias_coeff1);
-        mean2 = np.nanmean(bbias_coeff2);
-        std2 = np.nanstd(bbias_coeff2);
-        idx = np.where((bbias_coeff0>(mean0+5*std0)) & (bbias_coeff1>(mean1+5*std1)) & (bbias_coeff2>(mean2+5*std2)));
+        mean0 = np.nanmean (bbias_coeff0);
+        std0 = np.nanstd (bbias_coeff0);
+        mean1 = np.nanmean (bbias_coeff1);
+        std1 = np.nanstd (bbias_coeff1);
+        mean2 = np.nanmean (bbias_coeff2);
+        std2 = np.nanstd (bbias_coeff2);
+        idx = np.where ((bbias_coeff0>(mean0+5*std0)) & (bbias_coeff1>(mean1+5*std1)) & (bbias_coeff2>(mean2+5*std2)));
 
         bbias_coeff0[idx] = np.nan;
         bbias_coeff1[idx] = np.nan;

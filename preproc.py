@@ -30,22 +30,23 @@ def define_badpixels (bkg, threshold=5.):
     hdr = bkg[0];
 
     # Get bad pixels from rms of polyfit
-    bkg_noise = pyfits.getdata (bkg[0]['ORIGNAME'],0);
-    rms = [];
-    ny = bkg_noise.shape[2];
-    nx = bkg_noise.shape[3];
-    for i in np.arange(ny):
-        for j in np.arange(nx):
-            pixel = bkg_noise[0,:,i,j];
-            frame = np.arange(len(pixel));
-            p,res,_,_,_ = np.polyfit(frame,pixel,2,full=True);
-            rms.append(res);
-    rms = np.sqrt(np.array(rms)/len(rms));
-    rms_std = np.std(rms);
-    rms = rms.reshape(ny,nx);
-    thr = threshold;
-    bad_rms = rms > rms_std*thr;
-    log.info ('Found %i bad pixels in RMS'%np.sum (bad_rms));
+    # bkg_noise = pyfits.getdata (bkg[0]['ORIGNAME'],0);
+    # rms = [];
+    # ny = bkg_noise.shape[2];
+    # nx = bkg_noise.shape[3];
+    # for i in np.arange(ny):
+    #     for j in np.arange(nx):
+    #         pixel = bkg_noise[0,:,i,j];
+    #         frame = np.arange(len(pixel));
+    #         p,res,_,_,_ = np.polyfit(frame,pixel,2,full=True);
+    #         rms.append(res);
+    # rms = np.sqrt(np.array(rms)/len(rms));
+    # rms_std = np.std(rms);
+    # rms = rms.reshape(ny,nx);
+    # thr = threshold;
+    # bad_rms = rms > rms_std*thr;
+    # log.info ('Found %i bad pixels in RMS'%np.sum (bad_rms));
+    bad_rms = 0;
 
     # Load background error
     bkg_noise = pyfits.getdata (bkg[0]['ORIGNAME'],0);
