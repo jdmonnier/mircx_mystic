@@ -1173,8 +1173,12 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
         std1 = np.nanstd (bbias_coeff1);
         mean2 = np.nanmean (bbias_coeff2);
         std2 = np.nanstd (bbias_coeff2);
-        idx = np.where ((bbias_coeff0>(mean0+5*std0)) & (bbias_coeff1>(mean1+5*std1)) & (bbias_coeff2>(mean2+5*std2)));
+	    idx1 = abs(bbias_coeff0-mean0)>5*std0;
+        idx2 = abs(bbias_coeff1-mean1)>5*std1;
+        idx3 = abs(bbias_coeff2-mean2)>5*std2;
+        idx = idx1+idx2+idx3;
 
+        idx = np.where(idx==True);
         bbias_coeff0[idx] = np.nan;
         bbias_coeff1[idx] = np.nan;
         bbias_coeff2[idx] = np.nan;
