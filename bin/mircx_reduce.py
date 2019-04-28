@@ -186,7 +186,9 @@ advanced.add_argument ('--help', action='help',
 advanced.add_argument ('-h', action='help',
                      help=argparse.SUPPRESS);
 
-
+advanced.add_argument ('--selection', dest="selection",default='FALSE',
+                     choices=TrueFalseOverwrite,
+                    help=argparse.SUPPRESS);
 
 
 
@@ -631,6 +633,40 @@ if argopt.bbias != 'FALSE':
     log.info ('Cleanup memory');
     del hdrs, gps;
 
+#
+# Compute the trends
+#
+
+if argopt.selection != 'FALSE':
+    overwrite = (argopt.selection == 'OVERWRITE');
+
+    # List inputs
+    hdrs = mrx.headers.loaddir (argopt.rts_dir);
+
+    # Group all DATA by night
+    gps = mrx.headers.group (hdrs, 'DATA_RTS', delta=1e9,
+                             Delta=1e9, keys=[]);
+
+    # Only one output for the entire directory
+    output = mrx.files.output (argopt.oifits_dir, 'night', 'selection');
+    
+    if os.path.exists (output+'.fits') and overwrite is False:
+        log.info ('Product already exists');
+        
+    else:
+        try:
+            log.setFile (output+'.log');
+    
+            # Compute
+            mrx.compute_selection (gps[0], output=output, filetype='SELECTION',
+                                   interactive=False, ncoher=10, nscan=64);
+        
+        except Exception as exc:
+            log.error ('Cannot compute SELECTION: '+str(exc));
+            if argopt.debug == 'TRUE': raise;
+        finally:
+            log.closeFile ();
+            
             
 #
 # Compute OIFITS

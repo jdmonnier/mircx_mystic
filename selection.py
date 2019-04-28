@@ -4,25 +4,15 @@ import os;
 import matplotlib.pyplot as plt;
 import matplotlib.colors as mcolors;
 
-from astropy.stats import sigma_clipped_stats;
 from astropy.io import fits as pyfits;
-from astropy.modeling import models, fitting;
 
-from skimage.feature import register_translation;
-
-from scipy import fftpack;
-from scipy.signal import medfilt;
-from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter, uniform_filter, median_filter;
-from scipy.optimize import least_squares, curve_fit;
-from scipy.ndimage.morphology import binary_closing, binary_opening;
-from scipy.ndimage.morphology import binary_dilation, binary_erosion;
 
 from . import log, files, headers, setup, oifits, signal, plot, qc;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
-def compute_trends (hdrs, output='output_trends', filetype='SELECTION',
-                    interactive=False, ncoher=10, nscan=64):
+def compute_selection (hdrs, output='output_trends', filetype='SELECTION',
+                       interactive=False, ncoher=10, nscan=64):
     '''
     Display a summary of the entire night as waterfalls,
     based on the RTS intermediate products
@@ -35,8 +25,8 @@ def compute_trends (hdrs, output='output_trends', filetype='SELECTION',
 
     # Prepare outputs arrays
     nfiles = len (hdrs);
-    all_base_scan = np.zero (nfiles, nscan, 15);
-    all_beam_scan = np.zero (nfiles, nscan, 6);
+    all_base_scan = np.zeros ((nfiles, nscan, 15));
+    all_beam_scan = np.zeros ((nfiles, nscan, 6));
     
     # Loop on files to compute trend per base
     for ih,h in enumerate(hdrs):
@@ -68,14 +58,31 @@ def compute_trends (hdrs, output='output_trends', filetype='SELECTION',
         all_base_scan[ih,:,:] = base_scan;
 
     # Compute trend per beams
-    log.info ('Compute the trend per beams');
+    log.info ('Compute the scan per beams');
     
     for ib,beams in enumerate (setup.base_beam ()):
         all_beam_scan[:,:,beams[0]] += all_base_scan[:,:,ib];
         all_beam_scan[:,:,beams[1]] += all_base_scan[:,:,ib];
 
-    # Make nice plots
+    # Make plots
     log.info ('Plots');
+
+    # Waterfall per base
+    fig,axes = plt.subplots (5,3, sharex=True);
+    plot.base_name (axes);
+    plot.compact (axes);
+    for b in range (15):
+        axes.flatten()[b].imshow (all_base_scan[:,:,b].T,aspect='auto');
+    files.write (fig,output+'_base_trend.png');
+
+    # Waterfall per beam
+    fig,axes = plt.subplots (3,2, sharex=True);
+    plot.base_name (axes);
+    plot.compact (axes);
+    for b in range (6):
+        axes.flatten()[b].imshow (all_beam_scan[:,:,b].T,aspect='auto');
+    files.write (fig,output+'_beam_trend.png');
+    
 
     # ...
 
@@ -93,11 +100,26 @@ def compute_trends (hdrs, output='output_trends', filetype='SELECTION',
     log.info ('Create file');
 
     # First HDU
-    hdulist[0].header['FILETYPE'] = filetype;
+    hdu0 = pyfits.PrimaryHDU ([]);
+    hdu0.header = hdrs[0];
+    hdu0.header['FILETYPE'] = filetype;
 
+    # Save trends if we want to re-rerun a selection
+    # without having to re-load everthing maybe
+
+    hdu1 = pyfits.ImageHDU (all_beam_scan);
+    hdu1.header['EXTNAME'] = ('ALL_BEAM_SCAN',);
+
+    hdu2 = pyfits.ImageHDU (all_base_scan);
+    hdu2.header['EXTNAME'] = ('ALL_BASE_SCAN',);
+
+    # We should save the selection somwhere if any,
+    # and the filenames probably
+    
     # ...
     
     # Write file
+    hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2]);
     files.write (hdulist, output+'.fits');
             
     plt.close("all");

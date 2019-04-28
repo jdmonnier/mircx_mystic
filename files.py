@@ -33,9 +33,11 @@ def output (outputDir,hdr,suffix):
     
     # Build diretory if needed
     ensure_dir (outputDir);
+
+    # Get filename
+    name = hdr if type(hdr) is str else hdr['ORIGNAME'];
         
     # Get filename 
-    name = hdr['ORIGNAME'];
     name = os.path.splitext (os.path.basename(name))[0];
     if name[-5:] == '.fits':
         name = name[0:-5];

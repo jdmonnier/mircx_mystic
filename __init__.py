@@ -12,8 +12,10 @@ from .preproc import compute_beam_map
 from .preproc import compute_beam_profile
 from .preproc import compute_preproc
 
+
 # High levels routines to extract vis
 # from BEAMMAP and PREPROC data
+from .selection import compute_selection
 from .bbias import compute_bbias_coeff
 from .vis import compute_speccal
 from .vis import compute_rts
