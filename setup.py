@@ -204,13 +204,13 @@ def base_name ():
     Return the MIRC base name for each base
     name[15]
     '''
-    return np.array (['%i%i'%(t[0],t[1]) for t in base_beam ()]);
+    return np.array (['%i%i'%(t[0]+1,t[1]+1) for t in base_beam ()]);
 
 def beam_name ():
     '''
     Return the beam name following convention 0-5
     '''
-    return ['0','1','2','3','4','5'];
+    return ['1','2','3','4','5','6'];
 
 ''' beam to base matrix '''
 beam_to_base = np.zeros ((15,6));
@@ -244,7 +244,7 @@ def triplet_name ():
     Return the MIRC triplet name for each triplet
     name[20]
     '''
-    return np.array (['%i%i%i'%(t[0],t[1],t[2]) for t in triplet_beam()]);
+    return np.array (['%i%i%i'%(t[0]+1,t[1]+1,t[2]+1) for t in triplet_beam()]);
 
 def beam_tel (hdr):
     '''
