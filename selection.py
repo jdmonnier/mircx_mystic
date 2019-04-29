@@ -74,6 +74,7 @@ def compute_selection (hdrs, output='output_trends', filetype='SELECTION',
     for b in range (15):
         axes.flatten()[b].imshow (all_base_scan[:,:,b].T,aspect='auto');
     files.write (fig,output+'_base_trend.png');
+    plt.close();
 
     # Waterfall per beam
     fig,axes = plt.subplots (3,2, sharex=True);
@@ -82,16 +83,29 @@ def compute_selection (hdrs, output='output_trends', filetype='SELECTION',
     for b in range (6):
         axes.flatten()[b].imshow (all_beam_scan[:,:,b].T,aspect='auto');
     files.write (fig,output+'_beam_trend.png');
-    
-
-    # ...
 
     # Start interactive session
-    log.info ('Interactive session');
+    log.info ('Interactive session: Click and drag over range to exlude');
+    def onclick(event):
+        if event.dblclick:
+            xx1,xx2 = event.inaxes.get_xlim()
+            event.inaxes.axvspan(xx1,xx2,facecolor='black')
+        else:
+            global x1
+            x1 = event.xdata;
 
-    # ...
+    def onrelease(event):
+        x2 = event.xdata;
+        event.inaxes.axvspan(x1,x2,facecolor='black')
+        plt.draw()
 
-    # Start interactive session
+    cid = fig.canvas.mpl_connect('button_press_event', onclick);
+    cid2 = fig.canvas.mpl_connect('button_release_event', onrelease);
+    plt.show();
+
+    # End interactive session
+    fig.canvas.mpl_disconnect(cid);
+    fig.canvas.mpl_disconnect(cid2);
     log.info ('Save selection');
 
     # ...
