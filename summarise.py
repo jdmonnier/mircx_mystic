@@ -515,30 +515,36 @@ def texSumPlots(direc,redF,calF):
          outtex.write('    \\textbf{Reduction quality assessment: SNR}\\\\ \n')
          outtex.write('    \\centering\n')
          for snr in RTS_p[0:6]:
-             outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, clip=true, ')
-             outtex.write('width=0.49\\textwidth]{')
-             outtex.write(snr.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_snr'))
-             outtex.write('}\n')
+             # include the first 6 snr plots in the report file if they exist
+             if os.path.isfile(snr.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_snr')):
+                 outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, clip=true, ')
+                 outtex.write('width=0.49\\textwidth]{')
+                 outtex.write(snr.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_snr'))
+                 outtex.write('}\n')
          if len(RTS_p) > 6:
              for n in range(1, int(np.ceil(len(RTS_p)/6.))):
+                 # include the remainder of the snr plots in the report file (if they exist)
                  outtex.write('\\end{figure}\n\n\\clearpage\n')
                  outtex.write('\\begin{figure}[h]\n')
                  outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
                  outtex.write('    \\centering\n')
                  for snr in RTS_p[6*n:6*(n+1)]:
-                     outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, ')
-                     outtex.write('clip=true, width=0.49\\textwidth]{')
-                     outtex.write(snr.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_snr'))
-                     outtex.write('}\n')
+                     if os.path.isfile(snr.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_snr')):
+                         outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, ')
+                         outtex.write('clip=true, width=0.49\\textwidth]{')
+                         outtex.write(snr.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_snr'))
+                         outtex.write('}\n')
          outtex.write('\\end{figure}\n\n')
          outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
          outtex.write('    \\textbf{Reduction quality assessment: base trend}\\\\ \n')
          outtex.write('    \\centering\n')
          for ba in RTS_p[0:6]:
-             outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, clip=')
-             outtex.write('true, width=0.49\\textwidth]{')
-             outtex.write(ba.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_base_trend'))
-             outtex.write('}\n')
+             # include the first 6 base_trend plots if they exist
+             if os.path.isfile(ba.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_base_trend')):
+                 outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, clip=')
+                 outtex.write('true, width=0.49\\textwidth]{')
+                 outtex.write(ba.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_base_trend'))
+                 outtex.write('}\n')
          if len(RTS_p) > 6:
              for n in range(1, int(np.ceil(len(RTS_p)/6.))):
                  outtex.write('\\end{figure}\n\n\\clearpage\n')
@@ -546,10 +552,12 @@ def texSumPlots(direc,redF,calF):
                  outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
                  outtex.write('    \\centering\n')
                  for ba in RTS_p[6*n:6*(n+1)]:
-                     outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, ')
-                     outtex.write('clip=true, width=0.49\\textwidth]{')
-                     outtex.write(ba.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_base_trend'))
-                     outtex.write('}\n')
+                     # include the remaining base_trend plots if they exist
+                     if os.path.isfile(ba.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_base_trend')):
+                         outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, ')
+                         outtex.write('clip=true, width=0.49\\textwidth]{')
+                         outtex.write(ba.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_base_trend'))
+                         outtex.write('}\n')
          outtex.write('\\end{figure}\n\n')
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:                    
