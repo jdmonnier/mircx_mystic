@@ -22,7 +22,7 @@ def send_email(msg, fromaddr, toaddr):
     server.sendmail(fromaddr, toaddr, msg.as_string())
     server.quit()
 
-def sendSummary(dir, toaddr, fromaddr):
+def sendSummary(toaddr, fromaddr,outFile):
     """
     Emails the summary report PDF file for the reduced and calibrated 
     night of observations to 'addr'
@@ -31,12 +31,11 @@ def sendSummary(dir, toaddr, fromaddr):
     msg['From'] = fromaddr
     msg['To']   = toaddr
     
-    d = dir.split('/')[-1]
-    msg['Subject'] = 'MIRC-X redcal summary for '+d
-    body = 'MIRC-X redcal summary for '+d.split('_')[0]+'\n'
+    filename = outFile.split('/')[-1]
+    msg['Subject'] = 'MIRC-X redcal summary '+filename
+    body = 'MIRC-X redcal summary '+filename+'\n'
     msg.attach(MIMEText(body, 'plain'))
-    filename = 'summary_'+d+'.pdf'
-    attachment = open(dir+'/'+filename, 'rb')
+    attachment = open(outFile, 'rb')
     part = MIMEBase('application', 'octet-stream')
     part.set_payload((attachment).read())
     encoders.encode_base64(part)
