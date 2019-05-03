@@ -38,7 +38,7 @@ parser = argparse.ArgumentParser(description=description, epilog=epilog,
           formatter_class=argparse.RawDescriptionHelpFormatter,
           add_help=True)
 
-parser.add_argument("--dir", dest="dir",default='./',type=str,
+parser.add_argument("--dir", dest="dir",default='/data/MIRCX/reduced',type=str,
                     help="main trunk of reduction directory [%(default)s]")
 parser.add_argument("--num-nights",dest="num_of_nights",default=0,type=int,
                     help="Number of nights to be included in plot [50]")
@@ -51,6 +51,8 @@ parser.add_argument("--targ-list",dest="targ_list",default='mircx_targets.list',
 parser.add_argument("--only-reference", dest="only_reference",default='FALSE',
                     choices=TrueFalse,
                     help="Use only REFERENCE (calibrator) stars [%(default)s]")
+parser.add_argument("--oifits-dir",dest="oifits_dir",default='.',type=str,
+                    help="directory of products [%(default)s]")
 
 
 # Parse arguments:
@@ -96,7 +98,7 @@ for d in dL:
         dL1 = []
     except ValueError:
         # ensure other things in the directory are skipped over but keep a note of what they are
-        log.info('Skipping files in current directory: '+d)
+        log.info('Skipped file in directory: '+d)
 
 dL2 = [dL1[i] for i in np.argsort(dL1)] # sort the dates (earliest first)
 dateList = [d.strftime('%Y%b%d') for d in dL2] # convert these back into their original format
@@ -166,6 +168,7 @@ calColI = 0
 count = 0
 cObj = ''
 tLoc = [] # array for x-axis tick locations to mark the dates on the plot
+oiDir = argopt.oifits_dir
 for d in dateList:
     # Find an oifits directory for this date:
     oiDirs = []
@@ -178,7 +181,7 @@ for d in dateList:
     oi,i = 0,0
     while oi == 0:
         try:
-            hdrs = mrx.headers.loaddir(oiDirs[i]+'/oifits') # IndexError raised if i exceeds len(oiDirs)
+            hdrs = mrx.headers.loaddir(oiDirs[i]+'/'+oiDir) # IndexError raised if i exceeds len(oiDirs)
             if hdrs != []:
                 # once hdrs are found and read in, break the while loop
                 oi += 1
@@ -187,7 +190,7 @@ for d in dateList:
                 # check another directory for the same obs date
                 i += 1
         except IndexError:
-            log.error('Directory "oifits" not found for date '+d)
+            log.error('Directory '+oiDir+' not found for date '+d)
             log.info('Skipped date '+d)
 
     # sort the headers by time:
@@ -318,5 +321,5 @@ axes.flatten()[5].set_xticklabels(dateList,rotation=70, fontsize=12)
 # save the figure:
 # -------------------------
 plt.tight_layout()
-plt.show()
-#files.write (fig,'overview_transmission_'+dateList[0]+'_'+dateList[-1]+'.png')
+#plt.show()
+files.write(fig,sDir+'overview_transmission_'+dateList[0]+'_'+dateList[-1]+'.png')
