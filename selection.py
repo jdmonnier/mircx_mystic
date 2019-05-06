@@ -3,6 +3,7 @@ import os;
 
 import matplotlib.pyplot as plt;
 import matplotlib.colors as mcolors;
+from matplotlib.colors import LogNorm;
 
 from astropy.io import fits as pyfits;
 
@@ -33,7 +34,7 @@ def compute_selection (hdrs, output='output_trends', filetype='SELECTION',
 
         # Load data
         f = h['ORIGNAME'];
-        log.info ('Load RTS file %s'%f);
+        log.info ('Load RTS file %s (%i over %i)'%(f,ih,nfiles));
         
         base_dft = pyfits.getdata (f, 'BASE_DFT_IMAG').astype(float) * 1.j + \
                    pyfits.getdata (f, 'BASE_DFT_REAL').astype(float);
@@ -54,8 +55,8 @@ def compute_selection (hdrs, output='output_trends', filetype='SELECTION',
         # results is of shape (nscan,nb)
         base_scan = np.abs (base_scan).mean (axis=(0,1));
 
-        # Set data for base
-        all_base_scan[ih,:,:] = base_scan;
+        # Set data for base - with normalization
+        all_base_scan[ih,:,:] = (base_scan - np.min(base_scan)) / (np.max(base_scan)-np.min(base_scan));
 
     # Compute trend per beams
     log.info ('Compute the scan per beams');
@@ -77,38 +78,49 @@ def compute_selection (hdrs, output='output_trends', filetype='SELECTION',
     plt.close();
 
     # Waterfall per beam
-    fig,axes = plt.subplots (3,2, sharex=True);
+    fig,axes = plt.subplots (6,1, sharex=True);
     plot.base_name (axes);
     plot.compact (axes);
     for b in range (6):
         axes.flatten()[b].imshow (all_beam_scan[:,:,b].T,aspect='auto');
-    files.write (fig,output+'_beam_trend.png');
 
     # Start interactive session
-    log.info ('Interactive session: Click and drag over range to exlude');
+    log.info ('Interactive session: Click and drag over range to exclude');
     def onclick(event):
         if event.dblclick:
-            xx1,xx2 = event.inaxes.get_xlim()
-            event.inaxes.axvspan(xx1,xx2,facecolor='black')
+            xx1,xx2 = event.inaxes.get_xlim();
+            event.inaxes.axvspan(xx1,xx2,facecolor='black');
         else:
-            global x1
+            global x1;
             x1 = event.xdata;
+
+            ## reset if click off axis
+            if x1 is None:
+                plt.close();
+                fig,axes = plt.subplots (6,1, sharex=True);
+                plot.base_name (axes);
+                plot.compact (axes);
+                for b in range (6):
+                    axes.flatten()[b].imshow (all_beam_scan[:,:,b].T,aspect='auto');
+                cid = fig.canvas.mpl_connect('button_press_event', onclick);
+                cid2 = fig.canvas.mpl_connect('button_release_event', onrelease);
+                plt.show();
 
     def onrelease(event):
         x2 = event.xdata;
-        event.inaxes.axvspan(x1,x2,facecolor='black')
-        plt.draw()
+        if x1 is not None:
+            event.inaxes.axvspan(x1,x2,facecolor='black');
+            plt.draw();
 
     cid = fig.canvas.mpl_connect('button_press_event', onclick);
     cid2 = fig.canvas.mpl_connect('button_release_event', onrelease);
     plt.show();
 
     # End interactive session
+    files.write (fig,output+'_beam_trend.png');
     fig.canvas.mpl_disconnect(cid);
     fig.canvas.mpl_disconnect(cid2);
     log.info ('Save selection');
-
-    # ...
 
     # File
     log.info ('Create file');

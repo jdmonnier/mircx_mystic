@@ -645,7 +645,7 @@ if argopt.selection != 'FALSE':
 
     # Group all DATA by night
     gps = mrx.headers.group (hdrs, 'DATA_RTS', delta=1e9,
-                             Delta=1e9, keys=[]);
+                             Delta=1e9, keys=[], continuous=False);
 
     # Only one output for the entire directory
     output = mrx.files.output (argopt.oifits_dir, 'night', 'selection');
