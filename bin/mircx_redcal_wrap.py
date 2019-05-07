@@ -491,7 +491,7 @@ for d in range(0, len(dates)):
             for h in hdrs:
                 for k in snr_keys:
                     try:
-                        snr_data1.append([h['HIERARCH MIRC QC '+k])
+                        snr_data1.append(h['HIERARCH MIRC QC '+k])
                     except KeyError:
                         snr_data1.append(0.)
                 
