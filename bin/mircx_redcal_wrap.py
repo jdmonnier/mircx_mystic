@@ -482,7 +482,7 @@ for d in range(0, len(dates)):
             fs = glob.glob(redDir+'/'+suf2+'/oifits_nc'+str(nc)+'/*.fits')[::2]
             log.info(redDir+'/'+suf2+'/oifits_nc'+str(nc)+" # files = "+str(len(fs)))
             
-            hdrs = headers.loaddir(fs)
+            hdrs = headers.loaddir(redDir+'/'+suf2+'/oifits_nc'+str(nc))
             snr_data.append(np.array([[ h['HIERARCH MIRC QC '+k] for k in snr_keys ] for h in hdrs]) )
             T3err_data.append(np.array([[ h['HIERARCH MIRC QC '+k] for k in T3err_keys ] for h in hdrs]) )
             del hdrs
