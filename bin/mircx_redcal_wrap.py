@@ -481,12 +481,12 @@ for d in range(0, len(dates)):
         for nc in ncoh:
             fs = glob.glob(redDir+'/'+suf2+'/oifits_nc'+str(nc)+'/*.fits')[::2]
             log.info(redDir+'/'+suf2+'/oifits_nc'+str(nc)+" # files = "+str(len(fs)))
-        
-        hdrs = headers.loaddir(fs)
-        snr_data.append(np.array([[ h['HIERARCH MIRC QC '+k] for k in snr_keys ] for h in hdrs]) )
-        T3err_data.append(np.array([[ h['HIERARCH MIRC QC '+k] for k in T3err_keys ] for h in hdrs]) )
-        del hdrs
-        
+            
+            hdrs = headers.loaddir(fs)
+            snr_data.append(np.array([[ h['HIERARCH MIRC QC '+k] for k in snr_keys ] for h in hdrs]) )
+            T3err_data.append(np.array([[ h['HIERARCH MIRC QC '+k] for k in T3err_keys ] for h in hdrs]) )
+            del hdrs
+            
         snr_data = np.asarray(snr_data)
         T3err_data = np.asarray(T3err_data)
         
