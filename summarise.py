@@ -104,21 +104,21 @@ def calibPlots(calibfiles,viscp,saveAsStr,setup):
         plt.close("all")
     return
 
-def plotV2CP(direc,setups,viscp):
+def plotV2CP(oiDir,setups,viscp):
     """
     Searches a directory for fits files and plots vis vs sf
     and CP vs max_sf for all the files found. The files are
     grouped together by the target name and the camera 
     settings as defined in 'setup'.
-        - dir is the full path to the directory containing
-        fits files;
+        - oiDir is the directory containing the products of the
+        oifits reduction step;
         - setups defines the object name and the camera 
         settings;
         - viscp is either 'vis' or 'cp' to decide what is
         plotted.
     """
-    fitsfiles = sorted(glob.glob(direc+'/*.fits'))
-    if direc.split('/')[-1] == 'oifits':
+    fitsfiles = sorted(glob.glob(oiDir+'/*.fits'))
+    if  'oifits' in oiDir.split('/')[-1]:
         suff = 'reduced'
     p, first = 0, True
     calibfiles = []
@@ -150,13 +150,13 @@ def plotV2CP(direc,setups,viscp):
                         axes.set_ylim(-0.1,1.2)
                         axes.set_xlabel('sp. freq. (M$\lambda$)')
                         axes.set_ylabel('vis2')
-                        plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
-                        log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+                        plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
+                        log.info('    - Write '+oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
                     elif viscp == 'cp':
                         axes.set_xlabel('max sp. freq. (M$\lambda$)');
                         axes.set_ylabel('$\phi_{CP}$')
-                        plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-                        log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+                        plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+                        log.info('    - Write '+oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
                     plt.close("all")
                     del fig,axes
                     first = True
@@ -188,13 +188,13 @@ def plotV2CP(direc,setups,viscp):
            axes.set_ylim(-0.1,1.2)
            axes.set_xlabel('sp. freq. (M$\lambda$)')
            axes.set_ylabel('vis2')
-           plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
-           log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_vis2.png')
+           plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
+           log.info('    - Write '+oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
        elif viscp == 'cp':
            axes.set_xlabel('max sp. freq. (M$\lambda$)');
            axes.set_ylabel('$\phi_{CP}$')
-           plt.savefig(direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-           log.info('    - Write '+direc+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+           plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+           log.info('    - Write '+oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
        plt.close("all")
        calibPlots(calibfiles, viscp, saveAsStr, teststr)
     except:
@@ -204,21 +204,29 @@ def plotV2CP(direc,setups,viscp):
 ######
 # LaTex writing functions:
 ######
-def texSumTitle(direc,hdrs,opt,redF,calF):
+def texSumTitle(oiDir,hdrs,redF,calF):
     """
     Produce header section of tex files containing reduction  
     and calibration summary. 
-        - dir is the directory containing this night's 
-        reduced data;
+        - oiDir is the directory containing the products of the
+        oifits reduction step;
         - hdrs is the raw data headers;
-        - opt is a python list of options parsed to 
-        mircx_reduce.py;
         - redF and calF are flags for if the reduction
         and/or calibration process failed;
     """
-    auth = 'ncohrent='+opt[0]+'; ncs='+opt[1]+'; nbs='+opt[2]+'; snr\\_threshold='+opt[3].replace('p','.')+'; bbias='+str(opt[4])
-    suf = direc.split('/')[-1]
-    outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
+    # oiDir has the form redBase+/date_nbsXncsXbbiasXmitp/snrXmitoX/oifits_ncX
+    ncoh = oiDir.split('oifits_nc')[-1]
+    ncs  = oiDir.split('/')[-3].split('ncs')[-1].split('bbias')[0]
+    nbs  = oiDir.split('/')[-3].split('nbs')[-1].split('ncs')[0]
+    bb   = oiDir.split('/')[-3].split('bbias')[-1].split('mitp')[0]
+    snr  = oiDir.split('/')[-2].split('snr')[-1].split('mito')[0]
+    dates = oiDir.split('/')[-3].split('_')[0]
+    
+    auth = 'ncohrent='+ncoh+'; ncs='+ncs+'; nbs='+nbs+'; snr\\_threshold='+snr.replace('p','.')+'; bbias='+bb
+    suf1 = oiDir.split('/')[-3]
+    suf2 = oiDir.split('/')[-2]+oiDir.split('_')[-1].replace('nc','ncoh')
+    direc = '/'.join(oiDir.split('/')[:-2])
+    outFiles = [direc+'/report_'+suf1+suf2+'.tex',direc+'/summary_'+suf1+suf2+'.tex']
     # ^-- outFiles[0] is not to be emailed. It exceeds the 10MB gmail attachment limit.
     # outFiles[1] is a smaller file containing a night log summary as well as uv 
     # coverage plots for sci targets and vis2 vs sf and CP vs max_sf plots for reduced
@@ -237,7 +245,7 @@ def texSumTitle(direc,hdrs,opt,redF,calF):
         outtex.write('\\title{Brief summary report from mircx\\_redcal\\_wrap.py}\n')
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
-            outtex.write('\\author{'+auth+'}\n\\date{'+suf.split('_')[0]+'}\n\n')
+            outtex.write('\\author{'+auth+'}\n\\date{'+dates+'}\n\n')
             outtex.write('\\begin{document}\n\n\\maketitle\n\n')
             if redF == False:
                 outtex.write('\\subsubsection*{Reduced files located in : ')
@@ -268,14 +276,14 @@ def texSumTitle(direc,hdrs,opt,redF,calF):
                     outline.append(obsPerson)
             outtex.write('; '.join(str(out) for out in list(set(outline)))+'}\n')
             outtex.write('\\subsubsection*{Program ID(s): (info not yet retained in headers)}\n')
-    return
+    return outFiles
 
-def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
+def texSumTables(oiDir,targs,calInf,scical,redF,rawhdrs,outFiles):
     """
     Append tables section of summary file to existing
     summary tex files. 
-        - dir is the directory containing this night's 
-        reduced data;
+        - oiDir is the directory containing the products of the
+        oifits reduction step;
         - targs is a python list of target names;
         - calInf is a string of information which was
         parsed to mircx_reduce.py;
@@ -285,10 +293,8 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
         was successful;
         - rawhdrs is the fits headers from the raw data.
     """
-    suf = direc.split('/')[-1]
-    outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
     if redF == False:
-        redhdrs = headers.loaddir(direc+'/oifits')
+        redhdrs = headers.loaddir(oiDir)
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
             outtex.write('\\subsection*{Target summary}\n')
@@ -340,17 +346,15 @@ def texSumTables(direc,targs,calInf,scical,redF,rawhdrs):
         del redhdrs
     return
 
-def texReportPlts(direc):
+def texReportPlts(oiDir,outFiles,d):
     """
     Locates the report files output by mircx_report.py
     which check the camera performance and includes
     them into the tex summary and report PDF files.
-        - dir is the reduced files directory
+        - oiDir is the directory containing the products of the
+        oifits reduction step;
     """
-    reportFiles = glob.glob(direc+'/oifits/report*.png')
-    suf = direc.split('/')[-1]
-    d = suf.split('_')[0]
-    outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
+    reportFiles = glob.glob(oiDir+'/report*.png')
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
             if len(reportFiles) == 0:
@@ -383,20 +387,18 @@ def texReportPlts(direc):
                 r += 2
     return
 
-def texSumUV(direc,calF):
+def texSumUV(oiDir,calF,outFiles):
     """
     If the calibration process was succesful, the 
     uv coverage plots for the science targets will
     be appended to the summary PDF files.
-        - dir is the directory containing this night's 
-        reduced data;
+        - oiDir is the directory containing the products of the
+        oifits reduction step;
         - calF is a flag highlighting whether the calibration
         was successful;
     """
     if calF == False:
-        uvPlt = glob.glob(direc+'/oifits/calibrated/*_uv_coverage.png')
-        suf = direc.split('/')[-1]
-        outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
+        uvPlt = glob.glob(oiDir+'/calibrated/*_uv_coverage.png')
         for outFile in outFiles:
             with open(outFile, 'a') as outtex:
                 outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
@@ -421,7 +423,7 @@ def texSumUV(direc,calF):
 def getFileNum(file):
     return int(file.split('/')[-1].split('_')[0].split('x')[1])
 
-def texSumPlots(direc,redF,calF):
+def texSumPlots(oiDir,redF,calF,outFiles):
     """
     Appends vis2 and CP plots to the summary files.
     Whether any files are appended depends on if
@@ -434,16 +436,14 @@ def texSumPlots(direc,redF,calF):
         the reduction and calibration were successful,
         respectively;
     """
-    suf = direc.split('/')[-1]
-    outFiles = [direc+'/report_'+suf+'.tex',direc+'/summary_'+suf+'.tex']
     if redF == True:
         for outFile in outFiles:
             with open(outFile, 'a') as outtex:                    
                 outtex.write('\\end{document}\n')
         return
     # sort the reduced files by camera settings and target:
-    redFiles = sorted(glob.glob(direc+'/oifits/*.fits'))
-    redhdrs = headers.loaddir(direc+'/oifits')
+    redFiles = sorted(glob.glob(oiDir+'/*.fits'))
+    redhdrs = headers.loaddir(oiDir)
     log.info('Retrieve targets and camera settings from successfully reduced files')
     keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
     setupL = [[str(h.get(k,'--')) for k in keys] for h in redhdrs]
@@ -456,18 +456,18 @@ def texSumPlots(direc,redF,calF):
             log.info('    '+', '.join(str(s) for s in setupL[m+1]))
             setups.append(setupL[m+1])
     # make reduced and calibrated vis2 and CP plots
-    plotV2CP(direc+'/oifits', setups, 'vis')
-    plotV2CP(direc+'/oifits', setups, 'cp')
+    plotV2CP(oiDir, setups, 'vis')
+    plotV2CP(oiDir, setups, 'cp')
     # Read in mircx numbers of vis2 plots created in reduced and calibrated directories:
-    redPlts = sorted(glob.glob(direc+'/oifits/*reduced_vis2.png'))
+    redPlts = sorted(glob.glob(oiDir+'/*reduced_vis2.png'))
     redNum = [int(i.split('/')[-1].split('_')[0].split('x')[1]) for i in redPlts]
-    RTS_p  = sorted(glob.glob(direc+'/rts/*datarts_psd.png')) # e.g. mircx00000_datarts_psd.png or mircx00000_foregroundrts_psd.png or mircx00000_backgroundrts_psd.png
+    RTS_p  = sorted(glob.glob('/'.join(oiDir[:-2])+'/rts/*datarts_psd.png')) # e.g. mircx00000_datarts_psd.png or mircx00000_foregroundrts_psd.png or mircx00000_backgroundrts_psd.png
     for num in range(0, len(redNum)):
         # ensure correct number of leading zeros are added to redNum for file name:
         strnum = '0'*(5-len(str(redNum[num])))+str(redNum[num])
         log.info('Gather plots for summary report for file mircx'+strnum)
-        redV2plt = direc+'/oifits/mircx'+strnum+'_reduced_vis2.png'
-        redCPplt = direc+'/oifits/mircx'+strnum+'_reduced_t3phi.png'
+        redV2plt = oiDir+'/mircx'+strnum+'_reduced_vis2.png'
+        redCPplt = oiDir+'/mircx'+strnum+'_reduced_t3phi.png'
         for outFile in outFiles:
             with open(outFile, 'a') as outtex:
                 outtex.write('\n\\begin{figure}[h]\n    \\raggedright\n')
@@ -478,15 +478,15 @@ def texSumPlots(direc,redF,calF):
                 outtex.write('clip=true, width=0.32\\textwidth]{'+redV2plt+'}\n')
                 outtex.write('    \\includegraphics[trim=0.0cm 0.2cm 0.0cm 0.0cm,')
                 outtex.write(' clip=true, width=0.32\\textwidth]{'+redCPplt+'}\\\\ \n')
-                if os.path.isfile(direc+'/oifits/calibrated/mircx'+strnum+'_calib_vis2.png'):
+                if os.path.isfile(oiDir+'/calibrated/mircx'+strnum+'_calib_vis2.png'):
                     outtex.write('    \\textbf{Calibrated vis2 and CP:}\\\\\n')
                     outtex.write('    \\includegraphics[trim=0.0cm 0.2cm 0.0cm 0.0cm, ')
                     outtex.write('clip=true, width=0.32\\textwidth]{')
-                    outtex.write(direc+'/oifits/calibrated/mircx'+strnum+'_calib_vis2.png')
+                    outtex.write(oiDir+'/calibrated/mircx'+strnum+'_calib_vis2.png')
                     outtex.write('}\n')
                     outtex.write('    \\includegraphics[trim=0.0cm 0.2cm 0.0cm 0.0cm,')
                     outtex.write(' clip=true, width=0.32\\textwidth]{')
-                    outtex.write(direc+'/oifits/calibrated/mircx'+strnum+'_calib_t3phi.png')
+                    outtex.write(oiDir+'/calibrated/mircx'+strnum+'_calib_t3phi.png')
                     outtex.write('}\\\\ \n')
                 outtex.write('\\end{figure}\n\n')
         if int(float(num/30.)) == float(num/30.):

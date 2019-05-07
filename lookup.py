@@ -8,7 +8,7 @@ from requests.exceptions import ConnectionError
 
 from . import headers, log, files
 
-def targList(d,rawBase,redBase,opt):
+def targList(d,rawBase,redDir):
     """
     Write target list for the specified observing date and
     save in the reduction directory for that night.
@@ -16,23 +16,18 @@ def targList(d,rawBase,redBase,opt):
         - rawBase is the path to base of the raw data 
         directory tree (the final character should not be 
         '/');
-        - redBase is the path to base of the reduced data
-        directory tree (the final character should not be
+        - redDir is the path to the reduced data
+        directory (the final character should not be
         '/');
-        - opt is a python list describing the input 
-        options to be parsed to mircx_reduce.py.
     """
     dotargList = 'no'
-    for i in range(0, len(opt)):
-        # create file suffix from parsed options:
-        suf = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]+'bbias'+opt[i][4][0]
-        # Check to see whether summary files already exist (do nothing if true):
-        if os.path.isfile(redBase+'/'+d+suf+'/'+d+'_targets.list') != True:
-            dotargList = 'yes'
+    # Check to see whether summary files already exist (do nothing if true):
+    if os.path.isfile(redDir+'/'+d+'_targets.list') != True:
+        dotargList = 'yes'
     if dotargList == 'yes':
         # Load all the headers from observing date:
         log.info('Read headers from raw data directory')
-        hdrs = headers.loaddir(rawBase+'/'+d[0:7]+'/'+d)
+        hdrs = headers.loaddir(rawBase+'/'+d)
         # create python list of object names:
         log.info('Retrieve object names from headers')
         objs = []
@@ -48,30 +43,27 @@ def targList(d,rawBase,redBase,opt):
         del hdrs
         
         objs = list(set(objs))
-        for i in range(0, len(opt)):
-            suf = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]+'bbias'+opt[i][4][0]
-            # Check to see whether summary file already exists (do nothing if true):
-            if os.path.isfile(redBase+'/'+d+suf+'/'+d+'_targets.list') != True:
-                # create directory for d+suf/, if required
-                files.ensure_dir(redBase+'/'+d+suf);
-                # write target list summary file:
-                log.info('Write '+redBase+'/'+d+suf+'/'+d+'_targets.list')
-                with open(redBase+'/'+d+suf+'/'+d+'_targets.list', 'w') as output:
-                    for obj in objs:
-                        if type(obj) != str:
-                            objs.remove(obj)
-                        output.write(obj+'\n')
-                if len(objs) == 0:
-                    log.error('No target names retrieved from headers.')
-                    log.info('Exiting.')
-                    sys.exit()
-                else:
-                    log.info('File written successfully')
+        # Check to see whether summary file already exists (do nothing if true):
+        if os.path.isfile(redDir+'/'+d+'_targets.list') != True:
+            files.ensure_dir(redDir);
+            # write target list summary file:
+            log.info('Write '+redDir+'/'+d+'_targets.list')
+            with open(redDir+'/'+d+'_targets.list', 'w') as output:
+                for obj in objs:
+                    if type(obj) != str:
+                        objs.remove(obj)
+                    output.write(obj+'\n')
+            if len(objs) == 0:
+                log.error('No target names retrieved from headers.')
+                log.info('Exiting.')
+                sys.exit()
+            else:
+                log.info('File written successfully')
     else:
         log.info('Target lists already exist.')
-        log.info('Reading target names from '+redBase+'/'+d+suf+'/'+d+'_targets.list')
+        log.info('Reading target names from '+redDir+'/'+d+'_targets.list')
         objs = []
-        with open(redBase+'/'+d+suf+'/'+d+'_targets.list', 'r') as input:
+        with open(redDir+'/'+d+'_targets.list', 'r') as input:
             for line in input:
                 objs.append(line.strip().replace('_', ' '))
     return objs

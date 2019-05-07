@@ -3,12 +3,13 @@
 
 import mircx_pipeline as mrx
 import argparse, glob, os
+import datetime as dattime
 from datetime import datetime
 import numpy as np
 from astropy.io import fits as pyfits
 import matplotlib.pyplot as plt
 
-from mircx_pipeline import log, headers, plot
+from mircx_pipeline import log, headers, plot, files
 from mircx_pipeline.headers import HMQ
 
 # Describe the script
@@ -59,7 +60,7 @@ parser.add_argument("--oifits-dir",dest="oifits_dir",default='.',type=str,
 argopt = parser.parse_args()
 
 # Verbose:
-elog = log.trace('mircx_transm')
+elog = log.trace('mircx_transmission')
 
 # Check how many nights are to be plotted:
 now = datetime.now()
@@ -89,7 +90,7 @@ else:
         sDir = sDir+'/'
 
 dirList = glob.glob(sDir+'*') # read in directory names from directory trunk
-dL = list(set([d.split('_')[0] for d in dirList])) # remove duplicate dates
+dL = list(set([d.split('_')[0].split('/')[-1] for d in dirList])) # remove duplicate dates
 for d in dL:
     try:
         dL1.append(datetime.strptime(d,'%Y%b%d')) # for sorting, translate these into datetime format
@@ -113,6 +114,14 @@ try:
         log.info('All observation nights in current directory will be plotted')
 except NameError:
     # catch instances where fNight and lNight are used to limit date range rather than nNight
+    # Check that lNight is in the dateList:
+    while lNight not in dateList and lNight != now.strftime('%Y%b%d'):
+        # increase the day by one until the next obs date or current date is reached:
+        today = datetime.strptime(lNight, '%Y%b%d')
+        nextDay = today + dattime.timedelta(days=1)
+        nD = nextDay.strftime('%Y%b%d')
+        lNight = nD
+    
     dL3 = dateList[dateList.index(fNight):dateList.index(lNight)]
     dateList = dL3
     log.info('Removed dates earlier than '+fNight+' from dateList')
@@ -322,4 +331,7 @@ axes.flatten()[5].set_xticklabels(dateList,rotation=70, fontsize=12)
 # -------------------------
 plt.tight_layout()
 #plt.show()
-files.write(fig,sDir+'overview_transmission_'+dateList[0]+'_'+dateList[-1]+'.png')
+if dateList[0] != dateList[-1]:
+    files.write(fig,sDir+'overview_transmission_'+dateList[0]+'_'+dateList[-1]+'.png')
+else:
+    files.write(fig,sDir+'transmission_'+dateList[0]+'.png')
