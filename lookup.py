@@ -1,12 +1,22 @@
 import os, sys, re
 import pandas as pd
-from astroquery.simbad import Simbad
+
+from . import headers, log, files
+
+try:
+    from astroquery.simbad import Simbad
+except ImportError:
+    log.error('astroquery.simbad not found!')
+    log.info('Assigning sci and cal types to targets requires access to SIMBAD')
+    log.info('Try "sudo pip install astroquery"')
+    raise ImportError
+    sys.exit()
+
 from astroquery.vizier import Vizier
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from requests.exceptions import ConnectionError
 
-from . import headers, log, files
 
 def targList(d,rawBase,redDir):
     """
