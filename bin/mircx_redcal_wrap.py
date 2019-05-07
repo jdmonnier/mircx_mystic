@@ -476,8 +476,8 @@ for d in range(0, len(dates)):
                       'T3PHI125 ERR', 'T3PHI134 ERR', 'T3PHI135 ERR', 'T3PHI145 ERR', 
                       'T3PHI234 ERR', 'T3PHI235 ERR', 'T3PHI245 ERR', 'T3PHI345 ERR']
         nc_values = [float(n) for n in ncoh]
-        snr_data = []
-        T3err_data = []
+        snr_data, snr_data1, snr_data2 = [], [], []
+        T3err_data, T3err_data1, T3err_data2 = [], [], []
         for nc in ncoh:
             fs = glob.glob(redDir+'/'+suf2+'/oifits_nc'+str(nc)+'/*_oifits.fits')[::2]
             log.info(redDir+'/'+suf2+'/oifits_nc'+str(nc)+" # files = "+str(len(fs)))
@@ -487,17 +487,26 @@ for d in range(0, len(dates)):
                 hdulist = pyfits.open(f);
                 hdrs.append(hdulist[0].header);
                 hdulist.close();
-            """
+            
             for h in hdrs:
                 for k in snr_keys:
                     try:
                         snr_data1.append([h['HIERARCH MIRC QC '+k])
                     except KeyError:
                         snr_data1.append(0.)
-                snr_data2.append(
-                T3err_data.append ( np.array([[ h['HIERARCH MIRC QC '+k] for k in T3err_keys ] for h in hdrs]) )
-            """
+                
+                for t in T3err_keys:
+                    try:
+                        T3err_data1.append(h['HIERARCH MIRC QC '+k])
+                    except KeyError:
+                        snr_data1.append(0.)
+                
+                snr_data2.append(snr_data1)
+                T3err_data2.append(T3err_data1)
             
+            snr_data.append(np.array(snr_data2))
+            T3err_data.append(np.array(T3err_data2))
+        
         snr_data = np.asarray(snr_data)
         T3err_data = np.asarray(T3err_data)
         
