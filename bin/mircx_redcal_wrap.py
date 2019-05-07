@@ -483,7 +483,7 @@ for d in range(0, len(dates)):
             log.info(redDir+'/'+suf2+'/oifits_nc'+str(nc)+" # files = "+str(len(fs)))
             
             hdrs = [];
-            for f in files:
+            for f in fs:
                 hdulist = pyfits.open(f);
                 hdrs.append(hdulist[0].header);
                 hdulist.close();
