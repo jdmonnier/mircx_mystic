@@ -2,7 +2,7 @@
 # -*- coding: iso-8859-15 -*-
 
 import argparse, subprocess, os, glob, sys, socket, datetime
-from mircx_pipeline import lookup_edit, summarise_edit, mailfile, headers, log, files
+from mircx_pipeline import lookup, summarise, mailfile, headers, log, files
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
@@ -295,8 +295,8 @@ for d in range(0, len(dates)):
     oiDir = redDir+'/'+suf2+"/oifits_nc"+str(ncoh[d])
     
     # 4: identify calibrators
-    targs = lookup_edit.targList(dates[d],rawBase,redDir) # produces target summary file if directory is new
-    calInfo, scical = lookup_edit.queryLocal(targs, localDB)
+    targs = lookup.targList(dates[d],rawBase,redDir) # produces target summary file if directory is new
+    calInfo, scical = lookup.queryLocal(targs, localDB)
                 
     if argopt.ncoh_plots == 'FALSE':
         # --------------------------------------------------------------
@@ -405,7 +405,7 @@ for d in range(0, len(dates)):
             if len(glob.glob(oiDir+'/calibrated/*.fits')) > 0:
                 calF = False
                 # make summary uv coverage plots for the calibrated files:
-                summarise_edit.plotUV(oiDir+'/calibrated')
+                summarise.plotUV(oiDir+'/calibrated')
             else:
                 calF = True
         else:
@@ -415,13 +415,13 @@ for d in range(0, len(dates)):
         log.info('Read headers from raw data directory')
         rawhdrs = headers.loaddir(rawBase+'/'+dates[d][0:7]+'/'+dates[d])
         log.info('Create report summary files')
-        outfiles = summarise_edit.texSumTitle(oiDir, rawhdrs, redF, calF)
-        summarise_edit.texSumTables(oiDir,targs,calInfo,scical,redF,rawhdrs,outfiles)
+        outfiles = summarise.texSumTitle(oiDir, rawhdrs, redF, calF)
+        summarise.texSumTables(oiDir,targs,calInfo,scical,redF,rawhdrs,outfiles)
         log.info('Cleanup memory')
         del rawhdrs
-        summarise_edit.texReportPlts(oiDir,outfiles,dates[d])
-        summarise_edit.texSumUV(oiDir,calF,outfiles)
-        summarise_edit.texSumPlots(oiDir,redF,calF,outfiles)
+        summarise.texReportPlts(oiDir,outfiles,dates[d])
+        summarise.texSumUV(oiDir,calF,outfiles)
+        summarise.texSumPlots(oiDir,redF,calF,outfiles)
         with cd(redDir):
             subprocess.call('pdflatex '+outfiles[1], shell=True)
             subprocess.call('pdflatex '+outfiles[0] , shell=True)
@@ -479,7 +479,7 @@ for d in range(0, len(dates)):
         snr_data = []
         T3err_data = []
         for nc in ncoh:
-            fs = glob.glob(redDir+'/'+suf2+'/oifits_nc'+str(nc)+'/*.fits')[::2]
+            fs = glob.glob(redDir+'/'+suf2+'/oifits_nc'+str(nc)+'/*_oifits.fits')[::2]
             log.info(redDir+'/'+suf2+'/oifits_nc'+str(nc)+" # files = "+str(len(fs)))
             
             hdrs = [];
@@ -487,9 +487,16 @@ for d in range(0, len(dates)):
                 hdulist = pyfits.open(f);
                 hdrs.append(hdulist[0].header);
                 hdulist.close();
-            
-            snr_data.append ( np.array([[ h['HIERARCH MIRC QC '+k] for k in snr_keys ] for h in hdrs]) )
-            T3err_data.append ( np.array([[ h['HIERARCH MIRC QC '+k] for k in T3err_keys ] for h in hdrs]) )
+            """
+            for h in hdrs:
+                for k in snr_keys:
+                    try:
+                        snr_data1.append([h['HIERARCH MIRC QC '+k])
+                    except KeyError:
+                        snr_data1.append(0.)
+                snr_data2.append(
+                T3err_data.append ( np.array([[ h['HIERARCH MIRC QC '+k] for k in T3err_keys ] for h in hdrs]) )
+            """
             
         snr_data = np.asarray(snr_data)
         T3err_data = np.asarray(T3err_data)
