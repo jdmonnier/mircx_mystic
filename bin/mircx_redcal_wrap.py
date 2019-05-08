@@ -189,12 +189,12 @@ else:
 
 # Force choices of nbs and ncs when bbias=TRUE:
 for bb in range(0, len(bbias)):
-    if bb == 'TRUE':
+    if bbias[bb] == 'TRUE':
         log.info('bbias instance set to true so setting corresponding ncs=1 and nbs=0')
         ncs[bb] = 1
         nbs[bb] = 0
-    elif bb != 'FALSE':
-        log.error('Option '+bb+' not a valid input for bbias')
+    elif bbias[bb] != 'FALSE':
+        log.error('Option '+str(bbias[bb])+' not a valid input for bbias')
         sys.exit()
 
 
