@@ -84,7 +84,7 @@ preproc.add_argument("--ncs",dest="ncs",type=str,default='1d',
 preproc.add_argument("--nbs",dest="nbs",type=str,default='4d', 
             help="list of number of frame-offset for bi-spectrum [%(default)s]")
 
-preproc.add_argument ("--bbias", dest="bbias",default='TRUEd',choices=TrueFalseDefault,
+preproc.add_argument ("--bbias", dest="bbias",type=str,default='TRUEd',
             help="list of bools (compute the BBIAS_COEFF product [%(default)s]?)")
 
 preproc.add_argument("--max-integration-time-preproc", dest="max_integration_time_preproc",
@@ -189,10 +189,13 @@ else:
 
 # Force choices of nbs and ncs when bbias=TRUE:
 for bb in range(0, len(bbias)):
-    if bb != 'FALSE':
+    if bb == 'TRUE':
         log.info('bbias instance set to true so setting corresponding ncs=1 and nbs=0')
         ncs[bb] = 1
         nbs[bb] = 0
+    elif bb != 'FALSE':
+        log.error('Option '+bb+' not a valid input for bbias')
+        sys.exit()
 
 
 # check argopt.ncoherent:
