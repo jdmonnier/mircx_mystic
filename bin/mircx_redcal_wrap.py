@@ -484,9 +484,9 @@ for d in range(0, len(dates)):
             
             hdrs = [];
             for f in fs:
-                hdulist = pyfits.open(f);
-                hdrs.append(hdulist[0].header);
-                hdulist.close();
+                hdulist = pyfits.open(f)
+                hdrs.append(hdulist[0].header)
+                hdulist.close()
             
             snr_data.append(np.array([[ h.get('HIERARCH MIRC QC '+k, 0.) for k in snr_keys] for h in hdrs]))
             T3err_data.append(np.array([[ h.get('HIERARCH MIRC QC '+k, 0.) for k in T3err_keys] for h in hdrs]))
@@ -518,8 +518,8 @@ for d in range(0, len(dates)):
                 ax[i].plot(nc_values, T3err_data[:,nf,i], '-o')
                 ax[i].set_ylabel('T3 Err')
                 ax[i].set_xlabel('Ncoherent')
-            fig.savefig(redDir+'/'+suf2+'/PNG/t3err_vs_ncoh'+str(nf)+'.png', dpi=300,bbox_inches='tight')
-            log.info('Created file: '+redDir+'/'+suf2+'/PNG/t3err_vs_ncoh'+str(nf)+'.png')
+            fig.savefig(redDir+'/'+suf2+'/PNG/t3err_vs_ncoh_oifits'+str(nf)+'.png', dpi=300,bbox_inches='tight')
+            log.info('Created file: '+redDir+'/'+suf2+'/PNG/t3err_vs_ncoh_oifits'+str(nf)+'.png')
             plt.close()
         
         # 7. email user when this procedure finishes and prompt them to run the calibrate
