@@ -488,8 +488,8 @@ for d in range(0, len(dates)):
                 hdrs.append(hdulist[0].header);
                 hdulist.close();
             
-            snr_data.append(np.array([[ h.get('HIERARCH MIRC QC '+k, 0.) for k in snr_keys] for h in headers]))
-            T3err_data.append(np.array([[ h.get('HIERARCH MIRC QC '+k, 0.) for k in T3err_keys] for h in headers]))
+            snr_data.append(np.array([[ h.get('HIERARCH MIRC QC '+k, 0.) for k in snr_keys] for h in hdrs]))
+            T3err_data.append(np.array([[ h.get('HIERARCH MIRC QC '+k, 0.) for k in T3err_keys] for h in hdrs]))
                     
         snr_data = np.asarray(snr_data)
         T3err_data = np.asarray(T3err_data)
