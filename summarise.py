@@ -117,7 +117,10 @@ def plotV2CP(oiDir,setups,viscp):
         - viscp is either 'vis' or 'cp' to decide what is
         plotted.
     """
-    fitsfiles = sorted(glob.glob(oiDir+'/*.fits'))
+    if 'calibrated' not in oiDir:
+        fitsfiles = sorted(glob.glob(oiDir+'/*_oifits.fits'))
+    else:
+        fitsfiles = sorted(glob.glob(oiDir+'/*_viscal.fits'))
     if  'oifits' in oiDir.split('/')[-1]:
         suff = 'reduced'
     p, first = 0, True
