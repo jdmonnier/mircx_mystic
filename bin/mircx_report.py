@@ -117,7 +117,7 @@ for obj in objlist:
     except:
         log.info ('Cannot find JSDC for '+obj);
 
-
+"""
 #
 # Compute the transmission and instrumental visibility
 #
@@ -129,13 +129,16 @@ iTQE    = 0.5
 telArea = np.pi * 0.5*0.5
 
 kl = 0 # dummy character to avoid error message being output multiple times
+"""
 for h in hdrs:
+    """
     expT = h['EXPOSURE']   # exposure time in             [millisec]
     bWid = h['BANDWID']    # spectral bandwidth           [microns]
     gain = 0.5 * h['GAIN'] # conversion gain from Cyprien [ADU/e]
-    
+    """
     # If we have the info about this star
     try:
+        """
         Hmag = float(objcat[h['OBJECT']]['Hmag'][0]) #    [mag]
         fH   = Hzp * 10**(-Hmag/2.5)
         # expected flux based on instrument sensitivity [photon/frame]:
@@ -147,7 +150,7 @@ for h in hdrs:
             fMeas = h[HMQ+'BANDFLUX%i MEAN'%b] / gain
             # transmission [%]:
             h[HMQ+'TRANS%i'%b] = 100.* (fMeas / fExpect)
-    
+        """
         diam    = objcat[h['OBJECT']]['UDDH'][0]
         # Loop on baseline 
         for b in bname:
@@ -159,10 +162,13 @@ for h in hdrs:
     
     # If we don't have the info about this star
     except NameError:
+        """
         for b in range (6):
             h[HMQ+'TRANS%i'%b] = -1.0;
+        """
         for b in bname:
             h[HMQ+'TF'+b+' MEAN'] = -1.0;
+    """
     except KeyError:
         for b in range(6):
             h[HMQ+'TRANS%i'%b] = -1.0
@@ -170,7 +176,7 @@ for h in hdrs:
             log.info('QC parameter BANDFLUX missing from header.')
             log.info('Re-running the reduction is recommended.')
             kl += 1
-
+    """
 #
 # Plots
 #
@@ -221,7 +227,7 @@ for b in range (15):
     axes.flatten()[b].set_ylim (0,1.2);
 
 files.write (fig,'report_tf2.png');
-
+"""
 # Trans
 fig,axes = plt.subplots (3,2,sharex=True);
 fig.suptitle ('Transmission [$\%$ of expected $F_\star$]');
@@ -233,7 +239,7 @@ for b in range (6):
     axes.flatten()[b].plot (data, 'o');
     
 files.write (fig,'report_trans.png');
-
+"""
 # Plot vis2
 fig,axes = plt.subplots (5,3,sharex=True);
 fig.suptitle ('Vis2');
