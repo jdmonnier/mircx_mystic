@@ -313,6 +313,7 @@ for d in dateList:
         axes.flatten()[b].plot([count,count],[-0.1,18],ls='-.',color='k')
     count += 1
     
+    
     tLoc.append(int(np.ceil((countmax-countmin)/2))+countmin)
     del countmin, countmax
     
@@ -321,6 +322,9 @@ for d in dateList:
 # -------------------------
 # edit the tick parameters and locations:
 # -------------------------
+for b in range(1, 7):
+    axes.flatten()[b].set_ylim([-0.1, transmax])
+
 axes.flatten()[0].set_title('Mean seeing [10m average]')
 axes.flatten()[1].set_title('Transmission [$\%$ of expected $F_\star$]')
 axes.flatten()[5].set_xticks(tLoc)
