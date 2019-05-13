@@ -2,7 +2,7 @@
 # -*- coding: iso-8859-15 -*-                                                   
 
 import mircx_pipeline as mrx
-import argparse, glob, os
+import argparse, glob, os, sys
 import datetime as dattime
 from datetime import datetime
 import numpy as np
@@ -178,17 +178,22 @@ count = 0
 cObj = ''
 tLoc = [] # array for x-axis tick locations to mark the dates on the plot
 oiDir = argopt.oifits_dir
+dNames = []
 for d in dateList:
     # Find an oifits directory for this date:
     oiDirs = []
     for dd in dirList:
-        if d in dd:
+        if d in dd and 'ncoh' not in dd and '.png' not in dd and 'bracket' not in dd:
             oiDirs.append(dd)
         if d == '2018Oct25':
-            oiDirs = ['2018Oct25_ncoh5ncs1nbs4snr2p0bbiasF'] 
+            oiDirs = ['2018Oct25_nbs0ncs1bbiasTmitp30'] 
     
     oi,i = 0,0
+    if oiDirs == []:
+        oi += 1 # ensures that the user doesn't get stuck in the while loop
+    
     while oi == 0:
+        print oiDirs
         try:
             hdrs = mrx.headers.loaddir(oiDirs[i]+'/'+oiDir) # IndexError raised if i exceeds len(oiDirs)
             if hdrs != []:
@@ -201,123 +206,129 @@ for d in dateList:
         except IndexError:
             log.error('Directory '+oiDir+' not found for date '+d)
             log.info('Skipped date '+d)
-
-    # sort the headers by time:
-    ids = np.argsort([h['MJD-OBS'] for h in hdrs])
-    hdrs = [hdrs[i] for i in ids]
-    log.info('Sorted headers by observation date')
+            sys.exit()
     
-    # Keep only the calibrator stars?:
-    if argopt.only_reference == 'TRUE':
-        hdrs = [h for h in hdrs if h['OBJECT'].replace('_',' ') in calL]
-        log.info('Cropped SCI targets from header list')
+    try:
+        # sort the headers by time:
+        ids = np.argsort([h['MJD-OBS'] for h in hdrs])
+        hdrs = [hdrs[i] for i in ids]
+        log.info('Sorted headers by observation date')
     
-    # Check if transmission information has already been saved to the header:
-    for b in range(6):
-        try:
-            bandF = np.append(bf, headers.getval(hdrs,HMQ+'TRANS%i'%b))
-        except NameError:
-            bandF = headers.getval(hdrs,HMQ+'TRANS%i'%b,default='no')
+        # Keep only the calibrator stars?:
+        if argopt.only_reference == 'TRUE':
+            hdrs = [h for h in hdrs if h['OBJECT'].replace('_',' ') in calL]
+            log.info('Cropped SCI targets from header list')
     
-    if 'no' in bandF:
-        log.info('Calculate transmission information')
-        # Read in the data:
-        objList = list(set([h['OBJECT'] for h in hdrs]))
-        objCat = dict()
-        for obj in objList:
-            try:
-                cat = Vizier.query_object(obj, catalog='JSDC')[0] # IndexError raised if object not found
-                log.info('Find JSDC for '+obj+':')
-                log.info(' diam = %.3f mas'%cat['UDDH'][0])
-                log.info(' Hmag = %.3f mas'%cat['Hmag'][0])
-                objCat[obj] = cat
-            except IndexError:
-                log.info('Cannot find JSDC for '+obj)
-        
-        kl = 0 # dummy variable used to ensure that info message is only printed to log once per date
-        log.info('Extract camera settings from headers')
-        log.info('Calculate transmission on each beam')
-        for h in hdrs:
-            expT = h['EXPOSURE']
-            bWid = h['BANDWID']
-            gain = 0.5 * h['GAIN']
-            
-            try:
-                # if info for this object was returned from JSDC:
-                Hmag    = float(objCat[h['OBJECT']]['Hmag'][0]) # raises NameError if nothing was returned from JSDC
-                fH      = Hzp * 10**(-Hmag/2.5)
-                fExpect = fH * expT * bWid * telArea * iTQE
-                
-                # loop over beams:
-                for b in range(6):
-                    fMeas = h[HMQ+'BANDFLUX%i MEAN'%b] / gain  # raises KeyError if reduction was done before this keyword was introduced
-                    h[HMQ+'TRANS%i'%b] = 100. * (fMeas / fExpect)
-            
-            except NameError:
-                # if info for the object was NOT returned from JSDC:
-                for b in range(6):
-                    h[HMQ+'TRANS%i'%b] = -1.0
-            except KeyError:
-                # if info was returned but the reduction is old:
-                for b in range(6):
-                    h[HMQ+'TRANS%i'%b] = -1.0
-                if kl == 0:
-                    log.info('QC parameter BANDFLUX missing from header.')
-                    log.info('Re-running the reduction is recommended.')
-                    kl += 1
-    
-    # assign colours to data based on SCI or CAL ID and add data to plot:
-    countmin = count
-    for h in hdrs:
-        objname = headers.getval([h],'OBJECT')[0]
-        r0      = headers.getval([h],'R0')[0]
-        if objname.replace('_', ' ') in calL and objname == cObj:
-            # cal is the same as previous so colour must be maintained
-            col = calCol[calColI]
-            mkr = 'o'
-        elif objname.replace('_', ' ') in calL and objname != cObj:
-            # cal is different to previous so colour must be changed
-            try:
-                tcol = calCol[calColI+1]
-                calColI += 1
-            except:
-                calColI += -1
-            
-            col = calCol[calColI]
-            mkr = 'o'
-            cObj = objname
-        else:
-            # target is sci, not cal
-            col = 'k'
-            mkr = '+'
-        # plot the seeing data:
-        axes.flatten()[0].plot(count,r0,marker=mkr,color=col,ls='None',ms=5)
-        # plot the transmission data:
+        # Check if transmission information has already been saved to the header:
         for b in range(6):
-            transm = headers.getval([h], HMQ+'TRANS%i'%b)
-            if transm > 0:
-                axes.flatten()[b+1].plot(count, transm, marker=mkr, color=col, ls='None', ms=5)
             try:
-                if transm > transmax:
-                    transmax = max(transm)
+                bandF = np.append(bf, headers.getval(hdrs,HMQ+'TRANS%i'%b))
             except NameError:
-                transmax = max(transm)
+                bandF = headers.getval(hdrs,HMQ+'TRANS%i'%b,default='no')
+    
+        if 'no' in bandF:
+            log.info('Calculate transmission information')
+            # Read in the data:
+            objList = list(set([h['OBJECT'] for h in hdrs]))
+            objCat = dict()
+            for obj in objList:
+                try:
+                    cat = Vizier.query_object(obj, catalog='JSDC')[0] # IndexError raised if object not found
+                    log.info('Find JSDC for '+obj+':')
+                    log.info(' diam = %.3f mas'%cat['UDDH'][0])
+                    log.info(' Hmag = %.3f mas'%cat['Hmag'][0])
+                    objCat[obj] = cat
+                except IndexError:
+                    log.info('Cannot find JSDC for '+obj)
         
+            kl = 0 # dummy variable used to ensure that info message is only printed to log once per date
+            log.info('Extract camera settings from headers')
+            log.info('Calculate transmission on each beam')
+            for h in hdrs:
+                expT = h['EXPOSURE']
+                bWid = h['BANDWID']
+                gain = 0.5 * h['GAIN']
+            
+                try:
+                    # if info for this object was returned from JSDC:
+                    Hmag    = float(objCat[h['OBJECT']]['Hmag'][0]) # raises NameError if nothing was returned from JSDC
+                    fH      = Hzp * 10**(-Hmag/2.5)
+                    fExpect = fH * expT * bWid * telArea * iTQE
+                
+                    # loop over beams:
+                    for b in range(6):
+                        fMeas = h[HMQ+'BANDFLUX%i MEAN'%b] / gain  # raises KeyError if reduction was done before this keyword was introduced
+                        h[HMQ+'TRANS%i'%b] = 100. * (fMeas / fExpect)
+            
+                except NameError:
+                    # if info for the object was NOT returned from JSDC:
+                    for b in range(6):
+                        h[HMQ+'TRANS%i'%b] = -1.0
+                except KeyError:
+                    # if info was returned but the reduction is old:
+                    for b in range(6):
+                        h[HMQ+'TRANS%i'%b] = -1.0
+                    if kl == 0:
+                        log.info('QC parameter BANDFLUX missing from header.')
+                        log.info('Re-running the reduction is recommended.')
+                        kl += 1
+    
+        # assign colours to data based on SCI or CAL ID and add data to plot:
+        countmin = count
+        for h in hdrs:
+            objname = headers.getval([h],'OBJECT')[0]
+            r0      = headers.getval([h],'R0')[0]
+            if objname.replace('_', ' ') in calL and objname == cObj:
+                # cal is the same as previous so colour must be maintained
+                col = calCol[calColI]
+                mkr = 'o'
+            elif objname.replace('_', ' ') in calL and objname != cObj:
+                # cal is different to previous so colour must be changed
+                try:
+                    tcol = calCol[calColI+1]
+                    calColI += 1
+                except:
+                    calColI += -1
+            
+                col = calCol[calColI]
+                mkr = 'o'
+                cObj = objname
+            else:
+                # target is sci, not cal
+                col = 'k'
+                mkr = '+'
+            # plot the seeing data:
+            axes.flatten()[0].plot(count,r0,marker=mkr,color=col,ls='None',ms=5)
+            # plot the transmission data:
+            for b in range(6):
+                transm = headers.getval([h], HMQ+'TRANS%i'%b)
+                if transm > 0:
+                    axes.flatten()[b+1].plot(count, transm, marker=mkr, color=col, ls='None', ms=5)
+                try:
+                    if transm > transmax:
+                        transmax = max(transm)
+                except NameError:
+                    transmax = max(transm)
+        
+            count += 1
+        
+            del col, mkr, transm, objname
+    
+        countmax = count
+        # add vertical line to plot:
+        for b in range(7):
+            axes.flatten()[b].plot([count,count],[-0.1,18],ls='-.',color='k')
         count += 1
-        
-        del col, mkr, transm, objname
-    
-    countmax = count
-    # add vertical line to plot:
-    for b in range(7):
-        axes.flatten()[b].plot([count,count],[-0.1,18],ls='-.',color='k')
-    count += 1
     
     
-    tLoc.append(int(np.ceil((countmax-countmin)/2))+countmin)
-    del countmin, countmax
+        tLoc.append(int(np.ceil((countmax-countmin)/2))+countmin)
+        del countmin, countmax
     
-    del hdrs, oiDirs
+        del hdrs, oiDirs
+        dNames.append(d)
+    except NameError:
+        log.error('New tranmission plotting routine is not compatible with book-keeping')
+        log.info('Skipping date '+d)
 
 # -------------------------
 # edit the tick parameters and locations:
@@ -328,7 +339,7 @@ for b in range(1, 7):
 axes.flatten()[0].set_title('Mean seeing [10m average]')
 axes.flatten()[1].set_title('Transmission [$\%$ of expected $F_\star$]')
 axes.flatten()[5].set_xticks(tLoc)
-axes.flatten()[5].set_xticklabels(dateList,rotation=70, fontsize=12)
+axes.flatten()[5].set_xticklabels(dNames,rotation=70, fontsize=12)
 
 # -------------------------
 # save the figure:
@@ -336,6 +347,6 @@ axes.flatten()[5].set_xticklabels(dateList,rotation=70, fontsize=12)
 plt.tight_layout()
 #plt.show()
 if dateList[0] != dateList[-1]:
-    files.write(fig,sDir+'overview_transmission_'+dateList[0]+'_'+dateList[-1]+'.png')
+    files.write(fig,sDir+'overview_transmission_'+dNames[0]+'_'+dNames[-1]+'.png')
 else:
-    files.write(fig,sDir+'transmission_'+dateList[0]+'.png')
+    files.write(fig,sDir+'transmission_'+dNames[0]+'.png')
