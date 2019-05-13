@@ -358,9 +358,10 @@ def texReportPlts(oiDir,outFiles,d):
         oifits reduction step;
     """
     reportFiles = glob.glob(oiDir+'/report*.png')
+    transPlots   = glob.glob('/'.join(oiDir.split('/')[:-3])+'/transmission_*'+d+'.png')
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
-            if len(reportFiles) == 0:
+            if len(reportFiles) == 0 and len(transPlots) == 0:
                 outtex.write('\\subsubsection*{No outputs from mircx\\_report.py available')
                 outtex.write(' to show} \n')
             else:
@@ -386,8 +387,19 @@ def texReportPlts(oiDir,outFiles,d):
                     log.info('Added '+reportFiles[r+1]+' to summary report PDF')
                 except IndexError:
                     log.info('End of report files reached')
-                outtex.write('\\end{figure}\n\n')
                 r += 2
+                if len(transPlots) == 0:
+                    outtex.write('\\end{figure}\n\n')
+            r = 0
+            try:
+                x = transPlots[0]
+                outtex.write('    \\includegraphics[angle=90,origin=c,trim=0.0cm 0.2cm 0.0cm 0.2cm, ')
+                outtex.write('clip=true, width=0.8\\textwidth]{'+x+'}')
+                outtex.write(' \n')
+                log.info('Added transmission plot to summary report PDF')
+                outtex.write('\\end{figure}\n\n')
+            except:
+                log.error('No transmission plot found for '+d)
     return
 
 def texSumUV(oiDir,calF,outFiles):
