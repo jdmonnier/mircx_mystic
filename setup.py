@@ -481,4 +481,11 @@ def crop_ids (hdr):
         idy = np.append (idy, np.arange (int(a), int(b)+1));
 
     return idy,idx;
- 
+
+def kappa (hdr):
+    '''
+    Return the expected value for the ration fringe_flux / xchan_flux
+    '''
+    if (hdr['MJD-OBS'] < 58525.00): return 3.0;
+    return 5.5;
+    

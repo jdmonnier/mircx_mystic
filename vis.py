@@ -450,28 +450,34 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     # Set invalid kappas to zero
     kappa[kappa > 1e3] = 0.0;
     kappa[kappa < 0.] = 0.0;
-        
+
     # Kappa-matrix as spectrum
     log.info ('Plot kappa');
+    spec_upper = np.mean (upper, axis=(1,2));
+    spec_lower = np.mean (lower, axis=(1,2));
+    spec_kappa = np.mean (kappa, axis=(1,2));
+    
+    # Scaling kappa spectrum, the xchan flux and the kappa
+    # are scaled with a factor to be closer to 1.0
+    skappa = setup.kappa (hdr);
+    norm = np.max (medfilt (spec_upper,(1,3)), axis=1, keepdims=True) + 1e-20;
+    spec_upper = spec_upper / norm;
+    spec_lower = spec_lower / norm * skappa;
+    spec_kappa = spec_kappa / skappa;
+        
     fig,axes = plt.subplots (3,2);
     fig.suptitle (headers.summary (hdr));
     for b in range (6):
         ax = axes.flatten()[b];
-        val = np.mean (upper, axis=(1,2));
-        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
-        ax.plot (lbd*1e6,val[b,:],'--', label='upper');
-        val = np.mean (lower, axis=(1,2));
-        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
-        ax.plot (lbd*1e6,val[b,:], label='lower');
-        val = np.mean (kappa, axis=(1,2));
-        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
-        ax.plot (lbd*1e6,val[b,:], label='kappa');
-        ax.set_ylim ((0.1,1.5));
-        ax.set_ylabel ('normalized');
+        ax.plot (lbd*1e6,spec_upper[b,:],'--', label='fringe');
+        ax.plot (lbd*1e6,spec_lower[b,:], label='xchan x %.1f'%skappa);
+        ax.plot (lbd*1e6,spec_kappa[b,:], label='kappa / %.1f'%skappa);
+        ax.set_ylim ((0.,2));
+        ax.set_ylabel ('normalized flux');
     axes[0,0].legend();
     files.write (fig,output+'_kappa.png');
 
-    # Kappa-matrix
+    # Kappa-matrix as image
     fig,ax = plt.subplots (1);
     fig.suptitle (headers.summary (hdr));
     ax.imshow (np.mean (kappa,axis=(1,2)));
