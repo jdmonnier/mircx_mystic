@@ -357,8 +357,12 @@ for d in range(0, len(dates)):
                 nextDay = today + datetime.timedelta(days=1)
                 nD = nextDay.strftime('%Y%b%d')
                 with cd(redDir):
-                    com = "mircx_transmission.py --dir="+redBase+" --date-from="+dates[d]
-                    ma  = " --date-to="+nD+" --targ-list="+argopt.targ_list
+                    if socket.gethostname() != 'mircx':
+                        com = "mircx_transmission.py --dir="+redBase+" --date-from="+dates[d]
+                        ma  = " --date-to="+nD+" --targ-list="+argopt.targ_list
+                    else:
+                        com = "mircx_transmission.py --dir="+redBase+" --num-nights=14"
+                        ma  = " --targ-list="argopt.targ_list
                     nd  = " --oifits-dir="+suf2+"/oifits_nc"+str(ncoh[d])
                     pipe = "> nohup_transmission.out"
                     with open('nohup_transmission.out', 'w') as output:
