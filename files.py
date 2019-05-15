@@ -300,8 +300,8 @@ def load_raw (hdrs, differentiate=True,
         #                                 0.25 * cubenp[:,:,idx[:,0]+1,idx[:,1]-1] + \
         #                                 0.25 * cubenp[:,:,idx[:,0]-1,idx[:,1]+1] + \
         #                                 0.25 * cubenp[:,:,idx[:,0]+1,idx[:,1]+1];
-        cubenp[:,:,idx[:,0],idx[:,1]] = 0.25 * cubenp[:,:,idx[:,0]-1,idx[:,1]] + \
-                                        0.25 * cubenp[:,:,idx[:,0]+1,idx[:,1]];
+        cubenp[:,:,idx[:,0],idx[:,1]] = 0.5 * cubenp[:,:,idx[:,0]-1,idx[:,1]] + \
+                                        0.5 * cubenp[:,:,idx[:,0]+1,idx[:,1]];
         # Figure
         fig,ax = plt.subplots (3,1);
         fig.suptitle (headers.summary (hdrs[0]));
