@@ -448,8 +448,9 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     kappa = upper / (lower + 1e-20);
 
     # Set invalid kappas to zero
-    kappa[kappa > 1e3] = 0.0;
-    kappa[kappa < 0.] = 0.0;
+    skappa = setup.kappa (hdr);
+    kappa[kappa > skappa*10] = 0.0;
+    kappa[kappa < skappa/10] = 0.0;
 
     # Kappa-matrix as spectrum
     log.info ('Plot kappa');
@@ -459,7 +460,6 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     
     # Scaling kappa spectrum, the xchan flux and the kappa
     # are scaled with a factor to be closer to 1.0
-    skappa = setup.kappa (hdr);
     norm = np.max (medfilt (spec_upper,(1,3)), axis=1, keepdims=True) + 1e-20;
     spec_upper = spec_upper / norm;
     spec_lower = spec_lower / norm * skappa;
