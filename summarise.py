@@ -388,11 +388,14 @@ def texReportPlts(oiDir,outFiles,d):
                 except IndexError:
                     log.info('End of report files reached')
                 r += 2
-                if len(transPlots) == 0:
-                    outtex.write('\\end{figure}\n\n')
+                outtex.write('\\end{figure}\n\n')
             r = 0
             try:
                 x = transPlots[0]
+                outtex.write('\\begin{figure}[h]\n    \\raggedright\n')
+                outtex.write('    \\textbf{Results from mircx\\_report.py for '+d)
+                outtex.write(' (cont.) }\\\\ \n')
+                outtex.write('    \\centering\n')
                 outtex.write('    \\includegraphics[angle=90,origin=c,trim=0.0cm 0.2cm 0.0cm 0.2cm, ')
                 outtex.write('clip=true, width=0.8\\textwidth]{'+x+'}')
                 outtex.write(' \n')
