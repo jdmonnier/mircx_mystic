@@ -336,7 +336,7 @@ for d in range(0, len(dates)):
                 # a: run report.py script
                 with cd(oiDir):
                     command = "mircx_report.py --oifits-dir="+oiDir
-                    pipe = "> nohup_report.out"
+                    pipe = " > nohup_report.out"
                     with open('nohup_report.out', 'w') as output:
                         output.write('\n')
                     log.info('Execute nohup '+command+' '+pipe)
@@ -362,7 +362,7 @@ for d in range(0, len(dates)):
                         ma  = " --date-to="+nD+" --targ-list="+argopt.targ_list
                     else:
                         com = "mircx_transmission.py --dir="+redBase+" --num-nights=14"
-                        ma  = " --targ-list="argopt.targ_list
+                        ma  = " --targ-list="+argopt.targ_list
                     nd  = " --oifits-dir="+suf2+"/oifits_nc"+str(ncoh[d])
                     pipe = "> nohup_transmission.out"
                     with open('nohup_transmission.out', 'w') as output:

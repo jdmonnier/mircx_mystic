@@ -128,7 +128,7 @@ def plotV2CP(oiDir,setups,viscp):
     for file in fitsfiles:
         # keywords from file headers read in
         with pyfits.open(file) as input:
-            keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
+            keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1']
             teststr = [str(input[0].header.get(k,'--')) for k in keys]
             if teststr == setups[p] and first == True:
                 # option i) file matches current setup and is first file to match it
@@ -463,7 +463,7 @@ def texSumPlots(oiDir,redF,calF,outFiles):
     redFiles = sorted(glob.glob(oiDir+'/*.fits'))
     redhdrs = headers.loaddir(oiDir)
     log.info('Retrieve targets and camera settings from successfully reduced files')
-    keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','R0']
+    keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1']
     setupL = [[str(h.get(k,'--')) for k in keys] for h in redhdrs]
     del redhdrs
     setups = []
@@ -513,7 +513,7 @@ def texSumPlots(oiDir,redF,calF,outFiles):
     
     # Then append reduction QA plots to the file that won't be emailed:
     with open(outFiles[0], 'a') as outtex:
-         outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
+         outtex.write('\n\\clearpage\n\n\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
          outtex.write('    \\textbf{Reduction quality assessment: PSD}\\\\ \n')
          outtex.write('    \\centering\n')
          for rts in RTS_p[0:15]:
