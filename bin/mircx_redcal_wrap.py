@@ -336,7 +336,7 @@ for d in range(0, len(dates)):
                 # a: run report.py script
                 with cd(oiDir):
                     command = "mircx_report.py --oifits-dir="+oiDir
-                    pipe = " --only-reference=TRUE > nohup_report.out"
+                    pipe = " > nohup_report.out"
                     with open('nohup_report.out', 'w') as output:
                         output.write('\n')
                     log.info('Execute nohup '+command+' '+pipe)

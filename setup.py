@@ -28,7 +28,7 @@ global detmode;
 detmode = ['NREADS','NLOOPS','NBIN','GAIN','FRMPRST'];
 
 global insmode;
-insmode = ['FILTER1','FILTER2','CONF_NA'];
+insmode = ['FILTER1','FILTER2','CONF_NA','MIRCX_SPECTRO_XY','MIRCX_SPECTRO_FOC'];
 
 global fringewin;
 fringewin = [HMW+'FRINGE STARTX', HMW+'FRINGE NX', HMW+'FRINGE STARTY', HMW+'FRINGE NY'];
