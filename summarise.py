@@ -41,6 +41,7 @@ def plotUV(direc):
             plt.grid(True)
             plt.tight_layout()
             plt.savefig(direc+'/'+objs[t]+'_uv_coverage.png')
+            plt.close()
             log.info('Save '+direc+'/'+objs[t]+'_uv_coverage.png')
             del lbd, usf, vsf
         else:
@@ -95,11 +96,13 @@ def calibPlots(calibfiles,viscp,saveAsStr,setup):
             axes.set_xlabel('sp. freq. (M$\lambda$)')
             axes.set_ylabel('vis2')
             plt.savefig('/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_vis2.png')
+            plt.close()
             log.info('    - Write '+'/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_vis2.png')
         elif viscp == 'cp':
             axes.set_xlabel('max sp. freq. (M$\lambda$)');
             axes.set_ylabel('$\phi_{CP}$')
             plt.savefig('/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_t3phi.png')
+            plt.close()
             log.info('    - Write '+'/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_t3phi.png')
         plt.close("all")
     return
@@ -154,11 +157,13 @@ def plotV2CP(oiDir,setups,viscp):
                         axes.set_xlabel('sp. freq. (M$\lambda$)')
                         axes.set_ylabel('vis2')
                         plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
+                        plt.close()
                         log.info('    - Write '+oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
                     elif viscp == 'cp':
                         axes.set_xlabel('max sp. freq. (M$\lambda$)');
                         axes.set_ylabel('$\phi_{CP}$')
                         plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+                        plt.close()
                         log.info('    - Write '+oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
                     plt.close("all")
                     del fig,axes
@@ -192,11 +197,13 @@ def plotV2CP(oiDir,setups,viscp):
            axes.set_xlabel('sp. freq. (M$\lambda$)')
            axes.set_ylabel('vis2')
            plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
+           plt.close()
            log.info('    - Write '+oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
        elif viscp == 'cp':
            axes.set_xlabel('max sp. freq. (M$\lambda$)');
            axes.set_ylabel('$\phi_{CP}$')
            plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+           plt.close()
            log.info('    - Write '+oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
        plt.close("all")
        calibPlots(calibfiles, viscp, saveAsStr, teststr)
