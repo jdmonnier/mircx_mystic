@@ -304,7 +304,9 @@ def texSumTables(oiDir,targs,calInf,scical,redF,rawhdrs,outFiles):
         - rawhdrs is the fits headers from the raw data.
     """
     if redF == False:
-        redhdrs = headers.loaddir(oiDir)
+        # specifying the inclusion only of *_oifits.fits files ensures that BG and FG
+        # files are not summarised.
+        redhdrs = headers.load(oiDir+'/*_oifits.fits')
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
             outtex.write('\\subsection*{Target summary}\n')
@@ -420,10 +422,12 @@ def texSumUV(oiDir,calF,outFiles):
         - oiDir is the directory containing the products of the
         oifits reduction step;
         - calF is a flag highlighting whether the calibration
-        was successful;
+        failed (True means that the calibration did fail - sorry
+        for confusing logic);
     """
     if calF == False:
-        uvPlt = glob.glob(oiDir+'/calibrated/*_uv_coverage.png')
+        # locate the calibrated files that have been produced:
+        uvPlt = glob.glob(oiDir+'/calibrated/*_uv_coverage.png') 
         for outFile in outFiles:
             with open(outFile, 'a') as outtex:
                 outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
@@ -433,6 +437,9 @@ def texSumUV(oiDir,calF,outFiles):
                     outtex.write('    \\includegraphics[trim=2.0cm 0.0cm 2.0cm 0.0cm, ')
                     outtex.write('clip=true, width=0.32\\textwidth]{'+uvp+'}\n')
                 if len(uvPlt) > 12:
+                    # if more than 12 science targets have been observed, the page
+                    # will not be big enough to host them all. This part of the script
+                    # handles the required page break.  
                     for n in range(1, int(np.floor(len(uvPlt)))):
                         outtex.write('\\end{figure}\n\n\\clearpage\n')
                         outtex.write('\\begin{figure}[h]\n')
@@ -462,6 +469,7 @@ def texSumPlots(oiDir,redF,calF,outFiles):
         respectively;
     """
     if redF == True:
+        # catches instances where the reduction failed so there are no outputs to display
         for outFile in outFiles:
             with open(outFile, 'a') as outtex:                    
                 outtex.write('\\end{document}\n')
