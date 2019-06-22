@@ -15,8 +15,8 @@ def plotUV(direc):
     full night's uv coverage plot for each of them.
         - dir is the directory of calibrated files
     """
-    fitsfiles = glob.glob(direc+'/*.fits')
-    hdrs  = headers.loaddir(direc)
+    fitsfiles = sorted(glob.glob(direc+'/*_viscal.fits'))
+    hdrs  = headers.load(sorted(glob.glob(direc+'/*_viscal.fits')))
     objs  = list(set([h['OBJECT'] for h in hdrs]))
     for t in range(0, len(objs)):
         if not os.path.exists(direc+'/'+objs[t]+'_uv_coverage.png'):
@@ -26,6 +26,11 @@ def plotUV(direc):
                         lbd = input['OI_WAVELENGTH'].data['EFF_WAVE']*1e6
                         usf = 0.0-input['OI_VIS2'].data['UCOORD'][:,None]/lbd[None,:]
                         vsf = input['OI_VIS2'].data['VCOORD'][:,None]/lbd[None,:]
+                        # trim u and v coordinates with nan vis2 data:
+                        vis2 = input['OI_VIS2'].data['VIS2DATA']
+                        usf[np.isfinite(vis2)==False] = np.nan
+                        vsf[np.isfinite(vis2)==False] = np.nan
+                        # plot remaining data:
                         for u in range(15):
                             plt.plot(usf[u,:],vsf[u,:],marker='o',color='k',ls='None')
                             plt.plot(0.0-usf[u,:],0.0-vsf[u,:],marker='o',color='k',ls='None')
@@ -474,9 +479,9 @@ def texSumPlots(oiDir,redF,calF,outFiles):
             with open(outFile, 'a') as outtex:                    
                 outtex.write('\\end{document}\n')
         return
-    # sort the reduced files by camera settings and target:
-    redFiles = sorted(glob.glob(oiDir+'/*.fits'))
-    redhdrs = headers.loaddir(oiDir)
+    # sort the reduced files by camera settings and target, ensuring that FG and BG files
+    # are ignored:
+    redhdrs = headers.load(sorted(glob.glob(oiDir+'/*_oifits.fits')))
     log.info('Retrieve targets and camera settings from successfully reduced files')
     keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1']
     setupL = [[str(h.get(k,'--')) for k in keys] for h in redhdrs]
