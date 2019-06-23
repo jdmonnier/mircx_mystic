@@ -435,7 +435,7 @@ def texSumUV(oiDir,calF,outFiles):
         uvPlt = glob.glob(oiDir+'/calibrated/*_uv_coverage.png') 
         for outFile in outFiles:
             with open(outFile, 'a') as outtex:
-                outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
+                outtex.write('\\newpage\n\n\\begin{figure}[h]\n    \\raggedright\n')
                 outtex.write('    \\textbf{Full night $uv$-coverage for SCI target(s)}')
                 outtex.write('\\\\ \n    \\centering\n')
                 for uvp in uvPlt[0:12]:
@@ -527,7 +527,7 @@ def texSumPlots(oiDir,redF,calF,outFiles):
                     outtex.write(oiDir+'/calibrated/mircx'+strnum+'_calib_t3phi.png')
                     outtex.write('}\\\\ \n')
                 outtex.write('\\end{figure}\n\n')
-        if int(float(num/30.)) == float(num/30.):
+        if int(float(num/30.)) == float(num/30.) and int(float(num)) != 1:
             with open(outFile, 'a') as outtex:
                 outtex.write('\\clearpage\n') # avoids latex 'too many unprocessed floats' error
     
