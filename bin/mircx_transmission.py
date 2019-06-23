@@ -141,8 +141,11 @@ calL = []
 with open(localDB) as input:
     head = input.readline()
     for line in input:
-        if line.split(',')[5] == 'CAL':
-            calL.append(line.split(',')[0])
+        try:
+            if line.split(',')[5] == 'CAL':
+                calL.append(line.split(',')[0])
+        except IndexError:
+            log.info('Final line in localDB file is blank: please fix')
 
 # Load astroquery
 try:
