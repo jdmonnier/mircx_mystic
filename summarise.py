@@ -174,7 +174,7 @@ def plotV2CP(oiDir,setups,viscp):
                     del fig,axes
                     first = True
                     # If there is corresponding calibrated data, plot it:
-                    calibPlots(calibfiles, viscp, saveAsStr, teststr)
+                    calibPlots(calibfiles, viscp, saveAsStr, setups[p])
                     calibfiles = []
                 # increase the value of p until a match is found for the current file:
                 p += 1
