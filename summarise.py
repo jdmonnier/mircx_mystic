@@ -311,7 +311,7 @@ def texSumTables(oiDir,targs,calInf,scical,redF,rawhdrs,outFiles):
     if redF == False:
         # specifying the inclusion only of *_oifits.fits files ensures that BG and FG
         # files are not summarised.
-        redhdrs = headers.load(oiDir+'/*_oifits.fits')
+        redhdrs = headers.load(sorted(glob.glob(oiDir+'/*_oifits.fits')))
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
             outtex.write('\\subsection*{Target summary}\n')
