@@ -197,8 +197,8 @@ for d in dateList:
     
     while oi == 0:
         print oiDirs
-        try:
-            hdrs = mrx.headers.loaddir(oiDirs[i]+'/'+oiDir) # IndexError raised if i exceeds len(oiDirs)
+        if path.exists(oiDirs[i]+'/'+oiDir):
+            hdrs = mrx.headers.loaddir(oiDirs[i]+'/'+oiDir)
             if hdrs != []:
                 # once hdrs are found and read in, break the while loop
                 oi += 1
@@ -206,10 +206,8 @@ for d in dateList:
                 # if an oifits directory does not exist in that directory, 
                 # check another directory for the same obs date
                 i += 1
-        except IndexError:
-            log.error('Directory '+oiDir+' not found for date '+d)
-            log.info('Skipped date '+d)
-            sys.exit()
+        else:
+            i += 1
     
     try:
         # sort the headers by time:
