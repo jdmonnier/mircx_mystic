@@ -8,6 +8,7 @@ from datetime import datetime
 import numpy as np
 from astropy.io import fits as pyfits
 import matplotlib.pyplot as plt
+import os
 
 from mircx_pipeline import log, headers, plot, files
 from mircx_pipeline.headers import HMQ
@@ -197,7 +198,7 @@ for d in dateList:
     
     while oi == 0:
         print oiDirs
-        if path.exists(oiDirs[i]+'/'+oiDir):
+        if os.path.isdir(oiDirs[i]+'/'+oiDir):
             hdrs = mrx.headers.loaddir(oiDirs[i]+'/'+oiDir)
             if hdrs != []:
                 # once hdrs are found and read in, break the while loop
