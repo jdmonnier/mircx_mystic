@@ -172,7 +172,7 @@ def queryLocal(targs,db):
                 log.warning(mirrs[m]+' SIMBAD server down')
             while connected == False:
                 try:
-                    Simbad.SIMBAD_SERVER = mirr[m+1]
+                    Simbad.SIMBAD_SERVER = mirrs[m+1]
                 except IndexError:
                     log.error('Failed to connect to SIMBAD mirrors')
                     log.error('Check internet connection and try again')
