@@ -133,7 +133,7 @@ telArea = np.pi * 0.5*0.5
 kl = 0 # dummy character to avoid error message being output multiple times
 """
 for h in hdrs:
-    if h['OBJECT'] != 'NOSTAR:
+    if h['OBJECT'] != 'NOSTAR':
         """
         expT = h['EXPOSURE']   # exposure time in             [millisec]
         bWid = h['BANDWID']    # spectral bandwidth           [microns]
