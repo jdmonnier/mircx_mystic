@@ -113,6 +113,9 @@ try:
     else:
         log.info('Number of observation dates is less than '+str(nNight))
         log.info('All observation nights in current directory will be plotted')
+        # Need to add in a check here for when the code is run on mircx to check
+        # for data from the previous month as the code will not be able to find
+        # these at present...
 except NameError:
     # catch instances where fNight and lNight are used to limit date range rather than nNight
     # Check that lNight is in the dateList:
@@ -190,14 +193,15 @@ for d in dateList:
         if d in dd and 'ncoh' not in dd and '.png' not in dd and 'bracket' not in dd:
             oiDirs.append(dd)
         if d == '2018Oct25':
-            oiDirs = ['2018Oct25_nbs0ncs1bbiasTmitp30'] 
+            oiDirs = ['2018Oct25_nbs0ncs1bbiasTmitp30']
+    log.info('Found the following data directories for '+d)
+    log.info(oiDirs)
     
     oi,i = 0,0
     if oiDirs == []:
         oi += 1 # ensures that the user doesn't get stuck in the while loop
     
-    while oi == 0:
-        print oiDirs
+    while oi == 0 and i < len(oiDirs):
         if os.path.isdir(oiDirs[i]+'/'+oiDir):
             hdrs = mrx.headers.loaddir(oiDirs[i]+'/'+oiDir)
             if hdrs != []:
@@ -329,8 +333,7 @@ for d in dateList:
         del hdrs, oiDirs
         dNames.append(d)
     except NameError:
-        log.error('New tranmission plotting routine is not compatible with book-keeping')
-        log.info('Skipping date '+d)
+        log.error('No calibrated data found for '+d+'...skipped date')
 
 # -------------------------
 # edit the tick parameters and locations:
