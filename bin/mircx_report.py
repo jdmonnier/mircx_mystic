@@ -181,6 +181,7 @@ for h in hdrs:
                 kl += 1
         """
     else:
+        log.info('Excluding "NOSTAR" object name instance from plot')
         for b in bname:
             h[HMQ+'TF'+b+' MEAN'] = -1.0;
         
