@@ -9,6 +9,7 @@ import numpy as np
 from astropy.io import fits as pyfits
 import matplotlib.pyplot as plt
 import os
+from dateutil.parser import parse
 
 from mircx_pipeline import log, headers, plot, files
 from mircx_pipeline.headers import HMQ
@@ -90,7 +91,28 @@ else:
     if sDir[-1] != '/':
         sDir = sDir+'/'
 
-dirList = glob.glob(sDir+'*') # read in directory names from directory trunk
+def is_date(string, fuzzy=False):
+    """
+    Return whether the string can be interpreted as a date.
+
+    param string: str, string to check for date
+    param fuzzy: bool, ignore unknown tokens in string if True
+    """
+    try: 
+        parse(string, fuzzy=fuzzy)
+        return True
+
+    except ValueError:
+        return False
+
+# Check the directory structure read in directory names from trunk
+if is_date(sDir.split('/')[-2]):
+    # we're in a /data/reduced/YYYYMmm/YYYYMmmDD format directory tree
+    dirList = glob.glob('/'.join(sDir.split('/')[:-2])+'/*/*')
+else:
+    # we're in a /data/reduced/YYYYMmmDD format directory tree
+    dirList = glob.glob(sDir+'*')
+
 dL = list(set([d.split('_')[0].split('/')[-1] for d in dirList])) # remove duplicate dates
 for d in dL:
     try:
@@ -113,9 +135,6 @@ try:
     else:
         log.info('Number of observation dates is less than '+str(nNight))
         log.info('All observation nights in current directory will be plotted')
-        # Need to add in a check here for when the code is run on mircx to check
-        # for data from the previous month as the code will not be able to find
-        # these at present...
 except NameError:
     # catch instances where fNight and lNight are used to limit date range rather than nNight
     # Check that lNight is in the dateList:
