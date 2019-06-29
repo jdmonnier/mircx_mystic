@@ -202,7 +202,7 @@ for b in range (15):
     axes.flatten()[b].plot (data, 'o');
     axes.flatten()[b].set_ylim (0);
     
-files.write (fig,argopt.oifits_dir'/report_decoher.png');
+files.write (fig,argopt.oifits_dir+'/report_decoher.png');
 
 # Plot SNR
 fig,axes = plt.subplots (5,3,sharex=True);
@@ -216,7 +216,7 @@ for b in range (15):
     axes.flatten()[b].plot (data, 'o');
     axes.flatten()[b].set_yscale ('log');
     
-files.write (fig,argopt.oifits_dir'/report_snr.png');
+files.write (fig,argopt.oifits_dir+'/report_snr.png');
 
 # Plot TF
 fig,axes = plt.subplots (5,3,sharex=True);
@@ -234,7 +234,7 @@ for b in range (15):
     axes.flatten()[b].plot (data, 'o');
     axes.flatten()[b].set_ylim (0,1.2);
 
-files.write (fig,argopt.oifits_dir'/report_tf2.png');
+files.write (fig,argopt.oifits_dir+'/report_tf2.png');
 """
 # Trans
 fig,axes = plt.subplots (3,2,sharex=True);
