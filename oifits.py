@@ -100,7 +100,7 @@ def create (hdr,lbd,y0=None):
              pyfits.Column (name='STA_INDEX', format='I', array=staindex), \
              pyfits.Column (name='DIAMETER', format='E', array=diameter, unit='m'), \
              pyfits.Column (name='STAXYZ', format='3D', dim='(3)', array=staxyz, unit='m'), \
-             pyfits.Column (name='FOV', format='D', array=fov, unit='arc sec'), \
+             pyfits.Column (name='FOV', format='D', array=fov, unit='arcsec'), \
              pyfits.Column (name='FOVTYPE', format='A6', array=fovtype)]);
     
     tbhdu.header['EXTNAME'] = 'OI_ARRAY';
