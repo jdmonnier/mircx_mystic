@@ -288,7 +288,7 @@ for d in range(0, len(dates)):
             last_line = nf.read()
             ll = nf.tell()
             if last_line:
-                print last_line.strip()
+                lls = last_line.strip()
                 if 'Git last commit:' in last_line:
                     break
     
@@ -324,7 +324,7 @@ for d in range(0, len(dates)):
                 last_line = nf.read()
                 ll = nf.tell()
                 if last_line:
-                    print last_line.strip()
+                    lls = last_line.strip()
                     if 'Git last commit:' in last_line:
                         break
             
@@ -348,7 +348,7 @@ for d in range(0, len(dates)):
                         last_line = nf.read()
                         ll = nf.tell()
                         if last_line:
-                            print last_line.strip()
+                            lls = last_line.strip()
                             if 'Git last commit:' in last_line:
                                 break
                 
@@ -376,7 +376,7 @@ for d in range(0, len(dates)):
                         last_line = nf.read()
                         ll = nf.tell()
                         if last_line:
-                            print last_line.strip()
+                            lls = last_line.strip()
                             if 'Git last commit:' in last_line:
                                 break
                 
@@ -398,7 +398,7 @@ for d in range(0, len(dates)):
                             last_line = nf.read()
                             ll = nf.tell()
                             if last_line:
-                                print last_line.strip()
+                                lls = last_line.strip()
                                 if 'Git last commit:' in last_line:
                                     break
             
@@ -466,7 +466,7 @@ for d in range(0, len(dates)):
                         last_line = nf.read()
                         ll = nf.tell()
                         if last_line:
-                            print last_line.strip()
+                            lls = last_line.strip()
                             if 'Git last commit:' in last_line:
                                 break
             else:
