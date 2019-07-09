@@ -7,9 +7,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
 import smtplib
-from email.MIMEMultipart import MIMEMultipart
-from email.MIMEText import MIMEText
-from email.MIMEBase import MIMEBase
+try:
+    from email.mime.multipart import MIMEMultipart
+except ModuleNotFoundError:
+    from email.MIMEMultipart import MIMEMultipart
+try:
+    from email.mime.text import MIMEText
+except ModuleNotFoundError:
+    from email.MIMEText import MIMEText
+try:
+    from email.mime.base import MIMEBase
+except ModuleNotFoundError:
+    from email.MIMEBase import MIMEBase
 from email import encoders
 
 class cd:
