@@ -28,7 +28,7 @@ epilog = \
 """
 examples:
   cd /path/to/my/data/oifits/
-  mirx_calibrate.py --calibrators=HD1234,0.75,0.1
+  mircx_calibrate.py --calibrators=HD_1234,0.75,0.1
 """
 
 parser = argparse.ArgumentParser (description=description, epilog=epilog,
