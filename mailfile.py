@@ -2,12 +2,17 @@ import sys, os
 import smtplib
 try:
     from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-    from email.mime.base import MIMEBase
 except ModuleNotFoundError:
     from email.MIMEMultipart import MIMEMultipart
+try:
+    from email.mime.text import MIMEText
+except ModuleNotFoundError:
     from email.MIMEText import MIMEText
+try:
+    from email.mime.base import MIMEBase
+except ModuleNotFoundError:
     from email.MIMEBase import MIMEBase
+
 from email import encoders
 
 from . import log
