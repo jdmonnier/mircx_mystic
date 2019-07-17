@@ -137,7 +137,9 @@ def loaddir (dirs, uselog=True):
         
         log.info ('Load directory: '+dir);
         files  = glob.glob (dir+'/mircx*.fits');
+        files += glob.glob (dir+'/mystic*.fits');
         files += glob.glob (dir+'/mircx*.fits.fz');
+        files += glob.glob (dir+'/mystic*.fits.fz');
 
         # Check if any
         if len(files) == 0:
