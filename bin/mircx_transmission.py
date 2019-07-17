@@ -63,6 +63,10 @@ argopt = parser.parse_args()
 
 # Verbose:
 elog = log.trace('mircx_transmission')
+o1 = ' --num-nights='+str(float(argopt.num_of_nights))+' --date-from='+argopt.night_from
+o2 = ' --date-to='+argopt.night_to+' --targ-list='+argopt.targ_list
+o3 = ' --only-reference='+str(argopt.only_reference)+' --oifits-dir='+argopt.oifits_dir
+log.info('Run mircx_transmission.py --dir='+argopt.dir+o1+o2+o3)
 
 # Check how many nights are to be plotted:
 now = datetime.now()
@@ -70,7 +74,7 @@ if argopt.num_of_nights != 0:
     nNight = argopt.num_of_nights
 else:
     if argopt.night_from == '':
-        nNight = 50 # default to plotting the 50 most recent nights of data
+        nNight = 14 # default to plotting the 14 most recent nights of data
     else:
         fNight = argopt.night_from
         try:
@@ -145,7 +149,10 @@ except NameError:
         nD = nextDay.strftime('%Y%b%d')
         lNight = nD
     
-    dL3 = dateList[dateList.index(fNight):dateList.index(lNight)]
+    if lNight not in dateList:
+        dL3 = dateList[dateList.index(fNight)]
+    else:
+        dL3 = dateList[dateList.index(fNight):dateList.index(lNight)]
     dateList = dL3
     log.info('Removed dates earlier than '+fNight+' from dateList')
     if lNight != now.strftime('%Y%b%d'):
