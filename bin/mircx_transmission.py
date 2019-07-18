@@ -309,43 +309,44 @@ for d in dateList:
         countmin = count
         for h in hdrs:
             objname = headers.getval([h],'OBJECT')[0]
-            r0      = headers.getval([h],'R0')[0]
-            if objname.replace('_', ' ') in calL and objname == cObj:
-                # cal is the same as previous so colour must be maintained
-                col = calCol[calColI]
-                mkr = 'o'
-            elif objname.replace('_', ' ') in calL and objname != cObj:
-                # cal is different to previous so colour must be changed
-                try:
-                    tcol = calCol[calColI+1]
-                    calColI += 1
-                except:
-                    calColI += -1
-            
-                col = calCol[calColI]
-                mkr = 'o'
-                cObj = objname
-            else:
-                # target is sci, not cal
-                col = 'k'
-                mkr = '+'
-            # plot the seeing data:
-            axes.flatten()[0].plot(count,r0,marker=mkr,color=col,ls='None',ms=5)
-            # plot the transmission data:
-            for b in range(6):
-                transm = headers.getval([h], HMQ+'TRANS%i'%b)
-                if transm > 0:
-                    axes.flatten()[b+1].plot(count, transm, marker=mkr, color=col, ls='None', ms=5)
-                try:
-                    if transm > transmax:
+            if objname != 'NOSTAR':
+                r0      = headers.getval([h],'R0')[0]
+                if objname.replace('_', ' ') in calL and objname == cObj:
+                    # cal is the same as previous so colour must be maintained
+                    col = calCol[calColI]
+                    mkr = 'o'
+                elif objname.replace('_', ' ') in calL and objname != cObj:
+                    # cal is different to previous so colour must be changed
+                    try:
+                        tcol = calCol[calColI+1]
+                        calColI += 1
+                    except:
+                        calColI += -1
+                
+                    col = calCol[calColI]
+                    mkr = 'o'
+                    cObj = objname
+                else:
+                    # target is sci, not cal
+                    col = 'k'
+                    mkr = '+'
+                # plot the seeing data:
+                axes.flatten()[0].plot(count,r0,marker=mkr,color=col,ls='None',ms=5)
+                # plot the transmission data:
+                for b in range(6):
+                    transm = headers.getval([h], HMQ+'TRANS%i'%b)
+                    if transm > 0:
+                        axes.flatten()[b+1].plot(count, transm, marker=mkr, color=col, ls='None', ms=5)
+                    try:
+                        if transm > transmax:
+                            transmax = max(transm)
+                    except NameError:
                         transmax = max(transm)
-                except NameError:
-                    transmax = max(transm)
+            
+                count += 1
+            
+                del col, mkr, transm, objname
         
-            count += 1
-        
-            del col, mkr, transm, objname
-    
         countmax = count
         # add vertical line to plot:
         for b in range(7):
