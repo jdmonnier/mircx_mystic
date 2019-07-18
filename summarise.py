@@ -291,7 +291,7 @@ def texSumTitle(oiDir,hdrs,redF,calF):
                 if obsPerson != 'Slimfringe':
                     outline.append(obsPerson)
             out = list(set(outline))
-            outtex.write('; '.join(out))+'}\n')
+            outtex.write('; '.join(out)+'}\n')
             outtex.write('\\subsubsection*{Program ID(s): (info not yet retained in headers)}\n')
     return outFiles
 
