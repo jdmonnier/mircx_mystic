@@ -273,15 +273,14 @@ def texSumTitle(oiDir,hdrs,redF,calF):
             else:
                 outtex.write('\\subsubsection*{Reduction failed}\n')
             outtex.write('\n\\subsubsection*{PI(s): ')
-            outline = []
-            for h in hdrs:
-                try:
-                    princInv = h['PI_NAME']
-                except KeyError:
-                    princInv = 'UNKNOWN'
-                if princInv != 'UNKNOWN':
-                    outline.append(princInv)
-            outtex.write('; '.join(str(out) for out in list(set(outline)))+'}\n')
+            princInv = list(set([h['PI_NAME'] for h in hdrs]))
+            princInv.remove('UNKNOWN')
+            if len(princInv) > 1:
+                outtex.write('; '.join(princInv)+'}\n')
+            elif len(princInv) == 1:
+                outtex.write(princInv[0]+'}\n')
+            else:
+                outtex.write('}\n')
             outtex.write('\\subsubsection*{Observer(s): ')
             outline = []
             for h in hdrs:
@@ -291,7 +290,8 @@ def texSumTitle(oiDir,hdrs,redF,calF):
                     obsPerson = 'Slimfringe'
                 if obsPerson != 'Slimfringe':
                     outline.append(obsPerson)
-            outtex.write('; '.join(str(out) for out in list(set(outline)))+'}\n')
+            out = list(set(outline))
+            outtex.write('; '.join(out))+'}\n')
             outtex.write('\\subsubsection*{Program ID(s): (info not yet retained in headers)}\n')
     return outFiles
 
