@@ -71,7 +71,11 @@ def addV2CP(input, viscp, fig, axes):
     ecp = input['OI_T3'].data['T3PHIERR']
     if viscp == 'vis':
         for b in range(15):
-            axes.errorbar(1e-6*sf[b,:],vis2[b,:],yerr=evis[b,:],marker='o',ms=1)
+            # Plot data if the errors on the non-extreme (in wavelength) values
+            # is below 28%.
+            checkVals = evis[b,1:-1]/vis2[b,1:-1]
+            if all(checkVals < 0.28):
+                axes.errorbar(1e-6*sf[b,:],vis2[b,:],yerr=evis[b,:],marker='o',ms=1)
     elif viscp == 'cp':
         for b in range(20):
             axes.errorbar(1e-6*max_sf[b,:],cp[b,:],yerr=ecp[b,:],fmt='o',ms=1)
@@ -274,7 +278,10 @@ def texSumTitle(oiDir,hdrs,redF,calF):
                 outtex.write('\\subsubsection*{Reduction failed}\n')
             outtex.write('\n\\subsubsection*{PI(s): ')
             princInv = list(set([h['PI_NAME'] for h in hdrs]))
-            princInv.remove('UNKNOWN')
+            try:
+                princInv.remove('UNKNOWN')
+            except ValueError:
+                statement = 'unknown not in princInv list'
             if len(princInv) > 1:
                 outtex.write('; '.join(princInv)+'}\n')
             elif len(princInv) == 1:
