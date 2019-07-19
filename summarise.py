@@ -165,7 +165,7 @@ def plotV2CP(oiDir,setups,viscp):
                 # option iii) file doesn't match current setup at all:
                 if first != True:
                     # if there is data plotted already, close the plot
-                    axes.set_xlim(0)
+                    axes.set_xlim(0., 225.)
                     if viscp == 'vis':
                         axes.set_ylim(-0.1,1.2)
                         axes.set_xlabel('sp. freq. (M$\lambda$)')
@@ -205,7 +205,7 @@ def plotV2CP(oiDir,setups,viscp):
         del teststr
         log.info('   - Close '+file)
     try:
-       axes.set_xlim(0)
+       axes.set_xlim(0.,225.)
        if viscp == 'vis':
            axes.set_ylim(-0.1,1.2)
            axes.set_xlabel('sp. freq. (M$\lambda$)')
