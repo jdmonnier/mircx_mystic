@@ -105,7 +105,7 @@ oifits = parser.add_argument_group ('(1) oifits',
          '\nSet of options used to control the oifits\n'
          ' reduction steps.')
 
-oifits.add_argument("--ncoherent",dest="ncoherent",type=str,default='5d', 
+oifits.add_argument("--ncoherent",dest="ncoherent",type=str,default='10d', 
             help="list of number of frames for coherent integration [%(default)s]")
 
 oifits.add_argument("--snr-threshold",dest="snr_threshold",type=str,default='2.0d', 
