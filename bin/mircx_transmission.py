@@ -309,7 +309,7 @@ for d in dateList:
         countmin = count
         for h in hdrs:
             objname = headers.getval([h],'OBJECT')[0]
-            if objname != 'NOSTAR':
+            if objname != 'NOSTAR' and objname != '':
                 r0      = headers.getval([h],'R0')[0]
                 if objname.replace('_', ' ') in calL and objname == cObj:
                     # cal is the same as previous so colour must be maintained
