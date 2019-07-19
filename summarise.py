@@ -117,6 +117,7 @@ def calibPlots(calibfiles,viscp,saveAsStr,setup):
         elif viscp == 'cp':
             axes.set_xlabel('max sp. freq. (M$\lambda$)');
             axes.set_ylabel('$\phi_{CP}$')
+            axes.set_ylim(-200,200)
             plt.savefig('/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_t3phi.png')
             plt.close()
             log.info('    - Write '+'/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_t3phi.png')
@@ -178,6 +179,7 @@ def plotV2CP(oiDir,setups,viscp):
                     elif viscp == 'cp':
                         axes.set_xlabel('max sp. freq. (M$\lambda$)');
                         axes.set_ylabel('$\phi_{CP}$')
+                        axes.set_ylim(-200,200)
                         plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
                         plt.close()
                         log.info('    - Write '+oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
@@ -218,6 +220,7 @@ def plotV2CP(oiDir,setups,viscp):
        elif viscp == 'cp':
            axes.set_xlabel('max sp. freq. (M$\lambda$)');
            axes.set_ylabel('$\phi_{CP}$')
+           axes.set_ylim(-200,200)
            plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
            plt.close()
            log.info('    - Write '+oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
