@@ -20,6 +20,8 @@ def plotUV(direc):
     objs = list(set([h['OBJECT'] for h in hdrs]))
     if 'NOSTAR' in objs:
         objs.remove('NOSTAR')
+    if '' in objs:
+        objs.remove('')
     for t in range(0, len(objs)):
         if not os.path.exists(direc+'/'+objs[t]+'_uv_coverage.png'):
             for f in range(0, len(fitsfiles)):
