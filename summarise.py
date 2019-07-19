@@ -101,7 +101,7 @@ def calibPlots(calibfiles,viscp,saveAsStr,setup):
                 with pyfits.open(f) as input:
                     addV2CP(input, viscp, fig, axes)
     if first == False:
-        axes.set_xlim(0)
+        axes.set_xlim(0.,225.)
         if viscp == 'vis':
             axes.set_ylim(-0.1,1.2)
             axes.set_xlabel('sp. freq. (M$\lambda$)')
