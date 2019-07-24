@@ -285,8 +285,11 @@ def texSumTitle(oiDir,hdrs,redF,calF):
             else:
                 outtex.write('\\subsubsection*{Reduction failed}\n')
             princInv = list(set([h['PI_NAME'] for h in hdrs]))
-            log.info('Recovered PI NAMES from headers')
-            log.info(princInv)
+            try:
+                princInv.remove('UNKNOWN')
+            except:
+                statement = 'no PI_NAMES match UNKNOWN'
+            log.info('Recovered PI NAMES '+'; '.join(princInv)+' from headers')
             outtex.write('\n\\subsubsection*{PI(s): '+'; '.join(princInv)+'}\n')
             outtex.write('\\subsubsection*{Observer(s): ')
             try:
