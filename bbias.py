@@ -165,21 +165,31 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
             C2.append(np.nan);
         else:
             # median filter to deal with outliers
-            b = medfilt(b,5);
-            s = medfilt(s,5);
-            p = medfilt(p,5);
+            b_med = np.abs(b - medfilt(b,15));
+            s_med = np.abs(s - medfilt(s,15));
+            p_med = np.abs(p - medfilt(p,15));
+
+            b_diff = np.median(b_med)
+            s_diff = np.median(s_med)
+            p_diff = np.median(p_med)
+            idx = np.where((b_med<2*b_diff) & (s_med<2*s_diff) & (p_med<2*p_diff));
+
+            b = b[idx]
+            s = s[idx]
+            p = p[idx]
 
             # Measure coefficients
             unit = p*0. + 1.;
             A = np.array([unit,p,s]);
             result = np.linalg.lstsq(A.T,b);
-            C0.append(result[0][0]);
-            C1.append(result[0][1]);
-            C2.append(result[0][2]);
 
             # Residuals 
             bs_model = result[0][0] + result[0][1]*p+ result[0][2]*s;
             resid = (b - bs_model) / ((b+bs_model)/2) * 100;
+
+            C0.append(result[0][0]);
+            C1.append(result[0][1]);
+            C2.append(result[0][2]);
 
             # Figures
             fig,ax = plt.subplots ();
