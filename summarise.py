@@ -277,7 +277,7 @@ def texSumTitle(oiDir,hdrs,redF,calF):
             outtex.write('\\author{'+auth+'}\n\\date{'+dates+'}\n\n')
             outtex.write('\\begin{document}\n\n\\maketitle\n\n')
             if redF == False:
-                outtex.write('\\subsubsection*{Reduced files located in : ')
+                outtex.write('\\subsubsection*{Reduced files located in: ')
                 outtex.write(direc.replace('_','\\_')+' on ')
                 outtex.write(socket.gethostname()+'}\n')
                 if calF == True:
@@ -295,7 +295,7 @@ def texSumTitle(oiDir,hdrs,redF,calF):
             except KeyError:
                 outtex.write('(info not recovered from header)')
             outtex.write('}\n')
-            outtex.write('\\subsubsection*{Program ID(s): '
+            outtex.write('\\subsubsection*{Program ID(s): ')
             try:
                 progID = list(set([h['PROGRAM'] for h in hdrs]))
                 outtex.write('; '.join(progID))
