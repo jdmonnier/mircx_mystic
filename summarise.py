@@ -284,16 +284,17 @@ def texSumTitle(oiDir,hdrs,redF,calF):
                     outtex.write('\\subsubsection*{Calibration failed}\n')
             else:
                 outtex.write('\\subsubsection*{Reduction failed}\n')
-            outtex.write('\n\\subsubsection*{PI(s): ')
             princInv = list(set([h['PI_NAME'] for h in hdrs]))
-            outtex.write('; '.join(princInv)+'}\n')
+            log.info('Recovered PI NAMES '+'; '.join(princInv)+' from headers')
+            outtex.write('\n\\subsubsection*{PI(s): '+'; '.join(princInv)+'}\n')
             outtex.write('\\subsubsection*{Observer(s): ')
-            outline = []
             try:
                 obsPerson = list(set([h['OBSERVER'] for h in hdrs]))
                 outtex.write('; '.join(obsPerson))
+                log.info('Recovered OBSERVERS '+'; '.join(obsPerson)+' from headers')
             except KeyError:
                 outtex.write('(info not recovered from header)')
+                log.error('No OBSERVER keyword in fits headers')
             outtex.write('}\n')
             outtex.write('\\subsubsection*{Program ID(s): ')
             try:
