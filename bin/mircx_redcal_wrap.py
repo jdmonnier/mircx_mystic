@@ -425,7 +425,7 @@ for d in range(0, len(dates)):
         
         # 8. Write summary and report files
         log.info('Read headers from raw data directory')
-        rawhdrs = headers.loaddir(rawBase+'/'+dates[d][0:7]+'/'+dates[d])
+        rawhdrs = headers.loaddir(rawBase+'/'+dates[d]) ############ !!!!!!!
         log.info('Create report summary files')
         outfiles = summarise.texSumTitle(oiDir, rawhdrs, redF, calF)
         summarise.texSumTables(oiDir,targs,calInfo,scical,redF,rawhdrs,outfiles)
