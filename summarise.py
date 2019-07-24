@@ -284,7 +284,10 @@ def texSumTitle(oiDir,hdrs,redF,calF):
                     outtex.write('\\subsubsection*{Calibration failed}\n')
             else:
                 outtex.write('\\subsubsection*{Reduction failed}\n')
-            princInv = list(set([h['PI_NAME'] for h in hdrs]))
+            try:
+                princInv = list(set([h['PI_NAME'] for h in hdrs]))
+            except:
+                princInv = ['UNKNOWN']
             try:
                 princInv.remove('UNKNOWN')
             except:
@@ -296,7 +299,7 @@ def texSumTitle(oiDir,hdrs,redF,calF):
                 obsPerson = list(set([h['OBSERVER'] for h in hdrs]))
                 outtex.write('; '.join(obsPerson))
                 log.info('Recovered OBSERVERS '+'; '.join(obsPerson)+' from headers')
-            except KeyError:
+            except:
                 outtex.write('(info not recovered from header)')
                 log.error('No OBSERVER keyword in fits headers')
             outtex.write('}\n')
@@ -304,7 +307,7 @@ def texSumTitle(oiDir,hdrs,redF,calF):
             try:
                 progID = list(set([h['PROGRAM'] for h in hdrs]))
                 outtex.write('; '.join(progID))
-            except KeyError:
+            except:
                 outtex.write('(info not recovered from header)')
             outtex.write('}\n')
     return outFiles
