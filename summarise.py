@@ -286,28 +286,22 @@ def texSumTitle(oiDir,hdrs,redF,calF):
                 outtex.write('\\subsubsection*{Reduction failed}\n')
             outtex.write('\n\\subsubsection*{PI(s): ')
             princInv = list(set([h['PI_NAME'] for h in hdrs]))
-            try:
-                princInv.remove('UNKNOWN')
-            except ValueError:
-                statement = 'unknown not in princInv list'
-            if len(princInv) > 1:
-                outtex.write('; '.join(princInv)+'}\n')
-            elif len(princInv) == 1:
-                outtex.write(princInv[0]+'}\n')
-            else:
-                outtex.write('}\n')
+            outtex.write('; '.join(princInv)+'}\n')
             outtex.write('\\subsubsection*{Observer(s): ')
             outline = []
-            for h in hdrs:
-                try:
-                    obsPerson = h['OBSERVER']
-                except KeyError:
-                    obsPerson = 'Slimfringe'
-                if obsPerson != 'Slimfringe':
-                    outline.append(obsPerson)
-            out = list(set(outline))
-            outtex.write('; '.join(out)+'}\n')
-            outtex.write('\\subsubsection*{Program ID(s): (info not yet retained in headers)}\n')
+            try:
+                obsPerson = list(set([h['OBSERVER'] for h in hdrs]))
+                outtex.write('; '.join(obsPerson))
+            except KeyError:
+                outtex.write('(info not recovered from header)')
+            outtex.write('}\n')
+            outtex.write('\\subsubsection*{Program ID(s): '
+            try:
+                progID = list(set([h['PROGRAM'] for h in hdrs]))
+                outtex.write('; '.join(progID))
+            except KeyError:
+                outtex.write('(info not recovered from header)')
+            outtex.write('}\n')
     return outFiles
 
 def texSumTables(oiDir,targs,calInf,scical,redF,rawhdrs,outFiles):
