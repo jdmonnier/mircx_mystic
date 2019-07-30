@@ -108,6 +108,7 @@ objlist = list(set([h['OBJECT'] for h in hdrs]));
 objlist[:] = [x for x in objlist if x != 'NOSTAR'] # remove instances of 'nostar' from
 #                                                    list of object names
 objcat = dict();
+exclude = ['NOSTAR']
 
 for obj in objlist:
     try:
@@ -118,42 +119,13 @@ for obj in objlist:
         objcat[obj] = cat;
     except:
         log.info ('Cannot find JSDC for '+obj);
+        exclude.append(obj)
+        
 
-"""
-#
-# Compute the transmission and instrumental visibility
-#
-# Zero point of 2MASS:H from Cohen et al. (2003, AJ 126, 1090):
-Hzp = 9.464537e6 # [photons/millisec/m2/mircons]
-# internal transmission * quantum efficiency from Cyprien [dimensionless]:
-iTQE    = 0.5
-# collecting area of 1 telescope (assuming circular aperture) [m2]:
-telArea = np.pi * 0.5*0.5
-
-kl = 0 # dummy character to avoid error message being output multiple times
-"""
 for h in hdrs:
-    if h['OBJECT'] != 'NOSTAR':
-        """
-        expT = h['EXPOSURE']   # exposure time in             [millisec]
-        bWid = h['BANDWID']    # spectral bandwidth           [microns]
-        gain = 0.5 * h['GAIN'] # conversion gain from Cyprien [ADU/e]
-        """
+    if h['OBJECT'] not in exclude:
         # If we have the info about this star
         try:
-            """
-            Hmag = float(objcat[h['OBJECT']]['Hmag'][0]) #    [mag]
-            fH   = Hzp * 10**(-Hmag/2.5)
-            # expected flux based on instrument sensitivity [photon/frame]:
-            fExpect = fH * expT * bWid * telArea * iTQE
-    
-            # loop over the beams:
-            for b in range (6):
-                # measured flux integrated over spectral band [photon/frame]:
-                fMeas = h[HMQ+'BANDFLUX%i MEAN'%b] / gain
-                # transmission [%]:
-                h[HMQ+'TRANS%i'%b] = 100.* (fMeas / fExpect)
-            """
             diam    = objcat[h['OBJECT']]['UDDH'][0]
             # Loop on baseline 
             for b in bname:
@@ -165,23 +137,15 @@ for h in hdrs:
     
         # If we don't have the info about this star
         except NameError:
-            """
-            for b in range (6):
-                h[HMQ+'TRANS%i'%b] = -1.0;
-            """
             for b in bname:
                 h[HMQ+'TF'+b+' MEAN'] = -1.0;
         """
         except KeyError:
             for b in range(6):
-                h[HMQ+'TRANS%i'%b] = -1.0
-            if kl == 0:
-                log.info('QC parameter BANDFLUX missing from header.')
-                log.info('Re-running the reduction is recommended.')
-                kl += 1
+                h[HMQ+'TF'+b+' MEAN'] = -1.0;
         """
     else:
-        log.info('Excluding "NOSTAR" object name instance from plot')
+        log.info('Excluding '+h['OBJECT']+' from report summary plots')
         for b in bname:
             h[HMQ+'TF'+b+' MEAN'] = -1.0;
         
@@ -235,19 +199,6 @@ for b in range (15):
     axes.flatten()[b].set_ylim (0,1.2);
 
 files.write (fig,argopt.oifits_dir+'/report_tf2.png');
-"""
-# Trans
-fig,axes = plt.subplots (3,2,sharex=True);
-fig.suptitle ('Transmission [$\%$ of expected $F_\star$]');
-plot.compact (axes);
-
-for b in range (6):
-    data = headers.getval (hdrs, HMQ+'TRANS%i'%b);
-    data /= (data>0);
-    axes.flatten()[b].plot (data, 'o');
-    
-files.write (fig,'report_trans.png');
-"""
 # Plot vis2
 fig,axes = plt.subplots (5,3,sharex=True);
 fig.suptitle ('Vis2');
