@@ -306,9 +306,14 @@ def texSumTitle(oiDir,hdrs,redF,calF):
             outtex.write('\\subsubsection*{Program ID(s): ')
             try:
                 progID = list(set([h['PROGRAM'] for h in hdrs]))
-                outtex.write('; '.join(progID))
             except:
-                outtex.write('(info not recovered from header)')
+                progID = ['UNKNOWN']
+            try:
+                progID.remove('UNKNOWN')
+            except:
+                statement = 'no PROGRAM match UNKNOWN'
+            log.info('Recovered PROGRAM '+'; '.join(progID)+' from headers')
+            outtex.write('; '.join(progID))
             outtex.write('}\n')
     return outFiles
 
