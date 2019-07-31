@@ -262,7 +262,7 @@ for d in dateList:
             log.info('Calculate transmission information')
             # Read in the data:
             objList = list(set([h['OBJECT'] for h in hdrs]))
-            objlist[:] = [x for x in objList if x not in ['NOSTAR', '']]
+            objList[:] = [x for x in objList if x not in ['NOSTAR', '']]
             # ^--- removes NOSTAR and blank object name instances from object list
             objCat = dict()
             exclude = ['NOSTAR', '']
