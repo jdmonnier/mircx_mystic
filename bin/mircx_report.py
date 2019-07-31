@@ -105,10 +105,10 @@ except:
 
 # List of object
 objlist = list(set([h['OBJECT'] for h in hdrs]));
-objlist[:] = [x for x in objlist if x != 'NOSTAR'] # remove instances of 'nostar' from
+objlist[:] = [x for x in objlist if x not in ['NOSTAR', '']] # remove instances of 'nostar' from
 #                                                    list of object names
 objcat = dict();
-exclude = ['NOSTAR']
+exclude = ['NOSTAR', '']
 
 for obj in objlist:
     try:
