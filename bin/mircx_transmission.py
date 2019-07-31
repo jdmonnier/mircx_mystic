@@ -262,7 +262,10 @@ for d in dateList:
             log.info('Calculate transmission information')
             # Read in the data:
             objList = list(set([h['OBJECT'] for h in hdrs]))
+            objlist[:] = [x for x in objlist if x not in ['NOSTAR', '']]
+            # ^--- removes NOSTAR and blank object name instances from object list
             objCat = dict()
+            exclude = ['NOSTAR', '']
             for obj in objList:
                 try:
                     cat = Vizier.query_object(obj, catalog='JSDC')[0] # IndexError raised if object not found
@@ -272,44 +275,45 @@ for d in dateList:
                     objCat[obj] = cat
                 except IndexError:
                     log.info('Cannot find JSDC for '+obj)
+                    exclude.append(obj)
         
             kl = 0 # dummy variable used to ensure that info message is only printed to log once per date
             log.info('Extract camera settings from headers')
             log.info('Calculate transmission on each beam')
             for h in hdrs:
-                expT = h['EXPOSURE']
-                bWid = h['BANDWID']
-                gain = 0.5 * h['GAIN']
-            
-                try:
-                    # if info for this object was returned from JSDC:
-                    Hmag    = float(objCat[h['OBJECT']]['Hmag'][0]) # raises NameError if nothing was returned from JSDC
-                    fH      = Hzp * 10**(-Hmag/2.5)
-                    fExpect = fH * expT * bWid * telArea * iTQE
-                
-                    # loop over beams:
-                    for b in range(6):
-                        fMeas = h[HMQ+'BANDFLUX%i MEAN'%b] / gain  # raises KeyError if reduction was done before this keyword was introduced
-                        h[HMQ+'TRANS%i'%b] = 100. * (fMeas / fExpect)
-            
-                except NameError:
-                    # if info for the object was NOT returned from JSDC:
+                if h['OBJECT'] not in exclude:
+                    expT = h['EXPOSURE']
+                    bWid = abs(h['BANDWID'])
+                    gain = 0.5 * h['GAIN']
+                    try:
+                        Hmag    = float(objCat[h['OBJECT']]['Hmag'][0]) # raises NameError if nothing was returned from JSDC
+                        fH      = Hzp * 10**(-Hmag/2.5)
+                        fExpect = fH * expT * bWid * telArea * iTQE
+                        for b in range(6):
+                            fMeas = h[HMQ+'BANDFLUX%i MEAN'%b] / gain  # raises KeyError if reduction was done before this keyword was introduced
+                            h[HMQ+'TRANS%i'%b] = 100. * (fMeas / fExpect)
+                    
+                    except NameError:
+                        # if info for the object was NOT returned from JSDC:
+                        for b in range(6):
+                            h[HMQ+'TRANS%i'%b] = -1.0
+                    except KeyError:
+                        # if info was returned but the reduction is old or object name not in JSDC:
+                        for b in range(6):
+                            h[HMQ+'TRANS%i'%b] = -1.0
+                        if kl == 0:
+                            log.info('QC parameter BANDFLUX missing from header.')
+                            log.info('Re-running the reduction is recommended.')
+                            kl += 1
+                else:
                     for b in range(6):
                         h[HMQ+'TRANS%i'%b] = -1.0
-                except KeyError:
-                    # if info was returned but the reduction is old:
-                    for b in range(6):
-                        h[HMQ+'TRANS%i'%b] = -1.0
-                    if kl == 0:
-                        log.info('QC parameter BANDFLUX missing from header.')
-                        log.info('Re-running the reduction is recommended.')
-                        kl += 1
-    
+        
         # assign colours to data based on SCI or CAL ID and add data to plot:
         countmin = count
         for h in hdrs:
             objname = headers.getval([h],'OBJECT')[0]
-            if objname != 'NOSTAR' and objname != '':
+            if objname not in exclude:
                 r0      = headers.getval([h],'R0')[0]
                 if objname.replace('_', ' ') in calL and objname == cObj:
                     # cal is the same as previous so colour must be maintained
@@ -346,6 +350,11 @@ for d in dateList:
                 count += 1
             
                 del col, mkr, transm, objname
+            elif objname != 'NOSTAR' and objname != '':
+                # plot the seeing data:
+                axes.flatten()[0].plot(count,headers.getval([h],'R0')[0],marker='+',color='k',ls='None',ms=5)
+                # don't bother plotting the transmission data cos the values are just '-1'
+                count += 1
         
         countmax = count
         # add vertical line to plot:
