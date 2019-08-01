@@ -109,14 +109,24 @@ def queryJSDC(targ,m):
         log.info(targ+' will be treated as SCI')
         return 'sci'
     else:
-        ra_in = result["II/346/jsdc_v2"]["RAJ2000"][0]
-        dec_in = result["II/346/jsdc_v2"]["DEJ2000"][0]
+        if len(list(result['II/346/jsdc_v2']['Name'])) > 1:
+            ind = -999
+            alt_ids = Simbad.query_objectids(obj)
+            for a_id in list(result['II/346/jsdc_v2']['Name']):
+                if a_id in list(alt_ids['ID']):
+                    ind = list(result['II/346/jsdc_v2']['Name']).index(a_id)
+            if ind == -999:
+                return 'sci'
+        else:
+            ind = 0
+        ra_in = result["II/346/jsdc_v2"]["RAJ2000"][ind]
+        dec_in = result["II/346/jsdc_v2"]["DEJ2000"][ind]
         coords = SkyCoord(ra_in+' '+dec_in, unit=(u.hourangle, u.deg))
         ra = str(coords.ra.deg)
         dec = str(coords.dec.deg)
-        hmag = str(result["II/346/jsdc_v2"]["Hmag"][0])
-        vmag = str(result["II/346/jsdc_v2"]["Vmag"][0])
-        flag = result["II/346/jsdc_v2"]["CalFlag"][0]
+        hmag = str(result["II/346/jsdc_v2"]["Hmag"][ind])
+        vmag = str(result["II/346/jsdc_v2"]["Vmag"][ind])
+        flag = result["II/346/jsdc_v2"]["CalFlag"][ind]
         # maintain care flags from JSDC:
         if flag == 0:
             iscal = "CAL 0"
@@ -127,8 +137,8 @@ def queryJSDC(targ,m):
         else:
             iscal = "CAL"
         model = "UD_H"
-        ud_H = '{0:.6f}'.format(float(result["II/346/jsdc_v2"]["UDDH"][0]))
-        eud_H = '{0:.6f}'.format(float(result["II/346/jsdc_v2"]["e_LDD"][0]))
+        ud_H = '{0:.6f}'.format(float(result["II/346/jsdc_v2"]["UDDH"][ind]))
+        eud_H = '{0:.6f}'.format(float(result["II/346/jsdc_v2"]["e_LDD"][ind]))
         return ''.join(str([ra, dec, hmag, vmag, iscal, model, ud_H, eud_H])[1:-1]).replace("'", "")
 
 def queryLocal(targs,db):
