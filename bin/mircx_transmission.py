@@ -294,6 +294,8 @@ for d in dateList:
                     for a_id in list(cat['Name']):
                         if a_id in list(alt_ids['ID']):
                             ind = list(cat['Name']).index(a_id)
+                        elif a_id in list([a.replace(' ', '') for a in alt_ids['ID']]):
+                            ind = list(cat['Name']).index(a_id)
                     if ind != -999:
                         log.info(' diam = %.3f mas'%cat['UDDH'][ind])
                         log.info(' Hmag = %.3f mas'%cat['Hmag'][ind])

@@ -114,6 +114,8 @@ def queryJSDC(targ,m):
     for a_id in list(result['II/346/jsdc_v2']['Name']):
         if a_id in list(alt_ids['ID']):
             ind = list(result['II/346/jsdc_v2']['Name']).index(a_id)
+        elif a_id in list([a.replace(' ', '') for a in alt_ids['ID']]):
+            ind = list(result['II/346/jsdc_v2']['Name']).index(a_id)
     if ind == -999:
         return 'sci'
     ra_in = result["II/346/jsdc_v2"]["RAJ2000"][ind]
