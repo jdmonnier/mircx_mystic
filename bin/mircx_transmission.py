@@ -181,6 +181,8 @@ with open(localDB) as input:
 try:
     from astroquery.vizier import Vizier;
     log.info ('Load astroquery.vizier');
+    from astroquery.simbad import Simbad;
+    log.info ('Load astroquery.simbad');
 except:
     log.warning ('Cannot load astroquery.vizier, try:');
     log.warning ('sudo conda install -c astropy astroquery');
@@ -268,14 +270,38 @@ for d in dateList:
             exclude = ['NOSTAR', '']
             for obj in objList:
                 try:
-                    cat = Vizier.query_object(obj, catalog='JSDC')[0] # IndexError raised if object not found
+                    cat = Vizier.query_object(obj, catalog='JSDC')[0] 
+                    # ^-- IndexError raised if object not found
                     log.info('Find JSDC for '+obj+':')
-                    log.info(' diam = %.3f mas'%cat['UDDH'][0])
-                    log.info(' Hmag = %.3f mas'%cat['Hmag'][0])
-                    objCat[obj] = cat
+                    if len(list(cat['Name'])) > 1:
+                        ind = list(cat['Name']).index(obj.replace('_', ' '))
+                        # ^-- ValueError raised if object name in JSDC is not what we use
+                        log.info(' diam = %.3f mas'%cat['UDDH'][ind])
+                        log.info(' Hmag = %.3f mas'%cat['Hmag'][ind])
+                        objCat[obj] = cat[ind]
+                    else:
+                        log.info(' diam = %.3f mas'%cat['UDDH'][0])
+                        log.info(' Hmag = %.3f mas'%cat['Hmag'][0])
+                        objCat[obj] = cat[0]
                 except IndexError:
                     log.info('Cannot find JSDC for '+obj)
                     exclude.append(obj)
+                except ValueError:
+                    ind = -999
+                    # (sometimes we get here when JSDC finds neighbouring stars but not our target)
+                    # (other times we get here if the object name in JSDC is an alias)
+                    alt_ids = Simbad.query_objectids(obj)
+                    for a_id in list(cat['Name']):
+                        if a_id in list(alt_ids['ID']):
+                            ind = list(cat['Name']).index(a_id)
+                    if ind != -999:
+                        log.info(' diam = %.3f mas'%cat['UDDH'][ind])
+                        log.info(' Hmag = %.3f mas'%cat['Hmag'][ind])
+                        objCat[obj] = cat[ind]
+                    else:
+                        log.info('Cannot find JSDC for '+obj)
+                        exclude.append(obj)
+                del ind
         
             kl = 0 # dummy variable used to ensure that info message is only printed to log once per date
             log.info('Extract camera settings from headers')
@@ -291,7 +317,10 @@ for d in dateList:
                         fExpect = fH * expT * bWid * telArea * iTQE
                         for b in range(6):
                             fMeas = h[HMQ+'BANDFLUX%i MEAN'%b] / gain  # raises KeyError if reduction was done before this keyword was introduced
-                            h[HMQ+'TRANS%i'%b] = 100. * (fMeas / fExpect)
+                            if fMeas < 0.:
+                                h[HMQ+'TRANS%i'%b] = -1.0
+                            else:
+                                h[HMQ+'TRANS%i'%b] = 100. * (fMeas / fExpect)
                     
                     except NameError:
                         # if info for the object was NOT returned from JSDC:

@@ -397,6 +397,7 @@ def texReportPlts(oiDir,outFiles,d):
     """
     reportFiles = glob.glob(oiDir+'/report*.png')
     transPlots   = glob.glob('/'.join(oiDir.split('/')[:-3])+'/*transmission_*'+d+'.png')
+    # NB: transmission plots will not appear if 'd' is not the most recent night that has been reduced
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
             if len(reportFiles) == 0 and len(transPlots) == 0:
