@@ -580,5 +580,5 @@ for i in range(1,7):
     used = 1 - (statvfs.f_bavail/statvfs.f_blocks)
     if used > 0.9:
         percentage = "{:.1f}".format(100*used)
-        warn = "Warning: " + drive + " is " + percentage + "%"+ " full!"
+        warn = "*Warning:* `" + drive + "` is " + percentage + "%"+ " full!"
         post("data_pipeline", warn)
