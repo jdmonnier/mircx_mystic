@@ -320,7 +320,7 @@ for d in range(0, len(dates)):
         with cd(redDir+'/'+suf2):
             com = "mircx_reduce.py "+opts2+" --raw-dir="+rawDir+" --preproc=FALSE"
             ma  = " --preproc-dir="+redDir+"/preproc --rts=FALSE --rts-dir="+redDir+"/rts"
-            nd  = " --oifits-dir="+oiDir+" --reduce="+argopt.reduce
+            nd  = " --oifits-dir="+oiDir+" --rm-preproc=TRUE --rm-rts=TRUE --reduce="+argopt.reduce
             pipe = "> nohup_oifits.out"
             with open("nohup_oifits.out", 'w') as output:
                 output.write('\n')
