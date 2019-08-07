@@ -559,6 +559,7 @@ for d in range(0, len(dates)):
             log.info(line2)
             log.info(line3)
 
+################
 # Check the disk usage and post to Slack if exceeds 90%
 try:
     # Note that the Slack key should *never* be exposed to GitLab since the pipeline is public.
@@ -574,11 +575,12 @@ def post(channel, msg):
     else:
         print("Warning, slack key to channel #" + channel + " not found.  Message that should have been posted:\n" + msg)
 
-for i in range(1,7):
-    drive = "/data"+str(i)
-    statvfs = os.statvfs(drive)
-    used = 1 - (statvfs.f_bavail/statvfs.f_blocks)
-    if used > 0.9:
-        percentage = "{:.1f}".format(100*used)
-        warn = "*Warning:* `" + drive + "` is " + percentage + "%"+ " full!"
-        post("data_pipeline", warn)
+if socket.gethostname() == 'mircx':
+    for i in range(1,7):
+        drive = "/data"+str(i)
+        statvfs = os.statvfs(drive)
+        used = 1 - (statvfs.f_bavail/statvfs.f_blocks)
+        if used > 0.9:
+            percentage = "{:.1f}".format(100*used)
+            warn = "*Warning:* `" + drive + "` is " + percentage + "%"+ " full!"
+            post("data_pipeline", warn)
