@@ -279,6 +279,7 @@ for d in dateList:
                         log.info(' diam = %.3f mas'%cat['UDDH'][ind])
                         log.info(' Hmag = %.3f mas'%cat['Hmag'][ind])
                         objCat[obj] = cat[ind]
+                        del ind
                     else:
                         log.info(' diam = %.3f mas'%cat['UDDH'][0])
                         log.info(' Hmag = %.3f mas'%cat['Hmag'][0])
@@ -303,7 +304,7 @@ for d in dateList:
                     else:
                         log.info('Cannot find JSDC for '+obj)
                         exclude.append(obj)
-                del ind
+                    del ind
         
             kl = 0 # dummy variable used to ensure that info message is only printed to log once per date
             log.info('Extract camera settings from headers')
