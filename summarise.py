@@ -83,7 +83,7 @@ def addV2CP(input, viscp, fig, axes):
             # Plot data if the t3phi errors on the non-extreme (in wavelength) values
             # are below 30 degrees
             if not any(ecp[b,1:-1] > 30.):
-                axes.errorbar(1e-6*max_sf[b,:],cp[b,:],yerr=ecp[b,:],marker='o',ms=1)
+                axes.errorbar(1e-6*max_sf[b,:],cp[b,:],yerr=ecp[b,:],fmt='o',ms=1)
     return
 
 def calibPlots(calibfiles,viscp,saveAsStr,setup):
