@@ -564,9 +564,18 @@ for d in range(0, len(dates)):
 try:
     # Note that the Slack key should *never* be exposed to GitLab since the pipeline is public.
     with open("/home/spooler/secret/slack.json") as json_data: 
-        slack_key = json.load(json_data)
+        slack_data = json.load(json_data)
+        slack_key = slack_data["channels"]
+        slack_user = slack_data["users"]
 except:
     slack_key = {}
+    slack_user = {}
+
+def user(name):
+    if name in slack_user:
+        return "<@" + slack_user[name] + ">"
+    else:
+        return "@" + name
 
 def post(channel, msg):
     if channel in slack_key:
