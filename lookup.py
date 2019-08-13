@@ -110,7 +110,7 @@ def queryJSDC(targ,m):
         return 'sci'
     
     ind = -999
-    alt_ids = Simbad.query_objectids(obj)
+    alt_ids = Simbad.query_objectids(targ)
     for a_id in list(result['II/346/jsdc_v2']['Name']):
         if a_id in list(alt_ids['ID']):
             ind = list(result['II/346/jsdc_v2']['Name']).index(a_id)
