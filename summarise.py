@@ -470,7 +470,7 @@ def texSumUV(oiDir,calF,outFiles):
                     # if more than 12 science targets have been observed, the page
                     # will not be big enough to host them all. This part of the script
                     # handles the required page break.  
-                    for n in range(1, int(np.floor(len(uvPlt)))):
+                    for n in range(1, int(np.ceil(len(uvPlt)/12.))):
                         outtex.write('\\end{figure}\n\n\\clearpage\n')
                         outtex.write('\\begin{figure}[h]\n')
                         outtex.write('    \\raggedright\n')
