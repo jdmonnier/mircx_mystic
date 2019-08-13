@@ -315,7 +315,7 @@ for d in dateList:
                     bWid = abs(h['BANDWID'])
                     gain = 0.5 * h['GAIN']
                     try:
-                        Hmag    = float(objCat[h['OBJECT']]['Hmag'][0]) # raises NameError if nothing was returned from JSDC
+                        Hmag    = float(objCat[h['OBJECT']]['Hmag']) # raises NameError if nothing was returned from JSDC
                         fH      = Hzp * 10**(-Hmag/2.5)
                         fExpect = fH * expT * bWid * telArea * iTQE
                         for b in range(6):
