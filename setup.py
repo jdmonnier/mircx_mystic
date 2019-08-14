@@ -54,7 +54,6 @@ def nspec (hdr):
     n = int((hdr['FR_ROW2'] - hdr['FR_ROW1'])/2)*2 - 1;
     log.info ('nrow = %i'%n);
     return n;
-    # return 11;
 
 def fringe_widthx (hdr):
     '''
@@ -72,39 +71,54 @@ def photo_widthx (hdr):
 
 def lbd0 (hdr):
     '''
-    Return lbd0,deltaLbd depending
-    on instrument setup
+    Return a guess of lbd0,deltaLbd depending on
+    instrument setup where lbd0 is the central wavelength
+    of spectrum and dlbd is a the bandpass of one channel.
+    lbdref is the reference wavelength corresponding to
+    the sampling returned by beam_freq.
     '''
-    lbd0 = 1.60736e-06;
 
+    # For MYSTIC, we try to use the
+    # user specified parameter
+    if hdr['BEAMCOMB'] == 'MYSTIC' :
+        lbdref = 1.93e-6;
+        dlbd = - hdr['BANDWID'] * 1e-6 / (hdr['FR_ROW2'] - hdr['FR_ROW1']);
+        lbd0 = hdr['WAVELEN'] * 1e-6;
+        
     # MIRC configurations
-    if hdr['CONF_NA'] == 'H_PRISM':
-        dlbd = 21.e-9;
+    elif hdr['CONF_NA'] == 'H_PRISM':
+        lbdref,lbd0,dlbd = 1.60736e-06, 1.60736e-06, 21.e-9;
     elif (hdr['CONF_NA'] == 'H_GRISM200'):
-        dlbd = -8.2e-9;
+        lbdref,lbd0,dlbd = 1.60736e-06, 1.60736e-06, -8.2e-9;
     elif (hdr['CONF_NA'] == 'H_GRISM150'):
-        dlbd = -8.2e-9;
+        lbdref,lbd0,dlbd = 1.60736e-06, 1.60736e-06, -8.2e-9;
     elif (hdr['CONF_NA'] == 'H_GRISM'):
-        dlbd = -8.2e-9;
+        lbdref,lbd0,dlbd = 1.60736e-06, 1.60736e-06, -8.2e-9;
     elif (hdr['CONF_NA'] == 'H_GRISM200                    S1=0,S2=1,E1=2,E2=3,W1=4,W2=5'):
-        dlbd = -8.2e-9
+        lbdref,lbd0,dlbd = 1.60736e-06, 1.60736e-06, -8.2e-9;
         
     # temporary configurations. Not sure
     # the sign is correct
     elif hdr['CONF_NA'] == 'H_PRISM20' :
+        lbdref,lbd0 = 1.60736e-06, 1.60736e-06;
         dlbd = lbd0 / 27.4;
     elif hdr['CONF_NA'] == 'H_PRISM40' :
+        lbdref,lbd0 = 1.60736e-06, 1.60736e-06;
         dlbd = lbd0 / 49.2;
         
     # MIRCX configurations, J-band on top
     # of image except for the GRISM_190.
     elif hdr['CONF_NA'] == 'H_PRISM22' :
+        lbdref,lbd0 = 1.60736e-06, 1.60736e-06;
         dlbd = -lbd0 / 22.;
     elif hdr['CONF_NA'] == 'H_PRISM50' :
+        lbdref,lbd0 = 1.60736e-06, 1.60736e-06;
         dlbd = -lbd0 / 50.;
     elif hdr['CONF_NA'] == 'H_PRISM102' :
+        lbdref,lbd0 = 1.60736e-06, 1.60736e-06;
         dlbd = -lbd0 / 102.;
     elif hdr['CONF_NA'] == 'H_GRISM190' :
+        lbdref,lbd0 = 1.60736e-06, 1.60736e-06;
         dlbd = lbd0 / 190.0;
 
     # Unknown configuration
@@ -113,9 +127,9 @@ def lbd0 (hdr):
         raise ValueError('CONF_NA unsuported (yet?)');
 
     # Verbose
-    log.info ('Configuration '+hdr['CONF_NA']+' dlbd = %fum'%(dlbd*1e6));
+    log.info ('Configuration '+hdr['CONF_NA']+'lbd = %fum dlbd = %fum'%(lbd0*1e6,dlbd*1e6));
 
-    return lbd0,dlbd;
+    return lbdref,lbd0,dlbd;
 
 def xchan_ratio(hdr):
     '''
@@ -144,30 +158,31 @@ def fiber_pos(hdr):
 def beam_freq (hdr):
     '''
     Return the fiber position in the v-groove
-    in fringe/pixel at lbd0. The scale factor
-    is given by the geometry of the combiner:
-    scale = lbd0 / (20 * 250e-6 / 0.375) / 24e-6
+    in fringe/pixel at lbdref. The scale factor
+    is given by the geometry of the combiner
     '''
     # Scaling in pix/fringe at highest spatial frequency
     # and for wavelength defined as lbd0
+
+    # MYSTIC sampling and fiber position
+    if hdr['BEAMCOMB'] == 'MYSTIC' :
+        scale = 2.75;
+        tmp = np.array([4,6,13,18,24,28]) * 1.0 - 1.0;
+    
+    # New MIRCX sampling and fiber position
     # 2018-11-20, the scale is multiplied by 1./1.014 to match
     # the absolute calibration by John on iotaPeg.
-    
-    # Check if it's old MIRC or new MIRC-X data
-    if ('P_ION' in hdr) == True :
-        # scale = 2.78999;
-        scale = 2.75147; 
-        # Fiber position in v-groove
+    elif ('P_ION' in hdr) == True :
+        scale = 2.75147;
         tmp = np.array([4,6,13,18,24,28]) * 1.0 - 1.0;
-        # Fiber position in fringe/pix
-        tmp /= (tmp.max() - tmp.min()) * scale;
     
+    # Old MIRCX sampling and fiber position
     else :
         scale = 5.023;
-        # Fiber position in v-groove
         tmp = np.array([9,3,1,21,14,18]) * 1.0 - 1.0;
-        # Fiber position in fringe/pix
-        tmp /= (tmp.max() - tmp.min()) * scale;
+        
+    # Fiber position in fringe/pix
+    tmp /= (tmp.max() - tmp.min()) * scale;
     return tmp;
 
 def ifreq_max (hdr):
