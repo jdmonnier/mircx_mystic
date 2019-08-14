@@ -172,34 +172,7 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
     # Get wavelengths
     yfit = 1.0 * np.arange (ny);
     lbdfit = np.array([r.x[0]*lbd0 for r in res]);
-
-    log.info ('Compute QC');
     
-    # Compute quality of projection
-    projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
-    log.info ('Projection quality = %g'%projection);
-
-    # Typical difference with prediction
-    delta = np.median (np.abs (lbd-lbdfit));
-    log.info ('Median delta = %.3f um'%(delta*1e6));
-
-    # Set quality to zero if clearly wrong fit
-    if delta > 0.075e-6:
-        log.warning ('Spectral calibration is probably faulty, set QUALITY to 0');
-        projection = 0.0;
-
-    # Set QC
-    hdr[HMQ+'QUALITY'] = (rep_nan (projection), 'quality of data');
-    hdr[HMQ+'DELTA MEDIAN'] = (rep_nan (delta), '[m] median difference');
-
-    # Compute position on detector of lbd0
-    lbd0 = 1.6e-6;
-    s = np.argsort (lbdfit);
-    try:     y0 = hdr[HMW+'FRINGE STARTY'] + np.interp (lbd0, lbdfit[s], yfit[s]);
-    except:  y0 = -99.0
-    hdr[HMQ+'YLBD0'] = (rep_nan (y0), 'ypos of %.3fum in cropped window'%(lbd0*1e6));
-    log.info (HMQ+'YLBD0 = %e'%y0);
-
     # Compute a better version of the wavelength
     # by fitting a quadratic law, optional
     lbdlaw = lbdfit.copy ();
@@ -217,6 +190,39 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
         lbdlaw[is_fit] = np.poly1d (poly)(yfit[is_fit]);
     else:
         log.info ('Keep raw measure (no fit of lbd solution)');
+
+    log.info ('Compute QC');
+    
+    # Compute quality of projection
+    projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
+    log.info ('Projection quality = %g'%projection);
+
+    # Typical difference with prediction
+    delta = np.median (np.abs (lbd-lbdfit));
+    log.info ('Median delta = %.3f um'%(delta*1e6));
+
+    # Residual of fit
+    rms_res = np.std (lbdlaw[is_fit]-lbdfit[is_fit]);
+    med_res = np.median (np.abs(lbdlaw[is_fit]-lbdfit[is_fit]));
+
+    # Set quality to zero if clearly wrong fit
+    if rms_res > 10e-9 or med_res > 10e-9:
+        log.warning ('Spectral calibration is probably faulty, set QUALITY to 0');
+        projection = 0.0;
+
+    # Set QC
+    hdr[HMQ+'QUALITY'] = (rep_nan (projection), 'quality of data');
+    hdr[HMQ+'DELTA MEDIAN'] = (rep_nan (delta), '[m] median difference');
+    hdr[HMQ+'RESIDUAL STD']    = (rep_nan (rms_res), '[m] std residual');
+    hdr[HMQ+'RESIDUAL MEDIAN'] = (rep_nan (med_res), '[m] median residual');
+
+    # Compute position on detector of lbdref
+    s = np.argsort (lbdfit);
+    try:     y0 = hdr[HMW+'FRINGE STARTY'] + np.interp (lbdref, lbdfit[s], yfit[s]);
+    except:  y0 = -99.0
+    hdr[HMQ+'LBDREF'] = (rep_nan (lbdref), '[m] lbdref');
+    hdr[HMQ+'YLBDREF'] = (rep_nan (y0), 'ypos of %.3fum in cropped window'%(lbdref*1e6));
+    log.info (HMQ+'YLBDREF = %e  (%.3fum)'%(y0,lbdref*1e6));
 
     log.info ('Figures');
 
