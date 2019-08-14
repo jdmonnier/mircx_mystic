@@ -600,7 +600,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     # fres is the spatial frequency at the
     # reference wavelength lbd0
     lbdref,lbd0,dlbd = setup.lbd0 (hdr);
-    freqs = setup.base_freq (hdr) * lbd0 / lbdref;
+    freqs = setup.base_freq (hdr) * lbdref / lbd0;
     
     # Scale to ensure the frequencies fall
     # into integer pixels (max freq is 40 or 72)
