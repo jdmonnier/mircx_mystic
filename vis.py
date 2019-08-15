@@ -14,7 +14,7 @@ from scipy import fftpack;
 from scipy.signal import medfilt;
 from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter, uniform_filter, median_filter;
-from scipy.optimize import least_squares, curve_fit;
+from scipy.optimize import least_squares, curve_fit, brute;
 from scipy.ndimage.morphology import binary_closing, binary_opening;
 from scipy.ndimage.morphology import binary_dilation, binary_erosion;
 
@@ -132,11 +132,11 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
     log.info ('Expect center of spectrum (lbd0) on %f'%fyc);
 
     # Build expected wavelength table
-    lbd0,dlbd = setup.lbd0 (hdr);
+    lbdref,lbd0,dlbd = setup.lbd0 (hdr);
     lbd = (np.arange (ny) - fyc) * dlbd + lbd0;
 
     # Model for the pic position at lbd0
-    freq0 = np.abs (setup.base_freq (hdr));
+    freq0 = np.abs (setup.base_freq (hdr)) * lbdref / lbd0;
     delta0 = np.min (freq0) / 6;
     
     # Frequencies in pix-1
@@ -156,45 +156,23 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
     psd /= norm;
 
     # Correlate each wavelength channel with a template
-    log.info ('Correlated PSD with model');
+    log.info ('Fit PSD with model');
     res = [];
     for y in range (ny):
-        s0 = lbd[y] / lbd0;
         args = (freq[idmin:idmax],freq0,delta0,psd[y,idmin:idmax]);
+        s0 = lbd[y] / lbd0;
+        # Fit at expected position
         res.append (least_squares (signal.psd_projection, s0, args=args, bounds=(0.8*s0,1.2*s0)));
+        # Explore around
+        for s00 in np.linspace (0.8*s0,1.2*s0, 20):
+            rr = least_squares (signal.psd_projection, s00, args=args, bounds=(0.8*s00,1.2*s00));
+            if (rr.fun[0] < res[-1].fun[0]): res[-1] = rr;
         log.info ('Best merit 1-c=%.4f found at s/s0=%.4f'%(res[-1].fun[0],res[-1].x[0]/s0));
 
     # Get wavelengths
     yfit = 1.0 * np.arange (ny);
     lbdfit = np.array([r.x[0]*lbd0 for r in res]);
-
-    log.info ('Compute QC');
     
-    # Compute quality of projection
-    projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
-    log.info ('Projection quality = %g'%projection);
-
-    # Typical difference with prediction
-    delta = np.median (np.abs (lbd-lbdfit));
-    log.info ('Median delta = %.3f um'%(delta*1e6));
-
-    # Set quality to zero if clearly wrong fit
-    if delta > 0.075e-6:
-        log.warning ('Spectral calibration is probably faulty, set QUALITY to 0');
-        projection = 0.0;
-
-    # Set QC
-    hdr[HMQ+'QUALITY'] = (rep_nan (projection), 'quality of data');
-    hdr[HMQ+'DELTA MEDIAN'] = (rep_nan (delta), '[m] median difference');
-
-    # Compute position on detector of lbd0
-    lbd0 = 1.6e-6;
-    s = np.argsort (lbdfit);
-    try:     y0 = hdr[HMW+'FRINGE STARTY'] + np.interp (lbd0, lbdfit[s], yfit[s]);
-    except:  y0 = -99.0
-    hdr[HMQ+'YLBD0'] = (rep_nan (y0), 'ypos of %.3fum in cropped window'%(lbd0*1e6));
-    log.info (HMQ+'YLBD0 = %e'%y0);
-
     # Compute a better version of the wavelength
     # by fitting a quadratic law, optional
     lbdlaw = lbdfit.copy ();
@@ -212,6 +190,39 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
         lbdlaw[is_fit] = np.poly1d (poly)(yfit[is_fit]);
     else:
         log.info ('Keep raw measure (no fit of lbd solution)');
+
+    log.info ('Compute QC');
+    
+    # Compute quality of projection
+    projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
+    log.info ('Projection quality = %g'%projection);
+
+    # Typical difference with prediction
+    delta = np.median (np.abs (lbd-lbdfit));
+    log.info ('Median delta = %.3f um'%(delta*1e6));
+
+    # Residual of fit
+    rms_res = np.std (lbdlaw[is_fit]-lbdfit[is_fit]);
+    med_res = np.median (np.abs(lbdlaw[is_fit]-lbdfit[is_fit]));
+
+    # Set quality to zero if clearly wrong fit
+    if rms_res > 10e-9 or med_res > 10e-9:
+        log.warning ('Spectral calibration is probably faulty, set QUALITY to 0');
+        projection = 0.0;
+
+    # Set QC
+    hdr[HMQ+'QUALITY'] = (rep_nan (projection), 'quality of data');
+    hdr[HMQ+'DELTA MEDIAN'] = (rep_nan (delta), '[m] median difference');
+    hdr[HMQ+'RESIDUAL STD']    = (rep_nan (rms_res), '[m] std residual');
+    hdr[HMQ+'RESIDUAL MEDIAN'] = (rep_nan (med_res), '[m] median residual');
+
+    # Compute position on detector of lbdref
+    s = np.argsort (lbdfit);
+    try:     y0 = hdr[HMW+'FRINGE STARTY'] + np.interp (lbdref, lbdfit[s], yfit[s]);
+    except:  y0 = -99.0
+    hdr[HMQ+'LBDREF'] = (rep_nan (lbdref), '[m] lbdref');
+    hdr[HMQ+'YLBDREF'] = (rep_nan (y0), 'ypos of %.3fum in cropped window'%(lbdref*1e6));
+    log.info (HMQ+'YLBDREF = %e  (%.3fum)'%(y0,lbdref*1e6));
 
     log.info ('Figures');
 
@@ -255,7 +266,7 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
     ax.plot (yfit,lbd * 1e6,'o-', c='orange', alpha=0.25);
     ax.set_ylabel ('lbd (um)');
     ax.set_xlabel ('Detector line (python-def)');
-    ax.set_ylim (1.45,1.8);
+    ax.set_ylim (lbd.min() * 1e6 - 0.05,lbd.max() * 1e6 + 0.05);
     files.write (fig,output+'_lbd.png');
 
     # PSD
@@ -588,8 +599,8 @@ def compute_rts (hdrs, profiles, kappas, speccal,
 
     # fres is the spatial frequency at the
     # reference wavelength lbd0
-    lbd0,dlbd = setup.lbd0 (hdr);
-    freqs = setup.base_freq (hdr);
+    lbdref,lbd0,dlbd = setup.lbd0 (hdr);
+    freqs = setup.base_freq (hdr) * lbdref / lbd0;
     
     # Scale to ensure the frequencies fall
     # into integer pixels (max freq is 40 or 72)

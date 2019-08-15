@@ -34,7 +34,7 @@ examples:
 
 parser = argparse.ArgumentParser (description=description, epilog=epilog,
                                  formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 add_help=False);
+                                 add_help=True);
 
 parser.add_argument ("--key", dest="key",default='OBJECT',type=str,
                      help="name of key to update");
