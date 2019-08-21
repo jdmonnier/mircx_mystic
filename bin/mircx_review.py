@@ -78,6 +78,8 @@ for f in tqdm(args.file):
     with fits.open(f) as hdulist:
         if f[-7:] == 'fits.fz':
             filetype = hdulist[1].header["FILETYPE"]
+                if filetype != args.filetype and args.filetype is not None:
+                    continue
             # Manipulate the header to fake only one dimension
             nx = hdulist[1].header['NAXIS1']
             ny = hdulist[1].header['NAXIS2']
@@ -91,9 +93,9 @@ for f in tqdm(args.file):
         # Read normal data. 
         else:
             filetype = hdulist[0].header["FILETYPE"]
+                if filetype != args.filetype and args.filetype is not None:
+                    continue
             cube = hdulist[0].data
-    if filetype != args.filetype and args.filetype is not None:
-        continue
     typ.append(filetype)
     fname.append(f)
     image = np.sum(cube[:,-2,:,:] - cube[:,1,:,:], axis=0)
