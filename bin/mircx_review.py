@@ -93,7 +93,7 @@ for f in tqdm(args.file):
             filetype = hdulist[0].header["FILETYPE"]
             cube = hdulist[0].data
     if filetype != args.filetype and args.filetype is not None:
-        pass
+        continue
     typ.append(filetype)
     fname.append(f)
     image = np.sum(cube[:,-2,:,:] - cube[:,1,:,:], axis=0)
