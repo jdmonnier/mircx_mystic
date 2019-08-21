@@ -62,6 +62,8 @@ def onkey(event):
 parser = argparse.ArgumentParser(description='[Left] and [Right] to scroll through images. [G] to mark good files. [B] to mark bad files. [Q] to quit.')
     
 parser.add_argument('file', metavar='file', nargs='+', help='Mirc-X/Mystic FITS File(s).')
+parser.add_argument ("--saturate", dest="saturate", type=int,
+                     default=0, help="Saturate upper and lower bound of pixels");
 
 args = parser.parse_args()
 
@@ -89,12 +91,19 @@ for f in tqdm(args.file):
         else:
             cube = hdulist[0].data
             typ.append(hdulist[0].header["FILETYPE"])
-    img.append(np.sum(cube[:,-2,:,:] - cube[:,1,:,:], axis=0))
+    image = np.sum(cube[:,-2,:,:] - cube[:,1,:,:], axis=0)
+    flat = image.flatten()
+    sort = np.argsort(flat)
+    sat = round(len(flat) * args.saturate / 100)
+    flat[sort[:sat]] = flat[sort[sat]]
+    if sat == 0:
+        sat = 1
+    flat[sort[-sat:]] = flat[sort[-sat]]
+    img.append(np.reshape(flat, np.shape(image)))
     good.append(True)
 
 fig = plt.figure()
 cid = fig.canvas.mpl_connect('key_press_event', onkey)
-# fig.canvas.setFocus()
 if good[current]:
     stat = "Good"
 else:
