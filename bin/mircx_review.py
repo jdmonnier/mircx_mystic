@@ -64,6 +64,8 @@ parser = argparse.ArgumentParser(description='[Left] and [Right] to scroll throu
 parser.add_argument('file', metavar='file', nargs='+', help='Mirc-X/Mystic FITS File(s).')
 parser.add_argument ("--saturate", dest="saturate", type=int,
                      default=0, help="Saturate upper and lower bound of pixels");
+parser.add_argument ("--filetype", dest="filetype", type=str,
+                     default=None, help="Show only files of a given type");
 
 args = parser.parse_args()
 
@@ -73,9 +75,9 @@ typ = []
 good = []
 
 for f in tqdm(args.file):
-    fname.append(f)
     with fits.open(f) as hdulist:
         if f[-7:] == 'fits.fz':
+            filetype = hdulist[1].header["FILETYPE"]
             # Manipulate the header to fake only one dimension
             nx = hdulist[1].header['NAXIS1']
             ny = hdulist[1].header['NAXIS2']
@@ -86,11 +88,14 @@ for f in tqdm(args.file):
             # Uncompress and reshape data
             cube = hdulist[1].data
             cube.shape = (nr,nf,ny,nx)
-            typ.append(hdulist[1].header["FILETYPE"])
         # Read normal data. 
         else:
+            filetype = hdulist[0].header["FILETYPE"]
             cube = hdulist[0].data
-            typ.append(hdulist[0].header["FILETYPE"])
+    if filetype != args.filetype and args.filetype is not None:
+        pass
+    typ.append(filetype)
+    fname.append(f)
     image = np.sum(cube[:,-2,:,:] - cube[:,1,:,:], axis=0)
     flat = image.flatten()
     sort = np.argsort(flat)
