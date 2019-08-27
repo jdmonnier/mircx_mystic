@@ -1141,6 +1141,8 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
 
     if vis_reference == 'self':
         log.info ('Compute VIS by self-tracking');
+        hdulist[0].header[HMP+'VIS_REF'] = ('SELF', 'vis reference');
+        
         c_cpx *= np.exp (2.j*np.pi * base_gd / lbd[None,None,:,None]);
         phi = np.mean (c_cpx, axis=2, keepdims=True);
         phi = signal.uniform_filter_cpx (phi, (0,ncoher,0,0), mode='constant');
@@ -1149,6 +1151,8 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
 
     elif vis_reference == 'spec-diff':
         log.info ('Compute VIS by taking spectral-differential');
+        hdulist[0].header[HMP+'VIS_REF'] = ('SPEC-DIFF', 'vis reference');
+        
         c_cpx = c_cpx[:,:,1:,:] * np.conj(c_cpx[:,:,:-1,:]);
         c_cpx = np.insert(c_cpx,np.size(c_cpx,2),np.nan,axis=2);
         c_cpx = np.nanmean (c_cpx * base_flag, axis=1);
