@@ -1,14 +1,24 @@
 import os, sys, re
 import pandas as pd
-from astroquery.simbad import Simbad
+
+from . import headers, log, files
+
+try:
+    from astroquery.simbad import Simbad
+except ImportError:
+    log.error('astroquery.simbad not found!')
+    log.info('Assigning sci and cal types to targets requires access to SIMBAD')
+    log.info('Try "sudo pip install astroquery"')
+    raise ImportError
+    sys.exit()
+
 from astroquery.vizier import Vizier
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from requests.exceptions import ConnectionError
 
-from . import headers, log, files
 
-def targList(d,rawBase,redBase,opt):
+def targList(d,rawBase,redDir):
     """
     Write target list for the specified observing date and
     save in the reduction directory for that night.
@@ -16,23 +26,18 @@ def targList(d,rawBase,redBase,opt):
         - rawBase is the path to base of the raw data 
         directory tree (the final character should not be 
         '/');
-        - redBase is the path to base of the reduced data
-        directory tree (the final character should not be
+        - redDir is the path to the reduced data
+        directory (the final character should not be
         '/');
-        - opt is a python list describing the input 
-        options to be parsed to mircx_reduce.py.
     """
     dotargList = 'no'
-    for i in range(0, len(opt)):
-        # create file suffix from parsed options:
-        suf = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]
-        # Check to see whether summary files already exist (do nothing if true):
-        if os.path.isfile(redBase+'/'+d+suf+'/'+d+'_targets.list') != True:
-            dotargList = 'yes'
+    # Check to see whether summary files already exist (do nothing if true):
+    if os.path.isfile(redDir+'/'+d+'_targets.list') != True:
+        dotargList = 'yes'
     if dotargList == 'yes':
         # Load all the headers from observing date:
         log.info('Read headers from raw data directory')
-        hdrs = headers.loaddir(rawBase+'/'+d[0:7]+'/'+d)
+        hdrs = headers.loaddir(rawBase+'/'+d)
         # create python list of object names:
         log.info('Retrieve object names from headers')
         objs = []
@@ -48,30 +53,27 @@ def targList(d,rawBase,redBase,opt):
         del hdrs
         
         objs = list(set(objs))
-        for i in range(0, len(opt)):
-            suf = '_ncoh'+opt[i][0]+'ncs'+opt[i][1]+'nbs'+opt[i][2]+'snr'+opt[i][3]
-            # Check to see whether summary file already exists (do nothing if true):
-            if os.path.isfile(redBase+'/'+d+suf+'/'+d+'_targets.list') != True:
-                # create directory for d+suf/, if required
-                files.ensure_dir(redBase+'/'+d+suf);
-                # write target list summary file:
-                log.info('Write '+redBase+'/'+d+suf+'/'+d+'_targets.list')
-                with open(redBase+'/'+d+suf+'/'+d+'_targets.list', 'w') as output:
-                    for obj in objs:
-                        if type(obj) != str:
-                            objs.remove(obj)
-                        output.write(obj+'\n')
-                if len(objs) == 0:
-                    log.error('No target names retrieved from headers.')
-                    log.info('Exiting.')
-                    sys.exit()
-                else:
-                    log.info('File written successfully')
+        # Check to see whether summary file already exists (do nothing if true):
+        if os.path.isfile(redDir+'/'+d+'_targets.list') != True:
+            files.ensure_dir(redDir);
+            # write target list summary file:
+            log.info('Write '+redDir+'/'+d+'_targets.list')
+            with open(redDir+'/'+d+'_targets.list', 'w') as output:
+                for obj in objs:
+                    if type(obj) != str:
+                        objs.remove(obj)
+                    output.write(obj+'\n')
+            if len(objs) == 0:
+                log.error('No target names retrieved from headers.')
+                log.info('Exiting.')
+                sys.exit()
+            else:
+                log.info('File written successfully')
     else:
         log.info('Target lists already exist.')
-        log.info('Reading target names from '+redBase+'/'+d+suf+'/'+d+'_targets.list')
+        log.info('Reading target names from '+redDir+'/'+d+'_targets.list')
         objs = []
-        with open(redBase+'/'+d+suf+'/'+d+'_targets.list', 'r') as input:
+        with open(redDir+'/'+d+'_targets.list', 'r') as input:
             for line in input:
                 objs.append(line.strip().replace('_', ' '))
     return objs
@@ -106,28 +108,37 @@ def queryJSDC(targ,m):
         log.info('Nothing returned from JSDC for '+targ)
         log.info(targ+' will be treated as SCI')
         return 'sci'
+    
+    ind = -999
+    alt_ids = Simbad.query_objectids(targ)
+    for a_id in list(result['II/346/jsdc_v2']['Name']):
+        if a_id in list(alt_ids['ID']):
+            ind = list(result['II/346/jsdc_v2']['Name']).index(a_id)
+        elif a_id in list([a.replace(' ', '') for a in alt_ids['ID']]):
+            ind = list(result['II/346/jsdc_v2']['Name']).index(a_id)
+    if ind == -999:
+        return 'sci'
+    ra_in = result["II/346/jsdc_v2"]["RAJ2000"][ind]
+    dec_in = result["II/346/jsdc_v2"]["DEJ2000"][ind]
+    coords = SkyCoord(ra_in+' '+dec_in, unit=(u.hourangle, u.deg))
+    ra = str(coords.ra.deg)
+    dec = str(coords.dec.deg)
+    hmag = str(result["II/346/jsdc_v2"]["Hmag"][ind])
+    vmag = str(result["II/346/jsdc_v2"]["Vmag"][ind])
+    flag = result["II/346/jsdc_v2"]["CalFlag"][ind]
+    # maintain care flags from JSDC:
+    if flag == 0:
+        iscal = "CAL 0"
+    if flag == 1:
+        iscal = "CAL 1"
+    if flag == 2:
+        iscal = "CAL 2"
     else:
-        ra_in = result["II/346/jsdc_v2"]["RAJ2000"][0]
-        dec_in = result["II/346/jsdc_v2"]["DEJ2000"][0]
-        coords = SkyCoord(ra_in+' '+dec_in, unit=(u.hourangle, u.deg))
-        ra = str(coords.ra.deg)
-        dec = str(coords.dec.deg)
-        hmag = str(result["II/346/jsdc_v2"]["Hmag"][0])
-        vmag = str(result["II/346/jsdc_v2"]["Vmag"][0])
-        flag = result["II/346/jsdc_v2"]["CalFlag"][0]
-        # maintain care flags from JSDC:
-        if flag == 0:
-            iscal = "CAL 0"
-        if flag == 1:
-            iscal = "CAL 1"
-        if flag == 2:
-            iscal = "CAL 2"
-        else:
-            iscal = "CAL"
-        model = "UD_H"
-        ud_H = '{0:.6f}'.format(float(result["II/346/jsdc_v2"]["UDDH"][0]))
-        eud_H = '{0:.6f}'.format(float(result["II/346/jsdc_v2"]["e_LDD"][0]))
-        return ''.join(str([ra, dec, hmag, vmag, iscal, model, ud_H, eud_H])[1:-1]).replace("'", "")
+        iscal = "CAL"
+    model = "UD_H"
+    ud_H = '{0:.6f}'.format(float(result["II/346/jsdc_v2"]["UDDH"][ind]))
+    eud_H = '{0:.6f}'.format(float(result["II/346/jsdc_v2"]["e_LDD"][ind]))
+    return ''.join(str([ra, dec, hmag, vmag, iscal, model, ud_H, eud_H])[1:-1]).replace("'", "")
 
 def queryLocal(targs,db):
     """
@@ -170,7 +181,7 @@ def queryLocal(targs,db):
                 log.warning(mirrs[m]+' SIMBAD server down')
             while connected == False:
                 try:
-                    Simbad.SIMBAD_SERVER = mirr[m+1]
+                    Simbad.SIMBAD_SERVER = mirrs[m+1]
                 except IndexError:
                     log.error('Failed to connect to SIMBAD mirrors')
                     log.error('Check internet connection and try again')
@@ -203,7 +214,10 @@ def queryLocal(targs,db):
                 outline = targ.replace('_',' ')+','+calsci+'\n'
                 scical.append('NEW:CAL')
                 calInf = calInf+targ.replace(' ','_')+','+','.join(calsci.split(',')[6:8])+','
-            outfile = os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list'
+            if os.environ['MIRCX_PIPELINE'][-1] != '/':
+                outfile = os.environ['MIRCX_PIPELINE']+'/mircx_pipeline/mircx_newTargs.list'
+            else:
+                outfile = os.environ['MIRCX_PIPELINE']+'mircx_pipeline/mircx_newTargs.list'
             if not os.path.exists(outfile):
                 with open(outfile, 'w') as output:
                     output.write('#NAME,RA,DEC,HMAG,VMAG,ISCAL,MODEL_NAME,PARAM1,PARAM2\n')
@@ -220,7 +234,7 @@ def queryLocal(targs,db):
                 scical.append('SCI')
             else:
                 log.info(targ+' recognised as CAL')
-                if m_modTyp[m_targs.index(targNew)] == 'UD_H':
+                if 'UD_H' in m_modTyp[m_targs.index(targNew)]:
                     ud_H = float(pd.Series.tolist(localDB['PARAM1'])[m_targs.index(targNew)])
                     eud_H = float(pd.Series.tolist(localDB['PARAM2'])[m_targs.index(targNew)])
                     calInf = calInf+targ.replace(' ','_')+','+'{0:.6f}'.format(ud_H)+','+'{0:.6f}'.format(eud_H)+','

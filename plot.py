@@ -61,7 +61,9 @@ def base_name (axes, bstart=None, tstart=None, names=None):
         elif tstart is not None:
             names = setup.triplet_name ()[tstart:tstart+n];
         else:
-            names = setup.base_name () if n == 15 else setup.triplet_name ();
+            if n == 6:  names = setup.beam_name ();
+            elif n == 15: names = setup.base_name ();
+            else: names = setup.triplet_name ();
 
     for i in range (n):
         ax = axes.flatten()[i];

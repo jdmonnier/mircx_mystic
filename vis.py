@@ -14,7 +14,7 @@ from scipy import fftpack;
 from scipy.signal import medfilt;
 from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter, uniform_filter, median_filter;
-from scipy.optimize import least_squares, curve_fit;
+from scipy.optimize import least_squares, curve_fit, brute;
 from scipy.ndimage.morphology import binary_closing, binary_opening;
 from scipy.ndimage.morphology import binary_dilation, binary_erosion;
 
@@ -44,10 +44,17 @@ def extract_maps (hdr, bmaps):
         mean_map = pyfits.getdata (bmap['ORIGNAME']);
         beam = int(bmap['FILETYPE'][4:5]) - 1;
 
+        # Check that this xchan was extracted in hdr
+        if HMW+'PHOTO%i STARTX'%(beam) not in hdr:
+            log.info ('Beam %i not preproc in this file, skip'%(beam+1));
+            continue;
+
+        # Crop fringe window
         fsx = hdr[HMW+'FRINGE STARTX'];
         fsy = hdr[HMW+'FRINGE STARTY'];
         fringe_map[beam,:,:,:,:] = mean_map[:,:,fsy:fsy+nfy,fsx:fsx+nfx];
-        
+
+        # Crop xchan window
         psx = hdr[HMW+'PHOTO%i STARTX'%(beam)];
         psy = hdr[HMW+'PHOTO%i STARTY'%(beam)];
         photo_map[beam,:,:,:,:] = mean_map[:,:,psy:psy+npy,psx:psx+npx];
@@ -125,11 +132,11 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
     log.info ('Expect center of spectrum (lbd0) on %f'%fyc);
 
     # Build expected wavelength table
-    lbd0,dlbd = setup.lbd0 (hdr);
+    lbdref,lbd0,dlbd = setup.lbd0 (hdr);
     lbd = (np.arange (ny) - fyc) * dlbd + lbd0;
 
     # Model for the pic position at lbd0
-    freq0 = np.abs (setup.base_freq (hdr));
+    freq0 = np.abs (setup.base_freq (hdr)) * lbdref / lbd0;
     delta0 = np.min (freq0) / 6;
     
     # Frequencies in pix-1
@@ -149,45 +156,23 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
     psd /= norm;
 
     # Correlate each wavelength channel with a template
-    log.info ('Correlated PSD with model');
+    log.info ('Fit PSD with model');
     res = [];
     for y in range (ny):
-        s0 = lbd[y] / lbd0;
         args = (freq[idmin:idmax],freq0,delta0,psd[y,idmin:idmax]);
+        s0 = lbd[y] / lbd0;
+        # Fit at expected position
         res.append (least_squares (signal.psd_projection, s0, args=args, bounds=(0.8*s0,1.2*s0)));
+        # Explore around
+        for s00 in np.linspace (0.8*s0,1.2*s0, 20):
+            rr = least_squares (signal.psd_projection, s00, args=args, bounds=(0.8*s00,1.2*s00));
+            if (rr.fun[0] < res[-1].fun[0]): res[-1] = rr;
         log.info ('Best merit 1-c=%.4f found at s/s0=%.4f'%(res[-1].fun[0],res[-1].x[0]/s0));
 
     # Get wavelengths
     yfit = 1.0 * np.arange (ny);
     lbdfit = np.array([r.x[0]*lbd0 for r in res]);
-
-    log.info ('Compute QC');
     
-    # Compute quality of projection
-    projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
-    log.info ('Projection quality = %g'%projection);
-
-    # Typical difference with prediction
-    delta = np.median (np.abs (lbd-lbdfit));
-    log.info ('Median delta = %.3f um'%(delta*1e6));
-
-    # Set quality to zero if clearly wrong fit
-    if delta > 0.075e-6:
-        log.warning ('Spectral calibration is probably faulty, set QUALITY to 0');
-        projection = 0.0;
-
-    # Set QC
-    hdr[HMQ+'QUALITY'] = (projection, 'quality of data');
-    hdr[HMQ+'DELTA MEDIAN'] = (delta, '[m] median difference');
-
-    # Compute position on detector of lbd0
-    lbd0 = 1.6e-6;
-    s = np.argsort (lbdfit);
-    try:     y0 = hdr[HMW+'FRINGE STARTY'] + np.interp (lbd0, lbdfit[s], yfit[s]);
-    except:  y0 = -99.0
-    hdr[HMQ+'YLBD0'] = (y0, 'ypos of %.3fum in cropped window'%(lbd0*1e6));
-    log.info (HMQ+'YLBD0 = %e'%y0);
-
     # Compute a better version of the wavelength
     # by fitting a quadratic law, optional
     lbdlaw = lbdfit.copy ();
@@ -205,6 +190,39 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
         lbdlaw[is_fit] = np.poly1d (poly)(yfit[is_fit]);
     else:
         log.info ('Keep raw measure (no fit of lbd solution)');
+
+    log.info ('Compute QC');
+    
+    # Compute quality of projection
+    projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
+    log.info ('Projection quality = %g'%projection);
+
+    # Typical difference with prediction
+    delta = np.median (np.abs (lbd-lbdfit));
+    log.info ('Median delta = %.3f um'%(delta*1e6));
+
+    # Residual of fit
+    rms_res = np.std (lbdlaw[is_fit]-lbdfit[is_fit]);
+    med_res = np.median (np.abs(lbdlaw[is_fit]-lbdfit[is_fit]));
+
+    # Set quality to zero if clearly wrong fit
+    if rms_res > 10e-9 or med_res > 10e-9:
+        log.warning ('Spectral calibration is probably faulty, set QUALITY to 0');
+        projection = 0.0;
+
+    # Set QC
+    hdr[HMQ+'QUALITY'] = (rep_nan (projection), 'quality of data');
+    hdr[HMQ+'DELTA MEDIAN'] = (rep_nan (delta), '[m] median difference');
+    hdr[HMQ+'RESIDUAL STD']    = (rep_nan (rms_res), '[m] std residual');
+    hdr[HMQ+'RESIDUAL MEDIAN'] = (rep_nan (med_res), '[m] median residual');
+
+    # Compute position on detector of lbdref
+    s = np.argsort (lbdfit);
+    try:     y0 = hdr[HMW+'FRINGE STARTY'] + np.interp (lbdref, lbdfit[s], yfit[s]);
+    except:  y0 = -99.0
+    hdr[HMQ+'LBDREF'] = (rep_nan (lbdref), '[m] lbdref');
+    hdr[HMQ+'YLBDREF'] = (rep_nan (y0), 'ypos of %.3fum in cropped window'%(lbdref*1e6));
+    log.info (HMQ+'YLBDREF = %e  (%.3fum)'%(y0,lbdref*1e6));
 
     log.info ('Figures');
 
@@ -248,7 +266,7 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
     ax.plot (yfit,lbd * 1e6,'o-', c='orange', alpha=0.25);
     ax.set_ylabel ('lbd (um)');
     ax.set_xlabel ('Detector line (python-def)');
-    ax.set_ylim (1.45,1.8);
+    ax.set_ylim (lbd.min() * 1e6 - 0.05,lbd.max() * 1e6 + 0.05);
     files.write (fig,output+'_lbd.png');
 
     # PSD
@@ -389,7 +407,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
         shifty[b] = register_translation (lower[b,:,None],upper[b,:,None],
                                               upsample_factor=100)[0][0];
 
-    # Re-align photometry (all with the same)
+    # Re-align photometry
     log.info ('Register photometry to fringe');
     for b in range(6):
         photo[b,:,:,:] = subpix_shift (photo[b,:,:,:], [0,0,-shifty[b]]);
@@ -441,30 +459,36 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     kappa = upper / (lower + 1e-20);
 
     # Set invalid kappas to zero
-    kappa[kappa > 1e3] = 0.0;
-    kappa[kappa < 0.] = 0.0;
-        
+    skappa = setup.kappa (hdr);
+    kappa[kappa > skappa*10] = 0.0;
+    kappa[kappa < skappa/10] = 0.0;
+
     # Kappa-matrix as spectrum
     log.info ('Plot kappa');
+    spec_upper = np.mean (upper, axis=(1,2));
+    spec_lower = np.mean (lower, axis=(1,2));
+    spec_kappa = np.mean (kappa, axis=(1,2));
+    
+    # Scaling kappa spectrum, the xchan flux and the kappa
+    # are scaled with a factor to be closer to 1.0
+    norm = np.max (medfilt (spec_upper,(1,3)), axis=1, keepdims=True) + 1e-20;
+    spec_upper = spec_upper / norm;
+    spec_lower = spec_lower / norm * skappa;
+    spec_kappa = spec_kappa / skappa;
+        
     fig,axes = plt.subplots (3,2);
     fig.suptitle (headers.summary (hdr));
     for b in range (6):
         ax = axes.flatten()[b];
-        val = np.mean (upper, axis=(1,2));
-        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
-        ax.plot (lbd*1e6,val[b,:],'--', label='upper');
-        val = np.mean (lower, axis=(1,2));
-        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
-        ax.plot (lbd*1e6,val[b,:], label='lower');
-        val = np.mean (kappa, axis=(1,2));
-        val /= np.max (medfilt (val,(1,3)), axis=1, keepdims=True) + 1e-20;
-        ax.plot (lbd*1e6,val[b,:], label='kappa');
-        ax.set_ylim ((0.1,1.5));
-        ax.set_ylabel ('normalized');
+        ax.plot (lbd*1e6,spec_upper[b,:],'--', label='fringe');
+        ax.plot (lbd*1e6,spec_lower[b,:], label='xchan x %.1f'%skappa);
+        ax.plot (lbd*1e6,spec_kappa[b,:], label='kappa / %.1f'%skappa);
+        ax.set_ylim ((0.,2));
+        ax.set_ylabel ('normalized flux');
     axes[0,0].legend();
     files.write (fig,output+'_kappa.png');
 
-    # Kappa-matrix
+    # Kappa-matrix as image
     fig,ax = plt.subplots (1);
     fig.suptitle (headers.summary (hdr));
     ax.imshow (np.mean (kappa,axis=(1,2)));
@@ -561,7 +585,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     axes[0].plot (fringe_img[int(ny/2),:], label='fringe');
     axes[0].plot (cont_img[int(ny/2),:], label='cont');
     axes[0].legend();
-    axes[1].plot (np.mean (fringe[int(ny/2),:],axis=(0,1)), label='res');
+    axes[1].plot (np.mean (fringe[:,:,int(ny/2),:],axis=(0,1)), label='res');
     axes[1].set_xlabel('x (spatial direction)');
     axes[1].legend();
     files.write (fig,output+'_dcres.png');
@@ -575,8 +599,8 @@ def compute_rts (hdrs, profiles, kappas, speccal,
 
     # fres is the spatial frequency at the
     # reference wavelength lbd0
-    lbd0,dlbd = setup.lbd0 (hdr);
-    freqs = setup.base_freq (hdr);
+    lbdref,lbd0,dlbd = setup.lbd0 (hdr);
+    freqs = setup.base_freq (hdr) * lbdref / lbd0;
     
     # Scale to ensure the frequencies fall
     # into integer pixels (max freq is 40 or 72)
@@ -644,7 +668,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
         
     # Compute crude normalisation for vis2
     bbeam = setup.base_beam ();
-    norm = np.mean (photok0[:,:,int(ny/2),:], axis=(0,1));
+    norm = np.mean (photok0[:,:,:,int(ny/2)], axis=(1,2));
     norm = 4. * norm[bbeam[:,0]] * norm[bbeam[:,1]];
     
     # Compute the coherent flux for various integration
@@ -673,12 +697,12 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     for b,name in enumerate (setup.base_name ()):
         # Time where we lose half the coherence
         vis2h[b] = np.interp (0.5 * vis2[b,0], vis2[b,::-1], time[::-1]);
-        hdr[HMQ+'DECOHER'+name+'_HALF'] = (vis2h[b], '[ms] time for half V2');
+        hdr[HMQ+'DECOHER'+name+'_HALF'] = (rep_nan (vis2h[b]), '[ms] time for half V2');
         # Tau0 from model assuming 5/3
         try:
             popt, pcov = curve_fit (signal.decoherence, time, vis2[b,:], p0=[vis2[b,0], 0.01]);
             vis2m[b,:] = signal.decoherence (timem, popt[0], popt[1]);
-            hdr[HMQ+'DECOHER'+name+'_TAU0'] = (popt[1], '[ms] coherence time with 5/3');
+            hdr[HMQ+'DECOHER'+name+'_TAU0'] = (rep_nan (popt[1]), '[ms] coherence time with 5/3');
         except:
             log.warning ("Fail to fit on baseline %i, continue anyway"%b);
         
@@ -887,19 +911,6 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
     # Dimensions
     nr,nf,ny,nb = base_dft.shape;
     log.info ('Data size: '+str(base_dft.shape));
-
-    # Load BBIAS_COEFF
-    if coeff == []:
-        log.info ('No BBIAS_COEFF file');
-        bbias_coeff0 = np.zeros (ny);
-        bbias_coeff1 = np.zeros (ny);
-        bbias_coeff2 = np.zeros (ny);
-    else:
-        f = coeff[0]['ORIGNAME'];
-        log.info ('Load BBIAS_COEFF file %s'%f);
-        bbias_coeff0 = pyfits.getdata (f, 'C0');
-        bbias_coeff1 = pyfits.getdata (f, 'C1');
-        bbias_coeff2 = pyfits.getdata (f, 'C2');
         
     # Check parameters consistency
     if ncs + ncoher + 2 > nf:
@@ -1130,6 +1141,8 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
 
     if vis_reference == 'self':
         log.info ('Compute VIS by self-tracking');
+        hdulist[0].header[HMP+'VIS_REF'] = ('SELF', 'vis reference');
+        
         c_cpx *= np.exp (2.j*np.pi * base_gd / lbd[None,None,:,None]);
         phi = np.mean (c_cpx, axis=2, keepdims=True);
         phi = signal.uniform_filter_cpx (phi, (0,ncoher,0,0), mode='constant');
@@ -1138,6 +1151,8 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
 
     elif vis_reference == 'spec-diff':
         log.info ('Compute VIS by taking spectral-differential');
+        hdulist[0].header[HMP+'VIS_REF'] = ('SPEC-DIFF', 'vis reference');
+        
         c_cpx = c_cpx[:,:,1:,:] * np.conj(c_cpx[:,:,:-1,:]);
         c_cpx = np.insert(c_cpx,np.size(c_cpx,2),np.nan,axis=2);
         c_cpx = np.nanmean (c_cpx * base_flag, axis=1);
@@ -1162,21 +1177,50 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
         t_cpx = (base_dft*base_flag)[:,:,:,setup.triplet_base()];
         t_cpx = t_cpx[:,:,:,:,0] * t_cpx[:,:,:,:,1] * np.conj (t_cpx[:,:,:,:,2]);
 
+    # Load BBIAS_COEFF
+    if coeff == []:
+        log.info ('No BBIAS_COEFF file');
+    else:
+        f = coeff[0]['ORIGNAME'];
+        log.info ('Load BBIAS_COEFF file %s'%f);
+        bbias_coeff0 = pyfits.getdata (f, 'C0');
+        bbias_coeff1 = pyfits.getdata (f, 'C1');
+        bbias_coeff2 = pyfits.getdata (f, 'C2');
+
+        # Get rid of bad channels in bbias
+        mean0 = np.nanmean (bbias_coeff0);
+        std0 = np.nanstd (bbias_coeff0);
+        mean1 = np.nanmean (bbias_coeff1);
+        std1 = np.nanstd (bbias_coeff1);
+        mean2 = np.nanmean (bbias_coeff2);
+        std2 = np.nanstd (bbias_coeff2);
+        idx1 = abs(bbias_coeff0-mean0)>3*std0;
+        idx2 = abs(bbias_coeff1-mean1)>3*std1;
+        idx3 = abs(bbias_coeff2-mean2)>3*std2;
+        idx = idx1+idx2+idx3;
+
+        idx = np.where(idx==True);
+        bbias_coeff0[idx] = np.nan;
+        bbias_coeff1[idx] = np.nan;
+        bbias_coeff2[idx] = np.nan;
+
         # Debias with C0
         log.info ('Debias with C0');
-        t_cpx -= bbias_coeff0[None,None,:,None];
+        t_cpx -= bbias_coeff0[None,None,:,None]/(ncoher*ncoher*ncoher);
 
         # Debias with C1
         log.info ('Debias with C1');
         Ntotal = photo.sum (axis=-1,keepdims=True);
-        t_cpx -= bbias_coeff1[None,None,:,None] * Ntotal;
-    
+        t_cpx -= bbias_coeff1[None,None,:,None] * Ntotal[:,:np.size(t_cpx,1),:,:]/(ncoher*ncoher);
+
         # Debias with C2
         log.info ('Debias with C2');
-        Ptotal  = np.abs (base_dft)**2;
-        Ptotal -= np.median (np.abs (bias_dft)**2, axis=-1, keepdims=True);
-        Ptotal = Ptotal[:,:,:,setup.triplet_base()].sum (axis=-1);
-        t_cpx -= bbias_coeff2[None,None,:,None] * Ptotal;
+        xps = np.real (base_dft[:,ncs:,:,:] * np.conj(base_dft[:,0:-ncs,:,:]));
+        xps0 = np.real (bias_dft[:,ncs:,:,:] * np.conj(bias_dft[:,0:-ncs,:,:]));
+        xps -= np.mean (xps0, axis=-1, keepdims=True);
+        Ptotal = xps[:,:,:,setup.triplet_base()].sum (axis=-1);
+        t_cpx = t_cpx[:,:-1,:,:];
+        t_cpx -= bbias_coeff2[None,None,:,None] * Ptotal[:,:,:,:]/ncoher;
     
     # Normalisation, FIXME: take care of the shift
     t_norm = photo[:,:,:,setup.triplet_beam()];

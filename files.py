@@ -33,9 +33,11 @@ def output (outputDir,hdr,suffix):
     
     # Build diretory if needed
     ensure_dir (outputDir);
+
+    # Get filename
+    name = hdr if type(hdr) is str else hdr['ORIGNAME'];
         
     # Get filename 
-    name = hdr['ORIGNAME'];
     name = os.path.splitext (os.path.basename(name))[0];
     if name[-5:] == '.fits':
         name = name[0:-5];
@@ -291,13 +293,15 @@ def load_raw (hdrs, differentiate=True,
     if badpix is None:
         log.info ('No badpixel map');
     else:
-        log.info ('Recompute %i bad pixels'%np.sum (badpix));
+        log.info ('Recompute %i bad pixels (interpole in spectral direction only)'%np.sum (badpix));
         ref = np.mean (cubenp, axis=(0,1));
         idx = np.argwhere (badpix);
-        cubenp[:,:,idx[:,0],idx[:,1]] = 0.25 * cubenp[:,:,idx[:,0]-1,idx[:,1]-1] + \
-                                        0.25 * cubenp[:,:,idx[:,0]+1,idx[:,1]-1] + \
-                                        0.25 * cubenp[:,:,idx[:,0]-1,idx[:,1]+1] + \
-                                        0.25 * cubenp[:,:,idx[:,0]+1,idx[:,1]+1];
+        # cubenp[:,:,idx[:,0],idx[:,1]] = 0.25 * cubenp[:,:,idx[:,0]-1,idx[:,1]-1] + \
+        #                                 0.25 * cubenp[:,:,idx[:,0]+1,idx[:,1]-1] + \
+        #                                 0.25 * cubenp[:,:,idx[:,0]-1,idx[:,1]+1] + \
+        #                                 0.25 * cubenp[:,:,idx[:,0]+1,idx[:,1]+1];
+        cubenp[:,:,idx[:,0],idx[:,1]] = 0.5 * cubenp[:,:,idx[:,0]-1,idx[:,1]] + \
+                                        0.5 * cubenp[:,:,idx[:,0]+1,idx[:,1]];
         # Figure
         fig,ax = plt.subplots (3,1);
         fig.suptitle (headers.summary (hdrs[0]));

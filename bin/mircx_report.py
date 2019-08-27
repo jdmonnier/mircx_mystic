@@ -1,13 +1,17 @@
 #! /usr/bin/env python                                                          
 # -*- coding: iso-8859-15 -*-                                                   
 
+# Updates:
+# 2019 - 04 - 10: CLD incorporated instrument sensitivity assessment 
+#                 to convert transmission to units of % of expected stellar flux
+
 import mircx_pipeline as mrx;
 import argparse, glob, os;
 import numpy as np;
 from astropy.io import fits as pyfits;
 import matplotlib.pyplot as plt;
 
-from mircx_pipeline import log, setup, plot, files, signal, headers;
+from mircx_pipeline import log, setup, plot, files, signal, headers, qc;
 from mircx_pipeline.headers import HM, HMQ, HMP;
 
 #
@@ -73,9 +77,6 @@ elog = log.trace ('mircx_report');
 # List of basename
 bname = setup.base_name ();
 
-# Zero point of Hband (arbitrary unit)
-Hzp = 1e5;
-
 # Load all the headers
 hdrs = mrx.headers.loaddir (argopt.oifits_dir);
 
@@ -104,7 +105,10 @@ except:
 
 # List of object
 objlist = list(set([h['OBJECT'] for h in hdrs]));
+objlist[:] = [x for x in objlist if x not in ['NOSTAR', '']] # remove instances of 'nostar' from
+#                                                    list of object names
 objcat = dict();
+exclude = ['NOSTAR', '']
 
 for obj in objlist:
     try:
@@ -115,40 +119,36 @@ for obj in objlist:
         objcat[obj] = cat;
     except:
         log.info ('Cannot find JSDC for '+obj);
-
-
-#
-# Compute the transmission and instrumental visibility
-#
+        exclude.append(obj)
+        
 
 for h in hdrs:
+    if h['OBJECT'] not in exclude:
+        # If we have the info about this star
+        try:
+            diam    = objcat[h['OBJECT']]['UDDH'][0]
+            # Loop on baseline 
+            for b in bname:
+                vis2 = h[HMQ+'VISS'+b+' MEAN'];
+                spf  = h[HMQ+'BASELENGTH'+b] / h['EFF_WAVE'];
+                vis2m = signal.airy (diam * spf * 4.84813681109536e-09)**2;
+                h[HMQ+'TF'+b+' MEAN'] = vis2/vis2m;
+                h[HMQ+'VISSM'+b+' MEAN'] = vis2m;
     
-    # If we have the info about this star
-    try:
-        fluxm = Hzp * 10**(-objcat[h['OBJECT']]['Hmag'][0]/2.5);
-        diam  = objcat[h['OBJECT']]['UDDH'][0];
-
-        # Loop on beam 
-        for b in range (6):
-            flux = h[HMQ+'FLUX%i MEAN'%b];
-            h[HMQ+'TRANS%i'%b] = flux / fluxm;
-
-        # Loop on baseline 
-        for b in bname:
-            vis2 = h[HMQ+'VISS'+b+' MEAN'];
-            spf  = h[HMQ+'BASELENGTH'+b] / h['EFF_WAVE'];
-            vis2m = signal.airy (diam * spf * 4.84813681109536e-09)**2;
-            h[HMQ+'TF'+b+' MEAN'] = vis2/vis2m;
-            h[HMQ+'VISSM'+b+' MEAN'] = vis2m;
-
-    # If we don't have the info about this star
-    except:
-        for b in range (6):
-            h[HMQ+'TRANS%i'%b] = -1.0;
+        # If we don't have the info about this star
+        except NameError:
+            for b in bname:
+                h[HMQ+'TF'+b+' MEAN'] = -1.0;
+        """
+        except KeyError:
+            for b in range(6):
+                h[HMQ+'TF'+b+' MEAN'] = -1.0;
+        """
+    else:
+        log.info('Excluding '+h['OBJECT']+' from report summary plots')
         for b in bname:
             h[HMQ+'TF'+b+' MEAN'] = -1.0;
         
-
 #
 # Plots
 #
@@ -166,7 +166,7 @@ for b in range (15):
     axes.flatten()[b].plot (data, 'o');
     axes.flatten()[b].set_ylim (0);
     
-files.write (fig,'report_decoher.png');
+files.write (fig,argopt.oifits_dir+'/report_decoher.png');
 
 # Plot SNR
 fig,axes = plt.subplots (5,3,sharex=True);
@@ -180,7 +180,7 @@ for b in range (15):
     axes.flatten()[b].plot (data, 'o');
     axes.flatten()[b].set_yscale ('log');
     
-files.write (fig,'report_snr.png');
+files.write (fig,argopt.oifits_dir+'/report_snr.png');
 
 # Plot TF
 fig,axes = plt.subplots (5,3,sharex=True);
@@ -198,20 +198,7 @@ for b in range (15):
     axes.flatten()[b].plot (data, 'o');
     axes.flatten()[b].set_ylim (0,1.2);
 
-files.write (fig,'report_tf2.png');
-
-# Trans
-fig,axes = plt.subplots (3,2,sharex=True);
-fig.suptitle ('Transmission [arbitrary units]');
-plot.compact (axes);
-
-for b in range (6):
-    data = headers.getval (hdrs, HMQ+'TRANS%i'%b);
-    data /= (data>0);
-    axes.flatten()[b].plot (data, 'o');
-    
-files.write (fig,'report_trans.png');
-
+files.write (fig,argopt.oifits_dir+'/report_tf2.png');
 # Plot vis2
 fig,axes = plt.subplots (5,3,sharex=True);
 fig.suptitle ('Vis2');
@@ -227,4 +214,4 @@ for b in range (15):
     # data2 = headers.getval (hdrs, HMQ+'VISSM'+bname[b]+' MEAN');
     # axes.flatten()[b].plot (data2, 'o', alpha=0.1);
     
-files.write (fig,'report_vis2.png');
+files.write (fig,argopt.oifits_dir+'/report_vis2.png');

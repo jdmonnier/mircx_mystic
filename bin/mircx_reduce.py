@@ -74,9 +74,16 @@ preproc.add_argument ("--raw-dir", dest="raw_dir",default='./',type=str,
 preproc.add_argument ("--preproc-dir", dest="preproc_dir",default='./preproc/',type=str,
                      help="directory of products [%(default)s]");
 
-preproc.add_argument ("--max-integration-time", dest="max_integration_time",default=300.,type=float,
-                     help='maximum integration into a single file, in (s).\n'
-                     'This apply to PREPROC, RTS and OIFITS steps [%(default)s]');
+preproc.add_argument ("--max-integration-time-preproc", dest="max_integration_time_preproc",
+                      default=30.,type=float,
+                      help='maximum integration into a single file, in (s).\n'
+                      'This apply to PREPROC, and RTS steps [%(default)s]');
+
+preproc.add_argument ("--threshold", dest="threshold",default=5.,type=float,
+                     help='threshold in sigma for identifying bad pixels [%(default)s]');
+
+preproc.add_argument ("--mean-quality", dest="mean_quality", type=float,
+                     default=20.0, help="minimum quality to consider the BEAM_MEAN as a valid window for cropping the data in the preproc [%(default)s]");
 
 rts = parser.add_argument_group ('(2) rts',
                   '\nCreates RTS intermediate products, which are the\n'
@@ -90,8 +97,11 @@ rts.add_argument ("--rts", dest="rts",default='TRUE',
 rts.add_argument ("--rts-dir", dest="rts_dir",default='./rts/',type=str,
                   help="directory of products [%(default)s]");
 
-rts.add_argument ("--beam-quality", dest="beam_quality", type=float,
-                  default=0.5, help="minimum quality to consider the BEAM_MAP as valid [%(default)s]");
+rts.add_argument ("--profile-quality", dest="profile_quality", type=float,
+                  default=20.0, help="minimum quality to consider the BEAM_PROFILE as a valid profile for extraction [%(default)s]");
+
+rts.add_argument ("--kappa-quality", dest="kappa_quality", type=float,
+                  default=5.0, help="minimum quality to consider the BEAM_MAP as a valid kappa matrix [%(default)s]");
 
 rts.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
                   choices=TrueFalse,
@@ -117,6 +127,11 @@ oifits.add_argument ("--oifits", dest="oifits",default='TRUE',
 oifits.add_argument ("--oifits-dir", dest="oifits_dir",default='./oifits/',type=str,
                      help="directory of products [%(default)s]");
 
+oifits.add_argument ("--max-integration-time-oifits", dest="max_integration_time_oifits",
+                      default=150.,type=float,
+                      help='maximum integration into a single file, in (s).\n'
+                      'This apply to OIFITS steps [%(default)s]');
+
 oifits.add_argument ("--ncoherent", dest="ncoherent", type=int,
                      default=5, help="number of frames for coherent integration [%(default)s]");
 
@@ -127,7 +142,7 @@ oifits.add_argument ("--ncs", dest="ncs", type=int,
                      default=1, help="number of frame-offset for cross-spectrum [%(default)s]");
 
 oifits.add_argument ("--nbs", dest="nbs", type=int,
-                     default=4, help="number of frame-offset for bi-spectrum [%(default)s]");
+                     default=4, help='only used when bbias=FALSE, this is the shift for the bispectrum [%(default)s]');
 
 oifits.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
                      default=2.0, help="SNR threshold for fringe rejection [%(default)s]");
@@ -150,21 +165,20 @@ oifits.add_argument ("--rm-rts", dest="rm_rts",default='FALSE',
 
 advanced = parser.add_argument_group ('advanced user arguments');
                                          
-advanced.add_argument ("--reduce-foreground", dest="reduce_foreground",default='FALSE',
-                     choices=TrueFalse,
-                     help="reduce the FOREGROUND as DATA [%(default)s]");
-
-advanced.add_argument ("--bbias", dest="bbias",default='FALSE',
+advanced.add_argument ("--bbias", dest="bbias",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the BBIAS_COEFF product [%(default)s]");
+
+advanced.add_argument ("--reduce-foreground", dest="reduce_foreground",default='FALSE',
+                     choices=TrueFalse,
+                     help="reduce the FOREGROUND into OIFITS [%(default)s]");
 
 advanced.add_argument ("--debug", dest="debug",default='FALSE',
                      choices=TrueFalse,
                      help="stop on error [%(default)s]");
 
 advanced.add_argument ("--max-file", dest="max_file",default=3000,type=int,
-                     help="maximum number of file to load to build "
-                     "product (speed-up for tests) [%(default)s]");
+                     help=argparse.SUPPRESS);
 
 advanced.add_argument ('--help', action='help',
                      help=argparse.SUPPRESS);
@@ -172,7 +186,9 @@ advanced.add_argument ('--help', action='help',
 advanced.add_argument ('-h', action='help',
                      help=argparse.SUPPRESS);
 
-
+advanced.add_argument ('--selection', dest="selection",default='FALSE',
+                     choices=TrueFalseOverwrite,
+                    help=argparse.SUPPRESS);
 
 
 
@@ -185,7 +201,19 @@ argopt = parser.parse_args ();
 
 # Verbose
 elog = log.trace ('mircx_reduce');
+
+## force choices when --bbias=TRUE
+if argopt.bbias != 'FALSE':
+    log.info ('bbias is TRUE so force save-all-freqs=TRUE');
+    argopt.save_all_freqs = 'TRUE';
+    argopt.ncs = 1;
+    argopt.nbs = 0;
+
     
+#
+# Compute Preproc
+#
+
 if argopt.preproc != 'FALSE':
     overwrite = (argopt.preproc == 'OVERWRITE');
 
@@ -268,7 +296,7 @@ if argopt.preproc != 'FALSE':
             flat = mrx.headers.assoc_flat (gp[0], hdrs_static);
 
             # Compute the BEAM_MAP
-            mrx.compute_beam_map (gp[0:argopt.max_file], bkg, flat,
+            mrx.compute_beam_map (gp[0:argopt.max_file], bkg, flat,argopt.threshold,
                                   output=output, filetype=filetype);
             
         except Exception as exc:
@@ -368,19 +396,17 @@ if argopt.preproc != 'FALSE':
     # Group all DATA
     keys = setup.detwin + setup.detmode + setup.insmode;
     gps = mrx.headers.group (hdrs, 'DATA', keys=keys,
-                             delta=120, Delta=argopt.max_integration_time,
+                             delta=120, Delta=argopt.max_integration_time_preproc,
                              continuous=True);
 
-    # Also reduce the FOREGROUND
-    if argopt.reduce_foreground == 'TRUE':
+    # Also reduce the FOREGROUND and BACKGROUND
+    if argopt.bbias != 'FALSE':
         gps += mrx.headers.group (hdrs, 'FOREGROUND', keys=keys,
-                                  delta=120, Delta=argopt.max_integration_time,
+                                  delta=120, Delta=argopt.max_integration_time_preproc,
                                   continuous=True);
         
-    # Also reduce the BACKGROUND
-    if argopt.reduce_foreground == 'TRUE':
         gps += mrx.headers.group (hdrs, 'BACKGROUND', keys=keys,
-                                  delta=120, Delta=argopt.max_integration_time,
+                                  delta=120, Delta=argopt.max_integration_time_preproc,
                                   continuous=True);
 
     # Compute 
@@ -411,11 +437,11 @@ if argopt.preproc != 'FALSE':
                 keys = setup.detwin + setup.insmode;
                 tmp = mrx.headers.assoc (gp[0], hdrs_calib, 'BEAM%i_MEAN'%i,
                                          keys=keys, which='best', required=1,
-                                         quality=0.01);
+                                         quality=argopt.mean_quality);
                 bmaps.extend (tmp);
 
             # Compute PREPROC
-            mrx.compute_preproc (gp[0:argopt.max_file], bkg, flat, bmaps,
+            mrx.compute_preproc (gp[0:argopt.max_file], bkg, flat, bmaps,argopt.threshold,
                                  output=output, filetype=filetype);
             
         except Exception as exc:
@@ -481,17 +507,15 @@ if argopt.rts != 'FALSE':
     # Reduce DATA
     keys = setup.detwin + setup.detmode + setup.insmode + setup.fringewin;
     gps = mrx.headers.group (hdrs, 'DATA_PREPROC', delta=120,
-                             Delta=argopt.max_integration_time, keys=keys);
+                             Delta=argopt.max_integration_time_preproc, keys=keys);
 
-    # Reduce FOREGROUND
-    if argopt.reduce_foreground == 'TRUE':
+    # Reduce FOREGROUND and BACKGROUND
+    if argopt.bbias != 'FALSE':
         gps += mrx.headers.group (hdrs, 'FOREGROUND_PREPROC', delta=120,
-                                  Delta=argopt.max_integration_time, keys=keys);
-
-    # Reduce BACKGROUND
-    if argopt.reduce_foreground == 'TRUE':
+                                  Delta=argopt.max_integration_time_preproc, keys=keys);
+        
         gps += mrx.headers.group (hdrs, 'BACKGROUND_PREPROC', keys=keys,
-                                  delta=120, Delta=argopt.max_integration_time,
+                                  delta=120, Delta=argopt.max_integration_time_preproc,
                                   continuous=True);
     # Compute 
     for i,gp in enumerate(gps):
@@ -518,7 +542,7 @@ if argopt.rts != 'FALSE':
                 keys = setup.detwin + setup.detmode + setup.insmode;
                 tmp = mrx.headers.assoc (gp[0], hdrs, 'BEAM%i_PROFILE'%i,
                                          keys=keys, which='best', required=1,
-                                         quality=0.01);
+                                         quality=argopt.profile_quality);
                 profiles.extend (tmp);
 
             # Associate KAPPA (closest BEAM_MAP in time, in this setup,
@@ -528,7 +552,7 @@ if argopt.rts != 'FALSE':
                 keys = setup.detwin + setup.detmode + setup.insmode;
                 if argopt.kappa_gain == 'FALSE': keys.remove ('GAIN');
                 tmp = mrx.headers.assoc (gp[0], hdrs, 'BEAM%i_MAP'%i,
-                                         keys=keys, quality=argopt.beam_quality,
+                                         keys=keys, quality=argopt.kappa_quality,
                                          which='closest', required=1);
                 kappas.extend (tmp);
                 
@@ -565,6 +589,7 @@ if argopt.bbias != 'FALSE':
 
     # Group all DATA_RTS
     keys = setup.detwin + setup.detmode + setup.insmode + setup.fringewin;
+    #keys = setup.target_names
     gps = mrx.headers.group (hdrs, 'DATA_RTS', keys=keys,
                              delta=1e20, Delta=1e20,
                              continuous=False);
@@ -585,17 +610,18 @@ if argopt.bbias != 'FALSE':
 
             # Associate BACKGROUND_RTS
             keys = setup.detwin + setup.detmode + setup.insmode;
+            #keys = setup.target_names
             bkg = mrx.headers.assoc (gp[0], hdrs, 'BACKGROUND_RTS',
                                      keys=keys, which='all', required=1);
 
-            # Associate BACKGROUND_RTS
+            # Associate FOREGROUND_RTS
             keys = setup.detwin + setup.detmode + setup.insmode;
+            #keys = setup.target_names
             fg = mrx.headers.assoc (gp[0], hdrs, 'FOREGROUND_RTS',
                                    keys=keys, which='all', required=1);
 
             # Making the computation
-            log.info ('FIXME: make the computation');
-            mrx.compute_bbias_coeff (gp, bkg, fg, output=output,
+            mrx.compute_bbias_coeff (gp, bkg, fg, argopt.ncoherent, output=output,
                                      filetype=filetype);
 
         except Exception as exc:
@@ -607,6 +633,40 @@ if argopt.bbias != 'FALSE':
     log.info ('Cleanup memory');
     del hdrs, gps;
 
+#
+# Compute the trends
+#
+
+if argopt.selection != 'FALSE':
+    overwrite = (argopt.selection == 'OVERWRITE');
+
+    # List inputs
+    hdrs = mrx.headers.loaddir (argopt.rts_dir);
+
+    # Group all DATA by night
+    gps = mrx.headers.group (hdrs, 'DATA_RTS', delta=1e9,
+                             Delta=1e9, keys=[], continuous=False);
+
+    # Only one output for the entire directory
+    output = mrx.files.output (argopt.oifits_dir, 'night', 'selection');
+    
+    if os.path.exists (output+'.fits') and overwrite is False:
+        log.info ('Product already exists');
+        
+    else:
+        try:
+            log.setFile (output+'.log');
+    
+            # Compute
+            mrx.compute_selection (gps[0], output=output, filetype='SELECTION',
+                                   interactive=False, ncoher=10, nscan=64);
+        
+        except Exception as exc:
+            log.error ('Cannot compute SELECTION: '+str(exc));
+            if argopt.debug == 'TRUE': raise;
+        finally:
+            log.closeFile ();
+            
             
 #
 # Compute OIFITS
@@ -621,14 +681,27 @@ if argopt.oifits != 'FALSE':
     # Group all DATA
     keys = setup.detwin + setup.detmode + setup.insmode + setup.fringewin;
     gps = mrx.headers.group (hdrs, 'DATA_RTS', delta=120,
-                             Delta=argopt.max_integration_time, keys=keys);
+                             Delta=argopt.max_integration_time_oifits, keys=keys);
+
+    # Include FOREGROUND and BACKGROUND
+    if argopt.reduce_foreground == 'TRUE':
+        gps += mrx.headers.group (hdrs, 'FOREGROUND_RTS', delta=120,
+                                  Delta=argopt.max_integration_time_oifits, keys=keys);
+        
+        gps += mrx.headers.group (hdrs, 'BACKGROUND_RTS', keys=keys,
+                                  delta=120, Delta=argopt.max_integration_time_oifits,
+                                  continuous=True);
 
     # Compute 
     for i,gp in enumerate(gps):
         try:
             log.info ('Compute OIFITS {0} over {1} '.format(i+1,len(gps)));
-            
-            filetype = 'OIFITS';
+
+            if 'DATA' in gp[0]['FILETYPE']:
+                filetype = 'OIFITS';
+            else:
+                filetype = gp[0]['FILETYPE'].replace('_RTS','_OIFITS');
+                
             output = mrx.files.output (argopt.oifits_dir, gp[0], filetype);
             
             if os.path.exists (output+'.fits') and overwrite is False:
@@ -639,8 +712,11 @@ if argopt.oifits != 'FALSE':
 
             # Associate BBIAS_COEFF
             keys = setup.detwin + setup.detmode + setup.insmode;
-            coeff = mrx.headers.assoc (gp[0], hdrs, 'BBIAS_COEFF',
-                                       keys=keys, which='best', required=0);
+            if argopt.bbias == 'FALSE':
+                coeff = [];
+            else:
+                coeff = mrx.headers.assoc (gp[0], hdrs, 'BBIAS_COEFF',
+                                        keys=keys, which='best', required=0);
             
             mrx.compute_vis (gp, coeff, output=output,
                              filetype=filetype,

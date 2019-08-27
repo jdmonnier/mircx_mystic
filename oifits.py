@@ -100,7 +100,7 @@ def create (hdr,lbd,y0=None):
              pyfits.Column (name='STA_INDEX', format='I', array=staindex), \
              pyfits.Column (name='DIAMETER', format='E', array=diameter, unit='m'), \
              pyfits.Column (name='STAXYZ', format='3D', dim='(3)', array=staxyz, unit='m'), \
-             pyfits.Column (name='FOV', format='D', array=fov, unit='arc sec'), \
+             pyfits.Column (name='FOV', format='D', array=fov, unit='arcsec'), \
              pyfits.Column (name='FOVTYPE', format='A6', array=fovtype)]);
     
     tbhdu.header['EXTNAME'] = 'OI_ARRAY';
@@ -313,7 +313,7 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
     visAmp = np.abs (vis[0,:,:]);
     visAmperr = np.nanstd (np.abs (vis), axis=0);
     visPhi = np.angle (vis[0,:,:]);
-    visPhierr = np.nanstd (np.angle (vis), axis=0);
+    visPhierr = np.nanstd (np.angle(vis * np.conj(vis[0,None,:,:])), axis=0);
     
     # Construct mjd[ns,ny,nb]
     mjd = mjd0[:,None,None] * np.ones (valid.shape);
@@ -454,6 +454,11 @@ def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
     target_id = np.ones (nt).astype(int);
     time = mjd * 0.0;
     staindex = setup.beam_index(hdr);
+
+    # Flux in adu/s
+    dit = hdr.get ('EXPOSURE', 0.0) * 1e-3;
+    flux    = flux / dit;
+    fluxerr = fluxerr / dit;
     
     # Flag data
     flag = ~np.isfinite (flux) + ~np.isfinite (fluxerr);
@@ -463,8 +468,8 @@ def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
              pyfits.Column (name='TIME', format='D', array=time, unit='s'), \
              pyfits.Column (name='MJD', format='D', array=mjd,unit='day'), \
              pyfits.Column (name='INT_TIME', format='D', array=int_time, unit='s'), \
-             pyfits.Column (name='FLUXDATA', format='%iD'%ny, array=flux.T, unit='adu'), \
-             pyfits.Column (name='FLUXERR', format='%iD'%ny, array=fluxerr.T, unit='adu'), \
+             pyfits.Column (name='FLUXDATA', format='%iD'%ny, array=flux.T, unit='adu/s'), \
+             pyfits.Column (name='FLUXERR', format='%iD'%ny, array=fluxerr.T, unit='adu/s'), \
              pyfits.Column (name='STA_INDEX', format='1I', array=staindex), \
              pyfits.Column (name='FLAG', format='%iL'%ny, array=flag.T)
              ]);
@@ -512,9 +517,12 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     boot[:,0] = range (ns);
 
     # Compute mean phase
-    t3phi = np.angle (np.nanmean (t_product[boot,:,:], axis=0));
-    t3phiErr = np.nanstd (t3phi, axis=0);
-    t3phi = t3phi[0,:,:];
+    t_boot = np.nanmean (t_product[boot,:,:], axis=0);
+    t3phi  = np.angle (t_boot[0,:,:]);
+
+    # Compute phase uncertainty by first centering
+    # the statistic on the mean phase
+    t3phiErr = np.nanstd (np.angle(t_boot * np.conj(t_boot[0,None,:,:])), axis=0);
 
     # Compute mean norm
     t3amp = np.abs (np.nanmean (t_product[boot,:,:], axis=0)) / np.nanmean (t_norm[boot,:,:], axis=0);
