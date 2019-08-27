@@ -273,17 +273,12 @@ for d in dateList:
                     cat = Vizier.query_object(obj, catalog='JSDC')[0] 
                     # ^-- IndexError raised if object not found
                     log.info('Find JSDC for '+obj+':')
-                    if len(list(cat['Name'])) > 1:
-                        ind = list(cat['Name']).index(obj.replace('_', ' '))
-                        # ^-- ValueError raised if object name in JSDC is not what we use
-                        log.info(' diam = %.3f mas'%cat['UDDH'][ind])
-                        log.info(' Hmag = %.3f mas'%cat['Hmag'][ind])
-                        objCat[obj] = cat[ind]
-                        del ind
-                    else:
-                        log.info(' diam = %.3f mas'%cat['UDDH'][0])
-                        log.info(' Hmag = %.3f mas'%cat['Hmag'][0])
-                        objCat[obj] = cat[0]
+                    ind = list(cat['Name']).index(obj.replace('_', ' '))
+                    # ^-- ValueError raised if object name in JSDC is not what we use
+                    log.info(' diam = %.3f mas'%cat['UDDH'][ind])
+                    log.info(' Hmag = %.3f mas'%cat['Hmag'][ind])
+                    objCat[obj] = cat[ind]
+                    del ind
                 except IndexError:
                     log.info('Cannot find JSDC for '+obj)
                     exclude.append(obj)
