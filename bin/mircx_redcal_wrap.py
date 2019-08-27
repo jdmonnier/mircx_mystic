@@ -1,7 +1,7 @@
 #! /usr/bin/env python                                                          
 # -*- coding: iso-8859-15 -*-
 
-import argparse, subprocess, os, glob, sys, socket, datetime, json
+import argparse, subprocess, os, glob, sys, socket, datetime
 from mircx_pipeline import lookup, summarise, mailfile, headers, log, files
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,6 +20,7 @@ try:
 except ModuleNotFoundError:
     from email.MIMEBase import MIMEBase
 from email import encoders
+import mirc_bot as slack
 
 class cd:
     """
@@ -561,28 +562,6 @@ for d in range(0, len(dates)):
 
 ################
 # Check the disk usage and post to Slack if exceeds 90%
-try:
-    # Note that the Slack key should *never* be exposed to GitLab since the pipeline is public.
-    with open("/home/spooler/secret/slack.json") as json_data: 
-        slack_data = json.load(json_data)
-        slack_key = slack_data["channels"]
-        slack_user = slack_data["users"]
-except:
-    slack_key = {}
-    slack_user = {}
-
-def user(name):
-    if name in slack_user:
-        return "<@" + slack_user[name] + ">"
-    else:
-        return "@" + name
-
-def post(channel, msg):
-    if channel in slack_key:
-        cmd = '''curl -X POST -H 'Content-type: application/json' --data '{"text":"''' + msg + '''"}' https://hooks.slack.com/services/''' + slack_key[channel]
-        os.system(cmd)
-    else:
-        print("Warning, slack key to channel #" + channel + " not found.  Message that should have been posted:\n" + msg)
 
 if socket.gethostname() == 'mircx':
     for i in range(1,7):
@@ -592,4 +571,4 @@ if socket.gethostname() == 'mircx':
         if used > 0.9:
             percentage = "{:.1f}".format(100*used)
             warn = "*Warning:* `" + drive + "` is " + percentage + "%"+ " full!"
-            post("data_pipeline", warn)
+            slack.post("data_pipeline", warn)
