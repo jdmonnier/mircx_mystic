@@ -435,7 +435,7 @@ def texReportPlts(oiDir,outFiles,d):
                 outtex.write('    \\textbf{Results from mircx\\_report.py for '+d)
                 outtex.write(' (cont.) }\\\\ \n')
                 outtex.write('    \\centering\n')
-                outtex.write('    \\includegraphics[angle=90,origin=c,trim=0.0cm 0.2cm 0.0cm 0.2cm, ')
+                outtex.write('    \\includegraphics[trim=0.0cm 0.2cm 0.0cm 0.2cm, ')
                 outtex.write('clip=true, width=0.8\\textwidth]{'+x+'}')
                 outtex.write(' \n')
                 log.info('Added transmission plot to summary report PDF')
