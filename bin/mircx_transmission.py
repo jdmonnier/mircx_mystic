@@ -201,7 +201,7 @@ telArea = np.pi * 0.5*0.5
 # ----------------------------
 # Set up the plot window:
 # ----------------------------
-fig,axes = plt.subplots(7,1,sharex=True,figsize=(16,9))
+fig,axes = plt.subplots(7,1,sharex=True,figsize=(9,16))
 plot.compact(axes)
 
 # ----------------------------
