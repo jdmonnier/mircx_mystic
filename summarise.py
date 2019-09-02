@@ -214,11 +214,6 @@ def plotV2CP(oiDir,setups,viscp):
                     except IndexError:
                         log.info('End of setups list reached')
                         return
-            #if file == fitsfiles[-1]:
-            #    log.info('Plot corresponding cal data (if required)')
-            #    calibPlots(calibfiles, viscp, saveAsStr, setups[p])
-            #    calibfiles = []
-        del teststr
         log.info('Closed '+file)
     try:
         axes.set_xlim(0.,225.)
@@ -239,6 +234,7 @@ def plotV2CP(oiDir,setups,viscp):
         plt.close("all")
         log.info('Closed plot windows (try).')
         log.info('Plot corresponding cal data (if required)')
+        log.info(calibfiles, viscp, saveAsStr, teststr)
         calibPlots(calibfiles, viscp, saveAsStr, teststr)
     except:
         return
