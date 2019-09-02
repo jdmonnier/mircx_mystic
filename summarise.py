@@ -101,12 +101,12 @@ def calibPlots(calibfiles,viscp,saveAsStr,setup):
                 fig.suptitle(', '.join(str(s) for s in setup))
                 with pyfits.open(f) as input:
                     addV2CP(input, viscp, fig, axes)
-                    log.info('Added cal data from '+f+' to plot.')
+                    log.info('Added cal data from '+f.split('/')[-1]+' to plot.')
                 first = False
             else:
                 with pyfits.open(f) as input:
                     addV2CP(input, viscp, fig, axes)
-                    log.info('Added cal data from '+f+' to plot.')
+                    log.info('Added cal data from '+f.split('/')[-1]+' to plot.')
     if first == False:
         axes.set_xlim(0.,225.)
         if viscp == 'vis':
@@ -161,14 +161,14 @@ def plotV2CP(oiDir,setups,viscp):
                 log.info('Drawn plotting window for this setup.')
                 saveAsStr = str(input[0].header['HIERARCH MIRC PRO RTS']).split('_')[0]
                 addV2CP(input, viscp, fig, axes)
-                log.info('Added red data from '+file+' to plot.')
+                log.info('Added red data from '+file.split('/')[-1]+' to plot.')
                 calibfiles.append(file)
                 first = False
             elif teststr == setups[p] and first != True:
                 # option ii) file matches current setup but is not first file to match it
                 log.info(file.split('/')[-1]+' also matches setup '+', '.join(str(s) for s in teststr))
                 addV2CP(input, viscp, fig, axes)
-                log.info('Added red data from '+file+' to plot.')
+                log.info('Added red data from '+file.split('/')[-1]+' to plot.')
                 calibfiles.append(file)
             elif teststr != setups[p]:
                 # option iii) file doesn't match current setup at all:
@@ -219,29 +219,28 @@ def plotV2CP(oiDir,setups,viscp):
     print(viscp)
     print(saveAsStr)
     print(teststr)
-    try:
-        axes.set_xlim(0.,225.)
-        if viscp == 'vis':
-            axes.set_ylim(-0.1,1.2)
-            axes.set_xlabel('sp. freq. (M$\lambda$)')
-            axes.set_ylabel('vis2')
-            plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
-            plt.close()
-            log.info('Written '+oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
-        elif viscp == 'cp':
-            axes.set_xlabel('max sp. freq. (M$\lambda$)');
-            axes.set_ylabel('$\phi_{CP}$')
-            axes.set_ylim(-200,200)
-            plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-            plt.close()
-            log.info('Written '+oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-        plt.close("all")
-        log.info('Closed plot windows (try).')
-        log.info('Plot corresponding cal data (if required)')
-        log.info(calibfiles, viscp, saveAsStr, teststr)
-        calibPlots(calibfiles, viscp, saveAsStr, teststr)
-    except:
-        return
+    #try:
+    axes.set_xlim(0.,225.)
+    if viscp == 'vis':
+        axes.set_ylim(-0.1,1.2)
+        axes.set_xlabel('sp. freq. (M$\lambda$)')
+        axes.set_ylabel('vis2')
+        plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
+        plt.close()
+        log.info('Written '+oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
+    elif viscp == 'cp':
+        axes.set_xlabel('max sp. freq. (M$\lambda$)');
+        axes.set_ylabel('$\phi_{CP}$')
+        axes.set_ylim(-200,200)
+        plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+        plt.close()
+        log.info('Written '+oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+    plt.close("all")
+    log.info('Closed plot windows (try).')
+    log.info('Plot corresponding cal data (if required)')
+    calibPlots(calibfiles, viscp, saveAsStr, teststr)
+    #except:
+    #    return
     return
 
 ######
