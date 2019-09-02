@@ -214,10 +214,10 @@ def plotV2CP(oiDir,setups,viscp):
                     except IndexError:
                         log.info('End of setups list reached')
                         return
-            if file == fitsfiles[-1]:
-                log.info('Plot corresponding cal data (if required)')
-                calibPlots(calibfiles, viscp, saveAsStr, setups[p])
-                calibfiles = []
+            #if file == fitsfiles[-1]:
+            #    log.info('Plot corresponding cal data (if required)')
+            #    calibPlots(calibfiles, viscp, saveAsStr, setups[p])
+            #    calibfiles = []
         del teststr
         log.info('Closed '+file)
     try:
@@ -238,6 +238,7 @@ def plotV2CP(oiDir,setups,viscp):
             log.info('    - Write '+oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
         plt.close("all")
         log.info('Closed plot windows (try).')
+        log.info('Plot corresponding cal data (if required)')
         calibPlots(calibfiles, viscp, saveAsStr, teststr)
     except:
         return
