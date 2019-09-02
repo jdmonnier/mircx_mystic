@@ -215,10 +215,6 @@ def plotV2CP(oiDir,setups,viscp):
                         log.info('End of setups list reached')
                         return
         log.info('Closed '+file)
-    print(calibfiles)
-    print(viscp)
-    print(saveAsStr)
-    print(teststr)
     #try:
     axes.set_xlim(0.,225.)
     if viscp == 'vis':
@@ -236,7 +232,7 @@ def plotV2CP(oiDir,setups,viscp):
         plt.close()
         log.info('Written '+oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
     plt.close("all")
-    log.info('Closed plot windows (try).')
+    log.info('Closed plot windows (red).')
     log.info('Plot corresponding cal data (if required)')
     calibPlots(calibfiles, viscp, saveAsStr, teststr)
     #except:
