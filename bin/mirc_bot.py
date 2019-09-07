@@ -5,11 +5,14 @@ import json, os, re
 try:
     with open("/home/spooler/secret/slack.json") as json_data:
         slack_data = json.load(json_data)
-        slack_key = slack_data["channels"]
+        slack_key = slack_data["channel-id"]
         slack_user = slack_data["users"]
+        slack_oauth = slack_data["OAUTH"]["mirc-bot"]
 except:
+    print("Slack integration not found.")
     slack_key = {}
     slack_user = {}
+    slack_oauth = ""
 
 def user(name):
     if name in ["channel", "everyone"]:
@@ -26,18 +29,17 @@ def parse(msg):
         newmsg = newmsg.replace(usr, user(usr.lower()[1:]))
     return newmsg
 
-def post(channel, msg, notify=None):
-    alert = ""
-    if isinstance is not None:
-        if isinstance(notify, (list, tuple)):
-            for name in notify:
-                alert = alert + user(name) + ", "
-            alert = alert[:-2] + ":\n"
-        elif isinstance(notify, str):
-            alert = user(notify) + ":\n"
-    msg = alert + parse(msg)
+def post(channel, message, attach=None):
+    msg = parse(message)
     if channel in slack_key:
-        cmd = '''curl -X POST -H 'Content-type: application/json' --data '{"text":"''' + msg + '''"}' https://hooks.slack.com/services/''' + slack_key[channel]
-        os.system(cmd)
+        if attach is not None:
+            if os.path.isfile(attach):
+                cmd = "curl -F file=@" + attach + ' -F "initial_comment=' + msg + '''" -F channels=''' + slack_key[channel] + ''' -H "Authorization: Bearer ''' + slack_oauth + '''" https://slack.com/api/files.upload'''
+                os.system(cmd)
+            else:
+                print("Attached file does not exist.  No message posted to Slack.")
+        else:
+            cmd = '''curl -F text="''' + msg + '''" -F channel=''' + slack_key[channel] + ''' -H "Authorization: Bearer ''' + slack_oauth + '''" https://slack.com/api/chat.postMessage'''
+            os.system(cmd)
     else:
-        print("Warning, slack key to channel #" + channel + " not found.  Message that should have been posted:\n" + msg)
+        print("Warning, slack key to channel #" + channel + " not found.)
