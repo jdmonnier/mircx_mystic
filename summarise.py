@@ -367,11 +367,11 @@ def texSumTables(oiDir,targs,calInf,scical,redF,rawhdrs,outFiles):
             outtex.write('\\begin{longtable}{p{.04\\textwidth} | p{.08\\textwidth} | ')
             outtex.write('p{.06\\textwidth} | p{.25\\textwidth} | p{.05\\textwidth} | ')
             outtex.write('p{.07\\textwidth} | p{.04\\textwidth} | p{.07\\textwidth} | ')
-            outtex.write('p{.08\\textwidth}} \n    \\hline\n')
+            outtex.write('p{.07\\textwidth}} | p{.07\\textwidth}} \n    \\hline\n')
             outtex.write('    & Start & File & Target & Gain & Ncoher & Nps & Frames & ')
-            outtex.write('Filter \\\\ \n')
-            outtex.write('    & (UTC) & num. & & & & & $/$reset & \\\\ \n    \\hline\n')
-            keys = ['DATE','HIERARCH MIRC PRO RTS','OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1']
+            outtex.write('Filter & Config \\\\ \n')
+            outtex.write('    & (UTC) & num. & & & & & $/$reset & & \\\\ \n    \\hline\n')
+            keys = ['DATE','HIERARCH MIRC PRO RTS','OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','CONF_NA']
             try:
                 tabRows = [[str(h.get(k,'--')) for k in keys] for h in redhdrs]
                 for row in tabRows:
