@@ -27,19 +27,21 @@ def parse(msg):
     users = re.findall("@[a-zA-Z0-9\-]+", msg)
     for usr in users:
         newmsg = newmsg.replace(usr, user(usr.lower()[1:]))
+    newmsg = newmsg.replace("`", '''"'`'"''')
     return newmsg
 
 def post(channel, message, attach=None):
     msg = parse(message)
-    if channel in slack_key:
-        if attach is not None:
-            if os.path.isfile(attach):
-                cmd = "curl -F file=@" + attach + ' -F "initial_comment=' + msg + '''" -F channels=''' + slack_key[channel] + ''' -H "Authorization: Bearer ''' + slack_oauth + '''" https://slack.com/api/files.upload'''
-                os.system(cmd)
-            else:
-                print("Attached file does not exist.  No message posted to Slack.")
+    if attach is not None:
+        if os.path.isfile(attach):
+            cmd = "curl -F file=@" + attach + ' -F "initial_comment=' + msg + '''" -F channels=''' + slack_key[channel] + ''' -H "Authorization: Bearer ''' + slack_oauth + '''" https://slack.com/api/files.upload'''
+            os.system(cmd)
         else:
+            print("Bad file")
+    else:
+        if channel in slack_key:
             cmd = '''curl -F text="''' + msg + '''" -F channel=''' + slack_key[channel] + ''' -H "Authorization: Bearer ''' + slack_oauth + '''" https://slack.com/api/chat.postMessage'''
             os.system(cmd)
-    else:
-        print("Warning, slack key to channel #" + channel + " not found.)
+        else:
+            print("Warning, slack key to channel #" + channel + " not found.  Message that should have been posted:\n" + msg)
+
