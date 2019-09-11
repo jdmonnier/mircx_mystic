@@ -151,7 +151,7 @@ def plotV2CP(oiDir,setups,viscp):
     for file in fitsfiles:
         # keywords from file headers read in
         with pyfits.open(file) as input:
-            keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1']
+            keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','FILTER2','CONF_NA']
             teststr = [str(input[0].header.get(k,'--')) for k in keys]
             if teststr == setups[p] and first == True:
                 # option i) file matches current setup and is first file to match it
@@ -364,14 +364,16 @@ def texSumTables(oiDir,targs,calInf,scical,redF,rawhdrs,outFiles):
             outtex.write('    \\hline\n\\end{longtable}\n')
             outtex.write('\n')
             outtex.write('\\subsection*{Reduced data summary}\n')
-            outtex.write('\\begin{longtable}{p{.04\\textwidth} | p{.08\\textwidth} | ')
-            outtex.write('p{.06\\textwidth} | p{.25\\textwidth} | p{.05\\textwidth} | ')
-            outtex.write('p{.07\\textwidth} | p{.04\\textwidth} | p{.07\\textwidth} | ')
-            outtex.write('p{.07\\textwidth} | p{.07\\textwidth}} \n    \\hline\n')
-            outtex.write('    & Start & File & Target & Gain & Ncoher & Nps & Frames & ')
-            outtex.write('Filter & Config \\\\ \n')
-            outtex.write('    & (UTC) & num. & & & & & $/$reset & & \\\\ \n    \\hline\n')
-            keys = ['DATE','HIERARCH MIRC PRO RTS','OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','CONF_NA']
+            outtex.write('{\\fontsize{7pt}{7pt}\n \\selectfont\n')
+            outtex.write(' \\begin{longtable}{p{.03\\textwidth} | p{.06\\textwidth} | ')
+            outtex.write('p{.04\\textwidth} | p{.20\\textwidth} | p{.03\\textwidth} | ')
+            outtex.write('p{.03\\textwidth} | p{.03\\textwidth} | p{.03\\textwidth} | ')
+            outtex.write('p{.06\\textwidth} | p{.06\\textwidth} | p{.10\\textwidth}} \n')
+            outtex.write('    \\hline\n')
+            outtex.write('    & Start & File & Target & Gain & Nco & Nps & Frm & ')
+            outtex.write('Filter1 & Filter2 & Config \\\\ \n')
+            outtex.write('    & (UTC) & num. & & & & & $/$rst & & & \\\\ \n    \\hline\n')
+            keys = ['DATE','HIERARCH MIRC PRO RTS','OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','FILTER2','CONF_NA']
             try:
                 tabRows = [[str(h.get(k,'--')) for k in keys] for h in redhdrs]
                 for row in tabRows:
@@ -391,7 +393,7 @@ def texSumTables(oiDir,targs,calInf,scical,redF,rawhdrs,outFiles):
                 log.info('Cleanup memory')
             except:
                 skipd = 11
-            outtex.write('    \\hline\n\\end{longtable}\n\n')
+            outtex.write('    \\hline\n\\end{longtable}\n}\n')
     if redF == False:
         del redhdrs
     return
@@ -510,14 +512,14 @@ def texSumPlots(oiDir,redF,calF,outFiles):
     if redF == True:
         # catches instances where the reduction failed so there are no outputs to display
         for outFile in outFiles:
-            with open(outFile, 'a') as outtex:                    
+            with open(outFile, 'a') as outtex:
                 outtex.write('\\end{document}\n')
         return
     # sort the reduced files by camera settings and target, ensuring that FG and BG files
     # are ignored:
     redhdrs = headers.load(sorted(glob.glob(oiDir+'/*_oifits.fits')))
     log.info('Retrieve targets and camera settings from successfully reduced files')
-    keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1']
+    keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','FILTER2','CONF_NA']
     setupL = [[str(h.get(k,'--')) for k in keys] for h in redhdrs]
     del redhdrs
     setups = []
