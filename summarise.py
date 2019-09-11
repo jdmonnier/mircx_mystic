@@ -314,7 +314,7 @@ def texSumTitle(oiDir,hdrs,redF,calF):
             outtex.write('}\n')
             outtex.write('\\subsubsection*{Program ID(s): ')
             try:
-               progID = list(set([h['PROGRAM'] for h in hdrs]))
+                progID = list(set([h['PROGRAM'] for h in hdrs]))
             except:
                 progID = ['UNKNOWN']
             try:
@@ -382,7 +382,7 @@ def texSumTables(oiDir,targs,calInf,scical,redF,rawhdrs,outFiles):
                 skipd = 17
                 for r in range(0, len(tabRows)-1):
                     if r == 0:
-                        outtex.write('        '+str(r)+' & '+' & '.join(str(s).replace('_',' ') for s in tabRows[r])+'\\\\ \n$
+                        outtex.write('        '+str(r)+' & '+' & '.join(str(s).replace('_',' ') for s in tabRows[r])+'\\\\ \n')
                     else:
                         nextrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r+1])
                         thisrow = ' & '.join(str(s).replace('_',' ') for s in tabRows[r])
@@ -410,7 +410,7 @@ def texReportPlts(oiDir,outFiles,d):
     transPlots   = glob.glob('/'.join(oiDir.split('/')[:-3])+'/*transmission_*'+d+'.png')
     # NB: transmission plots will not appear if 'd' is not the most recent night that has been reduced
     for outFile in outFiles:
-       with open(outFile, 'a') as outtex:
+        with open(outFile, 'a') as outtex:
             if len(reportFiles) == 0 and len(transPlots) == 0:
                 outtex.write('\\subsubsection*{No outputs from mircx\\_report.py available')
                 outtex.write(' to show} \n')
@@ -426,7 +426,7 @@ def texReportPlts(oiDir,outFiles,d):
                     outtex.write(' (cont.) }\\\\ \n')
                 outtex.write('    \\centering\n')
                 # r is the top plot, r+1 is the bottom plot
-               outtex.write('    \\includegraphics[trim=0.0cm 0.8cm 0.0cm 0.2cm, ')
+                outtex.write('    \\includegraphics[trim=0.0cm 0.8cm 0.0cm 0.2cm, ')
                 outtex.write('clip=true, width=0.8\\textwidth]{'+reportFiles[r]+'}\n')
                 log.info('Added '+reportFiles[r]+' to summary report PDF')
                 try:
@@ -474,7 +474,7 @@ def texSumUV(oiDir,calF,outFiles):
                 outtex.write('\\newpage\n\n\\begin{figure}[h]\n    \\raggedright\n')
                 outtex.write('    \\textbf{Full night $uv$-coverage for SCI target(s)}')
                 outtex.write('\\\\ \n    \\centering\n')
-               for uvp in uvPlt[0:12]:
+                for uvp in uvPlt[0:12]:
                     outtex.write('    \\includegraphics[trim=2.0cm 0.0cm 2.0cm 0.0cm, ')
                     outtex.write('clip=true, width=0.32\\textwidth]{'+uvp+'}\n')
                 if len(uvPlt) > 12:
@@ -535,7 +535,7 @@ def texSumPlots(oiDir,redF,calF,outFiles):
     # Read in mircx numbers of vis2 plots created in reduced and calibrated directories:
     redPlts = sorted(glob.glob(oiDir+'/*reduced_vis2.png'))
     redNum = [int(i.split('/')[-1].split('_')[0].split('x')[1]) for i in redPlts]
-    RTS_p  = sorted(glob.glob('/'.join(oiDir[:-2])+'/rts/*datarts_psd.png')) # e.g. mircx00000_datarts_psd.png or mircx00000_$
+    RTS_p  = sorted(glob.glob('/'.join(oiDir[:-2])+'/rts/*datarts_psd.png')) # e.g. mircx00000_datarts_psd.png or mircx00000_foregroundrts_psd.png or mircx00000_backgroundrts_psd.png
     for num in range(0, len(redNum)):
         # ensure correct number of leading zeros are added to redNum for file name:
         strnum = '0'*(5-len(str(redNum[num])))+str(redNum[num])
@@ -634,7 +634,7 @@ def texSumPlots(oiDir,redF,calF,outFiles):
                          outtex.write('}\n')
          outtex.write('\\end{figure}\n\n')
     for outFile in outFiles:
-        with open(outFile, 'a') as outtex:
+        with open(outFile, 'a') as outtex:                    
             outtex.write('\\end{document}\n')
     return
 
