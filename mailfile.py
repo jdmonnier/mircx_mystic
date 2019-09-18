@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, socket
 import smtplib
 try:
     from email.mime.multipart import MIMEMultipart
@@ -34,7 +34,7 @@ def send_email(msg, fromaddr, toaddr):
 
 def sendSummary(toaddr, fromaddr,outFile):
     """
-    Emails the summary report PDF file for the reduced and calibrated 
+    Emails the summary report PDF file for the reduced and calibrated
     night of observations to 'addr'
     """
     msg = MIMEMultipart()
@@ -43,7 +43,20 @@ def sendSummary(toaddr, fromaddr,outFile):
     
     filename = outFile.split('/')[-1]
     msg['Subject'] = 'MIRC-X redcal summary '+filename
-    body = 'MIRC-X redcal summary '+filename+'\n'
+    if socket.gethostname() == 'mircx':
+        # this is where we need to change to include text from archive log
+        d = filename.split('_')[1] # get date from outfile name
+        d_short = d[:7] # get YYYYMmm style date from d
+        bod = []
+        if os.path.isfile('/data3/STAGING/'+d_short+'/'+d+'/mircx_archivedata.log'):
+            with open('/data3/STAGING/'+d_short+'/'+d+'/mircx_archivedata.log') as readin:
+                for line in readin:
+                    bod.append(line.strip())
+        else:
+            bod.append('MIRC-X redcal summary '+filename+'\n')
+        body = '\n'.join(bod)
+    else:
+        body = 'MIRC-X redcal summary '+filename+'\n'
     msg.attach(MIMEText(body, 'plain'))
     attachment = open(outFile, 'rb')
     part = MIMEBase('application', 'octet-stream')
