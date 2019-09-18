@@ -22,6 +22,8 @@ def plotUV(direc):
         objs.remove('NOSTAR')
     if '' in objs:
         objs.remove('')
+    if 'STS' in objs:
+        objs.remove('STS')
     for t in range(0, len(objs)):
         if not os.path.exists(direc+'/'+objs[t]+'_uv_coverage.png'):
             for f in range(0, len(fitsfiles)):

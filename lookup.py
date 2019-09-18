@@ -43,7 +43,7 @@ def targList(d,rawBase,redDir):
         objs = []
         for h in hdrs:
             try:
-                if h['OBJECT'] != '' and h['OBJECT'] != 'NOSTAR':
+                if h['OBJECT'] != '' and h['OBJECT'] != 'NOSTAR' and h['OBJECT'] != 'STS':
                     objs.append(h['OBJECT'])
             except KeyError:
                 log.warning('Not all headers contain OBJECT key word.')

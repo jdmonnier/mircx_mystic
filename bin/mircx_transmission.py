@@ -264,10 +264,10 @@ for d in dateList:
             log.info('Calculate transmission information')
             # Read in the data:
             objList = list(set([h['OBJECT'] for h in hdrs]))
-            objList[:] = [x for x in objList if x not in ['NOSTAR', '']]
+            objList[:] = [x for x in objList if x not in ['NOSTAR', '', 'STS']]
             # ^--- removes NOSTAR and blank object name instances from object list
             objCat = dict()
-            exclude = ['NOSTAR', '']
+            exclude = ['NOSTAR', '', 'STS']
             for obj in objList:
                 try:
                     cat = Vizier.query_object(obj, catalog='JSDC')[0] 
@@ -377,7 +377,7 @@ for d in dateList:
                 count += 1
             
                 del col, mkr, transm, objname
-            elif objname != 'NOSTAR' and objname != '':
+            elif objname != 'NOSTAR' and objname != '' and objname != 'STS':
                 # plot the seeing data:
                 axes.flatten()[0].plot(count,headers.getval([h],'R0')[0],marker='+',color='k',ls='None',ms=5)
                 # don't bother plotting the transmission data cos the values are just '-1'
