@@ -32,7 +32,7 @@ def send_email(msg, fromaddr, toaddr):
     server.sendmail(fromaddr, toaddr, msg.as_string())
     server.quit()
 
-def sendSummary(toaddr, fromaddr,outFile):
+def sendSummary(toaddr,fromaddr,outFile,inDir):
     """
     Emails the summary report PDF file for the reduced and calibrated
     night of observations to 'addr'
@@ -45,14 +45,11 @@ def sendSummary(toaddr, fromaddr,outFile):
     msg['Subject'] = 'MIRC-X redcal summary '+filename
     if socket.gethostname() == 'mircx':
         # this is where we need to change to include text from archive log
-        d = filename.split('_')[1] # get date from outfile name
-        d_short = d[:7] # get YYYYMmm style date from d
         bod = []
-        if os.path.isfile('/data3/STAGING/'+d_short+'/'+d+'/mircx_archivedata.log'):
-            with open('/data3/STAGING/'+d_short+'/'+d+'/mircx_archivedata.log') as readin:
+        if os.path.isfile(inDir+'/mircx_archivedata.summary.log'):
+            with open(inDir+'/mircx_archivedata.log') as readin:
                 for line in readin:
-                    if 'ERROR:' in line:
-                        bod.append(line.strip())
+                    bod.append(line.strip())
         else:
             bod.append('MIRC-X redcal summary '+filename+'\n')
         body = '\n'.join(bod)
