@@ -442,7 +442,7 @@ for d in range(0, len(dates)):
         
         # 9. Email summary file to argopt.email
         if '@' in argopt.email:
-            mailfile.sendSummary(argopt.email,argopt.sender,outfiles[1].replace('.tex','.pdf'),rawBase+'/'+dates[d])
+            mailfile.sendSummary(argopt.email,argopt.sender,outfiles[1].replace('.tex','.pdf'),rawDir)
     
     else:
         log.info('Exploring impact of ncoherent on SNR and T3PHI')
