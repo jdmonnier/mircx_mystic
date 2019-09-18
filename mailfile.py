@@ -51,7 +51,8 @@ def sendSummary(toaddr, fromaddr,outFile):
         if os.path.isfile('/data3/STAGING/'+d_short+'/'+d+'/mircx_archivedata.log'):
             with open('/data3/STAGING/'+d_short+'/'+d+'/mircx_archivedata.log') as readin:
                 for line in readin:
-                    bod.append(line.strip())
+                    if 'ERROR:' in line:
+                        bod.append(line.strip())
         else:
             bod.append('MIRC-X redcal summary '+filename+'\n')
         body = '\n'.join(bod)
