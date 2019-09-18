@@ -251,6 +251,11 @@ def load (files, hlog=[]):
             # Add the loading time
             hdr['MJD-LOAD'] =  (Time.now().mjd, '[mjd] Last loading time (UTC)');
 
+            # Check if STS data
+            if hdr.get ('HIERARCH MIRC STS_IR_FOLD','OUT') == 'IN':
+                log.info ('Set OBJECT = STS because STS_IR_FOLD is IN');
+                hdr['OBJECT'] = 'STS';
+
             # Append
             hdrs.append (hdr);
             
