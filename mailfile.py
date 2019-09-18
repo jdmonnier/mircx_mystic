@@ -47,7 +47,7 @@ def sendSummary(toaddr,fromaddr,outFile,inDir):
         # this is where we need to change to include text from archive log
         bod = []
         if os.path.isfile(inDir+'/mircx_archivedata.summary.log'):
-            with open(inDir+'/mircx_archivedata.log') as readin:
+            with open(inDir+'/mircx_archivedata.summary.log') as readin:
                 for line in readin:
                     bod.append(line.strip())
         else:
