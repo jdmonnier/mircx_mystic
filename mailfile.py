@@ -51,6 +51,7 @@ def sendSummary(toaddr,fromaddr,outFile,inDir):
                 for line in readin:
                     bod.append(line.strip())
         else:
+            bod.append('File '+inDir+'/mircx_archivedata.summary.log not found')
             bod.append('MIRC-X redcal summary '+filename+'\n')
         body = '\n'.join(bod)
     else:
