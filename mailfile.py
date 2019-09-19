@@ -1,3 +1,4 @@
+import subprocess
 import sys, os, socket
 import smtplib
 try:
@@ -47,6 +48,8 @@ def sendSummary(toaddr,fromaddr,outFile,inDir):
         # this is where we need to change to include text from archive log
         bod = []
         if os.path.isfile(inDir+'/mircx_archivedata.summary.log'):
+            subprocess.call('cat '+inDir+'/mircx_archivedata.log | grep "ERROR" | grep -v "*** ERROR" | sed -e "y#:#_#" >> '+inDir+'/mircx_archivedata.summary.log',shell=True)
+            print('cat '+inDir+'/mircx_archivedata.log | grep "ERROR" | grep -v "*** ERROR" | sed -e "y#:#_#" >> '+inDir+'/mircx_archivedata.summary.log')
             with open(inDir+'/mircx_archivedata.summary.log') as readin:
                 for line in readin:
                     bod.append(line.strip())
