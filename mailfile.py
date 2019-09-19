@@ -52,7 +52,8 @@ def sendSummary(toaddr,fromaddr,outFile,inDir):
             print('cat '+inDir+'/mircx_archivedata.log | grep "ERROR" | grep -v "*** ERROR" | sed -e "y#:#_#" >> '+inDir+'/mircx_archivedata.summary.log')
             with open(inDir+'/mircx_archivedata.summary.log') as readin:
                 for line in readin:
-                    bod.append(line.strip())
+                    if line.strip() not in bod:
+                        bod.append(line.strip())
         else:
             bod.append('File '+inDir+'/mircx_archivedata.summary.log not found')
             bod.append('MIRC-X redcal summary '+filename+'\n')
