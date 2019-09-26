@@ -396,7 +396,7 @@ for d in dateList:
         del hdrs, oiDirs
         dNames.append(d)
     except NameError:
-        log.error('No calibrated data found for '+d+'...skipped date')
+        log.info('No calibrated data found for '+d+'...skipped date')
 
 # -------------------------
 # edit the tick parameters and locations:
