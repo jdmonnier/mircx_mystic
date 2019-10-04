@@ -34,7 +34,7 @@ for dir in ["pol1", "pol2"]:
 def polstate(file, state):
     f = fits.open(file)
     f[0].header["POLSTATE"] = state
-    f[0].header["CONF_NA"] == "H_PRISM50" # TEMPORARY FIX
+    f[0].header["CONF_NA"] = "H_PRISM50" # TEMPORARY FIX
     rows = f[0].header["CROPROWS"].split(",")
     if len(rows) != 2:
         raise ValueError("There must be exactly 2 detector regions. Is this a polarization data file?")
