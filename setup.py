@@ -501,6 +501,7 @@ def kappa (hdr):
     '''
     Return the expected value for the ration fringe_flux / xchan_flux
     '''
-    if (hdr['MJD-OBS'] < 58525.00): return 3.0;
-    return 5.5;
+    if (hdr['MJD-OBS'] < 58362.00): return 40.0; # Old MIRC optics
+    if (hdr['MJD-OBS'] < 58525.00): return 3.0;  # Thorlabs BS
+    return 5.5;  # Polar optimised BS
     
