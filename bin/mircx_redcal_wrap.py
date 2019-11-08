@@ -563,12 +563,40 @@ for d in range(0, len(dates)):
 ################
 # Check the disk usage and post to Slack if exceeds 90%
 
+def fmtbytes(nbytes):
+    if nbytes > 1e14:
+        out = str(int(nbytes/1e12)) + "T"
+    elif nbytes > 1e13:
+        out = " " + str(int(nbytes/1e12)) + "T"
+    elif nbytes > 1e12:
+        out = str(round(nbytes/1e12, 1)) + "T"
+    elif nbytes > 1e11:
+        out = str(int(nbytes/1e9)) + "G"
+    elif nbytes > 1e10:
+        out = " " + str(int(nbytes/1e9)) + "G"
+    elif nbytes > 1e9:
+        out = str(round(nbytes/1e9, 1)) + "G"
+    elif nbytes > 1e8:
+        out = str(int(nbytes/1e6)) + "M"
+    elif nbytes > 1e7:
+        out = " " + str(int(nbytes/1e6)) + "M"
+    elif nbytes > 1e6:
+        out = str(round(nbytes/1e6, 1)) + "M"
+    elif nbytes > 1e5:
+        out = str(int(nbytes/1e3)) + "k"
+    elif nbytes > 1e4:
+        out = " " + str(int(nbytes/1e3)) + "k"
+    else:
+        out = str(round(nbytes/1e3, 1)) + "k"
+    return out
+
 if socket.gethostname() == 'mircx':
     for i in range(1,7):
         drive = "/data"+str(i)
         statvfs = os.statvfs(drive)
         used = 1 - (statvfs.f_bavail/statvfs.f_blocks)
+        free = fmtbytes(statvfs.f_bavail * statvfs.f_frsize)
         if used > 0.9:
             percentage = "{:.1f}".format(100*used)
-            warn = "*Warning:* `" + drive + "` is " + percentage + "%"+ " full!"
+            warn = "*Warning:* `" + drive + "` is " + percentage + "%"+ " full! (" + free + " free space remaining)"
             slack.post("data_pipeline", warn)

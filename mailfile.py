@@ -1,10 +1,14 @@
 import subprocess
 import sys, os, socket
 import smtplib
+from . import log
+
 try:
     from email.mime.multipart import MIMEMultipart
+    log.info('Loaded python3 MIMEMultipart')
 except ModuleNotFoundError:
     from email.MIMEMultipart import MIMEMultipart
+    log.info('Loaded python MIMEMultipart')
 try:
     from email.mime.text import MIMEText
 except ModuleNotFoundError:
@@ -15,8 +19,6 @@ except ModuleNotFoundError:
     from email.MIMEBase import MIMEBase
 
 from email import encoders
-
-from . import log
 
 def send_email(msg, fromaddr, toaddr): 
     server = smtplib.SMTP('smtp.gmail.com', 587)

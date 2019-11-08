@@ -124,6 +124,7 @@ for d in dL:
     except NameError:
         # first instance:
         dL1 = []
+        dL1.append(datetime.strptime(d,'%Y%b%d'))
     except ValueError:
         # ensure other things in the directory are skipped over but keep a note of what they are
         log.info('Skipped file in directory: '+d)
