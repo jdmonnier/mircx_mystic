@@ -459,7 +459,14 @@ def compute_base_uv (hdr,mjd=None,baseid='base'):
     coord_icrs = sky_coord (hdr);
 
     # HA and DEC of object in ITRS
-    coord_itrs = coord_icrs.transform_to (ITRS(obstime=obstime));
+    try:
+        astropy.utils.iers.conf.iers_auto_url = 'ftp://ftp.iers.org/products/eop/rapid/standard/finals2000A.data';
+        coord_itrs = coord_icrs.transform_to (ITRS(obstime=obstime));
+    except:
+        log.warning ('Fail to run icrs.transform_to ITRS, so try with another server');
+        astropy.utils.iers.conf.iers_auto_url = 'http://maia.usno.navy.mil/ser7/finals2000A.all';
+        coord_itrs = coord_icrs.transform_to (ITRS(obstime=obstime));
+        
     dec = coord_itrs.spherical.lat;
     ha  = lon - coord_itrs.spherical.lon;
     

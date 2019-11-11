@@ -27,7 +27,7 @@ def info ():
 revision = '1.2.0';
 
 # some information from the GIT repository, if available
-git_date = get_from_dir ('git log -1 --format=%cd --date=format:%Y-%M-%dT%H:%M:%S');
+git_date = get_from_dir ('git log -1 --format=%cd --date=format:%Y-%m-%dT%H:%M:%S');
 
 git_hash = get_from_dir ('git log -1 --format=%H');
 
