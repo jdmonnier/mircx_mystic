@@ -280,7 +280,16 @@ def frame_mjd (hdr):
         raise ValueError ('LASTFR is smaller than STARTFR');
 
     # Number of frame since start
-    counter = np.arange (0, hdr['LASTFR'] - hdr['STARTFR'] + 1);
+    nframe = hdr['LASTFR'] - hdr['STARTFR'] + 1;
+
+    # If binning
+    nbin = hdr.get ('NBIN',1);
+    if  nbin > 1:
+        log.info ('Data are binned by %i'%nbin);
+        nframe = nframe / nbin;
+
+    # Build counter
+    counter = np.arange (0, nframe);
 
     # Time step between frames in [d]
     delta = 1./hdr['HIERARCH MIRC FRAME_RATE'] / 24/3600;
