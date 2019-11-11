@@ -304,12 +304,12 @@ def texSumTitle(oiDir,hdrs,redF,calF):
             except:
                 statement = 'no PI_NAMES match UNKNOWN'
             log.info('Recovered PI NAMES '+'; '.join(princInv)+' from headers')
-            outtex.write('\n\\subsubsection*{PI(s): '+'; '.join(princInv)+'}\n')
+            outtex.write('\n\\subsubsection*{PI(s): '+'; '.join(princInv).replace('_',' ')+'}\n')
             outtex.write('\\subsubsection*{Observer(s): ')
             try:
                 obsPerson = list(set([h['OBSERVER'] for h in hdrs]))
                 outtex.write('; '.join(obsPerson))
-                log.info('Recovered OBSERVERS '+'; '.join(obsPerson)+' from headers')
+                log.info('Recovered OBSERVERS '+'; '.join(obsPerson).replace('_',' ')+' from headers')
             except:
                 outtex.write('(info not recovered from header)')
                 log.error('No OBSERVER keyword in fits headers')
