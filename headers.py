@@ -286,10 +286,9 @@ def frame_mjd (hdr):
     nbin = hdr.get ('NBIN',1);
     if  nbin > 1:
         log.info ('Data are binned by %i'%nbin);
-        nframe = nframe / nbin;
 
     # Build counter
-    counter = np.arange (0, nframe);
+    counter = np.arange (0, nframe, nbin);
 
     # Time step between frames in [d]
     delta = 1./hdr['HIERARCH MIRC FRAME_RATE'] / 24/3600;
