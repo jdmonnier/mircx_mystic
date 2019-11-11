@@ -32,6 +32,12 @@ def send_email(msg, fromaddr, toaddr):
             log.error('Contact Narsi Anugu for password for '+fromaddr)
         server.quit()
         sys.exit()
+    except SMTPAuthenticationError:
+        log.error('Unable to send email!')
+        log.error('Gmail does not recognise your device.')
+        log.info('Either login to gmail for mircx.mystic@gmail.com and approve')
+        log.info('this device or contact Narsi Anugu or Claire Davies to do this')
+        log.info('for you.')
     server.sendmail(fromaddr, toaddr, msg.as_string())
     server.quit()
 
