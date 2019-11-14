@@ -1,3 +1,4 @@
+[![Documentation](https://img.shields.io/badge/User%20Manual-Google%20Drive-blue)](https://docs.google.com/document/d/1zenNelkhVGTlm1v1tFRvtnb8i0EghIAUeX9F3t5asYU/edit)
 [![Issues](https://img.shields.io/badge/Issues-Google%20Drive-yellow)](https://docs.google.com/spreadsheets/d/1u_0kam15HsIwaykv2pTbjCr-tc5QUNMNZxyS4CEOa1M/edit#gid=0)
 
 ## Description
