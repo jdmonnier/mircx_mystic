@@ -582,6 +582,15 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     fxw = int(setup.fringe_widthx (hdr) / 2);
     pxw = int(setup.photo_widthx (hdr) / 2 + 1.5);
     ns  = int(setup.nspec (hdr)/2 + 2.5);
+
+    # Check that we can deal with this
+    # spectrum size, otherwise crop more
+    overflow1 = ns - fyc;
+    overflow2 = (fyc+ns+1) - cube.shape[2];
+    if overflow1 > 0 or overflow2 > 0:
+        overflow = np.maximum (overflow1, overflow2);
+        log.warning ('Hard window too short, reduce spectrum from %i to %i'%(ns,ns-overflow));
+        ns -= overflow;
     
     # Keep track of crop value
     hdr[HMW+'FRINGE STARTX'] = (fxc-fxw, '[pix] python-def');
@@ -604,6 +613,7 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
 
     # Same for photometries
     nr,nf,ny,nx = fringe.shape;
+
     photos = np.zeros ((6,nr,nf,ny,2*pxw+1));
     for bmap in bmaps:
         if bmap == []: continue;
