@@ -581,7 +581,7 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     # Expected size on spatial and spectral direction are hardcoded
     fxw = int(setup.fringe_widthx (hdr) / 2);
     pxw = int(setup.photo_widthx (hdr) / 2 + 1.5);
-    ns  = int(setup.nspec (hdr)/2 + 2.5);
+    ns  = int(setup.nspec (hdr)/2 + 1.5);
 
     # Check that we can deal with this
     # spectrum size, otherwise crop more
