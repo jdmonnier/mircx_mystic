@@ -103,8 +103,14 @@ def load_raw (hdrs, differentiate=True,
     Load data and append into gigantic cube. The output cube is
     of shape: [nfile*nramp, nframes, ny, ny].
 
-    If checkSaturation==True, the frame with >10 saturated pixels in
-    the middle of the fringe window (read from header) are set to zero.
+    If saturationThreshold is not None, then the non-differentiated
+    data are compared to this threshold. Frames with some pixels
+    exceding this value are flagged and filled with zero.
+
+    If continuityThreshold is not None, then the differentiated
+    data are tested for continuity. When the difference between
+    two consecituve frames is larger than this value, frames
+    are flagged. Usefull to detect cosmic rays.
 
     If differentiate==True, the consecutive frames of a ramp are
     subtracted together.
