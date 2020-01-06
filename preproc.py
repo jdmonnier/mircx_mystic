@@ -283,6 +283,7 @@ def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN'):
     files.write (fig, output+'_ramp.png');
 
     plt.close ("all");
+    del elog;
     return hdulist;
 
 def estimate_windows (cmean, hdr, output='outout_window'):
@@ -485,6 +486,7 @@ def compute_beam_map (hdrs,bkg,flat,threshold,output='output_beam_map',filetype=
     files.write (hdulist, output+'.fits');
     
     plt.close("all");
+    del elog;
     return hdulist;
     
 def compute_beam_profile (hdrs,output='output_beam_profile',filetype='BEAM_PROFILE'):
@@ -529,6 +531,7 @@ def compute_beam_profile (hdrs,output='output_beam_profile',filetype='BEAM_PROFI
     files.write (hdulist, output+'.fits');
     
     plt.close("all");
+    del elog;
     return hdulist;
 
 def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filetype='PREPROC'):
@@ -703,5 +706,6 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     files.write (hdulist, output+'.fits');
     
     plt.close("all");
+    del elog;
     return hdulist;
 
