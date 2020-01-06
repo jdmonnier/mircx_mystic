@@ -138,7 +138,9 @@ def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN'):
     headers.check_input (hdrs, required=1);
 
     # Load files
-    hdr,cube,mjd = files.load_raw (hdrs, coaddRamp='mean', saturationThreshold=False, continuityThreshold=False);
+    hdr,cube,mjd = files.load_raw (hdrs, coaddRamp='mean',
+                                   saturationThreshold=None,
+                                   continuityThreshold=None);
     log.info ('Data size: '+str(cube.shape));
 
     # Background mean
@@ -147,7 +149,9 @@ def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN'):
     bkg_err  = np.std (cube, axis=0) / np.sqrt (cube.shape[0]);
 
     # Load all ramp of first file to measure readout noise
-    __,cube,__ = files.load_raw (hdrs[0:1], coaddRamp='none', saturationThreshold=False, continuityThreshold=False);
+    __,cube,__ = files.load_raw (hdrs[0:1], coaddRamp='none',
+                                 saturationThreshold=None,
+                                 continuityThreshold=None);
 
     # Compute temporal rms
     log.info ('Compute rms over ramp/frame of first file');
