@@ -177,7 +177,7 @@ def load_raw (hdrs, differentiate=True,
 
         # flag for invalid frames
         flag = np.zeros ((nr,nf), dtype=bool);
-        
+
         # Guessed fringe window, FIXME: this may be wrong since we change the
         # orientation of images in saved data to match the header.
         # ys = ny - hdr['FR_ROW2'];
@@ -237,15 +237,23 @@ def load_raw (hdrs, differentiate=True,
                 tmp = np.diff ((data * (badpix==False)[None,None,:,:])[:,:,2:-2,2:-2], axis=1);
             flag[:,1:-2] = tmp.max (axis=(2,3)) > continuityThreshold;
             
-        # Set the flagged frames to zero over all pixels
-        if flag.any():
-            flag = np.argmax (flag, axis=1);
-            nsat = np.sum ( (flag.flatten() > 0) * (nf - flag.flatten()));
-            hdr[HMQ+'NSAT'] += nsat;
-            for r in range(data.shape[0]):
-                if flag[r] != 0:
-                    data[r,flag[r]-3:,:,:] = 0.0;
-            # log.check (nsat, '%i saturated frames in this file'%nsat);
+        # Loop on ramps
+        nsat = 0;
+        for r in range(data.shape[0]):
+            # This ramp has flagged frames
+            if flag[r,:].any():
+                # Detect first flagged frame in ramp.
+                mark = np.argmax (flag[r,:]);
+                # Take margin, to start discarding few frames before mark.
+                mark = np.maximum (mark-3,0);
+                # Zero frames starting at mark
+                data[r,mark:,:,:] = 0.0;
+                # Count total number of zeroed frames
+                nsat += nf - mark;
+                log.info ('mark = %i'%mark);
+
+        # Increase nsat in header
+        hdr[HMQ+'NSAT'] += nsat;
 
         # Add this RAW file in hdr
         nraw = len (hdr['*MIRC PRO RAW*']);
@@ -314,11 +322,11 @@ def load_raw (hdrs, differentiate=True,
     nr,nf,ny,nx = cubenp.shape;
     log.info ('Number of files loaded = %i'%hdr[HMQ+'NFILE']);
     log.info ('Number of ramp loaded = %i'%hdr[HMQ+'NRAMP']);
-    log.info ('Number of frames loaded = %i'%(nr*nf));
+    log.info ('Number of frames loaded = %i'%(hdr[HMQ+'NRAMP']*nf));
     log.info ('Number of saturated frames = %i'%hdr[HMQ+'NSAT']);
 
     # Fraction of saturation
-    fsat = 1.0 * hdr[HMQ+'NSAT'] / (nr*nf);
+    fsat = 1.0 * hdr[HMQ+'NSAT'] / (hdr[HMQ+'NRAMP']*nf);
     log.check (fsat,'Fraction of saturated frames = %.3f'%fsat);
     hdr[HMQ+'FSAT']  = (fsat,'fraction of saturated frames');
 
