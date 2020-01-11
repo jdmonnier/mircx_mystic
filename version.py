@@ -16,9 +16,9 @@ def get_from_dir (arg):
 def info ():
     print ('---------------------------------------------');
     print ('Module mircx_pipeline version %s'%revision);
-    print ('Please report any bug to lebouquj@umich.edu');
-    print ('Git branch: %s'%git_branch);
-    print ('Git last commit: %s'%git_date);
+    print ('Please report any bugs to lebouquj@umich.edu');
+    print ('Git commit: %s (%s)'%(git_hash[:8],git_date));
+    print ('Git branch: %s%s'%(git_branch,git_status));
     print ('Matplotlib backend: '+mpl.get_backend());
     print ('Total memory: %.1fG'%(psutil.virtual_memory().total/1e9));
     print ('---------------------------------------------');
@@ -32,3 +32,8 @@ git_date = get_from_dir ('git log -1 --format=%cd --date=format:%Y-%m-%dT%H:%M:%
 git_hash = get_from_dir ('git log -1 --format=%H');
 
 git_branch = get_from_dir ('git branch | grep \* | cut -d \' \' -f2');
+
+git_status = get_from_dir ('git diff-index --name-only HEAD | tr \'\\n\' \' \'');
+
+if git_status != '':
+    git_status = ' + uncommited changes:\n  ' + git_status;
