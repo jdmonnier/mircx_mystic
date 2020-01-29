@@ -693,13 +693,13 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     hdu1 = pyfits.ImageHDU (photos.astype('float32'));
     hdu1.header['BUNIT'] = 'adu/pixel/frame';
     hdu1.header['EXTNAME'] = 'PHOTOMETRY_PREPROC';
-    hdu1.header['SHAPE'] = '(nt,nr,nf,ny,nx)';
+    hdu1.header['SHAPE'] = '(nb,nr,nf,ny,nx)';
 
     # Third HDU with MJD
     hdu2 = pyfits.ImageHDU (mjd);
     hdu2.header['BUNIT'] = 'day';
     hdu2.header['EXTNAME'] = 'MJD';
-    hdu2.header['SHAPE'] = '(nt,nr)';
+    hdu2.header['SHAPE'] = '(nr,nf)';
     
     # Write file
     hdulist = pyfits.HDUList ([hdu0,hdu1,hdu2]);
