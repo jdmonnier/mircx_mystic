@@ -189,7 +189,7 @@ if len(snr) == 1 and 'd' in snr[0]:
 if len(mito) == 1 and 'd' in mito[0]:
     # Account for some being default settings:
     mito = [mito[0].replace('.d','')]*len(dates)
-            
+
 if len(ncs) == len(nbs) == len(mitp) == len(bbias) == len(snr) == len(mito) == len(dates):
     log.info('Length of reduction options checked: ok')
 else:
@@ -267,7 +267,6 @@ for d in range(0, len(dates)):
         rawBase_p = rawBase+'/'+dates[d][0:7]
         rawBase = rawBase_p
     
-    
     # 1. Make directory dates_nbsncsbbiasmitp in argopt.red-dir
     if bbias[d] == 'TRUE':
         bbstr = 'T'
@@ -299,7 +298,7 @@ for d in range(0, len(dates)):
             ll = nf.tell()
             if last_line:
                 print(last_line.strip())
-                if 'Git last commit:' in last_line:
+                if 'Total memory:' in last_line:
                     break
     
     # 3. Make directory snrmito in argopt.red-dir/dates_nbsncsbbiasmitp
@@ -335,7 +334,7 @@ for d in range(0, len(dates)):
                 ll = nf.tell()
                 if last_line:
                     print(last_line.strip())
-                    if 'Git last commit:' in last_line:
+                    if 'Total memory:' in last_line:
                         break
             
         # 6. Check that the oifits step successfully created .fits files in oiDir:
@@ -359,7 +358,7 @@ for d in range(0, len(dates)):
                         ll = nf.tell()
                         if last_line:
                             print(last_line.strip())
-                            if 'Git last commit:' in last_line:
+                            if 'Total memory:' in last_line:
                                 break
                 
                 # b: run mircx_transmission.py
@@ -383,7 +382,7 @@ for d in range(0, len(dates)):
                         ll = nf.tell()
                         if last_line:
                             print(last_line.strip())
-                            if 'Git last commit:' in last_line:
+                            if 'Total memory:' in last_line:
                                 break
                 
                 # d: run calibrate.py
@@ -405,7 +404,7 @@ for d in range(0, len(dates)):
                             ll = nf.tell()
                             if last_line:
                                 print(last_line.strip())
-                                if 'Git last commit:' in last_line:
+                                if 'Total memory:' in last_line:
                                     break
             
             else:
@@ -473,7 +472,7 @@ for d in range(0, len(dates)):
                         ll = nf.tell()
                         if last_line:
                             print(last_line.strip())
-                            if 'Git last commit:' in last_line:
+                            if 'Total memory:' in last_line:
                                 break
             else:
                 log.info(oiDir+' already exists')
