@@ -6,7 +6,7 @@ from matplotlib import cm
 
 from . import headers, log, viscalib
 
-def quickLook(oiDir, keys, setup, pltFile, writeTab=False, st=0):
+def quickLook(oiDir, keys, setup, pltFile, st=0):
     """
     If you wish to plot all data for a specific target
     (irrespective of camera and reduction settings), use e.g
@@ -19,8 +19,6 @@ def quickLook(oiDir, keys, setup, pltFile, writeTab=False, st=0):
     - pltFile is one of 'individual' (for use by the
     wrapper) or 'all' (to summarise all files matching
     setup);
-    - writeTab is used to write a LaTeX table summarising
-    keys for all files in oiDir;
     - st is required if pltFile=='individual' (acts as a
     sequential counter for file number).
     -
@@ -57,8 +55,6 @@ def quickLook(oiDir, keys, setup, pltFile, writeTab=False, st=0):
                     files_cal = files_cal + [f]
             if files_cal != []:
                 plotV2CP(files_cal, oiDir+'/calibrated', 'calib', setup)
-        if writeTab == True:
-            writeTable(oiDir, keys)
     else:
         #can end up here in batch mode if no calibrated data is
         #available for a target.
@@ -657,7 +653,7 @@ def texSumPlots(oiDir,redF,calF,outFiles):
         # reduced:
         st = 0
         while isinstance(st, (float, int)):
-            st = quickLook(oiDir, keys, setupsP[sup], pltFile='individual', writeTab=False, st=st)
+            st = quickLook(oiDir, keys, setupsP[sup], pltFile='individual', st=st)
     # Read in mircx numbers of vis2 plots created in reduced and calibrated directories:
     redPlts = sorted(glob.glob(oiDir+'/*reduced_vis2.png'))
     redNum = [int(i.split('/')[-1].split('_')[0].split('x')[1]) for i in redPlts]
