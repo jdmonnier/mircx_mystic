@@ -2,8 +2,104 @@ import glob, socket, os, sys
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
+from matplotlib import cm
 
 from . import headers, log, viscalib
+
+def quickLook(oiDir, keys, setup, pltFile, writeTab=False, st=0):
+    """
+    If you wish to plot all data for a specific target
+    (irrespective of camera and reduction settings), use e.g
+    quickLook(/full/path/to/data/directory, ['OBJECT'], 'HD_144', pltFile='all')
+    -
+    - oiDir is the directory containing oifits files;
+    - keys is a python list of header keys;
+    - setup is a python list of file header values
+    which must match the 'keys' to be plotted;
+    - pltFile is one of 'individual' (for use by the
+    wrapper) or 'all' (to summarise all files matching
+    setup);
+    - writeTab is used to write a LaTeX table summarising
+    keys for all files in oiDir;
+    - st is required if pltFile=='individual' (acts as a
+    sequential counter for file number).
+    -
+    """
+    if 'calibrated' not in oiDir:
+        fitsfiles = sorted(glob.glob(oiDir+'/*_oifits.fits'))
+        suff = 'reduced'
+    else:
+        fitsfiles = sorted(glob.glob(oiDir+'/*_viscal.fits'))
+        suff = 'calib'
+    
+    if st >= len(fitsfiles):
+        return 'end of files reached'
+    
+    # select the fits files which match the setup
+    if pltFile == 'individual':
+        files, st = sortFits(fitsfiles, keys, setup, st)
+    elif pltFile == 'all':
+        files = []
+        while st < len(fitsfiles):
+            f, st = sortFits(fitsfiles, keys, setup, st)
+            files = files + f
+    
+    if st > len(fitsfiles):
+        return 'end of files reached'
+    
+    if files != []:
+        plotV2CP(files, oiDir, suff, setup)
+        if suff == 'reduced':
+            fs_cal = ['/'.join(f.split('/')[:-1])+'/calibrated/'+f.split('/')[-1].replace('_oifits.fits','_oifits_viscal.fits') for f in files]
+            files_cal = []
+            for f in fs_cal:
+                if os.path.isfile(f):
+                    files_cal = files_cal + [f]
+            if files_cal != []:
+                plotV2CP(files_cal, oiDir+'/calibrated', 'calib', setup)
+        if writeTab == True:
+            writeTable(oiDir, keys)
+    else:
+        #can end up here in batch mode if no calibrated data is
+        #available for a target.
+        return 'end of files reached'
+    
+    return st
+
+def writeTable(oiDir, keys):
+    """
+    - oiDir if the full path to the directory containing 
+    the oifits files.
+    - keys is a python list of header keywords to be put
+    in the table.
+    """
+    if 'calibrated' not in oiDir:
+        fitsfiles = sorted(glob.glob(oiDir+'/*_oifits.fits'))
+    else:
+        fitsfiles = sorted(glob.glob(oiDir+'/*_viscal.fits'))
+    
+    hdrs = headers.loaddir(fitsfiles)
+    with open(oiDir+'/quickLook_table.tex', 'w') as outtex:
+        outtex.write('\\begin{longtable}\n    \\hline\n')
+        outtex.write(' & '.join([str(k).replace('_','\\_') for k in keys])+' \\\\ \n')
+        outtex.write('\\hline\n')
+        # add entries to the table
+        try:
+            tabRows = [[str(h.get(k,'--')) for k in keys] for h in hdrs]
+            for r in range(0, len(tabRows)-1):
+                if r == 0:
+                    outtex.write(' & '.join(str(s).replace('_','\\_') for s in tabRows[r])+'\\\\ \n')
+                else:
+                    lastrow = ' & '.join(str(s).replace('_','\\_') for s in tabRows[r-1])
+                    thisrow = ' & '.join(str(s).replace('_','\\_') for s in tabRows[r])
+                    if thisrow != lastrow:
+                        outtex.write(' & '+thisrow+'\\\\ \n')
+        except:
+            something = 'went wrong'
+            #print('Error: ',exception)
+        outtex.write('    \\hline\n\\end{longtable}\n')
+        outtex.write('\n')
+    del hdrs
 
 ######
 # Plotting functions:
@@ -18,12 +114,10 @@ def plotUV(direc):
     fitsfiles = sorted(glob.glob(direc+'/*_viscal.fits'))
     hdrs = headers.load(sorted(glob.glob(direc+'/*_viscal.fits')))
     objs = list(set([h['OBJECT'] for h in hdrs]))
-    if 'NOSTAR' in objs:
-        objs.remove('NOSTAR')
-    if '' in objs:
-        objs.remove('')
-    if 'STS' in objs:
-        objs.remove('STS')
+    for item in ['NOSTAR', "", 'STS']:
+        if item in objs:
+            objs.remove(item)
+    del hdrs
     for t in range(0, len(objs)):
         if not os.path.exists(direc+'/'+objs[t]+'_uv_coverage.png'):
             for f in range(0, len(fitsfiles)):
@@ -34,8 +128,11 @@ def plotUV(direc):
                         vsf = input['OI_VIS2'].data['VCOORD'][:,None]/lbd[None,:]
                         # trim u and v coordinates with nan vis2 data:
                         vis2 = input['OI_VIS2'].data['VIS2DATA']
+                        flag = input['OI_VIS2'].data['FLAG']
                         usf[np.isfinite(vis2)==False] = np.nan
+                        usf[flag] = np.nan
                         vsf[np.isfinite(vis2)==False] = np.nan
+                        vsf[flag] = np.nan
                         # plot remaining data:
                         for u in range(15):
                             plt.plot(usf[u,:],vsf[u,:],marker='o',color='k',ls='None')
@@ -58,196 +155,203 @@ def plotUV(direc):
         else:
             log.info('File '+direc+'/'+objs[t]+'_uv_coverage.png already exists.')
     log.info('Cleanup memory')
-    del hdrs, objs
+    del objs
     return
 
-def addV2CP(input, viscp, fig, axes):
-    """
-    Reads in interferometric data from 'input' and adds vis2
-    or cp to figure 'fig' with axes 'axes'
-    """
-    # Then read in the data from the fits file:
-    sf = viscalib.get_spfreq(input,'OI_VIS2')
-    vis2 = input['OI_VIS2'].data['VIS2DATA']
-    evis = input['OI_VIS2'].data['VIS2ERR']
-    max_sf = np.max(viscalib.get_spfreq(input,'OI_T3'),axis=0)
-    cp = input['OI_T3'].data['T3PHI']
-    ecp = input['OI_T3'].data['T3PHIERR']
-    if viscp == 'vis':
-        for b in range(15):
-            # Plot data if the errors on the non-extreme (in wavelength) values
-            # is below 28%.
-            checkVals = evis[b,1:-1]/vis2[b,1:-1]
-            if all(checkVals < 0.28):
-                axes.errorbar(1e-6*sf[b,:],vis2[b,:],yerr=evis[b,:],marker='o',ms=1)
-    elif viscp == 'cp':
-        for b in range(20):
-            # Plot data if the t3phi errors on the non-extreme (in wavelength) values
-            # are below 30 degrees
-            if not any(ecp[b,1:-1] > 30.):
-                axes.errorbar(1e-6*max_sf[b,:],cp[b,:],yerr=ecp[b,:],fmt='o',ms=1)
+def plotV2CP(files, outDir, suff, setup, withUV=False, cmap='winter'):
+    # Load first file
+    hdu    = pyfits.open(files[0])
+    object = hdu[0].header['OBJECT']
+    wave   = hdu['OI_WAVELENGTH'].data['EFF_WAVE']*1e6
+    flag   = hdu['OI_VIS2'].data['FLAG']
+    vis2   = hdu['OI_VIS2'].data['VIS2DATA']
+    evis2  = hdu['OI_VIS2'].data['VIS2ERR']
+    ucoord, vcoord = reshape_uv(hdu)
+    saveAsStr = str(hdu[0].header['HIERARCH MIRC PRO RTS']).split('_')[0]
+    
+    flag2 = hdu['OI_T3'].data['FLAG']
+    cp    = hdu['OI_T3'].data['T3PHI']
+    ecp   = hdu['OI_T3'].data['T3PHIERR']
+    
+    spf, usf, vsf = get_spfreqs(hdu,'OI_VIS2')
+    max_sf = np.max(get_spfreqs(hdu,'OI_T3'),axis=0)
+    
+    # Load other files
+    for file in files[1:]:
+        hdu    = pyfits.open(file);
+        flag   = np.append(flag, hdu['OI_VIS2'].data['FLAG'], axis=0)
+        vis2   = np.append(vis2, hdu['OI_VIS2'].data['VIS2DATA'], axis=0)
+        evis2  = np.append(evis2, hdu['OI_VIS2'].data['VIS2ERR'], axis=0)
+        ucoord = np.append(ucoord, reshape_uv(hdu)[0], axis=0)
+        vcoord = np.append(vcoord, reshape_uv(hdu)[1], axis=0)
+        spf    = np.append(spf, get_spfreqs(hdu,'OI_VIS2')[0], axis=0)
+        usf    = np.append(usf, get_spfreqs(hdu,'OI_VIS2')[1], axis=0)
+        vsf    = np.append(vsf, get_spfreqs(hdu,'OI_VIS2')[2], axis=0)
+        
+        flag2  = np.append(flag2, hdu['OI_T3'].data['FLAG'], axis=0)
+        cp     = np.append(cp, hdu['OI_T3'].data['T3PHI'], axis=0)
+        ecp    = np.append(ecp, hdu['OI_T3'].data['T3PHIERR'], axis=0)
+        max_sf = np.append(max_sf, np.max(get_spfreqs(hdu,'OI_T3'),axis=0), axis=0)
+    
+    # Interpolate flagged values
+    for item in [vis2, evis2, vsf, usf, ucoord, vcoord]:
+        item[flag] = np.nan
+    
+    for item in [cp, ecp, max_sf]:
+        item[flag2] = np.nan
+    
+    mask = evis2/vis2 > 0.28
+    vis2[mask] = np.nan
+    evis2[mask] = np.nan
+    
+    mask2 = ecp > 30.
+    cp[mask2] = np.nan
+    ecp[mask2] = np.nan
+    
+    mask3 = vis2 < 0.
+    vis2[mask3] = np.nan
+    evis2[mask3] = np.nan
+    
+    copcol = cm.get_cmap(cmap, len(wave))
+    
+    # Plot squared vis:
+    figv2 = plt.figure(1, figsize=(6,4))
+    axv2  = plt.subplot2grid((1, 1), (0, 0))
+    for w in range(0, len(wave)):
+        axv2.errorbar(spf[:,w],vis2[:,w],yerr=evis2[:,w],fmt='o',ms=1,color=copcol(w))
+
+    axv2.set_xlim(0,230)
+    axv2.set_ylim(0.0,1.0)
+    axv2.set_xlabel('Baseline (M$\lambda$)')
+    axv2.set_ylabel('Vis2')
+    figv2.suptitle(', '.join(str(s) for s in setup))
+    figv2.savefig(outDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
+    log.info('Written '+outDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
+    
+    #
+    # Plot vis
+    #
+    figV = plt.figure(2, figsize=(6,4))
+    axV  = plt.subplot2grid((1, 1), (0, 0))
+    for w in range(0, len(wave)):
+        evis = 0.5*evis2[:,w]*np.power(vis2[:,w], -0.5)
+        axV.errorbar(spf[:,w],np.sqrt(vis2[:,w]),yerr=evis,fmt='o',ms=1,color=copcol(w))
+    
+    axV.set_xlim(0,230)
+    axV.set_ylim(0.0,1.0)
+    axV.set_xlabel('Baseline (M$\lambda$)')
+    axV.set_ylabel('Vis')
+    figV.suptitle(', '.join(str(s) for s in setup))
+    figV.savefig(outDir+'/'+saveAsStr+'_'+suff+'_vis.png')
+    
+    #
+    # Plot CP vs Bmax
+    #
+    figCP = plt.figure(3, figsize=(6,4))
+    axCP  = plt.subplot2grid((1, 1), (0, 0))
+    axCP.hlines(0, 0,230, ls='--', color='grey')
+    axCP.hlines(-200, 0,230, ls='--', color='w')
+    axCP.hlines(200, 0,230, ls='--', color='w')
+    for w in range(0, len(wave)):
+        axCP.errorbar(max_sf[:,w],cp[:,w],yerr=ecp[:,w],fmt='o',ms=1,color=copcol(w))
+    
+    axCP.set_xlim=(0.,230.)
+    axCP.set_xlabel('Max baseline (M$\lambda$)')
+    axCP.set_ylabel('$\phi_{CP}$')
+    figCP.suptitle(', '.join(str(s) for s in setup))
+    figCP.savefig(outDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+    log.info('Written '+outDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+    
+    if withUV != False:
+        #
+        # Plot UV plane (Recall: +u = East; +v = North)
+        #
+        figUVm = plt.figure(4, figsize=(4,4))
+        axUVm  = plt.subplot2grid((1, 1), (0, 0))
+        axUVm.plot(ucoord,vcoord,'o',color='b')
+        axUVm.plot(-ucoord,-vcoord,'o',color='b')
+        axUVm.set_xlim(-330,330)
+        axUVm.set_ylim(-330,330)
+        axUVm.set_xlabel('u (m)') # $\longleftarrow$ East
+        axUVm.set_ylabel('v (m)') # North $\longrightarrow$
+        axUVm.set_aspect(1)
+        axUVm.grid(True)
+        figUVm.tight_layout()
+        figUVm.suptitle(', '.join(str(s) for s in setup))
+        figUVm.savefig(outDir+'/'+saveAsStr+'_uv_m.png')
     return
 
-def calibPlots(calibfiles,viscp,saveAsStr,setup):
+def sortFits(fitsfiles, keys, setup, st=0):
     """
-    Plots the calibrated files corresponding to each 
-    setup (if they exist).
+    Return a subset of fits files matching set header keywords
+     - fitfiles is a python list of file paths
+     - keys is a list of header keywords
+     - setup is the required values of 'keys'
+     - st is the list index of fitsfiles to start sorting from
     """
     first = True
-    for file in calibfiles:
-        f = '/'.join(file.split('/')[:-1])+'/calibrated/'+file.split('/')[-1].replace('.fits','_viscal.fits')
-        if os.path.isfile(f):
-            # calibrated file exists
-            if first == True:
-                fig,axes = plt.subplots()
-                fig.suptitle(', '.join(str(s) for s in setup))
-                with pyfits.open(f) as input:
-                    addV2CP(input, viscp, fig, axes)
-                    log.info('Added cal data from '+f.split('/')[-1]+' to plot.')
-                first = False
-            else:
-                with pyfits.open(f) as input:
-                    addV2CP(input, viscp, fig, axes)
-                    log.info('Added cal data from '+f.split('/')[-1]+' to plot.')
-    if first == False:
-        axes.set_xlim(0.,225.)
-        if viscp == 'vis':
-            axes.set_ylim(-0.1,1.2)
-            axes.set_xlabel('sp. freq. (M$\lambda$)')
-            axes.set_ylabel('vis2')
-            plt.savefig('/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_vis2.png')
-            plt.close()
-            log.info('Written '+'/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_vis2.png')
-        elif viscp == 'cp':
-            axes.set_xlabel('max sp. freq. (M$\lambda$)');
-            axes.set_ylabel('$\phi_{CP}$')
-            axes.set_ylim(-200,200)
-            plt.savefig('/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_t3phi.png')
-            plt.close()
-            log.info('Written '+'/'.join(f.split('/')[:-1])+'/'+saveAsStr+'_calib_t3phi.png')
-        plt.close("all")
-        log.info('Closed plot windows (cal).')
-    return
+    files = []
+    for f in range(st, len(fitsfiles)):
+        with pyfits.open(fitsfiles[f]) as input:
+            if [str(input[0].header.get(k,'--')) for k in keys] == setup and first == True:
+                if fitsfiles[f] == fitsfiles[-1]:
+                    st = f+1
+                else:
+                    files.append(fitsfiles[f])
+                    first = False
+            elif [str(input[0].header.get(k,'--')) for k in keys] == setup and first != True:
+                files.append(fitsfiles[f])
+                if fitsfiles[f] == fitsfiles[-1]:
+                    st = f
+            elif [str(input[0].header.get(k,'--')) for k in keys] != setup and first != True:
+                if fitsfiles[f] == fitsfiles[-1]:
+                    st = f+1
+                else:
+                    st = f
+                break
+    if files == []:
+        return files, len(fitsfiles)+1
+    return files, st
 
-def plotV2CP(oiDir,setups,viscp):
-    """
-    Searches a directory for fits files and plots vis vs sf
-    and CP vs max_sf for all the files found. The files are
-    grouped together by the target name and the camera 
-    settings as defined in 'setup'.
-        - oiDir is the directory containing the products of the
-        oifits reduction step;
-        - setups defines the object name and the camera 
-        settings;
-        - viscp is either 'vis' or 'cp' to decide what is
-        plotted.
-    """
-    if 'calibrated' not in oiDir:
-        fitsfiles = sorted(glob.glob(oiDir+'/*_oifits.fits'))
-    else:
-        fitsfiles = sorted(glob.glob(oiDir+'/*_viscal.fits'))
-    if  'oifits' in oiDir.split('/')[-1]:
-        suff = 'reduced'
-    p, first = 0, True
-    calibfiles = []
-    for file in fitsfiles:
-        # keywords from file headers read in
-        with pyfits.open(file) as input:
-            keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','FILTER2','CONF_NA']
-            teststr = [str(input[0].header.get(k,'--')) for k in keys]
-            if teststr == setups[p] and first == True:
-                # option i) file matches current setup and is first file to match it
-                log.info(file.split('/')[-1]+' matches setup '+', '.join(str(s) for s in teststr))
-                fig,axes = plt.subplots()
-                fig.suptitle(', '.join(str(s) for s in teststr))
-                log.info('Drawn plotting window for this setup.')
-                saveAsStr = str(input[0].header['HIERARCH MIRC PRO RTS']).split('_')[0]
-                addV2CP(input, viscp, fig, axes)
-                log.info('Added red data from '+file.split('/')[-1]+' to plot.')
-                calibfiles.append(file)
-                first = False
-            elif teststr == setups[p] and first != True:
-                # option ii) file matches current setup but is not first file to match it
-                log.info(file.split('/')[-1]+' also matches setup '+', '.join(str(s) for s in teststr))
-                addV2CP(input, viscp, fig, axes)
-                log.info('Added red data from '+file.split('/')[-1]+' to plot.')
-                calibfiles.append(file)
-            elif teststr != setups[p]:
-                # option iii) file doesn't match current setup at all:
-                if first != True:
-                    # if there is data plotted already, close the plot
-                    axes.set_xlim(0., 225.)
-                    if viscp == 'vis':
-                        axes.set_ylim(-0.1,1.2)
-                        axes.set_xlabel('sp. freq. (M$\lambda$)')
-                        axes.set_ylabel('vis2')
-                        plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
-                        plt.close()
-                        log.info('Written '+oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
-                    elif viscp == 'cp':
-                        axes.set_xlabel('max sp. freq. (M$\lambda$)');
-                        axes.set_ylabel('$\phi_{CP}$')
-                        axes.set_ylim(-200,200)
-                        plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-                        plt.close()
-                        log.info('Written '+oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-                    plt.close("all")
-                    log.info('Closed plot windows (red).')
-                    del fig,axes
-                    first = True
-                    # If there is corresponding calibrated data, plot it:
-                    log.info('Plot corresponding cal data (if required)')
-                    calibPlots(calibfiles, viscp, saveAsStr, setups[p])
-                    calibfiles = []
-                # increase the value of p until a match is found for the current file:
-                p += 1
-                while first == True:
-                    try:
-                        if teststr == setups[p]:
-                            log.info(file.split('/')[-1]+' matches setup '+', '.join(str(s) for s in teststr))
-                            fig,axes = plt.subplots()
-                            fig.suptitle(', '.join(str(s) for s in teststr))
-                            saveAsStr = str(input[0].header['HIERARCH MIRC PRO RTS']).split('_')[0]
-                            addV2CP(input, viscp, fig, axes)
-                            calibfiles.append(file)
-                            first = False
-                        else:
-                            p += 1
-                    except IndexError:
-                        log.info('End of setups list reached')
-                        return
-        log.info('Closed '+file)
-    #try:
-    axes.set_xlim(0.,225.)
-    if viscp == 'vis':
-        axes.set_ylim(-0.1,1.2)
-        axes.set_xlabel('sp. freq. (M$\lambda$)')
-        axes.set_ylabel('vis2')
-        plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
-        plt.close()
-        log.info('Written '+oiDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
-    elif viscp == 'cp':
-        axes.set_xlabel('max sp. freq. (M$\lambda$)');
-        axes.set_ylabel('$\phi_{CP}$')
-        axes.set_ylim(-200,200)
-        plt.savefig(oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-        plt.close()
-        log.info('Written '+oiDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-    plt.close("all")
-    log.info('Closed plot windows (red).')
-    log.info('Plot corresponding cal data (if required)')
-    calibPlots(calibfiles, viscp, saveAsStr, teststr)
-    #except:
-    #    return
-    return
+def reshape_uv(hdu):
+    '''
+    Return the u and v coordinates in the same shape as vis2
+    '''
+    
+    dumY = np.ones(np.shape(hdu['OI_WAVELENGTH'].data['EFF_WAVE']))
+    u = 0.0-hdu['OI_VIS2'].data['UCOORD']
+    v = hdu['OI_VIS2'].data['VCOORD']
+    return [u[:,None]/dumY[None,:],v[:,None]/dumY[None,:]]
+
+def get_spfreqs(hdu,name):
+    '''
+    Return the spatial frequency B/lbd in M$\lambda
+    '''
+    lbd = hdu['OI_WAVELENGTH'].data['EFF_WAVE']*1e6
+    
+    if name == 'OI_VIS2':
+        u = hdu['OI_VIS2'].data['UCOORD']
+        # the sign doesn't matter here because things are squared
+        v = hdu['OI_VIS2'].data['VCOORD']
+        return [np.sqrt(u**2+v**2)[:,None]/lbd[None,:],-u[:,None]/lbd[None,:],v[:,None]/lbd[None,:]]
+    
+    if name == 'OI_T3':
+        u1 = hdu['OI_T3'].data['U1COORD']
+        v1 = hdu['OI_T3'].data['V1COORD']
+        u2 = hdu['OI_T3'].data['U2COORD']
+        v2 = hdu['OI_T3'].data['V2COORD']
+        u = np.array([u1,u2,u1+u2])
+        v = np.array([v1,v2,v1+v2])
+        return np.sqrt (u**2 + v**2)[:,:,None] / lbd[None,None,:]
+
 
 ######
 # LaTex writing functions:
 ######
 def texSumTitle(oiDir,hdrs,redF,calF):
     """
-    Produce header section of tex files containing reduction  
-    and calibration summary. 
+    Produce header section of tex files containing reduction
+    and calibration summary.
         - oiDir is the directory containing the products of the
         oifits reduction step;
         - hdrs is the raw data headers;
@@ -347,22 +451,35 @@ def texSumTables(oiDir,targs,calInf,scical,redF,rawhdrs,outFiles):
         # specifying the inclusion only of *_oifits.fits files ensures that BG and FG
         # files are not summarised.
         redhdrs = headers.load(sorted(glob.glob(oiDir+'/*_oifits.fits')))
+    try:
+        from astroquery.vizier import Vizier;
+        log.info('Load astroquery.vizier');
+    except:
+        log.warning('Cannot load astroquery.vizier')
+        log.warning('H-magnitude will not be able to be tabulated')
+    
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
             outtex.write('\\subsection*{Target summary}\n')
             outtex.write('\\begin{longtable}{p{.25\\textwidth} | p{.08\\textwidth} | ')
-            outtex.write('p{.25\\textwidth}}\n    \\hline\n')
-            outtex.write('    Target ID & used as & UD diam. for CALs (mas) \\\\ \n')
+            outtex.write('p{.25\\textwidth} | p{.08\\textwidth}}\n    \\hline\n')
+            outtex.write('    Target ID & used as & UD diam. for CALs (mas) & H-mag \\\\ \n')
             outtex.write('    \\hline\n')
             for targ in targs:
+                try:
+                    cat = Vizier.query_object(targ, catalog='JSDC')[0];
+                    hmag = str(cat['Hmag'][0])
+                except IndexError:
+                    hmag = '--'
+                    log.warning('H band magnitude not retrieved from JSDC: target not found')
                 try:
                     ud_H = calInf.split(',')[calInf.split(',').index(targ.replace(' ','_'))+1]
                     eud_H = calInf.split(',')[calInf.split(',').index(targ.replace(' ','_'))+2]
                     outtex.write('    '+targ.replace('_', ' ')+' & CAL')
-                    outtex.write(' & $'+ud_H+'\\pm'+eud_H+'\\,$ \\\\ \n')
+                    outtex.write(' & $'+ud_H+'\\pm'+eud_H+'\\,$ & '+hmag+' \\\\ \n')
                 except ValueError:
                     outtex.write('    '+targ.replace('_', ' ')+' & SCI')
-                    outtex.write(' &  \\\\ \n')
+                    outtex.write(' &  & '+hmag+' \\\\ \n')
             outtex.write('    \\hline\n\\end{longtable}\n')
             outtex.write('\n')
             outtex.write('\\subsection*{Reduced data summary}\n')
@@ -524,16 +641,23 @@ def texSumPlots(oiDir,redF,calF,outFiles):
     keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','FILTER2','CONF_NA']
     setupL = [[str(h.get(k,'--')) for k in keys] for h in redhdrs]
     del redhdrs
-    setups = []
+    setups, setupsP = [],[]
     setups.append(setupL[0])
+    setupsP.append(setupL[0])
     log.info('Targets and camera settings:')
     for m in range(0, len(setupL)-1):
+        if setupL[m+1] not in setupsP:
+            setupsP.append(setupL[m+1])
         if setupL[m+1] != setupL[m]:
-            log.info('    '+', '.join(str(s) for s in setupL[m+1]))
             setups.append(setupL[m+1])
     # make reduced and calibrated vis2 and CP plots
-    plotV2CP(oiDir, setups, 'vis')
-    plotV2CP(oiDir, setups, 'cp')
+    log.info('Plotting data in '+oiDir+' split according to '+','.join(keys))
+    for sup in range(0, len(setupsP)):
+        log.info(' '+', '.join(str(s) for s in setupsP[sup]))
+        # reduced:
+        st = 0
+        while isinstance(st, (float, int)):
+            st = quickLook(oiDir, keys, setupsP[sup], pltFile='individual', writeTab=False, st=st)
     # Read in mircx numbers of vis2 plots created in reduced and calibrated directories:
     redPlts = sorted(glob.glob(oiDir+'/*reduced_vis2.png'))
     redNum = [int(i.split('/')[-1].split('_')[0].split('x')[1]) for i in redPlts]
@@ -636,7 +760,7 @@ def texSumPlots(oiDir,redF,calF,outFiles):
                          outtex.write('}\n')
          outtex.write('\\end{figure}\n\n')
     for outFile in outFiles:
-        with open(outFile, 'a') as outtex:                    
+        with open(outFile, 'a') as outtex:
             outtex.write('\\end{document}\n')
     return
 
