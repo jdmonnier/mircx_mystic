@@ -263,7 +263,7 @@ else:
 
 for d in range(0, len(dates)):
     # special setting for execution on protostar @ exeter:
-    if socket.gethostname() == 'protostar' or socket.gethostname() == 'mircx':
+    if socket.gethostname() in ['protostar','mircx','yso']:
         rawBase_p = rawBase+'/'+dates[d][0:7]
         rawBase = rawBase_p
     
