@@ -1,8 +1,9 @@
 #! /usr/bin/env python                                                          
 # -*- coding: iso-8859-15 -*-
 
-import argparse, subprocess, os, glob, sys, socket, datetime
-from mircx_pipeline import lookup, summarise, mailfile, headers, log, files
+import argparse, subprocess, os, glob, socket, datetime
+from mircx_pipeline import log, lookup, mailfile, headers, files
+from mircx_pipeline import summarise_CDedit as summarise
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
@@ -102,7 +103,7 @@ preproc.add_argument("--max-integration-time-preproc", dest="max_integration_tim
             help='maximum integration into a single file, in (s).\n'
             'This apply to PREPROC, and RTS steps [%(default)s]')
 
-oifits = parser.add_argument_group ('(1) oifits',
+oifits = parser.add_argument_group ('(2) oifits',
          '\nSet of options used to control the oifits\n'
          ' reduction steps.')
 
@@ -117,7 +118,7 @@ oifits.add_argument("--max-integration-time-oifits", dest="max_integration_time_
             help='maximum integration into a single file, in (s).\n'
             'This apply to OIFITS steps [%(default)s]')
 
-calib = parser.add_argument_group ('(1) calibrate',
+calib = parser.add_argument_group ('(3) calibrate',
         '\nSet of options used to control the calibration steps.')
 
 calib.add_argument("--calibrate",dest="calibrate",default='TRUE',
@@ -127,7 +128,10 @@ calib.add_argument("--calibrate",dest="calibrate",default='TRUE',
 calib.add_argument("--targ-list",dest="targ_list",default='mircx_targets.list',type=str,
             help="local database to query to identify SCI and CAL targets [%(default)s]")
 
-summary = parser.add_argument_group ('(1) summary',
+calib.add_argument("--calib-cal",dest="calibCal",default='FALSE',
+            choices=TrueFalse, help="calibrate the calibrators? [%(default)s]")
+
+summary = parser.add_argument_group ('(4) summary',
         '\nSet of options used to control the summary report\n'
         'file production and email alerts.')
 
@@ -137,7 +141,7 @@ summary.add_argument("--email",dest="email",type=str,default='',
 summary.add_argument("--sender",dest="sender",type=str,default='mircx.mystic@gmail.com',
             help='email address to send summary report file FROM [%(default)s]')
 
-compare = parser.add_argument_group ('(1) compare',
+compare = parser.add_argument_group ('(5) compare',
         '\nOptions used to control the exploration of the impact'
         'of varying ncoherent on the vis SNR and T3ERR.')
 
@@ -189,7 +193,7 @@ if len(snr) == 1 and 'd' in snr[0]:
 if len(mito) == 1 and 'd' in mito[0]:
     # Account for some being default settings:
     mito = [mito[0].replace('.d','')]*len(dates)
-
+            
 if len(ncs) == len(nbs) == len(mitp) == len(bbias) == len(snr) == len(mito) == len(dates):
     log.info('Length of reduction options checked: ok')
 else:
@@ -309,7 +313,7 @@ for d in range(0, len(dates)):
     # 4: identify calibrators
     targs = lookup.targList(dates[d],rawBase,redDir) # produces target summary file if directory is new
     calInfo, scical = lookup.queryLocal(targs, localDB)
-                
+    
     if argopt.ncoh_plots == 'FALSE':
         # --------------------------------------------------------------
         # 5. Run reduce.py with --rts=FALSE and --preproc=FALSE
@@ -336,7 +340,7 @@ for d in range(0, len(dates)):
                     print(last_line.strip())
                     if 'Total memory:' in last_line:
                         break
-            
+        
         # 6. Check that the oifits step successfully created .fits files in oiDir:
         if os.path.isdir(oiDir):
             if len(glob.glob(oiDir+'/*.fits')) > 0:
@@ -428,7 +432,126 @@ for d in range(0, len(dates)):
         rawhdrs = headers.loaddir(rawBase+'/'+dates[d]) ############ !!!!!!!
         log.info('Create report summary files')
         outfiles = summarise.texSumTitle(oiDir, rawhdrs, redF, calF)
-        summarise.texSumTables(oiDir,targs,calInfo,scical,redF,rawhdrs,outfiles)
+        #summarise.texSumTables(oiDir,targs,calInfo,scical,redF,rawhdrs,outfiles)
+        summarise.texTargTable(targs,calInfo,redF,outfiles)
+        
+        # !!!!  This is where the calibrating calibrators table can go
+        # 9. NEW: calibrate the calibrators!
+        if argopt.calibCal == 'TRUE':
+            log.info('Calibrating calibrators!')
+            import shutil
+            from mircx_pipeline import inspect
+            
+            calibrators = calInfo[:-1].split(',')[::3]
+            calDir = oiDir+'/calibCAL'
+            with cd(oiDir):
+                # 1. copy all calibrator .fits files to a new temporary directory
+                files.ensure_dir(calDir)
+                hdrs = headers.loaddir(oiDir)
+                for h in hdrs:
+                    if 'groundoifits.fits' not in h['ORIGNAME']:
+                        if h['OBJECT'] in calibrators:
+                            try:
+                                calFits.append(h['ORIGNAME']) # origname gives the full path to the fle
+                            except NameError:
+                                calFits = [h['ORIGNAME']]
+                        #else:
+                        #    print(h['OBJECT'])
+                
+                del hdrs
+                for item in calFits:
+                    shutil.copy2(item, calDir+'/')
+            
+            for outfile in outfiles:
+                with open(outfile, 'a') as outtex:
+                    outtex.write('\\subsection*{Calibrator test:')
+                    outtex.write(' goodness of fit of a UDD-only model in CANDID}\n')
+                    outtex.write('\\begin{longtable}{p{.25\\textwidth} | p{.10\\textwidth} | ')
+                    outtex.write('p{.08\\textwidth} | p{.07\\textwidth} | p{.09\\textwidth}')
+                    outtex.write(' | p{.09\\textwidth} | p{.06\\textwidth}}\n    \\hline\n')
+                    outtex.write('    Cal ID & UDD input (mas) & UDD fit & nsigma & sep (mas) & PA (deg) & F (\\%) \\\\ \n')
+                    outtex.write('    \\hline\n')
+            
+            for cal in calibrators:
+                # B. trim calInfo string to isolate cal of interest:
+                ind = calInfo[:-1].split(',').index(cal)
+                otherCals = ','.join(calInfo[:-1].split(',')[:ind]+calInfo[:-1].split(',')[ind+3:])
+                with cd(calDir):
+                    # C. run calibration step for selected cal
+                    com  = "mircx_calibrate.py --oifits-calibrated=TRUE --oifits-dir="+calDir
+                    ma   = " --calibrators="+otherCals+" --use-detmode=FALSE"
+                    nd   = " --oifits-calibrated-dir="+calDir+'/calibrated_'+cal
+                    pipe = "> nohup_inspect_"+str(cal)+".out"
+                    with open('nohup_inspect_'+str(cal)+'.out', 'w') as output:
+                        output.write('\n')
+                    subprocess.call("nohup "+com+ma+nd+" "+pipe+" &", shell=True)
+                    nf = open('nohup_inspect_'+str(cal)+'.out', 'r')
+                    ll = 0
+                    while True:
+                        nf.seek(ll,0)
+                        last_line = nf.read()
+                        ll = nf.tell()
+                        if last_line:
+                            print(last_line.strip())
+                            if 'Total memory:' in last_line:
+                                break
+                
+                # D. Inspect the calibrator:
+                fs = glob.glob(calDir+'/calibrated_'+cal+'/*.fits')
+                UDD = calInfo[:-1].split(',')[ind+1] # 0.272748
+                
+                status = inspect.calTest(fs, UDD=UDD, obj=cal, outDir=oiDir, uset3amp=False, fixUDD=False, detLim=True)
+                if status[0] == 'failed':
+                    log.error('Calibrating '+cal+' failed!')
+                elif status[0] == 'Import Error':
+                    log.error('CANDID Import Error: cannot calibrate calibrators')
+                elif status[0] == 'warning':
+                    # the UDD lies outside the range provided by info from mircx_targets.list suggesting a poor fit by a single UDD model
+                    status = inspect.calTest(fs, UDD=UDD, obj=cal, outDir=oiDir, uset3amp=False, fixUDD=True, detLim=True)
+                    if status[0] == 'failed':
+                        log.error('Second attempt at calibrating '+cal+' failed!')
+                
+                # E. Append summary report with fit info
+                for outfile in outfiles:
+                    with open(outfile, 'a') as outtex:
+                        fudd = float(UDD)
+                        outtex.write('    '+cal.replace('_', ' ')+' & '+str("%.2f"%fudd)+' & '+status[0])
+                        bf = status[1]
+                        try:
+                            nsig = str("%.1f"%bf['nsigma'])
+                        except TypeError:
+                            nsig = '--'
+                        except KeyError:
+                            nsig = '--'
+                        try:
+                            bf_r = str("%.2f"%np.sqrt(bf['best']['x']**2 + bf['best']['y']**2))
+                            bf_p = srt("%.2f"%np.degrees(np.arctan2(bf['best']['x'],bf['best']['y'])))
+                        except TypeError:
+                            bf_r = '--'
+                            bf_p = '--'
+                        try:
+                            bf_f = str("%.2f"%bf['best']['f'])
+                        except TypeError:
+                            bf_f = '--'
+                        outtex.write(' & '+nsig+' & '+bf_r+' & '+bf_p+' & '+bf_f)
+                        outtex.write(' \\\\ \n')
+                
+                try:
+                    del status
+                except:
+                    thisx = 'is fine'
+            for outfile in outfiles:
+                with open(outfile, 'a') as outtex:
+                    outtex.write('    \\hline\n\\end{longtable}\n\n')
+                    outtex.write('CANDID plots are located in the following ')
+                    outtex.write('folder on '+socket.gethostname()+':\n\n')
+                    outtex.write(oiDir.replace('_','\\_')+'\n')
+                    outtex.write('\n\n')
+            
+            # F. delete the temporary directory
+            shutil.rmtree(calDir+'/')
+        
+        summarise.texReducTable(oiDir,redF,outfiles)
         log.info('Cleanup memory')
         del rawhdrs
         summarise.texReportPlts(oiDir,outfiles,dates[d])
@@ -439,7 +562,7 @@ for d in range(0, len(dates)):
             subprocess.call('pdflatex '+outfiles[0] , shell=True)
             log.info('Write and compile summary report')
         
-        # 9. Email summary file to argopt.email
+        # 10. Email summary file to argopt.email
         if '@' in argopt.email:
             mailfile.sendSummary(argopt.email,argopt.sender,outfiles[1].replace('.tex','.pdf'),rawDir)
     
@@ -599,3 +722,4 @@ if socket.gethostname() == 'mircx':
             percentage = "{:.1f}".format(100*used)
             warn = "*Warning:* `" + drive + "` is " + percentage + "%"+ " full! (" + free + " free space remaining)"
             slack.post("data_pipeline", warn)
+

@@ -92,15 +92,14 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
             ret = 'warning'
     
     if detLim == True:
-        p = o.bestFit['best']
+        p = o.bestFit
+        print('------------>>>',p.keys())
         candid.CONFIG['long exec warning'] = 2000
         log.info('Running CANDID detectionLimit with companion removed')
-        o.detectionLimit(fig=2, removeCompanion=p, methods=['injection'])
+        o.detectionLimit(fig=2, removeCompanion=p['best'], methods=['injection'])
         plt.figure(2)
-        plt.plot([o.rmin, o.rmax], [-2.5*np.log10(p['f']/100.)]*2, ls='--', color='k')
-        plt.plot([np.sqrt(p['x']**2+p['y']**2)], [-2.5*np.log10(p['f']/100.)], ls=None, marker='*', ms=8)
-        #if -2.5*np.log10(p['f']/100.) < yl[0]:
-        #    ax.set_ylim((-2.5*np.log10(p['f']/100.))-0.2, yl[1]) # ensure companion can be seen on plot
+        plt.plot([o.rmin, o.rmax], [-2.5*np.log10(p['best']['f']/100.)]*2, ls='--', color='k')
+        plt.plot([np.sqrt(p['best']['x']**2+p['best']['y']**2)], [-2.5*np.log10(p['best']['f']/100.)], ls=None, marker='*', ms=8)
         plt.savefig(outDir+'/'+obj+'_detLim.pdf')
         log.info('Write '+outDir+'/'+obj+'_detLim.pdf')
         plt.close()

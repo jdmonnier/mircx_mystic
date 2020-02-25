@@ -428,25 +428,15 @@ def texSumTitle(oiDir,hdrs,redF,calF):
             outtex.write('}\n')
     return outFiles
 
-def texSumTables(oiDir,targs,calInf,scical,redF,rawhdrs,outFiles):
+def texTargTable(targs,calInf,redF,outFiles):
     """
-    Append tables section of summary file to existing
-    summary tex files. 
-        - oiDir is the directory containing the products of the
-        oifits reduction step;
+    Append target summary table to existing summary tex files.
         - targs is a python list of target names;
         - calInf is a string of information which was
         parsed to mircx_reduce.py;
-        - scical is a python list identifying each target
-        as sci or cal;
         - redF is a flag highlighting whether the reduction
         was successful;
-        - rawhdrs is the fits headers from the raw data.
     """
-    if redF == False:
-        # specifying the inclusion only of *_oifits.fits files ensures that BG and FG
-        # files are not summarised.
-        redhdrs = headers.load(sorted(glob.glob(oiDir+'/*_oifits.fits')))
     try:
         from astroquery.vizier import Vizier;
         log.info('Load astroquery.vizier');
@@ -478,6 +468,21 @@ def texSumTables(oiDir,targs,calInf,scical,redF,rawhdrs,outFiles):
                     outtex.write(' &  & '+hmag+' \\\\ \n')
             outtex.write('    \\hline\n\\end{longtable}\n')
             outtex.write('\n')
+
+def texReducTable(oiDir,redF,outFiles):
+    """
+    Append reduced data summary table to existing summary tex files.
+        - oiDir is the directory containing the products of the
+        oifits reduction step;
+        - redF is a flag highlighting whether the reduction
+        was successful;
+    """
+    if redF == False:
+        # specifying the inclusion only of *_oifits.fits files ensures that BG and FG
+        # files are not summarised.
+        redhdrs = headers.load(sorted(glob.glob(oiDir+'/*_oifits.fits')))
+    for outFile in outFiles:
+        with open(outFile, 'a') as outtex:
             outtex.write('\\subsection*{Reduced data summary}\n')
             outtex.write('{\\fontsize{7pt}{7pt}\n \\selectfont\n')
             outtex.write(' \\begin{longtable}{p{.03\\textwidth} | p{.06\\textwidth} | ')
@@ -657,7 +662,8 @@ def texSumPlots(oiDir,redF,calF,outFiles):
     # Read in mircx numbers of vis2 plots created in reduced and calibrated directories:
     redPlts = sorted(glob.glob(oiDir+'/*reduced_vis2.png'))
     redNum = [int(i.split('/')[-1].split('_')[0].split('x')[1]) for i in redPlts]
-    RTS_p  = sorted(glob.glob('/'.join(oiDir[:-2])+'/rts/*datarts_psd.png')) # e.g. mircx00000_datarts_psd.png or mircx00000_foregroundrts_psd.png or mircx00000_backgroundrts_psd.png
+    RTS_p  = sorted(glob.glob('/'.join(oiDir.split('/')[:-2])+'/rts/*datarts_psd.png')) # e.g. mircx00000_datarts_psd.png or mircx00000_foregroundrts_psd.png or mircx00000_backgroundrts_psd.png
+    SNR_p  = sorted(glob.glob(oiDir+'/*_oifits_snr.png'))
     for num in range(0, len(redNum)):
         # ensure correct number of leading zeros are added to redNum for file name:
         strnum = '0'*(5-len(str(redNum[num])))+str(redNum[num])
@@ -710,49 +716,43 @@ def texSumPlots(oiDir,redF,calF,outFiles):
          outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
          outtex.write('    \\textbf{Reduction quality assessment: SNR}\\\\ \n')
          outtex.write('    \\centering\n')
-         for snr in RTS_p[0:6]:
+         for snr in SNR_p[0:6]:
              # include the first 6 snr plots in the report file if they exist
-             if os.path.isfile(snr.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_snr')):
-                 outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, clip=true, ')
-                 outtex.write('width=0.49\\textwidth]{')
-                 outtex.write(snr.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_snr'))
-                 outtex.write('}\n')
-         if len(RTS_p) > 6:
-             for n in range(1, int(np.ceil(len(RTS_p)/6.))):
+             outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, clip=true, ')
+             outtex.write('width=0.49\\textwidth]{'+snr+'}\n')
+         if len(SNR_p) > 6:
+             for n in range(1, int(np.ceil(len(SNR_p)/6.))):
                  # include the remainder of the snr plots in the report file (if they exist)
                  outtex.write('\\end{figure}\n\n\\clearpage\n')
                  outtex.write('\\begin{figure}[h]\n')
                  outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
                  outtex.write('    \\centering\n')
-                 for snr in RTS_p[6*n:6*(n+1)]:
-                     if os.path.isfile(snr.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_snr')):
-                         outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, ')
-                         outtex.write('clip=true, width=0.49\\textwidth]{')
-                         outtex.write(snr.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_snr'))
-                         outtex.write('}\n')
+                 for snr in SNR_p[6*n:6*(n+1)]:
+                     outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, ')
+                     outtex.write('clip=true, width=0.49\\textwidth]{'+snr+'}\n')
          outtex.write('\\end{figure}\n\n')
          outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
          outtex.write('    \\textbf{Reduction quality assessment: base trend}\\\\ \n')
          outtex.write('    \\centering\n')
-         for ba in RTS_p[0:6]:
+         for ba in SNR_p[0:6]:
              # include the first 6 base_trend plots if they exist
-             if os.path.isfile(ba.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_base_trend')):
+             if os.path.isfile(ba.replace('_oifits_snr', '_oifits_base_trend')):
                  outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, clip=')
                  outtex.write('true, width=0.49\\textwidth]{')
-                 outtex.write(ba.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_base_trend'))
+                 outtex.write(ba.replace('_oifits_snr', '_oifits_base_trend'))
                  outtex.write('}\n')
-         if len(RTS_p) > 6:
-             for n in range(1, int(np.ceil(len(RTS_p)/6.))):
+         if len(SNR_p) > 6:
+             for n in range(1, int(np.ceil(len(SNR_p)/6.))):
                  outtex.write('\\end{figure}\n\n\\clearpage\n')
                  outtex.write('\\begin{figure}[h]\n')
                  outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
                  outtex.write('    \\centering\n')
-                 for ba in RTS_p[6*n:6*(n+1)]:
+                 for ba in SNR_p[6*n:6*(n+1)]:
                      # include the remaining base_trend plots if they exist
-                     if os.path.isfile(ba.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_base_trend')):
+                     if os.path.isfile(ba.replace('_oifits_snr', '_oifits_base_trend')):
                          outtex.write('    \\includegraphics[trim=2.2cm 0.9cm 1.5cm 0cm, ')
                          outtex.write('clip=true, width=0.49\\textwidth]{')
-                         outtex.write(ba.replace('/rts', '/oifits').replace('datarts_psd', 'oifits_base_trend'))
+                         outtex.write(ba.replace('_oifits_snr', '_oifits_base_trend'))
                          outtex.write('}\n')
          outtex.write('\\end{figure}\n\n')
     for outFile in outFiles:
