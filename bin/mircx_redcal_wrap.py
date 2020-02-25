@@ -2,8 +2,7 @@
 # -*- coding: iso-8859-15 -*-
 
 import argparse, subprocess, os, glob, socket, datetime
-from mircx_pipeline import log, lookup, mailfile, headers, files
-from mircx_pipeline import summarise_CDedit as summarise
+from mircx_pipeline import log, lookup, mailfile, headers, files, summarise
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
@@ -525,7 +524,7 @@ for d in range(0, len(dates)):
                             nsig = '--'
                         try:
                             bf_r = str("%.2f"%np.sqrt(bf['best']['x']**2 + bf['best']['y']**2))
-                            bf_p = srt("%.2f"%np.degrees(np.arctan2(bf['best']['x'],bf['best']['y'])))
+                            bf_p = str("%.2f"%np.degrees(np.arctan2(bf['best']['x'],bf['best']['y'])))
                         except TypeError:
                             bf_r = '--'
                             bf_p = '--'
