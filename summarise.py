@@ -718,8 +718,7 @@ def texSumPlots(oiDir,redF,calF,outFiles):
          outtex.write('    \\centering\n')
          for snr in SNR_p[0:6]:
              # include the first 6 snr plots in the report file if they exist
-             outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, clip=true, ')
-             outtex.write('width=0.49\\textwidth]{'+snr+'}\n')
+             outtex.write('    \\includegraphics[width=0.49\\textwidth]{'+snr+'}\n')
          if len(SNR_p) > 6:
              for n in range(1, int(np.ceil(len(SNR_p)/6.))):
                  # include the remainder of the snr plots in the report file (if they exist)
@@ -728,8 +727,7 @@ def texSumPlots(oiDir,redF,calF,outFiles):
                  outtex.write('    \\raggedright\n    \\textbf{Cont.}\\\\ \n')
                  outtex.write('    \\centering\n')
                  for snr in SNR_p[6*n:6*(n+1)]:
-                     outtex.write('    \\includegraphics[trim=2cm 0.9cm 1.5cm 0cm, ')
-                     outtex.write('clip=true, width=0.49\\textwidth]{'+snr+'}\n')
+                     outtex.write('    \\includegraphics[width=0.49\\textwidth]{'+snr+'}\n')
          outtex.write('\\end{figure}\n\n')
          outtex.write('\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
          outtex.write('    \\textbf{Reduction quality assessment: base trend}\\\\ \n')
