@@ -555,7 +555,7 @@ for d in range(0, len(dates)):
         del rawhdrs
         summarise.texReportPlts(oiDir,outfiles,dates[d])
         summarise.texSumUV(oiDir,calF,outfiles)
-        summarise.texSumPlots(oiDir,redF,calF,outfiles)
+        summarise.texSumPlots(oiDir,redF,calF,outfiles,calInfo[:-1].split(',')[::3])
         with cd(redDir):
             subprocess.call('pdflatex '+outfiles[1], shell=True)
             subprocess.call('pdflatex '+outfiles[0] , shell=True)

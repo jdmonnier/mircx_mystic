@@ -616,7 +616,7 @@ def texSumUV(oiDir,calF,outFiles):
 def getFileNum(file):
     return int(file.split('/')[-1].split('_')[0].split('x')[1])
 
-def texSumPlots(oiDir,redF,calF,outFiles):
+def texSumPlots(oiDir,redF,calF,outFiles,calIDs):
     """
     Appends vis2 and CP plots to the summary files.
     Whether any files are appended depends on if
@@ -628,6 +628,7 @@ def texSumPlots(oiDir,redF,calF,outFiles):
         - redF and calF are flags highlighting whether
         the reduction and calibration were successful,
         respectively;
+        - calIDs is a python list of calibrator names.
     """
     if redF == True:
         # catches instances where the reduction failed so there are no outputs to display
@@ -695,7 +696,7 @@ def texSumPlots(oiDir,redF,calF,outFiles):
             with open(outFile, 'a') as outtex:
                 outtex.write('\\clearpage\n') # avoids latex 'too many unprocessed floats' error
     
-    # Then append reduction QA plots to the file that won't be emailed:
+    # Then append reduction QA plots and CANDID plots to the file that won't be emailed:
     with open(outFiles[0], 'a') as outtex:
          outtex.write('\n\\clearpage\n\n\\newpage\n\\begin{figure}[h]\n    \\raggedright\n')
          outtex.write('    \\textbf{Reduction quality assessment: PSD}\\\\ \n')
@@ -753,6 +754,34 @@ def texSumPlots(oiDir,redF,calF,outFiles):
                          outtex.write(ba.replace('_oifits_snr', '_oifits_base_trend'))
                          outtex.write('}\n')
          outtex.write('\\end{figure}\n\n')
+         #
+         # Find CANDID outputs and include them:
+         #
+         for calID in calIDs:
+             fitMap_plt = glob.glob(oiDir+'/'+calID+'_fitMap_fixUDD.pdf')
+             detLim_plt = glob.glob(oiDir+'/'+calID+'_detLim.pdf')
+             resid_plt  = glob.glob(oiDir+'/'+calID+'_Residuals_fixUDD.pdf')
+             outtex.write('\\newpage\n\\begin{figure*}[h]\n    \\raggedright\n')
+             outtex.write('    \\textbf{CANDID output: fitMap with fixed UDD for ')
+             outtex.write(calID.replace('_',' ')+'}\\\\ \n    \\centering\n')
+             try:
+                 outtex.write('    \\includegraphics[width=0.9\\textwidth]{'+fitMap_plt[0]+'}\n')
+             except IndexError:
+                 log.info('No fitMap plot found for '+calID)
+             try:
+                 outtex.write('    \\includegraphics[width=0.9\\textwidth]{'+resid_plt[0]+'}\n')
+             except IndexError:
+                 log.info('No residuals plot found for '+calID)
+             outtex.write('\\end{figure*}\n\n\\clearpage\n')
+             outtex.write('\\newpage\n\\begin{figure*}[h]\n    \\raggedright\n')
+             outtex.write('    \\textbf{CANDID output: detectionLimit for ')
+             outtex.write(calID.replace('_',' ')+'}\\\\ \n    \\centering\n')
+             try:
+                 outtex.write('    \\includegraphics[width=0.9\\textwidth]{'+detLim_plt[0]+'}\n')
+             except IndexError:
+                 log.info('No detLim plot found for '+calID)
+             outtex.write('\\end{figure*}\n\n\\clearpage\n')
+    
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
             outtex.write('\\end{document}\n')
