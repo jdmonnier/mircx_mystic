@@ -464,7 +464,7 @@ for d in range(0, len(dates)):
             for outfile in outfiles:
                 with open(outfile, 'a') as outtex:
                     outtex.write('\\subsection*{Calibrator test:')
-                    outtex.write(' goodness of fit of a UDD-only model in CANDID}\n')
+                    outtex.write(' goodness of fit of UDD model with added companion in CANDID}\n')
                     outtex.write('\\begin{longtable}{p{.25\\textwidth} | p{.10\\textwidth} | ')
                     outtex.write('p{.08\\textwidth} | p{.07\\textwidth} | p{.09\\textwidth}')
                     outtex.write(' | p{.09\\textwidth} | p{.06\\textwidth}}\n    \\hline\n')
@@ -545,7 +545,7 @@ for d in range(0, len(dates)):
                     outtex.write('CANDID plots are located in the following ')
                     outtex.write('folder on '+socket.gethostname()+':\n\n')
                     outtex.write(oiDir.replace('_','\\_')+'\n')
-                    outtex.write('\n\n')
+                    outtex.write('and are included in the longform version of this report\n\n')
             
             # F. delete the temporary directory
             shutil.rmtree(calDir+'/')
