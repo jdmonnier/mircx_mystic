@@ -42,25 +42,29 @@ description = \
 """
 description use #1:
  Wrapper for mircx_reduce.py, mircx_calibrate.py,
- mircx_report.py and mircx_transmission.py. 
- 
+ mircx_report.py and mircx_transmission.py.
+
+ (calibrator checks can now be conducted using the
+ wrapper: add option --calib-cal=TRUE. NB: requires
+ CANDID to be installed)
+
 description use #2:
  Wrapper for mircx_reduce.py to explore different
- values of ncoherent and their effect on vis SNR 
+ values of ncoherent and their effect on vis SNR
  and T3PHI error.
 """
 
 epilog = \
 """
 examples use #1:
- mircx_redcal_wrap.py --dates=2018Oct29,2018Oct28 
+ mircx_redcal_wrap.py --dates=2018Oct29,2018Oct28
   --ncoherent=5,10 --ncs=1,1 --nbs=4,4 --snr-threshold=2.0,2.0
 
 NB: length of ncoherent, ncs, nbs, snr-threshold must be
  equal.
- 
+
 examples use #2:
- mircx_redcal_wrap.py --dates=2018Oct25 --ncoh-plots=TRUE 
+ mircx_redcal_wrap.py --dates=2018Oct25 --ncoh-plots=TRUE
  --email=observer@chara.observatory
 """
 
@@ -111,6 +115,9 @@ oifits.add_argument("--ncoherent",dest="ncoherent",type=str,default='10d',
 
 oifits.add_argument("--snr-threshold",dest="snr_threshold",type=str,default='2.0d', 
             help="list of SNR threshold for fringe selection [%(default)s]")
+
+oifits.add_argument("--flux-threshold",dest="flux_threshold",type=str,default='10.0d',
+            help="list of flux threshold for faint signal rejection [%(default)s]")
 
 oifits.add_argument("--max-integration-time-oifits", dest="max_integration_time_oifits",
             default='150.d',type=str,
@@ -163,9 +170,10 @@ nbs   = str(argopt.nbs).split(',')
 mitp  = str(argopt.max_integration_time_preproc).split(',')
 bbias = str(argopt.bbias).split(',')
 snr   = str(argopt.snr_threshold).split(',')
+fth   = str(argopt.flux_threshold).split(',')
 mito  = str(argopt.max_integration_time_oifits).split(',')
 
-for item in [ncs,nbs,mitp,bbias,snr,mito]:
+for item in [ncs,nbs,mitp,bbias,snr,fth,mito]:
     if isinstance(item, str):
         item = [item]
 
@@ -189,11 +197,15 @@ if len(snr) == 1 and 'd' in snr[0]:
     # Account for some being default settings:
     snr = [snr[0].replace('d','')]*len(dates)
 
+if len(fth) == 1 and 'd' in fth[0]:
+    # Account for some being default settings:
+    fth = [fth[0].replace('d','')]*len(dates)
+
 if len(mito) == 1 and 'd' in mito[0]:
     # Account for some being default settings:
     mito = [mito[0].replace('.d','')]*len(dates)
-            
-if len(ncs) == len(nbs) == len(mitp) == len(bbias) == len(snr) == len(mito) == len(dates):
+
+if len(ncs) == len(nbs) == len(mitp) == len(bbias) == len(snr) == len(fth) == len(mito) == len(dates):
     log.info('Length of reduction options checked: ok')
 else:
     log.error('Error in setup: length of options is not equal!')
@@ -304,8 +316,8 @@ for d in range(0, len(dates)):
                 if 'Total memory:' in last_line:
                     break
     
-    # 3. Make directory snrmito in argopt.red-dir/dates_nbsncsbbiasmitp
-    suf2 = 'snr'+str(snr[d]).replace('.','p')+'mito'+str(mito[d])
+    # 3. Make directory snrfthmito in argopt.red-dir/dates_nbsncsbbiasmitp
+    suf2 = 'snr'+str(snr[d]).replace('.','p')+'fth'+str(fth[d]).replace('.','p')+'mito'+str(mito[d])
     files.ensure_dir(redDir+'/'+suf2)
     oiDir = redDir+'/'+suf2+"/oifits_nc"+str(ncoh[d])
     
@@ -318,7 +330,7 @@ for d in range(0, len(dates)):
         # 5. Run reduce.py with --rts=FALSE and --preproc=FALSE
         #    assuming different ncoherent are for different argopt.dates
         # --------------------------------------------------------------
-        opt3 = ' --max-integration-time-oifits='+str(mito[d])+' --snr-threshold='+str(snr[d])
+        opt3 = ' --max-integration-time-oifits='+str(mito[d])+' --snr-threshold='+str(snr[d])+' --flux-threshold='+str(fth[d])
         opts2 = opt1+' --ncoherent='+str(ncoh[d])+opt3
         with cd(redDir+'/'+suf2):
             com = "mircx_reduce.py "+opts2+" --raw-dir="+rawDir+" --preproc=FALSE"
@@ -499,7 +511,10 @@ for d in range(0, len(dates)):
                 fs = glob.glob(calDir+'/calibrated_'+cal+'/*.fits')
                 UDD = calInfo[:-1].split(',')[ind+1] # 0.272748
                 
-                status = inspect.calTest(fs, UDD=UDD, obj=cal, outDir=oiDir, uset3amp=False, fixUDD=False, detLim=True)
+                try:
+                    status = inspect.calTest(fs, UDD=UDD, obj=cal, outDir=oiDir, uset3amp=False, fixUDD=False, detLim=True)
+                except ValueError:
+                    status = ['failed', 0]
                 if status[0] == 'failed':
                     log.error('Calibrating '+cal+' failed!')
                 elif status[0] == 'Import Error':
@@ -571,7 +586,7 @@ for d in range(0, len(dates)):
         # -------------------------------------------------------------------------------
         # 5. Run reduce.py with --rts=FALSE and --preproc=FALSE for each argopt.ncoherent
         # -------------------------------------------------------------------------------
-        opt3 = ' --max-integration-time-oifits='+str(mito[d])+' --snr-threshold='+str(snr[d])
+        opt3 = ' --max-integration-time-oifits='+str(mito[d])+' --snr-threshold='+str(snr[d])+' --flux-threshold='+str(fth[d])
         for nc in ncoh:
             oiDir = redDir+'/'+suf2+"/oifits_nc"+str(nc)
             if not os.path.isdir(oiDir):

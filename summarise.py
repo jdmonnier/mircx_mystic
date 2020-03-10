@@ -354,15 +354,18 @@ def texSumTitle(oiDir,hdrs,redF,calF):
         - redF and calF are flags for if the reduction
         and/or calibration process failed;
     """
-    # oiDir has the form redBase+/date_nbsXncsXbbiasXmitp/snrXmitoX/oifits_ncX
+    # oiDir has the form redBase+/date_nbsXncsXbbiasXmitp/snrXfthXmitoX/oifits_ncX
     ncoh = oiDir.split('oifits_nc')[-1]
     ncs  = oiDir.split('/')[-3].split('ncs')[-1].split('bbias')[0]
     nbs  = oiDir.split('/')[-3].split('nbs')[-1].split('ncs')[0]
     bb   = oiDir.split('/')[-3].split('bbias')[-1].split('mitp')[0]
-    snr  = oiDir.split('/')[-2].split('snr')[-1].split('mito')[0]
+    snr  = oiDir.split('/')[-2].split('snr')[-1].split('fth')[0]
+    fth  = oiDir.split('/')[-2].split('fth')[-1].split('mito')[0]
     dates = oiDir.split('/')[-3].split('_')[0]
     
-    auth = 'ncohrent='+ncoh+'; ncs='+ncs+'; nbs='+nbs+'; snr\\_threshold='+snr.replace('p','.')+'; bbias='+bb
+    for item in snr, fth:
+        item = item.replace('p','.')
+    auth = 'ncohrent='+ncoh+'; ncs='+ncs+'; nbs='+nbs+'; snr\\_thresh='+snr.replace('p','.')+'; flux\\_thresh='+fth.replace('p','.')+'; bbias='+bb
     suf1 = oiDir.split('/')[-3]
     suf2 = oiDir.split('/')[-2]+oiDir.split('_')[-1].replace('nc','ncoh')
     direc = '/'.join(oiDir.split('/')[:-2])
@@ -761,7 +764,7 @@ def texSumPlots(oiDir,redF,calF,outFiles,calIDs):
              fitMap_plt = glob.glob(oiDir+'/'+calID+'_fitMap_fixUDD.pdf')
              detLim_plt = glob.glob(oiDir+'/'+calID+'_detLim.pdf')
              resid_plt  = glob.glob(oiDir+'/'+calID+'_Residuals_fixUDD.pdf')
-             outtex.write('\\newpage\n\\begin{figure*}[h]\n    \\raggedright\n')
+             outtex.write('\\clearpage\\newpage\n\\begin{figure*}[h]\n    \\raggedright\n')
              outtex.write('    \\textbf{CANDID output: fitMap with fixed UDD for ')
              outtex.write(calID.replace('_',' ')+'}\\\\ \n    \\centering\n')
              try:

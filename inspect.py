@@ -59,7 +59,11 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
     
     if fixUDD == True:
         log.info('Running CANDID fitMap with fixed UDD')
-        o.fitMap(fig=0, addParam={'diam*':float(UDD)}, doNotFit=['diam*'])
+        try:
+            o.fitMap(fig=0, addParam={'diam*':float(UDD)}, doNotFit=['diam*'])
+        except ValueError as exception:
+            log.error('Error encountered in CANDID: '+str(exception))
+            return ['failed', 0]
         plt.figure(0)
         plt.savefig(outDir+'/'+obj+'_fitMap_fixUDD.pdf')
         log.info('Write '+outDir+'/'+obj+'_fitMap_fixUDD.pdf')
