@@ -443,8 +443,10 @@ def texTargTable(targs,calInf,redF,outFiles):
     try:
         from astroquery.vizier import Vizier;
         log.info('Load astroquery.vizier');
+        from astroquery.simbad import Simbad;
+        log.info('Load astroquery.simbad');
     except:
-        log.warning('Cannot load astroquery.vizier')
+        log.warning('Cannot load astroquery')
         log.warning('H-magnitude will not be able to be tabulated')
     
     for outFile in outFiles:
@@ -456,11 +458,21 @@ def texTargTable(targs,calInf,redF,outFiles):
             outtex.write('    \\hline\n')
             for targ in targs:
                 try:
-                    cat = Vizier.query_object(targ, catalog='JSDC')[0];
-                    hmag = str(cat['Hmag'][0])
-                except IndexError:
+                    result = Vizier.query_object(targ, catalog=['II/346'])
+                    ind = -999
+                    alt_ids = Simbad.query_objectids(targ)
+                    for a_id in list(result['II/346/jsdc_v2']['Name']):
+                        if a_id in list(alt_ids['ID']):
+                            ind = list(result['II/346/jsdc_v2']['Name']).index(a_id)
+                        elif a_id in list([a.replace(' ', '') for a in alt_ids['ID']]):
+                            ind = list(result['II/346/jsdc_v2']['Name']).index(a_id)
+                    if ind == -999:
+                        hmag = '--'
+                    else:
+                        hmag = str(result["II/346/jsdc_v2"]["Hmag"][ind])
+                except:
                     hmag = '--'
-                    log.warning('H band magnitude not retrieved from JSDC: target not found')
+                    log.warning('H band magnitude not retrieved from JSDC')
                 try:
                     ud_H = calInf.split(',')[calInf.split(',').index(targ.replace(' ','_'))+1]
                     eud_H = calInf.split(',')[calInf.split(',').index(targ.replace(' ','_'))+2]
