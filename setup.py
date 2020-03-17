@@ -2,7 +2,7 @@ import numpy as np;
 import os, ssl;
 
 import astropy;
-from astropy.coordinates import EarthLocation, Angle, SkyCoord, ICRS, ITRS;
+from astropy.coordinates import EarthLocation, Angle, SkyCoord, ICRS, ITRS, AltAz;
 from astropy import units;
 from astropy.time import Time;
 
@@ -304,6 +304,51 @@ def beam_index (hdr):
 
     # CHARA tel of the CHARA beams
     return cidx[cbeam];
+
+def compute_uv_frame (icrs,obstime):
+    '''
+    Return the reference frame of the uv plan of the object 'icrs'
+    observed from CHARA at the obstime, expressed in the local
+    observer frame in cartesian x,y,z (East, North, Up).
+
+    uv_frame = get_uv_frame (icrs,obstime);
+
+    uv_frame[0]: coordinates of unitary u in the local observer frame
+    uv_frame[1]: coordinates of unitary v in the local observer frame
+    '''
+
+    # Compute an asterism in the IRCS frame of small
+    # offsets toward North (v) and East (u)
+    delta = 10.*units.arcsec;
+    
+    um = SkyCoord (ra=icrs.ra-delta, dec=icrs.dec, frame='icrs');
+    up = SkyCoord (ra=icrs.ra+delta, dec=icrs.dec, frame='icrs');
+    vm = SkyCoord (ra=icrs.ra, dec=icrs.dec-delta, frame='icrs');
+    vp = SkyCoord (ra=icrs.ra, dec=icrs.dec+delta, frame='icrs');
+
+    # Transforme this frame to local, ITRS, observer frame
+    aa = AltAz (obstime=obstime, location=EarthLocation.of_site('CHARA'));
+    
+    um = um.transform_to (aa)
+    up = up.transform_to (aa)
+    vm = vm.transform_to (aa)
+    vp = vp.transform_to (aa)
+
+    # Differentiate this asterism to construct the
+    # reference vector of v and u, in local frame
+    eUo  = (up.cartesian - um.cartesian);
+    eUo /= eUo.norm();
+    
+    eVo  = (vp.cartesian - vm.cartesian);
+    eVo /= eVo.norm();
+
+    # Chara cartesian telescope position are defined
+    # in East,North,Up while the cartersian position
+    # of astropy are defined North,East,Up
+    eUo  = eUo.get_xyz()[[1,0,2]];
+    eVo  = eVo.get_xyz()[[1,0,2]];
+
+    return np.array ([eUo,eVo]);
 
 def tel_xyz (hdr):
     '''
