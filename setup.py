@@ -305,6 +305,12 @@ def beam_index (hdr):
     # CHARA tel of the CHARA beams
     return cidx[cbeam];
 
+def normalize (v, axis=0):
+    '''
+    Return normalized vector, along one axis
+    '''
+    return v / np.linalg.norm (v, axis=axis);
+
 def compute_uv_frame_basic (icrs, obstime):
     '''
     Return the reference frame of the uv plan of the object 'icrs'
@@ -351,15 +357,16 @@ def compute_uv_frame (icrs,obstime):
 
     # Compute an asterism in the IRCS frame of small
     # offsets toward North (v) and East (u)
-    delta = 10.*units.arcsec;
-    
-    um = SkyCoord (ra=icrs.ra-delta, dec=icrs.dec, frame='icrs');
-    up = SkyCoord (ra=icrs.ra+delta, dec=icrs.dec, frame='icrs');
-    vm = SkyCoord (ra=icrs.ra, dec=icrs.dec-delta, frame='icrs');
-    vp = SkyCoord (ra=icrs.ra, dec=icrs.dec+delta, frame='icrs');
+    delta = 10 / 3600.0 * np.pi / 180;
+
+    rb = icrs.copy();
+    rb_um = rb.directional_offset_by (90*units.deg,-delta*units.rad);
+    rb_up = rb.directional_offset_by (90*units.deg, delta*units.rad);
+    rb_vm = rb.directional_offset_by (0*units.deg, -delta*units.rad);
+    rb_vp = rb.directional_offset_by (0*units.deg,  delta*units.rad);
 
     # Transforme this asterism to local, observer frame, using
-    # the full IERS transformation.
+    # the full IERS transformation. Output is expressed in cartesian.
     try:
         astropy.utils.iers.conf.iers_auto_url = 'ftp://ftp.iers.org/products/eop/rapid/standard/finals2000A.data';
         aa = AltAz (obstime=obstime, location=EarthLocation.of_site('CHARA'));
@@ -368,25 +375,31 @@ def compute_uv_frame (icrs,obstime):
         astropy.utils.iers.conf.iers_auto_url = 'http://maia.usno.navy.mil/ser7/finals2000A.all';
         aa = AltAz (obstime=obstime, location=EarthLocation.of_site('CHARA'));
     
-    um = um.transform_to (aa)
-    up = up.transform_to (aa)
-    vm = vm.transform_to (aa)
-    vp = vp.transform_to (aa)
+    eWo    = normalize (rb.transform_to (aa).cartesian.get_xyz());
+    eWo_um = normalize (rb_um.transform_to (aa).cartesian.get_xyz());
+    eWo_up = normalize (rb_up.transform_to (aa).cartesian.get_xyz());
+    eWo_vm = normalize (rb_vm.transform_to (aa).cartesian.get_xyz());
+    eWo_vp = normalize (rb_vp.transform_to (aa).cartesian.get_xyz());
 
-    # Differentiate this asterism to construct the
-    # reference vector of v and u, in local frame
-    eUo  = (up.cartesian - um.cartesian);
-    eUo /= eUo.norm();
+    # # Differentiate this asterism to construct the
+    # # reference vector of v and u, in local frame
+    # eUo  = (eWo_up - eWo_um);
+    # eVo  = (eWo_vp - eWo_vm);
+    # eUo  = eUo / np.linalg.norm (eUo, axis=0);
+    # eVo  = eVo / np.linalg.norm (eVo, axis=0);
     
-    eVo  = (vp.cartesian - vm.cartesian);
-    eVo /= eVo.norm();
+    # Compute the observed (eUo,eVo,eWo) reference frame
+    eUo = np.cross (eWo_up, eWo_um, axis=0);
+    eUo = np.cross (eWo, eUo, axis=0) / (2.*delta);
+    eVo = np.cross (eWo_vp, eWo_vm, axis=0);
+    eVo = np.cross (eWo, eVo, axis=0) / (2.*delta);
 
     # CHARA cartesian telescope position are defined
     # in East,North,Up while the cartersian position
     # of astropy are defined North,East,Up
-    eUo  = eUo.get_xyz()[[1,0,2]];
-    eVo  = eVo.get_xyz()[[1,0,2]];
-
+    eUo  = eUo[[1,0,2]];
+    eVo  = eVo[[1,0,2]];
+    
     return np.array ([eUo,eVo]);
 
 def tel_xyz (hdr):
@@ -418,7 +431,7 @@ def tel_xyz (hdr):
             hdr['HIERARCH CHARA '+t+'_BASELINE_Y'] = y;
             hdr['HIERARCH CHARA '+t+'_BASELINE_Z'] = z;
             
-    return default
+    return default;
 
 def chara_coord (hdr):
     '''
