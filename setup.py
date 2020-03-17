@@ -305,6 +305,38 @@ def beam_index (hdr):
     # CHARA tel of the CHARA beams
     return cidx[cbeam];
 
+def compute_uv_frame_basic (icrs, obstime):
+    '''
+    Return the reference frame of the uv plan of the object 'icrs'
+    observed from CHARA at the obstime, expressed in the local
+    observer frame in cartesian x,y,z (East, North, Up).
+
+    uv_frame = get_uv_frame (icrs,obstime);
+
+    uv_frame[0]: coordinates of unitary u in the local observer frame
+    uv_frame[1]: coordinates of unitary v in the local observer frame
+    '''
+    
+    # HA and DEC of object in ITRS
+    try:
+        astropy.utils.iers.conf.iers_auto_url = 'ftp://ftp.iers.org/products/eop/rapid/standard/finals2000A.data';
+        itrs = icrs.transform_to (ITRS(obstime=obstime));
+    except:
+        log.warning ('Fail to run icrs.transform_to ITRS, so try with another server');
+        astropy.utils.iers.conf.iers_auto_url = 'http://maia.usno.navy.mil/ser7/finals2000A.all';
+        itrs = icrs.transform_to (ITRS(obstime=obstime));
+        
+    # CHARA site
+    lon, lat = chara_coord (None);
+
+    dec = itrs.spherical.lat;
+    ha  = lon - itrs.spherical.lon;
+    
+    uv_frame = [[np.cos (ha.rad), -np.sin (ha.rad) * np.sin (lat.rad), np.sin (ha.rad) * np.cos (lat.rad)],
+                [np.sin (dec.rad) * np.sin (ha.rad), (np.sin (dec.rad) * np.cos (ha.rad) * np.sin (lat.rad)  + np.cos (dec.rad) * np.cos (lat.rad)), (-np.sin (dec.rad) * np.cos (ha.rad) * np.cos (lat.rad)  + np.cos (dec.rad) * np.sin (lat.rad))]];
+        
+    return np.array (uv_frame);
+
 def compute_uv_frame (icrs,obstime):
     '''
     Return the reference frame of the uv plan of the object 'icrs'
@@ -326,8 +358,15 @@ def compute_uv_frame (icrs,obstime):
     vm = SkyCoord (ra=icrs.ra, dec=icrs.dec-delta, frame='icrs');
     vp = SkyCoord (ra=icrs.ra, dec=icrs.dec+delta, frame='icrs');
 
-    # Transforme this frame to local, ITRS, observer frame
-    aa = AltAz (obstime=obstime, location=EarthLocation.of_site('CHARA'));
+    # Transforme this asterism to local, observer frame, using
+    # the full IERS transformation.
+    try:
+        astropy.utils.iers.conf.iers_auto_url = 'ftp://ftp.iers.org/products/eop/rapid/standard/finals2000A.data';
+        aa = AltAz (obstime=obstime, location=EarthLocation.of_site('CHARA'));
+    except:
+        log.warning ('Fail to run icrs.transform_to ITRS, so try with another server');
+        astropy.utils.iers.conf.iers_auto_url = 'http://maia.usno.navy.mil/ser7/finals2000A.all';
+        aa = AltAz (obstime=obstime, location=EarthLocation.of_site('CHARA'));
     
     um = um.transform_to (aa)
     up = up.transform_to (aa)
@@ -342,7 +381,7 @@ def compute_uv_frame (icrs,obstime):
     eVo  = (vp.cartesian - vm.cartesian);
     eVo /= eVo.norm();
 
-    # Chara cartesian telescope position are defined
+    # CHARA cartesian telescope position are defined
     # in East,North,Up while the cartersian position
     # of astropy are defined North,East,Up
     eUo  = eUo.get_xyz()[[1,0,2]];
@@ -474,7 +513,7 @@ def compute_base_uv (hdr,mjd=None,baseid='base'):
     If given, the mdj parameter should match the number
     of computed baseline (either 15 or 20).
     '''
-    log.info ('Compute uv');
+    log.info ('Compute uv -- basic');
 
     # Get the physical telescope position (read from header)
     telpos = tel_xyz (hdr);
@@ -496,35 +535,17 @@ def compute_base_uv (hdr,mjd=None,baseid='base'):
     # Time as a valid Time object
     obstime = Time (mjd, format='mjd');
     
-    # CHARA site
-    lon, lat = chara_coord (hdr);
-
     # Object position in ICRS, at the
     # time of observation
     coord_icrs = sky_coord (hdr);
 
-    # HA and DEC of object in ITRS
-    try:
-        astropy.utils.iers.conf.iers_auto_url = 'ftp://ftp.iers.org/products/eop/rapid/standard/finals2000A.data';
-        coord_itrs = coord_icrs.transform_to (ITRS(obstime=obstime));
-    except:
-        log.warning ('Fail to run icrs.transform_to ITRS, so try with another server');
-        astropy.utils.iers.conf.iers_auto_url = 'http://maia.usno.navy.mil/ser7/finals2000A.all';
-        coord_itrs = coord_icrs.transform_to (ITRS(obstime=obstime));
-        
-    dec = coord_itrs.spherical.lat;
-    ha  = lon - coord_itrs.spherical.lon;
-    
-    # Project baseline on sky
-    bx = -np.sin (lat.rad) * baseline[:,1] + np.cos (lat.rad) * baseline[:,2];
-    by = baseline[:,0]
-    bz = np.cos (lat.rad) * baseline[:,1] + np.sin (lat.rad) * baseline[:,2];
+    # uv unitary directions expressed in the local frame
+    uv_frame = compute_uv_frame_basic (coord_icrs, obstime);
 
-    # Now convert bx,by,bz to (u,v,w)
-    u =  np.sin (ha.rad) * bx + np.cos (ha.rad) * by;
-    v = -np.sin (dec.rad) * np.cos (ha.rad) * bx + np.sin (dec.rad) * np.sin (ha.rad) * by + np.cos (dec.rad) * bz;
+    # Project telescope baseline into uv directions
+    uv = np.einsum ('uxb,bx->ub', uv_frame, baseline);
 
-    return np.array ([u,v]);
+    return uv;
     
 def crop_ids (hdr):
     '''
