@@ -871,6 +871,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
 def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
                  ncoher=3, nincoher=5,
                  snr_threshold=3.0, flux_threshold=20.0,
+                 gd_threshold=30,
                  avgphot=True, ncs=2, nbs=2, gdAttenuation=True,
                  vis_reference='self'):
     '''
@@ -1068,6 +1069,9 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
     base_flag  = 1. * (base_snr > snr_threshold);
 
     # Compute selection flag from GD
+    base_flag *= (np.abs(base_gd) < gd_threshold);
+
+    # Compute selection flag from enveloppe
     log.info ('GD selection: enveloppe > 0.2');
     base_flag *= (attenuation**2 > 0.2);
 

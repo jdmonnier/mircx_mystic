@@ -150,6 +150,9 @@ oifits.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
 oifits.add_argument ("--flux-threshold", dest="flux_threshold", type=float,
                      default=20.0, help="FLUX threshold for rejection [%(default)s]");
 
+oifits.add_argument ("--gd-threshold", dest="gd_threshold", type=float,
+                     default=30.0, help="GD threshold for rejection in um [%(default)s]");
+
 oifits.add_argument ("--gd-attenuation", dest="gd_attenuation",default='TRUE',
                      choices=TrueFalse,
                      help="correct from the attenuation due to GD [%(default)s]");
@@ -726,6 +729,7 @@ if argopt.oifits != 'FALSE':
                              snr_threshold=argopt.snr_threshold,
                              flux_threshold=argopt.flux_threshold,
                              gdAttenuation=argopt.gd_attenuation,
+                             gd_threshold=argopt.gd_threshold,
                              vis_reference=argopt.vis_reference);
             
             # If remove RTS
