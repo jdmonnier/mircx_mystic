@@ -366,7 +366,8 @@ def compute_uv_frame (icrs,obstime):
     rb_vp = rb.directional_offset_by (0*units.deg,  delta*units.rad);
 
     # Transforme this asterism to local, observer frame, using
-    # the full IERS transformation. Output is expressed in cartesian.
+    # the full IERS transformation. Output is expressed in
+    # normalized cartesian coordinates (North,East,Up).
     try:
         astropy.utils.iers.conf.iers_auto_url = 'ftp://ftp.iers.org/products/eop/rapid/standard/finals2000A.data';
         aa = AltAz (obstime=obstime, location=EarthLocation.of_site('CHARA'));
@@ -526,7 +527,7 @@ def compute_base_uv (hdr,mjd=None,baseid='base'):
     If given, the mdj parameter should match the number
     of computed baseline (either 15 or 20).
     '''
-    log.info ('Compute uv -- basic');
+    log.info ('Compute uv with erfa');
 
     # Get the physical telescope position (read from header)
     telpos = tel_xyz (hdr);
@@ -553,7 +554,10 @@ def compute_base_uv (hdr,mjd=None,baseid='base'):
     coord_icrs = sky_coord (hdr);
 
     # uv unitary directions expressed in the local frame
-    uv_frame = compute_uv_frame_basic (coord_icrs, obstime);
+    uv_frame = compute_uv_frame (coord_icrs, obstime);
+
+    # Set a keyword in header
+    hdr.set ('HIERARCH MIRC PRO UV_EQUATION', 'ERFA', 'Type of computation for uv-plan');
 
     # Project telescope baseline into uv directions
     uv = np.einsum ('uxb,bx->ub', uv_frame, baseline);
