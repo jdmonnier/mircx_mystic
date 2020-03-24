@@ -40,7 +40,7 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
             print('    python setup.py install --user')
             print('in your CANDID directory.')
             print(' ')
-        return ['Import Error', 0]
+        return ['failed: ImportError', 0]
     
     try:
         import cyvis
@@ -48,7 +48,7 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
         print('CANDID not installed. Use:')
         print(' python setup.py install --user')
         print(' in CANDID directory')
-        return ['Import Error', 0]
+        return ['failed: ImportError', 0]
     
     import matplotlib.pyplot as plt
     
@@ -64,6 +64,9 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
         except ValueError as exception:
             log.error('Error encountered in CANDID: '+str(exception))
             return ['failed', 0]
+        except MemoryError as exception:
+            log.error('Error encountered in CANDID: '+str(exception))
+            return ['failed: memory', 0]
         plt.figure(0)
         plt.savefig(outDir+'/'+obj+'_fitMap_fixUDD.pdf')
         log.info('Write '+outDir+'/'+obj+'_fitMap_fixUDD.pdf')
@@ -74,12 +77,16 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
         plt.close()
         ret = 'fixed'
     else:
+        candid.CONFIG['long exec warning'] = 3000
         try:
             log.info('Running CANDID fitMap with UDD as free parameter')
             o.fitMap(fig=0)
         except TypeError as exception:
             log.error('Error encountered in CANDID: '+str(exception))
             return ['failed', 0]
+        except MemoryError as exception:
+            log.error('Error encountered in CANDID: '+str(exception))
+            return ['failed: memory', 0]
         plt.figure(0)
         plt.savefig(outDir+'/'+obj+'_fitMap_fitUDD.pdf')
         log.info('Write '+outDir+'/'+obj+'_fitMap_fitUDD.pdf')
@@ -88,17 +95,19 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
         plt.savefig(outDir+'/'+obj+'_Residuals_fitUDD.pdf')
         log.info('Write '+outDir+'/'+obj+'_Residuals_fitUDD.pdf')
         plt.close()
-        # comment on how this differs from mircx_target.list value
-        fitUDD, eUDD = o.bestFit['best']['diam*'], o.bestFit['uncer']['diam*']
-        if float(UDD) < (fitUDD + eUDD) and float(UDD) > (fitUDD - eUDD):
-            ret = 'within range'
-        else:
-            ret = 'warning'
+        ret = 'free'
     
     if detLim == True:
-        p = o.bestFit
-        print('------------>>>',p.keys())
-        candid.CONFIG['long exec warning'] = 2000
+        candid.CONFIG['long exec warning'] = 3000
+        try:
+            p = o.bestFit
+            print('------------>>>',p.keys())
+        except AttributeError:
+            # Get here if longer computation is required
+            return ['failed: time', 0]
+        except MemoryError as exception:
+            log.error('Error encountered in CANDID: '+str(exception))
+            return ['failed: memory', 0]
         log.info('Running CANDID detectionLimit with companion removed')
         o.detectionLimit(fig=2, removeCompanion=p['best'], methods=['injection'])
         plt.figure(2)

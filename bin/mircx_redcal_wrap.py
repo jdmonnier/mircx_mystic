@@ -448,10 +448,10 @@ for d in range(0, len(dates)):
         
         # !!!!  This is where the calibrating calibrators table can go
         # 9. NEW: calibrate the calibrators!
-        if argopt.calibCal == 'TRUE':
+        if os.path.isdir(oiDir) and argopt.calibCal == 'TRUE':
             log.info('Calibrating calibrators!')
             import shutil
-            from mircx_pipeline import inspect
+            from mircx_pipeline import inspect_CDedit as inspect
             
             calibrators = calInfo[:-1].split(',')[::3]
             calDir = oiDir+'/calibCAL'
@@ -478,9 +478,9 @@ for d in range(0, len(dates)):
                     outtex.write('\\subsection*{Calibrator test:')
                     outtex.write(' goodness of fit of UDD model with added companion in CANDID}\n')
                     outtex.write('\\begin{longtable}{p{.25\\textwidth} | p{.10\\textwidth} | ')
-                    outtex.write('p{.08\\textwidth} | p{.07\\textwidth} | p{.09\\textwidth}')
+                    outtex.write('p{.20\\textwidth} | p{.07\\textwidth} | p{.09\\textwidth}')
                     outtex.write(' | p{.09\\textwidth} | p{.06\\textwidth}}\n    \\hline\n')
-                    outtex.write('    Cal ID & UDD input (mas) & UDD fit & nsigma & sep (mas) & PA (deg) & F (\\%) \\\\ \n')
+                    outtex.write('    Cal ID & UDD input (mas) & UDD fit & nsigma & sep (mas) & PA (deg) & $\Delta$Mag \\\\ \n')
                     outtex.write('    \\hline\n')
             
             for cal in calibrators:
@@ -515,21 +515,18 @@ for d in range(0, len(dates)):
                     status = inspect.calTest(fs, UDD=UDD, obj=cal, outDir=oiDir, uset3amp=False, fixUDD=False, detLim=True)
                 except ValueError:
                     status = ['failed', 0]
-                if status[0] == 'failed':
-                    log.error('Calibrating '+cal+' failed!')
-                elif status[0] == 'Import Error':
-                    log.error('CANDID Import Error: cannot calibrate calibrators')
-                elif status[0] == 'warning':
-                    # the UDD lies outside the range provided by info from mircx_targets.list suggesting a poor fit by a single UDD model
-                    status = inspect.calTest(fs, UDD=UDD, obj=cal, outDir=oiDir, uset3amp=False, fixUDD=True, detLim=True)
-                    if status[0] == 'failed':
-                        log.error('Second attempt at calibrating '+cal+' failed!')
+                if 'failed' in status[0]:
+                    log.error('Calibrating '+cal+' '+status[0]+'!')
                 
                 # E. Append summary report with fit info
                 for outfile in outfiles:
                     with open(outfile, 'a') as outtex:
                         fudd = float(UDD)
-                        outtex.write('    '+cal.replace('_', ' ')+' & '+str("%.2f"%fudd)+' & '+status[0])
+                        outtex.write('    '+cal.replace('_', ' ')+' & '+str("%.2f"%fudd)+' & ')
+                        try:
+                            outtex.write(status[0]+status[1]['reliability'])
+                        except:
+                            outtex.write(status[0])
                         bf = status[1]
                         try:
                             nsig = str("%.1f"%bf['nsigma'])
@@ -544,7 +541,7 @@ for d in range(0, len(dates)):
                             bf_r = '--'
                             bf_p = '--'
                         try:
-                            bf_f = str("%.2f"%bf['best']['f'])
+                            bf_f = str("%.2f"%(-2.5*np.log10(bf['best']['f']/100.)))
                         except TypeError:
                             bf_f = '--'
                         outtex.write(' & '+nsig+' & '+bf_r+' & '+bf_p+' & '+bf_f)
