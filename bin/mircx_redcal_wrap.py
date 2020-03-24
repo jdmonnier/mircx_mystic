@@ -477,6 +477,7 @@ for d in range(0, len(dates)):
                 with open(outfile, 'a') as outtex:
                     outtex.write('\\subsection*{Calibrator test:')
                     outtex.write(' goodness of fit of UDD model with added companion in CANDID}\n')
+                    outtex.write('{\\fontsize{7pt}{7pt}\n \\selectfont\n')
                     outtex.write('\\begin{longtable}{p{.25\\textwidth} | p{.10\\textwidth} | ')
                     outtex.write('p{.20\\textwidth} | p{.07\\textwidth} | p{.09\\textwidth}')
                     outtex.write(' | p{.09\\textwidth} | p{.06\\textwidth}}\n    \\hline\n')
