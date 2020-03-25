@@ -451,7 +451,7 @@ for d in range(0, len(dates)):
         if os.path.isdir(oiDir) and argopt.calibCal == 'TRUE':
             log.info('Calibrating calibrators!')
             import shutil
-            from mircx_pipeline import inspect_CDedit as inspect
+            from mircx_pipeline import inspect as inspect
             
             calibrators = calInfo[:-1].split(',')[::3]
             calDir = oiDir+'/calibCAL'
