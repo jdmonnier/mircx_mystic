@@ -451,7 +451,7 @@ for d in range(0, len(dates)):
         if os.path.isdir(oiDir) and argopt.calibCal == 'TRUE':
             log.info('Calibrating calibrators!')
             import shutil
-            from mircx_pipeline import inspect as inspect
+            from mircx_pipeline import inspect_CDedit as inspect
             
             calibrators = calInfo[:-1].split(',')[::3]
             calDir = oiDir+'/calibCAL'
@@ -478,10 +478,10 @@ for d in range(0, len(dates)):
                     outtex.write('\\subsection*{Calibrator test:')
                     outtex.write(' goodness of fit of UDD model with added companion in CANDID}\n')
                     outtex.write('{\\fontsize{7pt}{7pt}\n \\selectfont\n')
-                    outtex.write('\\begin{longtable}{p{.25\\textwidth} | p{.10\\textwidth} | ')
-                    outtex.write('p{.20\\textwidth} | p{.07\\textwidth} | p{.09\\textwidth}')
-                    outtex.write(' | p{.09\\textwidth} | p{.06\\textwidth}}\n    \\hline\n')
-                    outtex.write('    Cal ID & UDD input (mas) & UDD fit & nsigma & sep (mas) & PA (deg) & $\Delta$Mag \\\\ \n')
+                    outtex.write('\\begin{longtable}{p{.20\\textwidth} | p{.08\\textwidth} | ')
+                    outtex.write('p{.14\\textwidth} | p{.06\\textwidth} | p{.07\\textwidth}')
+                    outtex.write(' | p{.07\\textwidth} | p{.06\\textwidth}}\n    \\hline\n')
+                    outtex.write('    Cal ID & UDD (mas) & UDD fit & nsigma & sep (mas) & PA (deg) & $\Delta$Mag \\\\ \n')
                     outtex.write('    \\hline\n')
             
             for cal in calibrators:
@@ -523,12 +523,16 @@ for d in range(0, len(dates)):
                 for outfile in outfiles:
                     with open(outfile, 'a') as outtex:
                         fudd = float(UDD)
-                        outtex.write('    '+cal.replace('_', ' ')+' & '+str("%.2f"%fudd)+' & ')
-                        try:
-                            outtex.write(status[0]+status[1]['reliability'])
-                        except:
-                            outtex.write(status[0])
                         bf = status[1]
+                        outtex.write('    '+cal.replace('_', ' ')+' & ')
+                        try:
+                            outtex.write(str("%.2f"%bf['best']['diam*']))
+                        except:
+                            outtex.write(str("%.2f"%fudd))
+                        try:
+                            outtex.write(' & '+status[0]+bf['reliability'])
+                        except:
+                            outtex.write(' & '+status[0])
                         try:
                             nsig = str("%.1f"%bf['nsigma'])
                         except TypeError:

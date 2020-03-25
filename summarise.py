@@ -773,11 +773,11 @@ def texSumPlots(oiDir,redF,calF,outFiles,calIDs):
          # Find CANDID outputs and include them:
          #
          for calID in calIDs:
-             fitMap_plt = glob.glob(oiDir+'/'+calID+'_fitMap_fixUDD.pdf')
+             fitMap_plt = glob.glob(oiDir+'/'+calID+'_fitMap_fitUDD.pdf')
              detLim_plt = glob.glob(oiDir+'/'+calID+'_detLim.pdf')
-             resid_plt  = glob.glob(oiDir+'/'+calID+'_Residuals_fixUDD.pdf')
+             resid_plt  = glob.glob(oiDir+'/'+calID+'_Residuals_fitUDD.pdf')
              outtex.write('\\clearpage\\newpage\n\\begin{figure*}[h]\n    \\raggedright\n')
-             outtex.write('    \\textbf{CANDID output: fitMap with fixed UDD for ')
+             outtex.write('    \\textbf{CANDID output: fitMap with free UDD for ')
              outtex.write(calID.replace('_',' ')+'}\\\\ \n    \\centering\n')
              try:
                  outtex.write('    \\includegraphics[width=0.9\\textwidth]{'+fitMap_plt[0]+'}\n')

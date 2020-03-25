@@ -51,11 +51,15 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
         return ['failed: ImportError', 0]
     
     import matplotlib.pyplot as plt
+    from astropy.io import fits as pyfits
     
     o = candid.Open(files)
     log.info('Read files for '+str(obj)+' into CANDID')
     if uset3amp == False:
         o.observables = ['v2', 'cp']
+    
+    with pyfits.open(files[0]) as fitsinput:
+        insmode = fitsinput[0].header['INSMODE']
     
     if fixUDD == True:
         log.info('Running CANDID fitMap with fixed UDD')
@@ -75,12 +79,16 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
         plt.savefig(outDir+'/'+obj+'_Residuals_fixUDD.pdf')
         log.info('Write '+outDir+'/'+obj+'_Residuals_fixUDD.pdf')
         plt.close()
-        ret = 'fixed'
+        ret = 'fixed: '
     else:
         candid.CONFIG['long exec warning'] = 3000
         try:
             log.info('Running CANDID fitMap with UDD as free parameter')
-            o.fitMap(fig=0)
+            if 'GRISM' in insmode:
+                # if insmode == GRISM, use rmin and rmax to limit runtime and memory allocation:
+                o.fitMap(fig=0, rmin=0.54, rmax=30)
+            else:
+                o.fitMap(fig=0)
         except TypeError as exception:
             log.error('Error encountered in CANDID: '+str(exception))
             return ['failed', 0]
@@ -95,7 +103,7 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
         plt.savefig(outDir+'/'+obj+'_Residuals_fitUDD.pdf')
         log.info('Write '+outDir+'/'+obj+'_Residuals_fitUDD.pdf')
         plt.close()
-        ret = 'free'
+        ret = 'free: '
     
     if detLim == True:
         candid.CONFIG['long exec warning'] = 3000
@@ -109,7 +117,10 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
             log.error('Error encountered in CANDID: '+str(exception))
             return ['failed: memory', 0]
         log.info('Running CANDID detectionLimit with companion removed')
-        o.detectionLimit(fig=2, removeCompanion=p['best'], methods=['injection'])
+        if 'GRISM' in insmode:
+            o.detectionLimit(fig=2, removeCompanion=p['best'], methods=['injection'], rmin=0.54, rmax=30)
+        else:
+            o.detectionLimit(fig=2, removeCompanion=p['best'], methods=['injection'])
         plt.figure(2)
         plt.plot([o.rmin, o.rmax], [-2.5*np.log10(p['best']['f']/100.)]*2, ls='--', color='k')
         plt.plot([np.sqrt(p['best']['x']**2+p['best']['y']**2)], [-2.5*np.log10(p['best']['f']/100.)], ls=None, marker='*', ms=8)
