@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
 import smtplib
+from contextlib import redirect_stdout
 try:
     from email.mime.multipart import MIMEMultipart
 except ModuleNotFoundError:
@@ -478,9 +479,9 @@ for d in range(0, len(dates)):
                     outtex.write('\\subsection*{Calibrator test:')
                     outtex.write(' goodness of fit of UDD model with added companion in CANDID}\n')
                     outtex.write('{\\fontsize{7pt}{7pt}\n \\selectfont\n')
-                    outtex.write('\\begin{longtable}{p{.20\\textwidth} | p{.08\\textwidth} | ')
-                    outtex.write('p{.14\\textwidth} | p{.06\\textwidth} | p{.07\\textwidth}')
-                    outtex.write(' | p{.07\\textwidth} | p{.06\\textwidth}}\n    \\hline\n')
+                    outtex.write('\\begin{longtable}{p{.20\\textwidth} | p{.09\\textwidth} | ')
+                    outtex.write('p{.14\\textwidth} | p{.06\\textwidth} | p{.08\\textwidth}')
+                    outtex.write(' | p{.08\\textwidth} | p{.06\\textwidth}}\n    \\hline\n')
                     outtex.write('    Cal ID & UDD (mas) & UDD fit & nsigma & sep (mas) & PA (deg) & $\Delta$Mag \\\\ \n')
                     outtex.write('    \\hline\n')
             
@@ -509,15 +510,20 @@ for d in range(0, len(dates)):
                                 break
                 
                 # D. Inspect the calibrator:
+                log.setFile(oiDir+'/candid_'+cal+'.log') # Attempt to make script save the output written to screen by candid
                 fs = glob.glob(calDir+'/calibrated_'+cal+'/*.fits')
                 UDD = calInfo[:-1].split(',')[ind+1] # 0.272748
                 
-                try:
-                    status = inspect.calTest(fs, UDD=UDD, obj=cal, outDir=oiDir, uset3amp=False, fixUDD=False, detLim=True)
-                except ValueError:
-                    status = ['failed', 0]
+                with open(oiDir+'/candid_'+cal+'.log', 'a') as f_stdout:
+                    with redirect_stdout(f_stdout):
+                        try:
+                            status = inspect.calTest(fs, UDD=UDD, obj=cal, outDir=oiDir, uset3amp=False, fixUDD=False, detLim=True)
+                        except ValueError:
+                            status = ['failed', 0]
+                
                 if 'failed' in status[0]:
                     log.error('Calibrating '+cal+' '+status[0]+'!')
+                log.closeFile()                          # candid output finished so stop writing screen output to this log
                 
                 # E. Append summary report with fit info
                 for outfile in outfiles:
@@ -526,9 +532,9 @@ for d in range(0, len(dates)):
                         bf = status[1]
                         outtex.write('    '+cal.replace('_', ' ')+' & ')
                         try:
-                            outtex.write(str("%.2f"%bf['best']['diam*']))
+                            outtex.write(str("%.3f"%bf['best']['diam*'])+'$\\pm$'+str("%.3f"%bf['uncer']['diam*']))
                         except:
-                            outtex.write(str("%.2f"%fudd))
+                            outtex.write(str("%.3f"%fudd))
                         try:
                             outtex.write(' & '+status[0]+bf['reliability'])
                         except:
@@ -541,7 +547,9 @@ for d in range(0, len(dates)):
                             nsig = '--'
                         try:
                             bf_r = str("%.2f"%np.sqrt(bf['best']['x']**2 + bf['best']['y']**2))
-                            bf_p = str("%.2f"%np.degrees(np.arctan2(bf['best']['x'],bf['best']['y'])))
+                            bf_er = str("%.2f"%np.sqrt( ((bf['uncer']['x']*bf['best']['x'])**2 + (bf['uncer']['y']*bf['best']['y'])**2) / (bf['best']['x']**2 + bf['best']['y']**2) ))
+                            bf_p = str("%.1f"%np.degrees(np.arctan2(bf['best']['x'],bf['best']['y'])))
+                            bf_ep = str("%.1f"%np.degrees(np.sqrt( ((bf['uncer']['y']*bf['best']['x'])**2 + (bf['uncer']['x']*bf['best']['y'])**2) / (bf['best']['x']**2 + bf['best']['y']**2)**2 )))
                         except TypeError:
                             bf_r = '--'
                             bf_p = '--'
@@ -549,7 +557,7 @@ for d in range(0, len(dates)):
                             bf_f = str("%.2f"%(-2.5*np.log10(bf['best']['f']/100.)))
                         except TypeError:
                             bf_f = '--'
-                        outtex.write(' & '+nsig+' & '+bf_r+' & '+bf_p+' & '+bf_f)
+                        outtex.write(' & '+nsig+' & '+bf_r+'$\\pm$'+bf_er+' & '+bf_p+'$\\pm$'+bf_ep+' & '+bf_f)
                         outtex.write(' \\\\ \n')
                 
                 try:
