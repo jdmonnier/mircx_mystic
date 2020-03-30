@@ -118,9 +118,9 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
             return ['failed: memory', 0]
         log.info('Running CANDID detectionLimit with companion removed')
         if 'GRISM' in insmode:
-            o.detectionLimit(fig=2, removeCompanion=p['best'], methods=['injection'], rmin=0.54, rmax=30)
+            o.detectionLimit(fig=2, removeCompanion=p['best'], methods=['injection'], rmin=0.54, rmax=30, diam=p['best']['diam*'])
         else:
-            o.detectionLimit(fig=2, removeCompanion=p['best'], methods=['injection'])
+            o.detectionLimit(fig=2, removeCompanion=p['best'], methods=['injection'], diam=p['best']['diam*'])
         plt.figure(2)
         plt.plot([o.rmin, o.rmax], [-2.5*np.log10(p['best']['f']/100.)]*2, ls='--', color='k')
         plt.plot([np.sqrt(p['best']['x']**2+p['best']['y']**2)], [-2.5*np.log10(p['best']['f']/100.)], ls=None, marker='*', ms=8)
