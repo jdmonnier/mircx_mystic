@@ -1,6 +1,6 @@
 from . import log
 
-def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
+def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True, observables=['v2', 'cp']):
     """
      - files is a python list (can be of length one) of calibrated
        MIRC-X data files
@@ -13,6 +13,8 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
      - UDD is the uniform disk diameter of the target (in mas)
      - detLim is a flag used to determine whether the detection limit
        step of CANDID is to be done.
+     - observables is a python list of the interferometric observables
+       used in the fitting. By default, t3amp are not used.
     """
     import numpy as np
     try:
@@ -56,7 +58,7 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True):
     o = candid.Open(files)
     log.info('Read files for '+str(obj)+' into CANDID')
     if uset3amp == False:
-        o.observables = ['v2', 'cp']
+        o.observables = observables
     
     with pyfits.open(files[0]) as fitsinput:
         insmode = fitsinput[0].header['INSMODE']
