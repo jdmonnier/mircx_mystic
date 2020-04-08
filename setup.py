@@ -595,3 +595,9 @@ def kappa (hdr):
     if (hdr['MJD-OBS'] < 58525.00): return 3.0;  # Thorlabs BS
     return 5.5;  # Polar optimised BS
     
+def uv_maxrel_distance (u1,v1,u2,v2):
+    '''
+    Return max relative distance
+    '''
+    rel = np.sqrt ((u1-u2)**2 + (v1-v2)**2) / np.sqrt (u1**2 + u2**2 + 0.001);
+    return rel.max();
