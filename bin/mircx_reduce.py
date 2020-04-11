@@ -85,6 +85,9 @@ preproc.add_argument ("--threshold", dest="threshold",default=5.,type=float,
 preproc.add_argument ("--mean-quality", dest="mean_quality", type=float,
                      default=20.0, help="minimum quality to consider the BEAM_MEAN as a valid window for cropping the data in the preproc [%(default)s]");
 
+preproc.add_argument ("--speccal-order", dest="speccal_order", type=int,
+                    default=2, help="order of polynomial fitting in spectral calib [%(default)s]");
+
 rts = parser.add_argument_group ('(2) rts',
                   '\nCreates RTS intermediate products, which are the\n'
                   'coherent flux and the photometric flux in real time,\n'
@@ -484,7 +487,8 @@ if argopt.preproc != 'FALSE':
             log.setFile (output+'.log');
             
             mrx.compute_speccal (gp[0:argopt.max_file],
-                                 output=output, filetype=filetype);
+                                 output=output, filetype=filetype,
+                                 fitorder=argopt.speccal_order);
             
         except Exception as exc:
             log.error ('Cannot compute SPEC_CAL: '+str(exc));
