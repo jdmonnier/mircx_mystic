@@ -39,6 +39,8 @@ examples:
 
   mircx_flag.py --base W1 --target HD1234 mircx00124_oifits.fits
 
+  mircx_flag.py --base S1S2 --lbd 1.8 1.9 --mjd 55670.0 55670.1 --output-dir=all_flagged_data/
+
 contact lebouquj@umich.edu for support.
 """
 
@@ -118,6 +120,9 @@ def get_target (hdulist):
 # Define input list of files
 inputs = [];
 for l in argopt.input_files: inputs += glob.glob(l);
+
+# Create output directory
+files.ensure_dir (argopt.output_dir);
 
 # Loop on list of files
 for file in inputs:
