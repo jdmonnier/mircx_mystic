@@ -83,7 +83,7 @@ parser.add_argument ('--mjd', dest='mjd', default=[50000,60000],
                      type=float, nargs=2,
                      help='time interval in modified julian day (default is all)');
 
-parser.add_argument ('--target', dest='target', default=['INTERNAL'],
+parser.add_argument ('--target', dest='target', default=None,
                      type=str, nargs='+',
                      help='list of target (default is none)');
 
