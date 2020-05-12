@@ -71,7 +71,8 @@ parser.add_argument ('--base', dest='base',
 
 parser.add_argument ('--output-dir', dest='output_dir', default='./flagged/',
                      type=str,
-                     help=' def: %(default)s');
+                     help='Directory for output product. If INPLACE, then '
+                          'FITS files are updated in-place. def: %(default)s');
 
 parser.add_argument ("--debug", dest="debug",default='FALSE',
                      choices=TrueFalse,
@@ -122,7 +123,13 @@ inputs = [];
 for l in argopt.input_files: inputs += glob.glob(l);
 
 # Create output directory
-files.ensure_dir (argopt.output_dir);
+if argopt.output_dir == 'INPLACE':
+    open_mode = 'update';
+else:
+    log.info ('Check output directory');
+    files.ensure_dir (argopt.output_dir);
+    open_mode = 'readonly';
+
 
 # Loop on list of files
 for file in inputs:
@@ -130,7 +137,7 @@ for file in inputs:
     # Open file
     log.info ('File ' + file);
     try:
-        hdulist = pyfits.open (file);
+        hdulist = pyfits.open (file,mode=open_mode);
         
         # Get the target dictionnary for this file
         trgdic = get_target (hdulist);
@@ -165,8 +172,11 @@ for file in inputs:
                 log.info ('Flag %-7s %.4f %s %s'%(hdu.header['EXTNAME'], mjd, trg, base));
             
         # Save
-        files.write (hdulist, argopt.output_dir+file);
-        hdulist.close ();
+        if argopt.output_dir == 'INPLACE':
+            log.info ('FITS file saved in-place');
+            hdulist.close ();
+        else:
+            files.write (hdulist, argopt.output_dir+file);
         
     except Exception as exc:
         log.error ('Cannot deal with file '+str(file));
