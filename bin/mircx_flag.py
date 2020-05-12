@@ -6,6 +6,7 @@ import argparse
 import glob
 import os
 import copy
+from fnmatch import fnmatch
 
 from mircx_pipeline import log, setup, files;
 from astropy.io import fits as pyfits;
@@ -30,8 +31,7 @@ def get_target (hdulist):
     for h in hdulist:
         if h.header.get ('EXTNAME') == 'OI_TARGET':
             return dict([(d['TARGET_ID'],d['TARGET']) for d in h.data]);
-
-
+    
 #
 # Implement options
 #
@@ -49,8 +49,7 @@ By default, the script parse all *.fits files in the current
 directory, but a list of input file(s) can be specified instead.
 
 TODO: I want to evolve the script to handle
-multiple time interval, to better handle the baseline
-(swap order)...
+to better handle the baseline (swap order)...
 
 """
 
@@ -60,7 +59,7 @@ examples:
 
   mircx_flag.py --base S1S2 --target HD1234 --output-dir=all_flagged_data/
 
-  mircx_flag.py --base W1 --target HD1234 mircx00124_oifits.fits
+  mircx_flag.py --base *W1* --target HD1234 mircx00124_oifits.fits
 
   mircx_flag.py --base S1S2 --lbd 1.8 1.9 --mjd 55670.0 55670.1 --output-dir=all_flagged_data/
 
@@ -74,22 +73,24 @@ parser = argparse.ArgumentParser (formatter_class=argparse.RawDescriptionHelpFor
 TrueFalse = ['TRUE','FALSE'];
 TrueFalseOverwrite = ['TRUE','FALSE','OVERWRITE'];
 
-# rules arguments
+# Rules arguments
 parser.add_argument ('--lbd', dest='lbd', default=[1.,3.],
                      type=float, nargs=2,
-                     help='interval of wavelength in um (default is all)');
+                     help='interval of wavelength in um (default is 1. 3.)');
 
 parser.add_argument ('--mjd', dest='mjd', default=[50000,60000],
                      type=float, nargs=2,
-                     help='time interval in modified julian day (default is all)');
+                     help='time interval in modified julian day (default is 50000 60000)');
 
-parser.add_argument ('--target', dest='target', default=None,
+parser.add_argument ('--target', dest='target', default='*',
                      type=str, nargs='+',
-                     help='list of target (default is all)');
+                     help='list of target, with basic wildcard matching '
+                     'such as "*HD_*" (default is "*")');
 
-parser.add_argument ('--base', dest='base',
+parser.add_argument ('--base', dest='base', default='*',
                      type=str, nargs='+',
-                     help='list of baseline (e.g S1S2, default is all)');
+                     help='list of baseline and/or triplet, with basic wildcard '
+                     'matching such as "*S2*" (default is "*")');
 
 # Copy the parser of the rules only
 rparser = copy.deepcopy (parser);
@@ -98,10 +99,10 @@ rparser = copy.deepcopy (parser);
 parser.add_argument ('--output-dir', dest='output_dir', default='./flagged/',
                      type=str,
                      help='Directory for output product. If INPLACE, then '
-                          'FITS files are updated in-place. def: %(default)s');
+                          'FITS files are updated in-place (default is %(default)s)');
 
 parser.add_argument ('--rules', dest='rules', type=argparse.FileType('r'), default=None,
-                     help='Text files with list of rules entered as in-line arguments.'
+                     help='Text files with list of rules entered as in-line arguments. '
                      'Each line in the file is a new set of rules.');
 
 parser.add_argument ("--debug", dest="debug",default='FALSE',
@@ -141,7 +142,6 @@ else:
 
 # Print and check rules
 for i,rule in enumerate(rules):
-    # Print
     log.info ('Rule %i: %s'%(1,str(rule)[10:-1]));
 
 # Define input list of files
@@ -150,9 +150,10 @@ for l in argopt.input_files: inputs += glob.glob(l);
 
 # Create output directory
 if argopt.output_dir == 'INPLACE':
+    log.info ('FITS files will be modified inplace');
     open_mode = 'update';
 else:
-    log.info ('Check output directory');
+    log.info ('Create output directory');
     files.ensure_dir (argopt.output_dir);
     open_mode = 'readonly';
 
@@ -193,10 +194,10 @@ for file in inputs:
                     if mjd < rule.mjd[0] or mjd > rule.mjd[1]: continue;
                 
                     # Check target
-                    if rule.target is not None and trg not in rule.target: continue;
+                    if any ([fnmatch (trg, t) for t in rule.target]) is False: continue;
                     
                     # Check baseline
-                    if rule.base is not None and base not in rule.base: continue;
+                    if any ([fnmatch (base, b) for b in rule.base]) is False: continue;
                     
                     # Check wavelength
                     ids = (lbd >= rule.lbd[0]) * (lbd <= rule.lbd[1]);
