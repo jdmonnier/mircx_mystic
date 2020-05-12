@@ -85,11 +85,11 @@ parser.add_argument ('--mjd', dest='mjd', default=[50000,60000],
 
 parser.add_argument ('--target', dest='target', default=None,
                      type=str, nargs='+',
-                     help='list of target (default is none)');
+                     help='list of target (default is all)');
 
 parser.add_argument ('--base', dest='base',
                      type=str, nargs='+',
-                     help='list of baseline (e.g S1S2, default is none)');
+                     help='list of baseline (e.g S1S2, default is all)');
 
 # Copy the parser of the rules only
 rparser = copy.deepcopy (parser);
