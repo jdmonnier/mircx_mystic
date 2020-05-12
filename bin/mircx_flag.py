@@ -30,6 +30,21 @@ def get_target (hdulist):
     for h in hdulist:
         if h.header.get ('EXTNAME') == 'OI_TARGET':
             return dict([(d['TARGET_ID'],d['TARGET']) for d in h.data]);
+
+def load_rules (argopt,rparser):
+    if argopt.rules is not None:
+        log.info ('Load list of rules from file');
+        out = [];
+        for l in argopt.rules.readlines():
+            l = l.strip();
+            if l is '' or l[0] is '#': continue;
+            out.append (rparser.parse_args(l.split()));
+    else:
+        log.info ('Load list of rules from command line');
+        out = [argopt];
+    for i,r in enumerate(out):
+        log.info ('Rule %i: %s'%(i,str(r)[10:-1]));
+    return out;
     
 #
 # Implement options
@@ -81,17 +96,17 @@ parser.add_argument ('--mjd', dest='mjd', default=[50000,60000],
                      type=float, nargs=2,
                      help='time interval in modified julian day (default is 50000 60000)');
 
-parser.add_argument ('--target', dest='target', default='*',
+parser.add_argument ('--target', dest='target', default=['*'],
                      type=str, nargs='+',
                      help='list of target, with basic wildcard matching '
                      'such as "*HD_*" (default is "*")');
 
-parser.add_argument ('--base', dest='base', default='*',
+parser.add_argument ('--base', dest='base', default=['*'],
                      type=str, nargs='+',
                      help='list of baseline and/or triplet, with basic wildcard '
                      'matching such as "*S2*" (default is "*")');
 
-parser.add_argument ('--name', dest='name', default='*',
+parser.add_argument ('--name', dest='name', default=['*'],
                      type=str, nargs='+',
                      help='list of filename, with basic wildcard '
                      'matching such as "mircx_0[123]???.fits" This is usefull when '
@@ -139,16 +154,7 @@ elog = log.trace ('mircx_flag');
 
 # Load the list of rules from files or
 # from command line
-if argopt.rules is not None:
-    log.info ('Load list of rules from file');
-    rules = [rparser.parse_args(l.split()) for l in argopt.rules.readlines() if l.strip() is not ''];
-else:
-    log.info ('Load list of rules from command line');
-    rules = [argopt];
-
-# Print and check rules
-for i,rule in enumerate(rules):
-    log.info ('Rule %i: %s'%(1,str(rule)[10:-1]));
+rules = load_rules (argopt,rparser);
 
 # Define input list of files
 inputs = [];
