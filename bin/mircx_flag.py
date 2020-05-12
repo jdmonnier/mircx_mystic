@@ -91,6 +91,13 @@ parser.add_argument ('--base', dest='base', default='*',
                      help='list of baseline and/or triplet, with basic wildcard '
                      'matching such as "*S2*" (default is "*")');
 
+parser.add_argument ('--name', dest='name', default='*',
+                     type=str, nargs='+',
+                     help='list of filename, with basic wildcard '
+                     'matching such as "mircx_0[123]???.fits" This is usefull when '
+                     'different rules apply to different files, for instance from '
+                     'the log of the night (default is "*")');
+
 # Copy the parser of the rules only
 rparser = copy.deepcopy (parser);
 
@@ -188,6 +195,9 @@ for file in inputs:
 
                 # Loop on rules
                 for rule in rules:
+
+                    # Check filename for this rule
+                    if any ([fnmatch (file, f) for f in rule.name]) is False: continue;
                     
                     # Check time
                     if mjd < rule.mjd[0] or mjd > rule.mjd[1]: continue;
