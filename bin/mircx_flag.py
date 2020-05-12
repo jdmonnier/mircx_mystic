@@ -5,9 +5,32 @@ import mircx_pipeline as mrx
 import argparse
 import glob
 import os
+import copy
 
 from mircx_pipeline import log, setup, files;
 from astropy.io import fits as pyfits;
+
+#
+# Function to associate tables in OIFITS
+#
+
+def get_wave (hdulist, hdu):
+    n = hdu.header['INSNAME'];
+    for h in hdulist:
+        if h.header.get ('EXTNAME') == 'OI_WAVELENGTH':
+            if h.header.get ('INSNAME') == n: return h.data['EFF_WAVE'];
+        
+def get_station (hdulist, hdu):
+    n = hdu.header['ARRNAME'];
+    for h in hdulist:
+        if h.header.get ('EXTNAME') == 'OI_ARRAY':
+            return dict([(d['STA_INDEX'],d['STA_NAME']) for d in h.data]);
+                
+def get_target (hdulist):
+    for h in hdulist:
+        if h.header.get ('EXTNAME') == 'OI_TARGET':
+            return dict([(d['TARGET_ID'],d['TARGET']) for d in h.data]);
+
 
 #
 # Implement options
@@ -44,15 +67,14 @@ examples:
 contact lebouquj@umich.edu for support.
 """
 
-parser = argparse.ArgumentParser (description=description, epilog=epilog,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 add_help=False);
+parser = argparse.ArgumentParser (formatter_class=argparse.RawDescriptionHelpFormatter,
+                                  add_help=False);
 
 
 TrueFalse = ['TRUE','FALSE'];
 TrueFalseOverwrite = ['TRUE','FALSE','OVERWRITE'];
 
-# Opional arguments
+# rules arguments
 parser.add_argument ('--lbd', dest='lbd', default=[1.,3.],
                      type=float, nargs=2,
                      help='interval of wavelength in um (default is all)');
@@ -69,10 +91,18 @@ parser.add_argument ('--base', dest='base',
                      type=str, nargs='+',
                      help='list of baseline (e.g S1S2, default is none)');
 
+# Copy the parser of the rules only
+rparser = copy.deepcopy (parser);
+
+# Other argumens
 parser.add_argument ('--output-dir', dest='output_dir', default='./flagged/',
                      type=str,
                      help='Directory for output product. If INPLACE, then '
                           'FITS files are updated in-place. def: %(default)s');
+
+parser.add_argument ('--rules', dest='rules', type=argparse.FileType('r'), default=None,
+                     help='Text files with list of rules entered as in-line arguments.'
+                     'Each line in the file is a new set of rules.');
 
 parser.add_argument ("--debug", dest="debug",default='FALSE',
                      choices=TrueFalse,
@@ -87,36 +117,32 @@ parser.add_argument ('-h', action='help',
 # Positional argument
 parser.add_argument ('input_files', type=str, nargs='*', default=['*_oifits.fits']);
 
+# Add long help
+parser.description = description;
+parser.epilog = epilog;
+
+#
 # Parse argument
+#
+
 argopt = parser.parse_args ();
 
 # Verbose
 elog = log.trace ('mircx_flag');
 
-# Checks
-if len (argopt.lbd) % 2:
-    raise ValueError ('lbd should have even number of values');
+# Load the list of rules from files or
+# from command line
+if argopt.rules is not None:
+    log.info ('Load list of rules from file');
+    rules = [rparser.parse_args(l.split()) for l in argopt.rules.readlines() if l.strip() is not ''];
+else:
+    log.info ('Load list of rules from command line');
+    rules = [argopt];
 
-if len (argopt.mjd) % 2:
-    raise ValueError ('mjd should have even number of values');
-
-# Function to associate tables in OIFITS
-def get_wave (hdulist, hdu):
-    n = hdu.header['INSNAME'];
-    for h in hdulist:
-        if h.header.get ('EXTNAME') == 'OI_WAVELENGTH':
-            if h.header.get ('INSNAME') == n: return h.data['EFF_WAVE'];
-        
-def get_station (hdulist, hdu):
-    n = hdu.header['ARRNAME'];
-    for h in hdulist:
-        if h.header.get ('EXTNAME') == 'OI_ARRAY':
-            return dict([(d['STA_INDEX'],d['STA_NAME']) for d in h.data]);
-                
-def get_target (hdulist):
-    for h in hdulist:
-        if h.header.get ('EXTNAME') == 'OI_TARGET':
-            return dict([(d['TARGET_ID'],d['TARGET']) for d in h.data]);
+# Print and check rules
+for i,rule in enumerate(rules):
+    # Print
+    log.info ('Rule %i: %s'%(1,str(rule)[10:-1]));
 
 # Define input list of files
 inputs = [];
@@ -130,8 +156,10 @@ else:
     files.ensure_dir (argopt.output_dir);
     open_mode = 'readonly';
 
-
+#
 # Loop on list of files
+#
+
 for file in inputs:
 
     # Open file
@@ -152,24 +180,29 @@ for file in inputs:
             
             # Loop on data line by line
             for data in hdu.data:
-        
-                # Check time
-                mjd = data['MJD'];
-                if mjd < argopt.mjd[0] or mjd > argopt.mjd[1]: continue;
-                
-                # Check target
-                trg = trgdic[data['TARGET_ID']];
-                if argopt.target is not None and trg not in argopt.target: continue;
-        
-                # Check baseline
+
+                # Get data
                 base = ''.join([stadic[i] for i in data['STA_INDEX']]);
-                if argopt.base is not None and base not in argopt.base: continue;
+                mjd = data['MJD'];
+                trg = trgdic[data['TARGET_ID']];
+
+                # Loop on rules
+                for rule in rules:
+                    
+                    # Check time
+                    if mjd < rule.mjd[0] or mjd > rule.mjd[1]: continue;
                 
-                # Check wavelength
-                ids = (lbd >= argopt.lbd[0]) * (lbd <= argopt.lbd[1]);
-                data['FLAG'] += ids;
-        
-                log.info ('Flag %-7s %.4f %s %s'%(hdu.header['EXTNAME'], mjd, trg, base));
+                    # Check target
+                    if rule.target is not None and trg not in rule.target: continue;
+                    
+                    # Check baseline
+                    if rule.base is not None and base not in rule.base: continue;
+                    
+                    # Check wavelength
+                    ids = (lbd >= rule.lbd[0]) * (lbd <= rule.lbd[1]);
+                    data['FLAG'] += ids;
+                    
+                    log.info ('Flag %-7s %.4f %s %s'%(hdu.header['EXTNAME'], mjd, trg, base));
             
         # Save
         if argopt.output_dir == 'INPLACE':
