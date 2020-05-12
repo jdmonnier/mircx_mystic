@@ -1,7 +1,6 @@
 #! /usr/bin/env python                                                          
 # -*- coding: iso-8859-15 -*-                                                   
 
-import mircx_pipeline as mrx
 import argparse
 import glob
 import os
