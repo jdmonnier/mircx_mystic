@@ -256,7 +256,6 @@ def load_raw (hdrs, differentiate=True,
                 data[r,mark:,:,:] = 0.0;
                 # Count total number of zeroed frames
                 nsat += nf - mark;
-                log.info ('mark = %i'%mark);
 
         # Increase nsat in header
         hdr[HMQ+'NSAT'] += nsat;
