@@ -206,11 +206,19 @@ def load_raw (hdrs, differentiate=True,
         # if no saturation, or the id of the first saturated frame. Note that we
         # don't check the edges of the images because badpixels are not properly
         # detected here
+        
         if saturationThreshold is not None:
+            # Discard badpixels from saturation check
             if badpix is None:
                 tmp = data[:,:,2:-2,2:-2];
             else:
                 tmp = (data * (badpix==False)[None,None,:,:])[:,:,2:-2,2:-2];
+            # Discard bad lines and columns from saturation checks
+            oks = (tmp.ptp (axis=(0,1,3)) != 0);
+            tmp = tmp[:,:,oks,:];
+            oks = (tmp.ptp (axis=(0,1,2)) != 0);
+            tmp = tmp[:,:,:,oks];
+            # Look for saturation
             flag += tmp.max (axis=(2,3)) > saturationThreshold;
 
         # TODO: deal with non-linearity,
