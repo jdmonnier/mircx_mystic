@@ -208,6 +208,11 @@ argopt = parser.parse_args ();
 # Verbose
 elog = log.trace ('mircx_reduce');
 
+# Set debug
+if argopt.debug == 'TRUE':
+    log.info ('start debug mode')
+    import pdb;
+
 ## force choices when --bbias=TRUE
 if argopt.bbias != 'FALSE':
     log.info ('bbias is TRUE so force save-all-freqs=TRUE');
@@ -259,7 +264,7 @@ if argopt.preproc != 'FALSE':
             
         except Exception as exc:
             log.error ('Cannot compute BACKGROUND_MEAN: '+str(exc));
-            if argopt.debug == 'TRUE': raise;
+            if argopt.debug == 'TRUE': pdb.post_mortem(); raise; 
         finally:
             log.closeFile ();
 
@@ -307,7 +312,7 @@ if argopt.preproc != 'FALSE':
             
         except Exception as exc:
             log.error ('Cannot compute BEAM_MAP: '+str(exc));
-            if argopt.debug == 'TRUE': raise;
+            if argopt.debug == 'TRUE':  pdb.post_mortem(); raise;
         finally:
             log.closeFile ();
         
@@ -347,7 +352,7 @@ if argopt.preproc != 'FALSE':
             
         except Exception as exc:
             log.error ('Cannot compute BEAM_MEAN: '+str(exc));
-            if argopt.debug == 'TRUE': raise;
+            if argopt.debug == 'TRUE': pdb.post_mortem(); raise; 
         finally:
             log.closeFile ();
         
@@ -384,7 +389,7 @@ if argopt.preproc != 'FALSE':
             
         except Exception as exc:
             log.error ('Cannot compute BEAM_PROFILE: '+str(exc));
-            if argopt.debug == 'TRUE': raise;
+            if argopt.debug == 'TRUE': pdb.post_mortem(); raise; 
         finally:
             log.closeFile ();
         
@@ -452,7 +457,7 @@ if argopt.preproc != 'FALSE':
             
         except Exception as exc:
             log.error ('Cannot compute PREPROC: '+str(exc));
-            if argopt.debug == 'TRUE': raise;
+            if argopt.debug == 'TRUE': pdb.post_mortem(); raise; 
         finally:
             log.closeFile ();
 
@@ -492,7 +497,7 @@ if argopt.preproc != 'FALSE':
             
         except Exception as exc:
             log.error ('Cannot compute SPEC_CAL: '+str(exc));
-            if argopt.debug == 'TRUE': raise;
+            if argopt.debug == 'TRUE': pdb.post_mortem(); raise; 
         finally:
             log.closeFile ();
 
@@ -576,7 +581,7 @@ if argopt.rts != 'FALSE':
 
         except Exception as exc:
             log.error ('Cannot compute RTS: '+str(exc));
-            if argopt.debug == 'TRUE': raise;
+            if argopt.debug == 'TRUE': pdb.post_mortem(); raise;
         finally:
             log.closeFile ();
             
@@ -633,7 +638,7 @@ if argopt.bbias != 'FALSE':
 
         except Exception as exc:
             log.error ('Cannot compute '+filetype+': '+str(exc));
-            if argopt.debug == 'TRUE': raise;
+            if argopt.debug == 'TRUE': pdb.post_mortem(); raise; 
         finally:
             log.closeFile ();
             
@@ -670,7 +675,7 @@ if argopt.selection != 'FALSE':
         
         except Exception as exc:
             log.error ('Cannot compute SELECTION: '+str(exc));
-            if argopt.debug == 'TRUE': raise;
+            if argopt.debug == 'TRUE': pdb.post_mortem(); raise;
         finally:
             log.closeFile ();
             
@@ -745,7 +750,7 @@ if argopt.oifits != 'FALSE':
 
         except Exception as exc:
             log.error ('Cannot compute OIFITS: '+str(exc));
-            if argopt.debug == 'TRUE': raise;
+            if argopt.debug == 'TRUE': pdb.post_mortem(); raise;
         finally:
             log.closeFile ();
             
