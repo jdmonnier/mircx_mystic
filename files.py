@@ -14,6 +14,7 @@ import os
 from . import log, headers, plot;
 from .headers import HM, HMQ, HMP, HMW;
 from .version import revision, git_hash, git_date, git_branch;
+from .setup import coef_flat
 
 def ensure_dir (outputDir):
     '''
@@ -61,7 +62,7 @@ def output (outputDir,hdr,suffix):
     output = outputDir + '/' + name + '_' + suffix;
     return output;
 
-def write (hdulist,filename):
+def write (hdulist,filename,dpi=100):
     '''
     Write file. The input shall be a hdulist or
     a matplotlib figure handler.
@@ -70,7 +71,7 @@ def write (hdulist,filename):
     # Use this function to save figure as well
     if type(hdulist) is matplotlib.figure.Figure:
         log.info ('Write %s'%filename);
-        hdulist.savefig (filename);
+        hdulist.savefig (filename,dpi=dpi);
         os.chmod (filename,0o666);
         return;
     
@@ -90,27 +91,36 @@ def write (hdulist,filename):
     if os.path.exists (filename):
         os.remove (filename);
 
-    # Write and make it writtable to all
+    # Write and make it writable to all
     hdulist.writeto (filename);
     os.chmod (filename,0o666);
+    # JDM: Can i delete and garbage collect to avoid problem with too many open files?
+
+
+def linearize (data, gain):
+    # subtract the first value from the array
+    data -= (data[:,0,:,:])[:,None,:,:]
+    # apply nonlinearity connection
+    data[:] = (-1. + np.sqrt(1. + 4. * coef_flat(gain) * data))/(2. * coef_flat(gain))
 
 def load_raw (hdrs, differentiate=True,
               removeBias=True, background=None, coaddRamp=False,
               badpix=None, flat=None, output='output',
               saturationThreshold=60000,
-              continuityThreshold=10000):
+              continuityThreshold=10000,
+              linear=True): # depricate `linear` after testing
     '''
     Load data and append into gigantic cube. The output cube is
     of shape: [nfile*nramp, nframes, ny, ny].
 
     If saturationThreshold is not None, then the non-differentiated
     data are compared to this threshold. Frames with some pixels
-    exceding this value are flagged and filled with zero.
+    exceeding this value are flagged and filled with zero.
 
     If continuityThreshold is not None, then the differentiated
     data are tested for continuity. When the difference between
-    two consecituve frames is larger than this value, frames
-    are flagged. Usefull to detect cosmic rays.
+    two consecutive frames is larger than this value, frames
+    are flagged. Useful to detect cosmic rays.
 
     If differentiate==True, the consecutive frames of a ramp are
     subtracted together.
@@ -159,9 +169,11 @@ def load_raw (hdrs, differentiate=True,
             # Uncompress and reshape data
             data = hdulist[1].data;
             data.shape = (nr,nf,ny,nx);
+            detector_gain = hdulist[1].header['GAIN'];
         # Read normal data. 
         else:
             data = hdulist[0].data;
+            detector_gain = hdulist[0].header['GAIN'];
 
         # Convert to float
         data = data.astype ('float32');
@@ -171,8 +183,8 @@ def load_raw (hdrs, differentiate=True,
 
         # Integrity check
         if np.min (data) == np.max (data):
-            log.error ('All values are egual');
-            raise ValueError ('RAW data are corupted')
+            log.error ('All values are equal');
+            raise ValueError ('RAW data are corrupted')
 
         # Dimensions
         nr,nf,ny,nx = data.shape;
@@ -221,8 +233,9 @@ def load_raw (hdrs, differentiate=True,
             # Look for saturation
             flag += tmp.max (axis=(2,3)) > saturationThreshold;
 
-        # TODO: deal with non-linearity,
-        # static flat-field and bad-pixels.
+        # deal with non-linearity
+        if linear:
+            linearize(data, detector_gain)
 
         # Take difference of consecutive frames
         if differentiate is True:
@@ -314,7 +327,7 @@ def load_raw (hdrs, differentiate=True,
     if badpix is None:
         log.info ('No badpixel map');
     else:
-        log.info ('Recompute %i bad pixels (interpole in spectral direction only)'%np.sum (badpix));
+        log.info ('Recompute %i bad pixels (interpolate in spectral direction only)'%np.sum (badpix));
         ref = np.mean (cubenp, axis=(0,1));
         idx = np.argwhere (badpix);
         # cubenp[:,:,idx[:,0],idx[:,1]] = 0.25 * cubenp[:,:,idx[:,0]-1,idx[:,1]-1] + \

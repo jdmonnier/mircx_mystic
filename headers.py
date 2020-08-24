@@ -163,6 +163,7 @@ def loaddir (dirs, uselog=True):
                 log.info ('Failed to load log (continue anyway)');
 
         # Load header
+
         hdrs_here = load (files, hlog=hlog);
                 
         # Dump log
@@ -206,6 +207,8 @@ def load (files, hlog=[]):
             # Recover header in hlog
             try:
                 # Look for it
+                # thing_index = thing_list.index(elem) if elem in thing_list else -1
+
                 hdr = hlog[filesin.index (os.path.split (f)[1])];
                 # Check if not modified since last loaded
                 tmod  = Time (os.path.getmtime(f),format='unix',scale='utc').mjd;
@@ -255,6 +258,15 @@ def load (files, hlog=[]):
             if hdr.get ('HIERARCH MIRC STS_IR_FOLD','OUT') == 'IN':
                 log.info ('Set OBJECT = STS because STS_IR_FOLD is IN');
                 hdr['OBJECT'] = 'STS';
+
+            
+            # Check if ETALON
+            if hdr.get ('HIERARCH MIRC ARMADA','OUT') == 'IN':
+                if hdr['OBJECT'][-1]=='E':
+                    log.info ('ETALON is IN for OBJECT');
+                else:    
+                    log.info ('Set OBJECT = OBJECT_E because ETALON is IN');
+                    hdr['OBJECT'] += '_E';
 
             # Append
             hdrs.append (hdr);

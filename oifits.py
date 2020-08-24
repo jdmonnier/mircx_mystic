@@ -116,7 +116,7 @@ def create (hdr,lbd,y0=None):
     return hdulist;
 
 
-def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None):
+def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None,nchunk=10):
     '''
     Compute the OI_VIS2 table from a sample of observations
     u_power, b_power, l_power shall be (sample, lbd, base)
@@ -240,9 +240,10 @@ def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None):
         scaley = rep_nan (np.abs (np.nanmax (datay)), 1.);
         scale  = rep_nan (scaley/scalex, 1.);
         ax.plot (datax/scalex, datay/scalex, '+', alpha=0.75, ms=4);
-
-        ax.set_xlim (-0.1,1.1);
-        ax.set_ylim (-0.1*scale,1.1*scale);
+        #JDM. I like to see negative powers too.
+        
+        #ax.set_xlim (-0.1,1.1);
+        #ax.set_ylim (-0.1*scale,1.1*scale);
         plot.scale (ax, scalex);
         
         ax.plot ([0], [0], '+r', alpha=0.75, ms=4);
@@ -254,6 +255,7 @@ def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None):
                   '--r', alpha=0.5);
 
     files.write (fig,output+'_norm_power.png');
+    plt.close("all");
 
     # Summary plot
     fig,axes = plt.subplots (5,3, sharex=True);
@@ -265,9 +267,10 @@ def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None):
     x = np.arange (ny);
     for b,ax in enumerate(axes.flatten()):
         bars = ax.errorbar (x,vis2[:,b],yerr=vis2err[:,b],fmt='o-',ms=2)[2];
-        for bar in bars: bar.set_alpha(0.25);
+        for bar in bars: bar.set_alpha(0.5);
 
     files.write (fig,output+'_vis2.png');
+    plt.close("all");
     
     # Pseudo PSD
     fig,ax = plt.subplots (2,2, sharey='row',sharex='col');
@@ -279,11 +282,12 @@ def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None):
     ax[0,0].set_title ('Fringe frequencies');
     ax[0,1].set_title ('Bias frequencies');
     files.write (fig,output+'_psd.png');
+    plt.close("all");
 
     # Reset warning
     np.seterr (**old_np_setting);
 
-def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
+def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None,nchunk=10):
     '''
     Compute the OI_VIS table from a sample of observations
     c_power shall be of size (sample, lbd, base)
@@ -390,6 +394,7 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
                  '--r', alpha=0.5);
 
     files.write (fig,output+'_rivis.png');
+    plt.close("all");
 
     # Summary plot
     fig,axes = plt.subplots (5,3, sharex=True);
@@ -401,9 +406,73 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None):
     x = np.arange (ny);
     for b,ax in enumerate(axes.flatten()):
         bars = ax.errorbar (x,visPhi[:,b]*r2d,yerr=visPhierr[:,b]*r2d,fmt='o-',ms=2)[2];
-        for bar in bars: bar.set_alpha(0.25);
+        for bar in bars: bar.set_alpha(0.5);
 
     files.write (fig,output+'_visPhi.png');
+    plt.close("all");
+
+        # Summary plot
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.subplots_adjust (wspace=0.3, hspace=0.1);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+
+    x = np.arange (ny);
+    for b,ax in enumerate(axes.flatten()):
+        bars = ax.errorbar (x,visAmp[:,b],yerr=visAmperr[:,b],fmt='o-',ms=2)[2];
+        for bar in bars: bar.set_alpha(0.5);
+
+    files.write (fig,output+'_visAmp.png');
+    plt.close("all");
+    
+    # Reset warning
+    np.seterr (**old_np_setting);
+
+## function for debugging
+def add_vis_plot (c_cpx, c_norm, output='output',y0=None,label='1'):
+    '''
+    Plot the visphi - for debugging
+    '''
+
+    log.info ('Plot REF_PHI');
+    ns,ny,nb = c_cpx.shape;
+
+    # Spectral channel for QC
+    if y0 is None: y0 = int(ny/2) - 2;
+        
+    # Remove warning for invalid
+    old_np_setting = np.seterr (divide='ignore',invalid='ignore');
+
+    # How many valid frame
+    valid = np.isfinite (c_cpx) * np.isfinite (c_norm);
+    nvalid = np.nansum (1. * valid, axis=0);
+
+    # Compute bootstrap sample
+    boot = (np.random.random ((ns,20)) * ns).astype(int);
+    boot[:,0] = range (ns);
+
+    # Compute mean vis
+    vis = np.nanmean (c_cpx[boot,:,:], axis=0) / np.nanmean (c_norm[boot,:,:], axis=0);
+    visAmp = np.abs (vis[0,:,:]);
+    visAmperr = np.nanstd (np.abs (vis), axis=0);
+    visPhi = np.angle (vis[0,:,:]);
+    visPhierr = np.nanstd (np.angle(vis * np.conj(vis[0,None,:,:])), axis=0);
+
+    r2d = units.rad.to('deg');
+
+    # Summary plot
+    fig,axes = plt.subplots (5,3, sharex=True);
+    fig.subplots_adjust (wspace=0.3, hspace=0.1);
+    plot.base_name (axes);
+    plot.compact (axes);
+
+    x = np.arange (ny);
+    for b,ax in enumerate(axes.flatten()):
+        bars = ax.errorbar (x,visPhi[:,b]*r2d,yerr=visPhierr[:,b]*r2d,fmt='o-',ms=2)[2];
+        for bar in bars: bar.set_alpha(0.25);
+
+    files.write (fig,output+'_refPhi_%s.png'%label);
     
     # Reset warning
     np.seterr (**old_np_setting);
@@ -485,7 +554,7 @@ def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
     # Reset warning
     np.seterr (**old_np_setting);
 
-def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
+def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None,nchunk=10):
     '''
     Compute the OI_T3 table from a sample of observations
     t_product and t_norm shall be (sample, lbd, base)
@@ -551,6 +620,8 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
     # v2coord = vcoord[setup.triplet_base()[:,1]];
     u1coord, v1coord = setup.compute_base_uv (hdr, mjd=mjd, baseid='base1');
     u2coord, v2coord = setup.compute_base_uv (hdr, mjd=mjd, baseid='base2');
+    #JDM if STS, use synthetic uv coverage to facilitate wavelength calibration.
+    
 
     # Flag data
     flag = ~np.isfinite (t3phi) + ~np.isfinite (t3phiErr);
@@ -619,6 +690,7 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
                  '--r', alpha=0.5);
 
     files.write (fig,output+'_bispec.png');
+    plt.close("all");
 
     # Summary plot
     fig,axes = plt.subplots (5,4, sharex=True);
@@ -633,7 +705,22 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None):
         for bar in bars: bar.set_alpha(0.25);
 
     files.write (fig,output+'_t3Phi.png');
+    plt.close("all");
     
+    # Summary plot
+    fig,axes = plt.subplots (5,4, sharex=True);
+    fig.subplots_adjust (wspace=0.3, hspace=0.1);
+    fig.suptitle (headers.summary (hdr));
+    plot.base_name (axes);
+    plot.compact (axes);
+
+    x = np.arange (ny);
+    for t,ax in enumerate(axes.flatten()):
+        bars = ax.errorbar (x,t3amp[:,t],yerr=t3ampErr[:,t],fmt='o-',ms=2)[2];
+        for bar in bars: bar.set_alpha(0.25);
+
+    files.write (fig,output+'_t3Amp.png');
+    plt.close("all");
 
     # Reset warning
     np.seterr (**old_np_setting);

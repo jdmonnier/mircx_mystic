@@ -11,9 +11,11 @@ import argparse
 import os
 from time import sleep
 from astropy.io import fits
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Process MIRC-X raw data files')
 parser.add_argument("--no-warn", action="store_true")
+parser.add_argument("--crop-bad", action="store_true")
 parser.add_argument("files", nargs="+", help="File(s) to process")
 args = parser.parse_args()
 
@@ -42,7 +44,10 @@ def polstate(file, state):
     if state == 1:
         f[0].data = f[0].data[:,:,:span,:]
     elif state == 2:
-        f[0].data = f[0].data[:,:,span:,:]
+        if args.crop_bad:
+            f[0].data = f[0].data[:,:,span:-2,:]
+        else:
+            f[0].data = f[0].data[:,:,span:,:]
     else:
         raise ValueError("`state` (2nd arg of fcn `polstate`) must have the value either 1 or 2")
     path = "pol" + str(state) + "/" + file
@@ -51,7 +56,7 @@ def polstate(file, state):
     os.system("fpack " + path)
     os.remove(path)
 
-for file in args.files:
+for file in tqdm(args.files):
     fz = file[-3:] == ".fz"
     if fz:
         os.system("funpack " + file)

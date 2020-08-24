@@ -1,6 +1,8 @@
 import numpy as np;
 import os, ssl;
 
+from scipy import interpolate 
+
 import astropy;
 from astropy.coordinates import EarthLocation, Angle, SkyCoord, ICRS, ITRS, AltAz;
 from astropy import units;
@@ -16,6 +18,11 @@ from . import log;
 # ensure astropy.coordinates can query the online database of locations:
 if (not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverified_context', None)):
     ssl._create_default_https_context = ssl._create_unverified_context
+
+def coef_flat(gain):
+    gains = np.array([1, 10, 20, 50, 60]);
+    coefs = np.array([-1.8883000e-06, -1.4006500e-06, -1.3885600e-06, -1.3524500e-06, -1.3416900e-06]);
+    return interpolate.interp1d(gains, coefs)([gain])[0];
 
 # Definition of setups
 global target_names;

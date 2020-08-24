@@ -86,8 +86,8 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         data_xps = data_xps - data_xps0;
 
         # Now loop through triangles to compute bispectrum and sum of v2
-        # FIXME append
-        log.info('FIXME: Compute bispectrum and v2 sum of bias closing triangles');
+        # FIXME this routine could be made faster
+        log.info('Compute bispectrum and v2 sum of bias closing triangles');
         bs=[];
         tri_sumv2=[];
         for tri in tri_list:
@@ -192,21 +192,26 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
             C2.append(result[0][2]);
 
             # Figures
+            log.info ('Figures');
             fig,ax = plt.subplots ();
             fig.suptitle ('Bispectrum - Photometry');
             ax.plot(p,b,'.');
             ax.set_xlabel('Photometry');
             ax.set_ylabel('Bispectrum');
             files.write (fig,output+'_bispec_%s.png'%i);
+            plt.close ("all");
 
             ## check for crazy vis2 measurement
-            log.info ('Figures');
             fig,ax = plt.subplots ();
             fig.suptitle ('Bispectrum - SumV2');
-            ax.plot(s,b,'.');
+            ## correct bispectrum for c0,c1 for plot
+            bprime = b - result[0][0] - result[0][1]*p
+
+            ax.plot(s,bprime,'.');
             ax.set_xlabel('SumV2');
-            ax.set_ylabel('Bispectrum');
+            ax.set_ylabel('B_prime');
             files.write (fig,output+'_sumv2_%s.png'%i);
+            plt.close ("all");
 
             ## photometry resids 
             log.info ('Figures');
@@ -216,6 +221,7 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
             ax.set_xlabel('Photometry');
             ax.set_ylabel('Residual (%)');
             files.write (fig,output+'_photoresid_%s.png'%i);
+            plt.close ("all");
 
             ## sumvis2 resids
             fig,ax = plt.subplots ();
@@ -224,6 +230,7 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
             ax.set_ylabel('Residual (%)');
             ax.set_xlabel('SumV2');
             files.write (fig,output+'_sumv2resid_%s.png'%i);
+            plt.close ("all");
 
     C0 = np.array(C0);
     C1 = np.array(C1);

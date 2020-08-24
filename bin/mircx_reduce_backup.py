@@ -140,11 +140,8 @@ oifits.add_argument ("--max-integration-time-oifits", dest="max_integration_time
 oifits.add_argument ("--ncoherent", dest="ncoherent", type=int,
                      default=5, help="number of frames for coherent integration [%(default)s]");
 
-#oifits.add_argument ("--nincoherent", dest="nincoherent", type=int,
-#                     default=5, help="number of ramps for incoherent integration [%(default)s]");
-
-oifits.add_argument ("--gdt_tincoh", dest="gdt_tincoh", type=float,
-                     default=0.5, help="number of SECONDS for incoherent integration [%(default)s]");
+oifits.add_argument ("--nincoherent", dest="nincoherent", type=int,
+                     default=5, help="number of ramps for incoherent integration [%(default)s]");
 
 oifits.add_argument ("--ncs", dest="ncs", type=int,
                      default=1, help="number of frame-offset for cross-spectrum [%(default)s]");
@@ -159,11 +156,11 @@ oifits.add_argument ("--flux-threshold", dest="flux_threshold", type=float,
                      default=20.0, help="FLUX threshold for rejection [%(default)s]");
 
 oifits.add_argument ("--gd-threshold", dest="gd_threshold", type=float,
-                     default=0.5, help="GD threshold for rejection in fraction of gd tracking window, 1=accept all [%(default)s]");
+                     default=30.0, help="GD threshold for rejection in um [%(default)s]");
 
-oifits.add_argument ("--gd-attenuation", dest="gd_attenuation",default='FALSE',
+oifits.add_argument ("--gd-attenuation", dest="gd_attenuation",default='TRUE',
                      choices=TrueFalse,
-                     help="correct from the attenuation due to GD assuming square pixel-based bandpass[%(default)s]");
+                     help="correct from the attenuation due to GD [%(default)s]");
 
 oifits.add_argument ("--vis-reference", dest="vis_reference",default='self',
                      choices=['self','spec-diff','absolute'],
@@ -180,7 +177,7 @@ advanced.add_argument ("--bbias", dest="bbias",default='TRUE',
                      choices=TrueFalseOverwrite,
                      help="compute the BBIAS_COEFF product [%(default)s]");
 
-advanced.add_argument ("--reduce-foreground", dest="reduce_foreground",default='TRUE',
+advanced.add_argument ("--reduce-foreground", dest="reduce_foreground",default='FALSE',
                      choices=TrueFalse,
                      help="reduce the FOREGROUND into OIFITS [%(default)s]");
 
@@ -708,7 +705,6 @@ if argopt.oifits != 'FALSE':
         gps += mrx.headers.group (hdrs, 'BACKGROUND_RTS', keys=keys,
                                   delta=120, Delta=argopt.max_integration_time_oifits,
                                   continuous=True);
-        
 
     ## Get rid of groups with low integration time
     nloads = [len(g) for g in gps]
@@ -722,10 +718,8 @@ if argopt.oifits != 'FALSE':
 
             if 'DATA' in gp[0]['FILETYPE']:
                 filetype = 'OIFITS';
-                data = True;
             else:
                 filetype = gp[0]['FILETYPE'].replace('_RTS','_OIFITS');
-                data = False
                 
             output = mrx.files.output (argopt.oifits_dir, gp[0], filetype);
             
@@ -746,14 +740,13 @@ if argopt.oifits != 'FALSE':
             mrx.compute_vis (gp, coeff, output=output,
                              filetype=filetype,
                              ncoher=argopt.ncoherent,
-                             gdt_tincoh=argopt.gdt_tincoh,
+                             nincoher=argopt.nincoherent,
                              ncs=argopt.ncs, nbs=argopt.nbs,
-                             snr_threshold=argopt.snr_threshold if data else -1*argopt.snr_threshold, #catch this!
-                             flux_threshold=argopt.flux_threshold, #keep this even foreground.
-                             gd_attenuation=argopt.gd_attenuation if data else False,
-                             gd_threshold=argopt.gd_threshold if data else 1e10, #keep all frames.
+                             snr_threshold=argopt.snr_threshold,
+                             flux_threshold=argopt.flux_threshold,
+                             gdAttenuation=argopt.gd_attenuation,
+                             gd_threshold=argopt.gd_threshold,
                              vis_reference=argopt.vis_reference);
-
             
             # If remove RTS
             if argopt.rm_rts == 'TRUE':

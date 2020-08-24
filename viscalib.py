@@ -23,7 +23,12 @@ def get_spfreq (hdulist,name):
     Return the spatial frequency B/lbd in [rad-1]
     '''
     lbd = hdulist['OI_WAVELENGTH'].data['EFF_WAVE'];
-    
+
+    if name == 'OI_VIS':
+        u = hdulist['OI_VIS'].data['UCOORD'];
+        v = hdulist['OI_VIS'].data['VCOORD'];
+        return np.sqrt (u**2 + v**2)[:,None] / lbd[None,:];
+ 
     if name == 'OI_VIS2':
         u = hdulist['OI_VIS2'].data['UCOORD'];
         v = hdulist['OI_VIS2'].data['VCOORD'];
@@ -56,7 +61,9 @@ def tf_time_weight (hdus, hdutf, delta):
     
     obs = [['OI_VIS2','VIS2DATA','VIS2ERR',False],
            ['OI_T3','T3AMP','T3AMPERR',False],
-           ['OI_T3','T3PHI','T3PHIERR',True]];
+           ['OI_T3','T3PHI','T3PHIERR',True],
+           ['OI_VIS','VISAMP','VISAMPERR',False],
+           ['OI_VIS','VISPHI','VISPHIERR',True]]
 
     # Loop on observables
     for o in obs:
@@ -93,6 +100,7 @@ def tf_time_weight (hdus, hdutf, delta):
         if np.sum(mjd0 <= 0): log.warning ('Invalid MJDs in SCI !!');
         if np.sum(mjd  <= 0): log.warning ('Invalid MJDs in TFs !!');
 
+        # JDM recommends also adding weight from distance in sky for CHARA... esp. for visphi.
         # Compute the weights at science time (ntf,nb,nc)
         ws = np.exp (-(mjd0[None,:,None]-mjd[:,:,None])**2/delta**2);
 
@@ -168,7 +176,9 @@ def tf_divide (hdus, hdutf):
 
     obs = [['OI_VIS2','VIS2DATA','VIS2ERR',False],
            ['OI_T3','T3AMP','T3AMPERR',False],
-           ['OI_T3','T3PHI','T3PHIERR',True]];
+           ['OI_T3','T3PHI','T3PHIERR',True],
+           ['OI_VIS','VISAMP','VISAMPERR',False],
+           ['OI_VIS','VISPHI','VISPHIERR',True]]
 
     for o in obs:
         # Verbose
@@ -194,9 +204,14 @@ def tf_divide (hdus, hdutf):
             hdusc[o[0]].data[o[1]] = Cal;
             hdusc[o[0]].data[o[2]] = Cal * np.sqrt ((dRaw/Raw)**2 + (dTfi/Tfi)**2);
 
-        # FLAG. Note that flag is not updated for T3AMP and VISAMP
+        # (deprecated by JDM): FLAG. Note that flag is not updated for T3AMP and VISAMP 
         # since the FLAG is only comming from T3PHI and VISPHI
-        if o[1] != 'T3AMP' and o[1] != 'VISAMP':
+        # JDM NOTE. I switched thie logic here. since large phase errors are natural if the 
+        #   amplitudes are small, i think its better to keep data as long as amps are not noisy.
+        #   ideally we could do a check that the snr of visamp <1 or something better  but
+        #   the loop structure here meas we don't have access to all all data only one data type I think.
+
+        if o[1] != 'T3PHI' and o[1] != 'VISPHI':
             
             hdusc[o[0]].data['FLAG'] += ~np.isfinite (hdusc[o[0]].data[o[1]]);
             hdusc[o[0]].data['FLAG'] += ~np.isfinite (hdusc[o[0]].data[o[2]]);
@@ -207,6 +222,7 @@ def tf_divide (hdus, hdutf):
                 hdusc[o[0]].data['FLAG'] += (hdusc[o[0]].data[o[2]] > 60);
             else:
                 hdusc[o[0]].data['FLAG'] += (hdusc[o[0]].data[o[2]] > 0.4);
+
 
         # Verbose
         valid = (~hdusc[o[0]].data['FLAG']) & np.isfinite (hdusc[o[0]].data[o[1]]);
@@ -257,6 +273,13 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         # Get diameter in [rad]
         diam = calib[HMP+'CALIB PARAM1'] * 4.84813681109536e-09;
         diamErr = calib[HMP+'CALIB PARAM2'] * 4.84813681109536e-09;
+
+        # Compute the VIS TF
+        log.info ('Compute vis amp TF');
+        spf = get_spfreq (hdulist,'OI_VIS');
+        visamp = signal.airy (diam * spf); # JDM no error analysis added for diameters?
+        hdulist['OI_VIS'].data['VISAMP'] /= visamp;
+        hdulist['OI_VIS'].data['VISAMPERR'] /= visamp;
 
         # Compute the VIS2 TF
         log.info ('Compute vis2 TF');
@@ -322,41 +345,111 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         hdutfs.append (hdutfsi);
         hdusci.append (hdus);
         
-        # VIS2
-        fig,axes = plt.subplots ();
-        fig.suptitle (headers.summary (sci));
-        x  = get_spfreq (hdulist,'OI_VIS2');
-        y  = hdulist['OI_VIS2'].data['VIS2DATA'];
-        dy = hdulist['OI_VIS2'].data['VIS2ERR'];
-        y[hdulist['OI_VIS2'].data['FLAG']] = np.nan;
-        for b in range (15):
-            bars = axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o-',ms=2)[2];
-            for bar in bars: bar.set_alpha(0.15);
-        axes.set_ylim (-0.1,1.2);
-        axes.set_xlim (0);
-        axes.set_xlabel ('sp. freq. (Mlbd)');
-        axes.set_ylabel ('vis2');
-        files.write (fig,output+'_vis2.png');
-         
-        plt.close ("all");
+        calplots=True;
+        if calplots==True:
+            # VIS
+            fig,axes = plt.subplots ();
+            fig.suptitle (headers.summary (sci));
+            x  = get_spfreq (hdulist,'OI_VIS')
+            y  = hdulist['OI_VIS'].data['VISPHI'];
+            dy = hdulist['OI_VIS'].data['VISPHIERR'];
+            y[hdulist['OI_VIS'].data['FLAG']] = np.nan;
+            for b in range (15):
+                bars = axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o-',ms=2)[2];
+                for bar in bars: bar.set_alpha(0.15);
+            axes.set_xlim (0);
+            axes.set_xlabel ('sp. freq. (M$\lambda$)');
+            axes.set_ylabel ('VISPHI (deg)');
+            files.write (fig,output+'_visphi.png');
+            
+            plt.close ("all");
+
+            fig,axes = plt.subplots ();
+            fig.suptitle (headers.summary (sci));
+            x  = get_spfreq (hdulist,'OI_VIS');
+            y  = hdulist['OI_VIS'].data['VISAMP'];
+            dy = hdulist['OI_VIS'].data['VISAMPERR'];
+            y[hdulist['OI_VIS'].data['FLAG']] = np.nan;
+            for b in range (15):
+                bars = axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o-',ms=2)[2];
+                for bar in bars: bar.set_alpha(0.15);
+            axes.set_ylim (-0.1,1.2);
+            axes.set_xlim (0);
+            axes.set_xlabel ('sp. freq. (Mlbd)');
+            axes.set_ylabel ('visamp');
+            files.write (fig,output+'_visamp.png');
+            
+            plt.close ("all");
         
-        # CP
-        fig,axes = plt.subplots ();
-        fig.suptitle (headers.summary (sci));
-        x  = np.max (get_spfreq (hdulist,'OI_T3'), axis=0);
-        y  = hdulist['OI_T3'].data['T3PHI'];
-        dy = hdulist['OI_T3'].data['T3PHIERR'];
-        y[hdulist['OI_T3'].data['FLAG']] = np.nan;
-        for b in range (20):
-            bars = axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o-',ms=2)[2];
-            for bar in bars: bar.set_alpha(0.15);
-        axes.set_xlim (0);
-        axes.set_xlabel ('max sp. freq. (M$\lambda$)');
-        axes.set_ylabel ('T3PHI (deg)');
-        files.write (fig,output+'_t3phi.png');
+
+
+            # VIS2
+            fig,axes = plt.subplots ();
+            fig.suptitle (headers.summary (sci));
+            x  = get_spfreq (hdulist,'OI_VIS2');
+            y  = hdulist['OI_VIS2'].data['VIS2DATA'];
+            dy = hdulist['OI_VIS2'].data['VIS2ERR'];
+            y[hdulist['OI_VIS2'].data['FLAG']] = np.nan;
+            for b in range (15):
+                bars = axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o-',ms=2)[2];
+                for bar in bars: bar.set_alpha(0.15);
+            axes.set_ylim (-0.1,1.2);
+            axes.set_xlim (0);
+            axes.set_xlabel ('sp. freq. (Mlbd)');
+            axes.set_ylabel ('vis2');
+            files.write (fig,output+'_vis2.png');
+            
+            plt.close ("all");
+            
+            # CP
+            fig,axes = plt.subplots ();
+            fig.suptitle (headers.summary (sci));
+            x  = np.max (get_spfreq (hdulist,'OI_T3'), axis=0);
+            y  = hdulist['OI_T3'].data['T3PHI'];
+            dy = hdulist['OI_T3'].data['T3PHIERR'];
+            y[hdulist['OI_T3'].data['FLAG']] = np.nan;
+            for b in range (20):
+                bars = axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o-',ms=2)[2];
+                for bar in bars: bar.set_alpha(0.15);
+            axes.set_xlim (0);
+            axes.set_xlabel ('max sp. freq. (M$\lambda$)');
+            axes.set_ylabel ('T3PHI (deg)');
+            files.write (fig,output+'_t3phi.png');
+            
+            plt.close ("all");
+
+            fig,axes = plt.subplots ();
+            fig.suptitle (headers.summary (sci));
+            x  = np.max (get_spfreq (hdulist,'OI_T3'), axis=0);
+            y  = hdulist['OI_T3'].data['T3AMP'];
+            dy = hdulist['OI_T3'].data['T3AMPERR'];
+            y[hdulist['OI_T3'].data['FLAG']] = np.nan;
+            for b in range (20):
+                bars = axes.errorbar (1e-6*x[b,:],y[b,:],yerr=dy[b,:],fmt='o-',ms=2)[2];
+                for bar in bars: bar.set_alpha(0.15);
+            axes.set_ylim (-0.1,1.2);
+            axes.set_xlim (0);
+            axes.set_xlabel ('max sp. freq. (Mlbd)');
+            axes.set_ylabel ('t3amp');
+            files.write (fig,output+'_t3amp.png');
+            plt.close ("all");
+        else:
+            log.info("Skipping individual plots:")
+
+        # JDM unix comment: ulimit -n 5000 to incraes elimit or
+        # import resource
+        # soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        # resource.setrlimit(resource.RLIMIT_NOFILE, (5000, hard))
+        # but requires root.
         
-        plt.close ("all");
+        # other closing of files. getting an error.
+        # del hdulist
+        # del hdulist.data 
+        #JDM to avoid the too many files open bug.
+        #hdus.close()
     
+    #JDM other diagnostic figs? liek visamp vs vis2data, or t3amp vs product of vis2? 
+
     log.info ('Figures for the trends');
     
     # Check of amount of files to plot
@@ -406,6 +499,71 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
             files.write (fig,outputDir+'/'+outputSetup+'_vis2_%i_c%02i.png'%(f,c));
             plt.close ("all");
 
+
+    # VISAMP
+    names = ['MJD','VISAMP','VISAMPERR'];
+    xtf, ytf, dytf = oifits.getdata (hdutf,'OI_VIS',names);
+    xts, yts, dyts = oifits.getdata (hdutfs,'OI_VIS',names);
+    xsc, ysc, dysc = oifits.getdata (hdusci,'OI_VIS',names);
+    
+    # Get station name for labels (assume the same for all files,
+    # and assume the OI_ARRAY is ordered starting with 1)
+    idx = hdutf[0]['OI_VIS'].data['STA_INDEX'];
+    sta = hdutf[0]['OI_ARRAY'].data['STA_NAME'][idx-1];
+    bname = np.array ([s[0]+s[1]+' '+n for s,n in zip(sta,setup.base_name())]);
+
+    for f in range (5):
+        for c in range (nc):
+            fig,axes = plt.subplots (3,1, sharex=True);
+            plot.base_name (axes, names=bname[f*3:f*3+3]);
+            plot.compact (axes);
+            plt.subplots_adjust (hspace=0.03);
+            fig.suptitle (setup_name + ' c%i'%c);
+
+            for bb in range (3):
+                ax = axes.flatten()[bb];
+                b = f*3+bb;
+                ax.errorbar (xtf[:,b],ytf[:,b,c],fmt='o',yerr=dytf[:,b,c],color='k',ms=1);
+                ax.errorbar (xts[:,b],yts[:,b,c],fmt='o',yerr=dyts[:,b,c],color='k',ms=1,alpha=0.25);
+                ax.errorbar (xsc[:,b],ysc[:,b,c],fmt='o',yerr=dysc[:,b,c],color='g',ms=1);
+                ylim = ax.get_ylim ();
+                ax.set_ylim (0.0,np.minimum (ylim[1],1.1));
+    
+            files.write (fig,outputDir+'/'+outputSetup+'_visamp_%i_c%02i.png'%(f,c));
+            plt.close ("all");
+
+    # VISPHI
+    names = ['MJD','VISPHI','VISPHIERR'];
+    xtf, ytf, dytf = oifits.getdata (hdutf,'OI_VIS',names);
+    xts, yts, dyts = oifits.getdata (hdutfs,'OI_VIS',names);
+    xsc, ysc, dysc = oifits.getdata (hdusci,'OI_VIS',names);
+    
+    # Get station name for labels (assume the same for all files,
+    # and assume the OI_ARRAY is ordered starting with 1)
+    idx = hdutf[0]['OI_VIS'].data['STA_INDEX'];
+    sta = hdutf[0]['OI_ARRAY'].data['STA_NAME'][idx-1];
+    bname = np.array ([s[0]+s[1]+' '+n for s,n in zip(sta,setup.base_name())]);
+
+    for f in range (5):
+        for c in range (nc):
+            fig,axes = plt.subplots (3,1, sharex=True);
+            plot.base_name (axes, names=bname[f*3:f*3+3]);
+            plot.compact (axes);
+            plt.subplots_adjust (hspace=0.03);
+            fig.suptitle (setup_name + ' c%i'%c);
+
+            for bb in range (3):
+                ax = axes.flatten()[bb];
+                b = f*3+bb;
+                ax.errorbar (xtf[:,b],ytf[:,b,c],fmt='o',yerr=dytf[:,b,c],color='k',ms=1);
+                ax.errorbar (xts[:,b],yts[:,b,c],fmt='o',yerr=dyts[:,b,c],color='k',ms=1,alpha=0.25);
+                ax.errorbar (xsc[:,b],ysc[:,b,c],fmt='o',yerr=dysc[:,b,c],color='g',ms=1);
+                ylim = ax.get_ylim ();
+                ax.set_ylim (np.maximum (ylim[0],-200),np.minimum (ylim[1],200));
+    
+            files.write (fig,outputDir+'/'+outputSetup+'_visphi_%i_c%02i.png'%(f,c));
+            plt.close ("all");
+
     # T3PHI
     names = ['MJD','T3PHI','T3PHIERR'];
     xtf, ytf, dytf = oifits.getdata (hdutf, 'OI_T3',names);
@@ -439,6 +597,40 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
             plt.close ("all");
     
     # T3AMP
+    names = ['MJD','T3AMP','T3AMPERR'];
+    xtf, ytf, dytf = oifits.getdata (hdutf, 'OI_T3',names);
+    xts, yts, dyts = oifits.getdata (hdutfs,'OI_T3',names);
+    xsc, ysc, dysc = oifits.getdata (hdusci,'OI_T3',names);
+
+    # Get triplet name for labels (assume the same for all files,
+    # and assume the OI_ARRAY is ordered starting with 1)
+    idx = hdutf[0]['OI_T3'].data['STA_INDEX'];
+    sta = hdutf[0]['OI_ARRAY'].data['STA_NAME'][idx-1];
+    tname = np.array ([s[0]+s[1]+s[2]+' '+n for s,n in zip(sta,setup.triplet_name())]);
+
+    for f in range (5):
+        for c in range (nc):
+            fig,axes = plt.subplots (4,1, sharex=True);
+            plot.base_name (axes, names=tname[f*4:f*4+4]);
+            plot.compact (axes);
+            plt.subplots_adjust (hspace=0.03);
+            fig.suptitle (setup_name + ' c%i'%c);
+
+            for bb in range (4):
+                b = f*4+bb;
+                ax = axes.flatten()[bb];
+                ax.errorbar (xtf[:,b],ytf[:,b,c],fmt='o',yerr=dytf[:,b,c],color='k',ms=1);
+                ax.errorbar (xts[:,b],yts[:,b,c],fmt='o',yerr=dyts[:,b,c],color='k',ms=1,alpha=0.25);
+                ax.errorbar (xsc[:,b],ysc[:,b,c],fmt='o',yerr=dysc[:,b,c],color='g',ms=1);
+                ylim = ax.get_ylim ();
+                #ax.set_ylim (np.maximum (ylim[0],-200),np.minimum (ylim[1],200));
+                ax.set_yscale('log')
+                ax.set_ylim(np.maximum(1e-5,ylim[0]),1.5)
+                
+            files.write (fig,outputDir+'/'+outputSetup+'_t3amp_%i_c%02i.png'%(f,c));
+            plt.close ("all");
+
+    """ # T3AMP
     fig,axes = plt.subplots (5,4, sharex=True);
     plot.base_name (axes);
     plot.compact (axes);
@@ -459,6 +651,6 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         dy = [h['OI_T3'].data['T3AMPERR'][b,6] for h in hdusci];
         ax.errorbar (x,y,fmt='o',yerr=dy,color='g',ms=1);
     
-    files.write (fig,outputDir+'/'+outputSetup+'_t3amp.png');
+    files.write (fig,outputDir+'/'+outputSetup+'_t3amp.png'); """
     
     plt.close ("all");

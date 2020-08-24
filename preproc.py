@@ -126,7 +126,7 @@ def check_empty_window (cube, hdr):
     
     return empty;
 
-def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN'):
+def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN', linear=True): # depricate `linear` after testing
     '''
     Compute BACKGROUND_MEAN file from a sequence of
     BACKGROUND. The output file had the mean and rms over
@@ -140,7 +140,8 @@ def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN'):
     # Load files
     hdr,cube,mjd = files.load_raw (hdrs, coaddRamp='mean',
                                    saturationThreshold=None,
-                                   continuityThreshold=None);
+                                   continuityThreshold=None,
+                                   linear=linear);
     log.info ('Data size: '+str(cube.shape));
 
     # Background mean
@@ -151,7 +152,8 @@ def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN'):
     # Load all ramp of first file to measure readout noise
     __,cube,__ = files.load_raw (hdrs[0:1], coaddRamp='none',
                                  saturationThreshold=None,
-                                 continuityThreshold=None);
+                                 continuityThreshold=None,
+                                 linear=linear);
 
     # Compute temporal rms
     log.info ('Compute rms over ramp/frame of first file');
@@ -422,7 +424,7 @@ def estimate_windows (cmean, hdr, output='outout_window'):
 
     return pmap, fmap;
     
-def compute_beam_map (hdrs,bkg,flat,threshold,output='output_beam_map',filetype='BEAM_MAP'):
+def compute_beam_map (hdrs,bkg,flat,threshold,output='output_beam_map',filetype='BEAM_MAP', linear=True): # depricate `linear` after testing
     '''
     Compute BEAM_MAP product.
     '''
@@ -452,7 +454,8 @@ def compute_beam_map (hdrs,bkg,flat,threshold,output='output_beam_map',filetype=
 
     # Load files
     hdr,cube,mjd = files.load_raw (hdrs, coaddRamp='sum', background=bkg_cube,
-                                   badpix=bad_img, flat=None, output=output);
+                                   badpix=bad_img, flat=None, output=output,
+                                   linear=linear);
 
     # Check background subtraction in empty region
     check_empty_window (cube, hdr);
@@ -534,7 +537,7 @@ def compute_beam_profile (hdrs,output='output_beam_profile',filetype='BEAM_PROFI
     del elog;
     return hdulist;
 
-def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filetype='PREPROC'):
+def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filetype='PREPROC', linear=True): # depricate `linear` after testing
     '''
     Compute preproc file. The first HDU contains the
     fringe window. The second HDU contains the 6 photometries
@@ -568,7 +571,8 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
         
     # Load files
     hdr,cube,mjd = files.load_raw (hdrs, background=bkg_cube,
-                                   badpix=bad_img, flat=None, output=output);
+                                   badpix=bad_img, flat=None, output=output,
+                                   linear=linear);
 
     # Get dimensions
     log.info ('Data size: '+str(cube.shape));
