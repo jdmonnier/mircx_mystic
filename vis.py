@@ -371,6 +371,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     
     # Define profile for optimal extraction of photometry
     # The same profile is used for all spectral channels
+    # JDM2020: what is spectrum is curved?
     log.info ('Compute profile');
     profile = np.mean (photo_map, axis=3, keepdims=True);
 
@@ -785,6 +786,25 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     # Start a list
     hdus = [hdu];
 
+
+    nscan =  np.int(2**(np.ceil(np.log2(ny*2+1)))); #64; round to next highest factor of 2?
+    base_scan  = np.fft.fftshift (np.fft.fft (base_dft, n=nscan, axis=2), axes=2); 
+    base_scan_avg = np.mean(np.abs(base_scan)**2,axis=(0,1))
+    #log.info('JDM!!!!',base_scan.shape)
+    hdu = pyfits.ImageHDU (base_scan_avg.astype('float32'));
+    hdu.header['EXTNAME'] = ('GROUP_DELAY_AVG','Average Group Delay in File');
+    hdu.header['BUNIT'] = 'powspec adu'
+    hdu.header['SHAPE'] = '(ny_zpad,nb)';
+    hdus.append (hdu);
+
+    temp_photo = np.transpose (photok0,axes=(1,2,3,0))
+    temp_photo = np.mean(temp_photo,axis=(0,1)  )
+    hdu = pyfits.ImageHDU (temp_photo.astype('float32'));
+    hdu.header['EXTNAME'] = ('PHOTOMETRY_AVG','Mean Photometry in File');
+    hdu.header['BUNIT'] = 'adu'
+    hdu.header['SHAPE'] = '(ny,nt)';
+    hdus.append (hdu);
+
     # Set DFT of fringes, bias, photometry and lbd
     hdu = pyfits.ImageHDU (base_dft.real.astype('float32'));
     hdu.header['EXTNAME'] = ('BASE_DFT_REAL','total flux in the fringe envelope');
@@ -845,6 +865,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     hdu.header['SHAPE'] = '(nf)';
     hdus.append (hdu);
 
+
     if (save_all_freqs):
         log.info ("Save all frequencies for John's test");
         hdu = pyfits.ImageHDU (cf.real.astype('float32'));
@@ -864,6 +885,8 @@ def compute_rts (hdrs, profiles, kappas, speccal,
         hdu.header['BUNIT'] = 'adu'
         hdu.header['SHAPE'] = '(nr,nf,ny)';
         hdus.append (hdu);
+
+
 
     # Write file
     hdulist = pyfits.HDUList (hdus);
@@ -955,6 +978,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
     log.info ('Mean photometries: %e'%np.mean (photo));
     photo_original=photo.copy()
     # Do spectro-temporal averaging of photometry
+    # JDM2020 The principal components should be basd on shutters not mean of data...!!
     if avgphot is True:
         log.info ('Do spectro-temporal averaging of photometry');
         hdr[HMP+'AVGPHOT'] = (True,'spectro-temporal averaging of photometry');
