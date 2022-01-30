@@ -24,7 +24,7 @@ Make sure python can look for the pipeline package
 
     export MIRCX_MYSTIC_PIPELINE=/Users/Shared/
     export PYTHONPATH=$MIRCX_MYSTIC_PIPELINE:$PYTHONPATH
-    export PATH=$MIRCX_MYSTIC_PIPELINE/mircx_pipeline/bin:$PATH
+    export PATH=$MIRCX_MYSTIC_PIPELINE/mircx_mystic/bin:$PATH
 
 Go in the directory where you want to run your reduction.
     cd /Volumes/DRIVE1/MIRCX_MYSTIC_REDUCTION/
