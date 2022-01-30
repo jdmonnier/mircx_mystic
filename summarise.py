@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
 from matplotlib import cm
 
-from . import headers, mircx_mystic_log, viscalib
+from . import headers, log, viscalib
 
 def quickLook(oiDir, keys, setup, pltFile, st=0):
     """
@@ -146,11 +146,11 @@ def plotUV(direc):
             plt.tight_layout()
             plt.savefig(direc+'/'+objs[t]+'_uv_coverage.png')
             plt.close()
-            mircx_mystic_log.info('Save '+direc+'/'+objs[t]+'_uv_coverage.png')
+            log.info('Save '+direc+'/'+objs[t]+'_uv_coverage.png')
             del lbd, usf, vsf
         else:
-            mircx_mystic_log.info('File '+direc+'/'+objs[t]+'_uv_coverage.png already exists.')
-    mircx_mystic_log.info('Cleanup memory')
+            log.info('File '+direc+'/'+objs[t]+'_uv_coverage.png already exists.')
+    log.info('Cleanup memory')
     del objs
     return
 
@@ -222,7 +222,7 @@ def plotV2CP(files, outDir, suff, setup, withUV=False, cmap='winter'):
     axv2.set_ylabel('Vis2')
     figv2.suptitle(', '.join(str(s) for s in setup))
     figv2.savefig(outDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
-    mircx_mystic_log.info('Written '+outDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
+    log.info('Written '+outDir+'/'+saveAsStr+'_'+suff+'_vis2.png')
     
     #
     # Plot vis
@@ -256,7 +256,7 @@ def plotV2CP(files, outDir, suff, setup, withUV=False, cmap='winter'):
     axCP.set_ylabel('$\phi_{CP}$')
     figCP.suptitle(', '.join(str(s) for s in setup))
     figCP.savefig(outDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
-    mircx_mystic_log.info('Written '+outDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
+    log.info('Written '+outDir+'/'+saveAsStr+'_'+suff+'_t3phi.png')
     
     if withUV != False:
         #
@@ -406,16 +406,16 @@ def texSumTitle(oiDir,hdrs,redF,calF):
                 princInv.remove('UNKNOWN')
             except:
                 statement = 'no PI_NAMES match UNKNOWN'
-            mircx_mystic_log.info('Recovered PI NAMES '+'; '.join(princInv)+' from headers')
+            log.info('Recovered PI NAMES '+'; '.join(princInv)+' from headers')
             outtex.write('\n\\subsubsection*{PI(s): '+'; '.join(princInv).replace('_',' ')+'}\n')
             outtex.write('\\subsubsection*{Observer(s): ')
             try:
                 obsPerson = list(set([h['OBSERVER'] for h in hdrs]))
                 outtex.write('; '.join(obsPerson))
-                mircx_mystic_log.info('Recovered OBSERVERS '+'; '.join(obsPerson).replace('_',' ')+' from headers')
+                log.info('Recovered OBSERVERS '+'; '.join(obsPerson).replace('_',' ')+' from headers')
             except:
                 outtex.write('(info not recovered from header)')
-                mircx_mystic_log.error('No OBSERVER keyword in fits headers')
+                log.error('No OBSERVER keyword in fits headers')
             outtex.write('}\n')
             outtex.write('\\subsubsection*{Program ID(s): ')
             try:
@@ -426,7 +426,7 @@ def texSumTitle(oiDir,hdrs,redF,calF):
                 progID.remove('UNKNOWN')
             except:
                 statement = 'no PROGRAM match UNKNOWN'
-            mircx_mystic_log.info('Recovered PROGRAM '+'; '.join(progID)+' from headers')
+            log.info('Recovered PROGRAM '+'; '.join(progID)+' from headers')
             outtex.write('; '.join(progID))
             outtex.write('}\n')
     return outFiles
@@ -442,12 +442,12 @@ def texTargTable(targs,calInf,redF,outFiles):
     """
     try:
         from astroquery.vizier import Vizier;
-        mircx_mystic_log.info('Load astroquery.vizier');
+        log.info('Load astroquery.vizier');
         from astroquery.simbad import Simbad;
-        mircx_mystic_log.info('Load astroquery.simbad');
+        log.info('Load astroquery.simbad');
     except:
-        mircx_mystic_log.warning('Cannot load astroquery')
-        mircx_mystic_log.warning('H-magnitude will not be able to be tabulated')
+        log.warning('Cannot load astroquery')
+        log.warning('H-magnitude will not be able to be tabulated')
     
     for outFile in outFiles:
         with open(outFile, 'a') as outtex:
@@ -472,7 +472,7 @@ def texTargTable(targs,calInf,redF,outFiles):
                         hmag = str(result["II/346/jsdc_v2"]["Hmag"][ind])
                 except:
                     hmag = '--'
-                    mircx_mystic_log.warning('H band magnitude not retrieved from JSDC')
+                    log.warning('H band magnitude not retrieved from JSDC')
                 try:
                     ud_H = calInf.split(',')[calInf.split(',').index(targ.replace(' ','_'))+1]
                     eud_H = calInf.split(',')[calInf.split(',').index(targ.replace(' ','_'))+2]
@@ -525,7 +525,7 @@ def texReducTable(oiDir,redF,outFiles):
                             outtex.write('        '+str(r)+' & '+nextrow+'\\\\ \n')
                         del nextrow, thisrow
                 del tabRows
-                mircx_mystic_log.info('Cleanup memory')
+                log.info('Cleanup memory')
             except:
                 skipd = 11
             outtex.write('    \\hline\n\\end{longtable}\n}\n')
@@ -563,15 +563,15 @@ def texReportPlts(oiDir,outFiles,d):
                 # r is the top plot, r+1 is the bottom plot
                 outtex.write('    \\includegraphics[trim=0.0cm 0.8cm 0.0cm 0.2cm, ')
                 outtex.write('clip=true, width=0.8\\textwidth]{'+reportFiles[r]+'}\n')
-                mircx_mystic_log.info('Added '+reportFiles[r]+' to summary report PDF')
+                log.info('Added '+reportFiles[r]+' to summary report PDF')
                 try:
                     x = reportFiles[r+1]
                     outtex.write('    \\includegraphics[trim=0.0cm 0.8cm 0.0cm 0.2cm, ')
                     outtex.write('clip=true, width=0.8\\textwidth]{'+reportFiles[r+1]+'}')
                     outtex.write(' \n')
-                    mircx_mystic_log.info('Added '+reportFiles[r+1]+' to summary report PDF')
+                    log.info('Added '+reportFiles[r+1]+' to summary report PDF')
                 except IndexError:
-                    mircx_mystic_log.info('End of report files reached')
+                    log.info('End of report files reached')
                 r += 2
                 outtex.write('\\end{figure}\n\n')
             r = 0
@@ -584,10 +584,10 @@ def texReportPlts(oiDir,outFiles,d):
                 outtex.write('    \\includegraphics[trim=0.0cm 0.2cm 0.0cm 0.2cm, ')
                 outtex.write('clip=true, width=0.8\\textwidth]{'+x+'}')
                 outtex.write(' \n')
-                mircx_mystic_log.info('Added transmission plot to summary report PDF')
+                log.info('Added transmission plot to summary report PDF')
                 outtex.write('\\end{figure}\n\n')
             except:
-                mircx_mystic_log.error('No transmission plot found for '+d)
+                log.error('No transmission plot found for '+d)
     return
 
 def texSumUV(oiDir,calF,outFiles):
@@ -654,23 +654,23 @@ def texSumPlots(oiDir,redF,calF,outFiles,calIDs):
     # sort the reduced files by camera settings and target, ensuring that FG and BG files
     # are ignored:
     redhdrs = headers.load(sorted(glob.glob(oiDir+'/*_oifits.fits')))
-    mircx_mystic_log.info('Retrieve targets and camera settings from successfully reduced files')
+    log.info('Retrieve targets and camera settings from successfully reduced files')
     keys = ['OBJECT','GAIN','NCOHER','PSCOADD','FRMPRST','FILTER1','FILTER2','CONF_NA']
     setupL = [[str(h.get(k,'--')) for k in keys] for h in redhdrs]
     del redhdrs
     setups, setupsP = [],[]
     setups.append(setupL[0])
     setupsP.append(setupL[0])
-    mircx_mystic_log.info('Targets and camera settings:')
+    log.info('Targets and camera settings:')
     for m in range(0, len(setupL)-1):
         if setupL[m+1] not in setupsP:
             setupsP.append(setupL[m+1])
         if setupL[m+1] != setupL[m]:
             setups.append(setupL[m+1])
     # make reduced and calibrated vis2 and CP plots
-    mircx_mystic_log.info('Plotting data in '+oiDir+' split according to '+','.join(keys))
+    log.info('Plotting data in '+oiDir+' split according to '+','.join(keys))
     for sup in range(0, len(setupsP)):
-        mircx_mystic_log.info(' '+', '.join(str(s) for s in setupsP[sup]))
+        log.info(' '+', '.join(str(s) for s in setupsP[sup]))
         # reduced:
         st = 0
         while isinstance(st, (float, int)):
@@ -683,7 +683,7 @@ def texSumPlots(oiDir,redF,calF,outFiles,calIDs):
     for num in range(0, len(redNum)):
         # ensure correct number of leading zeros are added to redNum for file name:
         strnum = '0'*(5-len(str(redNum[num])))+str(redNum[num])
-        mircx_mystic_log.info('Gather plots for summary report for file mircx'+strnum)
+        log.info('Gather plots for summary report for file mircx'+strnum)
         redV2plt = oiDir+'/mircx'+strnum+'_reduced_vis2.png'
         redCPplt = oiDir+'/mircx'+strnum+'_reduced_t3phi.png'
         for outFile in outFiles:
@@ -782,11 +782,11 @@ def texSumPlots(oiDir,redF,calF,outFiles,calIDs):
              try:
                  outtex.write('    \\includegraphics[width=0.9\\textwidth]{'+fitMap_plt[0]+'}\n')
              except IndexError:
-                 mircx_mystic_log.info('No fitMap plot found for '+calID)
+                 log.info('No fitMap plot found for '+calID)
              try:
                  outtex.write('    \\includegraphics[width=0.9\\textwidth]{'+resid_plt[0]+'}\n')
              except IndexError:
-                 mircx_mystic_log.info('No residuals plot found for '+calID)
+                 log.info('No residuals plot found for '+calID)
              outtex.write('\\end{figure*}\n\n\\clearpage\n')
              outtex.write('\\newpage\n\\begin{figure*}[h]\n    \\raggedright\n')
              outtex.write('    \\textbf{CANDID output: detectionLimit for ')
@@ -794,7 +794,7 @@ def texSumPlots(oiDir,redF,calF,outFiles,calIDs):
              try:
                  outtex.write('    \\includegraphics[width=0.9\\textwidth]{'+detLim_plt[0]+'}\n')
              except IndexError:
-                 mircx_mystic_log.info('No detLim plot found for '+calID)
+                 log.info('No detLim plot found for '+calID)
              outtex.write('\\end{figure*}\n\n\\clearpage\n')
     
     for outFile in outFiles:

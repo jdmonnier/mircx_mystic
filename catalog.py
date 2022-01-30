@@ -5,7 +5,7 @@ import numpy as np;
 import matplotlib.pyplot as plt;
 import matplotlib.colors as mcolors;
 
-from . import files, headers, mircx_mystic_log, signal;
+from . import log, files, headers, signal;
 
 # Try import astroquery
 try:
@@ -58,7 +58,7 @@ def model (u, v, lbd, mjd, data):
         evis = np.abs (signal.airy ((diam-ediam) * spf) - signal.airy ((diam+ediam) * spf));
         
     elif name == 'LDD':
-        mircx_mystic_log.warning ('LDD model is crap !!!');
+        log.warning ('LDD model is crap !!!');
         vis = u + v;
         evis = vis * 0.0;
         
@@ -92,7 +92,7 @@ def create_from_jsdc (filename, hdrs, overwrite=True):
 
     # If file exist
     if os.path.exists (filename+'.fits'):
-        mircx_mystic_log.info ('Load existing file');
+        log.info ('Load existing file');
         hdulist = pyfits.open (filename+'.fits');
         hdu0 = hdulist[0].copy();
         hdu1 = hdulist[1].copy();
@@ -117,9 +117,9 @@ def create_from_jsdc (filename, hdrs, overwrite=True):
     for i,obj in enumerate (objlist):
         try:
             cat = Vizier.query_object (obj, catalog='JSDC')[0][0];
-            mircx_mystic_log.info ('Find JSDC for '+obj);
-            mircx_mystic_log.info ("diam = %.3f mas"%cat['UDDH']);
-            mircx_mystic_log.info ("Hmag = %.3f mas"%cat['Hmag']);
+            log.info ('Find JSDC for '+obj);
+            log.info ("diam = %.3f mas"%cat['UDDH']);
+            log.info ("Hmag = %.3f mas"%cat['Hmag']);
 
             # Set all info available in catalog
             for c in columns:
@@ -133,11 +133,11 @@ def create_from_jsdc (filename, hdrs, overwrite=True):
 
             # Check if confident to be a calibrator
             if cat['UDDH'] > 0 and cat['UDDH'] < 1.0 and cat['e_LDD'] < 0.3 and cat['_r'] < 1./10:
-                mircx_mystic_log.info (obj+' declared as calibrator');
+                log.info (obj+' declared as calibrator');
                 hdu1.data['ISCAL'] = 1;
                 
         except:
-            mircx_mystic_log.info ('Cannot find JSDC for '+obj);
+            log.info ('Cannot find JSDC for '+obj);
 
     # Remove file if existing
     if os.path.exists (filename):

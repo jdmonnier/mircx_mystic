@@ -1,4 +1,4 @@
-from . import mircx_mystic_log
+from . import log
 
 def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True, observables=['v2', 'cp']):
     """
@@ -56,7 +56,7 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True, o
     from astropy.io import fits as pyfits
     
     o = candid.Open(files)
-    mircx_mystic_log.info('Read files for '+str(obj)+' into CANDID')
+    log.info('Read files for '+str(obj)+' into CANDID')
     if uset3amp == False:
         o.observables = observables
     
@@ -64,46 +64,46 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True, o
         insmode = fitsinput[0].header['INSMODE']
     
     if fixUDD == True:
-        mircx_mystic_log.info('Running CANDID fitMap with fixed UDD')
+        log.info('Running CANDID fitMap with fixed UDD')
         try:
             o.fitMap(fig=0, addParam={'diam*':float(UDD)}, doNotFit=['diam*'])
         except ValueError as exception:
-            mircx_mystic_log.error('Error encountered in CANDID: '+str(exception))
+            log.error('Error encountered in CANDID: '+str(exception))
             return ['failed', 0]
         except MemoryError as exception:
-            mircx_mystic_log.error('Error encountered in CANDID: '+str(exception))
+            log.error('Error encountered in CANDID: '+str(exception))
             return ['failed: memory', 0]
         plt.figure(0)
         plt.savefig(outDir+'/'+obj+'_fitMap_fixUDD.pdf')
-        mircx_mystic_log.info('Write '+outDir+'/'+obj+'_fitMap_fixUDD.pdf')
+        log.info('Write '+outDir+'/'+obj+'_fitMap_fixUDD.pdf')
         plt.close()
         plt.figure(1)
         plt.savefig(outDir+'/'+obj+'_Residuals_fixUDD.pdf')
-        mircx_mystic_log.info('Write '+outDir+'/'+obj+'_Residuals_fixUDD.pdf')
+        log.info('Write '+outDir+'/'+obj+'_Residuals_fixUDD.pdf')
         plt.close()
         ret = 'fixed: '
     else:
         candid.CONFIG['long exec warning'] = 3000
         try:
-            mircx_mystic_log.info('Running CANDID fitMap with UDD as free parameter')
+            log.info('Running CANDID fitMap with UDD as free parameter')
             if 'GRISM' in insmode:
                 # if insmode == GRISM, use rmin and rmax to limit runtime and memory allocation:
                 o.fitMap(fig=0, rmin=0.54, rmax=30)
             else:
                 o.fitMap(fig=0)
         except TypeError as exception:
-            mircx_mystic_log.error('Error encountered in CANDID: '+str(exception))
+            log.error('Error encountered in CANDID: '+str(exception))
             return ['failed', 0]
         except MemoryError as exception:
-            mircx_mystic_log.error('Error encountered in CANDID: '+str(exception))
+            log.error('Error encountered in CANDID: '+str(exception))
             return ['failed: memory', 0]
         plt.figure(0)
         plt.savefig(outDir+'/'+obj+'_fitMap_fitUDD.pdf')
-        mircx_mystic_log.info('Write '+outDir+'/'+obj+'_fitMap_fitUDD.pdf')
+        log.info('Write '+outDir+'/'+obj+'_fitMap_fitUDD.pdf')
         plt.close()
         plt.figure(1)
         plt.savefig(outDir+'/'+obj+'_Residuals_fitUDD.pdf')
-        mircx_mystic_log.info('Write '+outDir+'/'+obj+'_Residuals_fitUDD.pdf')
+        log.info('Write '+outDir+'/'+obj+'_Residuals_fitUDD.pdf')
         plt.close()
         ret = 'free: '
     
@@ -116,9 +116,9 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True, o
             # Get here if longer computation is required
             return ['failed: time', 0]
         except MemoryError as exception:
-            mircx_mystic_log.error('Error encountered in CANDID: '+str(exception))
+            log.error('Error encountered in CANDID: '+str(exception))
             return ['failed: memory', 0]
-        mircx_mystic_log.info('Running CANDID detectionLimit with companion removed')
+        log.info('Running CANDID detectionLimit with companion removed')
         if 'GRISM' in insmode:
             o.detectionLimit(fig=2, removeCompanion=p['best'], methods=['injection'], rmin=0.54, rmax=30, diam=p['best']['diam*'])
         else:
@@ -127,7 +127,7 @@ def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True, o
         plt.plot([o.rmin, o.rmax], [-2.5*np.log10(p['best']['f']/100.)]*2, ls='--', color='k')
         plt.plot([np.sqrt(p['best']['x']**2+p['best']['y']**2)], [-2.5*np.log10(p['best']['f']/100.)], ls=None, marker='*', ms=8)
         plt.savefig(outDir+'/'+obj+'_detLim.pdf')
-        mircx_mystic_log.info('Write '+outDir+'/'+obj+'_detLim.pdf')
+        log.info('Write '+outDir+'/'+obj+'_detLim.pdf')
         plt.close()
     
     return [ret, p]

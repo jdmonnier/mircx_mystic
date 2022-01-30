@@ -6,7 +6,7 @@ from scipy.ndimage import gaussian_filter, uniform_filter, median_filter;
 from scipy.special import gammainc, gamma;
 from scipy.interpolate import interp1d
 
-from . import files, headers, mircx_mystic_log, setup, oifits;
+from . import log, files, headers, setup, oifits;
 
 def airy (x):
     ''' Airy function, with its zero at x = 1.22'''
@@ -34,7 +34,7 @@ def getwidth (curve, threshold=None):
     # Find rising point
     f = np.argmax (curve > threshold) - 1;
     if f == -1:
-        mircx_mystic_log.warning ('Width detected outside the spectrum');
+        log.warning ('Width detected outside the spectrum');
         first = 0;
     else:
         first = f + (threshold - curve[f]) / (curve[f+1] - curve[f]);
@@ -42,7 +42,7 @@ def getwidth (curve, threshold=None):
     # Find lowering point
     l = len(curve) - np.argmax (curve[::-1] > threshold) - 1;
     if l == len(curve)-1:
-        mircx_mystic_log.warning ('Width detected outside the spectrum');
+        log.warning ('Width detected outside the spectrum');
         last = l;
     else:
         last = l + (threshold - curve[l]) / (curve[l+1] - curve[l]);
@@ -57,7 +57,7 @@ def bootstrap_matrix (snr, gd):
 
     Return (snr_b, gd_b) of same size, but including bootstrap.
     '''
-    mircx_mystic_log.info ('Bootstrap baselines with linear matrix');
+    log.info ('Bootstrap baselines with linear matrix');
 
     # User a power to implement a type of min/max of SNR
     power = 4.0;
@@ -73,7 +73,7 @@ def bootstrap_matrix (snr, gd):
     snr = np.maximum (snr,1e-1);
     snr = np.minimum (snr,1e3);
 
-    mircx_mystic_log.info ('Compute OPD_TO_OPD');
+    log.info ('Compute OPD_TO_OPD');
     
     # The OPL_TO_OPD matrix
     OPL_TO_OPD = setup.beam_to_base;
@@ -89,7 +89,7 @@ def bootstrap_matrix (snr, gd):
     # OPD_TO_OPD = OPL_TO_OPD.OPD_TO_OPL  (m is output OPD)
     OPD_TO_OPD = np.einsum ('mo,sob->smb', OPL_TO_OPD, OPD_TO_OPL);
     
-    mircx_mystic_log.info ('Compute gd_b and snr_b');
+    log.info ('Compute gd_b and snr_b');
     
     # GDm = OPD_TO_OPD . GD
     gd_b = np.einsum ('smb,sb->sm',OPD_TO_OPD,gd);
@@ -119,7 +119,7 @@ def bootstrap_triangles (snr,gd):
     Return (snr_b, gd_b) of same size, but including bootstrap.
     '''
 
-    mircx_mystic_log.info ('Bootstrap baselines with triangles');
+    log.info ('Bootstrap baselines with triangles');
 
     # Reshape
     shape = snr.shape;
@@ -170,7 +170,7 @@ def bootstrap_triangles_jdm (snr,gd):
     Return (snr_b, gd_b) of same size, but including bootstrap.
     '''
 
-    mircx_mystic_log.info ('Bootstrap baselines with triangles using MIRC/JDM method');
+    log.info ('Bootstrap baselines with triangles using MIRC/JDM method');
 
 
     w=snr.copy()

@@ -9,7 +9,7 @@ from astropy.io import fits as pyfits;
 
 from scipy.ndimage import gaussian_filter, uniform_filter, median_filter;
 
-from . import files, headers, mircx_mystic_log, setup, oifits, signal, plot, qc;
+from . import log, files, headers, setup, oifits, signal, plot, qc;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
 def compute_selection (hdrs, output='output_trends', filetype='SELECTION',
@@ -19,7 +19,7 @@ def compute_selection (hdrs, output='output_trends', filetype='SELECTION',
     based on the RTS intermediate products
     '''
 
-    elog = mircx_mystic_log.trace ('compute_trends');
+    elog = log.trace ('compute_trends');
 
     # Check inputs
     headers.check_input (hdrs,  required=1);
@@ -34,21 +34,21 @@ def compute_selection (hdrs, output='output_trends', filetype='SELECTION',
 
         # Load data
         f = h['ORIGNAME'];
-        mircx_mystic_log.info ('Load RTS file %s (%i over %i)'%(f,ih,nfiles));
+        log.info ('Load RTS file %s (%i over %i)'%(f,ih,nfiles));
         
         base_dft = pyfits.getdata (f, 'BASE_DFT_IMAG').astype(float) * 1.j + \
                    pyfits.getdata (f, 'BASE_DFT_REAL').astype(float);
         
         # Dimensions
         nr,nf,ny,nb = base_dft.shape;
-        mircx_mystic_log.info ('Data size: '+str(base_dft.shape));
+        log.info ('Data size: '+str(base_dft.shape));
 
         # Do coherent integration
-        mircx_mystic_log.info ('Coherent integration over %i frames'%ncoher);
+        log.info ('Coherent integration over %i frames'%ncoher);
         base_dft = signal.uniform_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant');
         
         # Compute FFT over the lbd direction, thus OPD-scan
-        mircx_mystic_log.info ('Compute 2d FFT (nscan=%i)'%nscan);
+        log.info ('Compute 2d FFT (nscan=%i)'%nscan);
         base_scan = np.fft.fftshift (np.fft.fft (base_dft, n=nscan, axis=2), axes=2);
 
         # Compute mean scan over ramp and frame
@@ -59,14 +59,14 @@ def compute_selection (hdrs, output='output_trends', filetype='SELECTION',
         all_base_scan[ih,:,:] = (base_scan - np.min(base_scan)) / (np.max(base_scan)-np.min(base_scan));
 
     # Compute trend per beams
-    mircx_mystic_log.info ('Compute the scan per beams');
+    log.info ('Compute the scan per beams');
     
     for ib,beams in enumerate (setup.base_beam ()):
         all_beam_scan[:,:,beams[0]] += all_base_scan[:,:,ib];
         all_beam_scan[:,:,beams[1]] += all_base_scan[:,:,ib];
 
     # Make plots
-    mircx_mystic_log.info ('Plots');
+    log.info ('Plots');
 
     # Waterfall per base
     fig,axes = plt.subplots (5,3, sharex=True);
@@ -85,7 +85,7 @@ def compute_selection (hdrs, output='output_trends', filetype='SELECTION',
         axes.flatten()[b].imshow (all_beam_scan[:,:,b].T,aspect='auto');
 
     # Start interactive session
-    mircx_mystic_log.info ('Interactive session: Click and drag over range to exclude');
+    log.info ('Interactive session: Click and drag over range to exclude');
     def onclick(event):
         if event.dblclick:
             xx1,xx2 = event.inaxes.get_xlim();
@@ -120,10 +120,10 @@ def compute_selection (hdrs, output='output_trends', filetype='SELECTION',
     files.write (fig,output+'_beam_trend.png');
     fig.canvas.mpl_disconnect(cid);
     fig.canvas.mpl_disconnect(cid2);
-    mircx_mystic_log.info ('Save selection');
+    log.info ('Save selection');
 
     # File
-    mircx_mystic_log.info ('Create file');
+    log.info ('Create file');
 
     # First HDU
     hdu0 = pyfits.PrimaryHDU ([]);

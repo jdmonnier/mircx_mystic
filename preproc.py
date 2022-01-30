@@ -16,7 +16,7 @@ from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter;
 from scipy.optimize import least_squares;
 
-from . import files, headers, mircx_mystic_log, setup, oifits, signal, plot;
+from . import log, files, headers, setup, oifits, signal, plot;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
     
@@ -57,7 +57,7 @@ def define_badpixels (bkg, threshold=5.):
 
     hdr[HMQ+'BADPIX MEAN_THRESHOLD'] = (thr_mean, 'threshold in sigma');
     hdr[HMQ+'BADPIX MEAN_NUMBER'] = (np.sum (bad_mean), 'nb. of badpix');
-    mircx_mystic_log.info ('Found %i bad pixels in MEAN'%np.sum (bad_mean));
+    log.info ('Found %i bad pixels in MEAN'%np.sum (bad_mean));
 
     # Load background error
     bkg_noise = pyfits.getdata (bkg[0]['ORIGNAME'],'BACKGROUND_ERR');
@@ -69,7 +69,7 @@ def define_badpixels (bkg, threshold=5.):
 
     hdr[HMQ+'BADPIX ERR_THRESHOLD'] = (thr_err, 'threshold in sigma');
     hdr[HMQ+'BADPIX ERR_NUMBER'] = (np.sum (bad_err), 'nb. of badpix');
-    mircx_mystic_log.info ('Found %i bad pixels in ERR'%np.sum (bad_err));
+    log.info ('Found %i bad pixels in ERR'%np.sum (bad_err));
     
     # Load background error
     bkg_noise = pyfits.getdata (bkg[0]['ORIGNAME'],'BACKGROUND_NOISE');
@@ -81,7 +81,7 @@ def define_badpixels (bkg, threshold=5.):
 
     hdr[HMQ+'BADPIX NOISE_THRESHOLD'] = (thr_noise, 'threshold in sigma');
     hdr[HMQ+'BADPIX NOISE_NUMBER'] = (np.sum (bad_noise), 'nb. of badpix');
-    mircx_mystic_log.info ('Found %i bad pixels in NOISE'%np.sum (bad_noise));
+    log.info ('Found %i bad pixels in NOISE'%np.sum (bad_noise));
 
     # Ignore the badpixels on the edges
     bad = bad_mean + bad_err + bad_noise;
@@ -96,7 +96,7 @@ def check_empty_window (cube, hdr):
     Check the level and noise in an empty
     window from a cube(r,f,xy)
     '''
-    mircx_mystic_log.info ('Check the empty window');
+    log.info ('Check the empty window');
     
     # Get dimension
     nr,nf,ny,nx = cube.shape;
@@ -104,7 +104,7 @@ def check_empty_window (cube, hdr):
     # Hardcoded defined
     sx,nx = 200,80;
     sy,ny = int(0.55*ny), int(0.85*ny - 0.55*ny);
-    mircx_mystic_log.info ('Empty window: %i,%i, %i,%i'%(sx,nx,sy,ny));
+    log.info ('Empty window: %i,%i, %i,%i'%(sx,nx,sy,ny));
 
     # Add QC parameters
     hdr[HMQ+'WIN EMPTY STARTX'] = (sx,'[pix] python-ref');
@@ -119,7 +119,7 @@ def check_empty_window (cube, hdr):
     (mean,med,std) = sigma_clipped_stats (empty);
     
     # Set QC
-    mircx_mystic_log.info (HMQ+'EMPTY MED = %.2f [adu]'%med);
+    log.info (HMQ+'EMPTY MED = %.2f [adu]'%med);
     hdr[HMQ+'EMPTY MED'] = (med,'[adu]');
     hdr[HMQ+'EMPTY MEAN'] = (mean,'[adu]');
     hdr[HMQ+'EMPTY STD'] = (std,'[adu]');
@@ -132,7 +132,7 @@ def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN', l
     BACKGROUND. The output file had the mean and rms over
     all frames, written as ramp.
     '''
-    elog = mircx_mystic_log.trace ('compute_background');
+    elog = log.trace ('compute_background');
 
     # Check inputs
     headers.check_input (hdrs, required=1);
@@ -142,10 +142,10 @@ def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN', l
                                    saturationThreshold=None,
                                    continuityThreshold=None,
                                    linear=linear);
-    mircx_mystic_log.info ('Data size: '+str(cube.shape));
+    log.info ('Data size: '+str(cube.shape));
 
     # Background mean
-    mircx_mystic_log.info ('Compute mean and rms over input files');
+    log.info ('Compute mean and rms over input files');
     bkg_mean = np.mean (cube, axis=0);
     bkg_err  = np.std (cube, axis=0) / np.sqrt (cube.shape[0]);
 
@@ -156,31 +156,31 @@ def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN', l
                                  linear=linear);
 
     # Compute temporal rms
-    mircx_mystic_log.info ('Compute rms over ramp/frame of first file');
+    log.info ('Compute rms over ramp/frame of first file');
     bkg_noise = np.std (cube[:,3:-3,:,:], axis=(0,1));
     
     # Select the region for the QC parameters
     nf,ny,nx = bkg_mean.shape;
     dy,dx = 15,35;
     idf,idy,idx = int(nf/2), int(ny/2), int(nx/2);
-    mircx_mystic_log.info ('Compute QC in box (%i,%i:%i,%i:%i)'%(idf,idy-dy,idy+dy,idx-dx,idx+dx));
+    log.info ('Compute QC in box (%i,%i:%i,%i:%i)'%(idf,idy-dy,idy+dy,idx-dx,idx+dx));
 
     # Add QC parameters
     (mean,med,std) = sigma_clipped_stats (bkg_mean[idf,idy-dy:idy+dy,idx-dx:idx+dx]);
-    mircx_mystic_log.info ('BKG_MEAN MED = %f'%med);
-    mircx_mystic_log.info ('BKG_MEAN STD = %f'%std);
+    log.info ('BKG_MEAN MED = %f'%med);
+    log.info ('BKG_MEAN STD = %f'%std);
     hdr.set (HMQ+'BKG_MEAN MED',med,'[adu] for frame nf/2');
     hdr.set (HMQ+'BKG_MEAN STD',std,'[adu] for frame nf/2');
 
     (emean,emed,estd) = sigma_clipped_stats (bkg_err[idf,idy-dy:idy+dy,idx-dx:idx+dx]);
-    mircx_mystic_log.info ('BKG_ERR MED = %f'%emed);
-    mircx_mystic_log.info ('BKG_ERR STD = %f'%estd);
+    log.info ('BKG_ERR MED = %f'%emed);
+    log.info ('BKG_ERR STD = %f'%estd);
     hdr.set (HMQ+'BKG_ERR MED',emed,'[adu] for frame nf/2');
     hdr.set (HMQ+'BKG_ERR STD',estd,'[adu] for frame nf/2');
     
     (nmean,nmed,nstd) = sigma_clipped_stats (bkg_noise[idy-dy:idy+dy,idx-dx:idx+dx]);
-    mircx_mystic_log.info ('BKG_NOISE MED = %f'%nmed);
-    mircx_mystic_log.info ('BKG_NOISE STD = %f'%nstd);
+    log.info ('BKG_NOISE MED = %f'%nmed);
+    log.info ('BKG_NOISE STD = %f'%nstd);
     hdr.set (HMQ+'BKG_NOISE MED',round(nmed,5),'[adu] for first file');
     hdr.set (HMQ+'BKG_NOISE STD',round(nstd,5),'[adu] for first file');
 
@@ -213,7 +213,7 @@ def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN', l
     files.write (hdulist, output+'.fits');
 
     # Figures
-    mircx_mystic_log.info ('Figures');
+    log.info ('Figures');
 
     # Images of mean
     fig,ax = plt.subplots (2,1);
@@ -295,7 +295,7 @@ def estimate_windows (cmean, hdr, output='outout_window'):
     '''
     
     # Get dimensions
-    mircx_mystic_log.info ('Size of cmean: '+str(cmean.shape));
+    log.info ('Size of cmean: '+str(cmean.shape));
     ny,nx = cmean.shape;
 
     # Number of spectral channels to extract on plots
@@ -323,9 +323,9 @@ def estimate_windows (cmean, hdr, output='outout_window'):
     pfit  = fitting.LevMarLSQFitter()(init, x, px);
     pxc,pxw = pfit.mean.value,pfit.stddev.value;
 
-    mircx_mystic_log.info ('Max amplitude photo: %f adu/pix/frame'%(pfit.amplitude.value));
-    mircx_mystic_log.info ('Limit photo in spectral direction: %f %f'%(pyc,pyw));
-    mircx_mystic_log.info ('Limit photo in spatial direction: %f %f'%(pxc,pxw));
+    log.info ('Max amplitude photo: %f adu/pix/frame'%(pfit.amplitude.value));
+    log.info ('Limit photo in spectral direction: %f %f'%(pyc,pyw));
+    log.info ('Limit photo in spatial direction: %f %f'%(pxc,pxw));
     
     # Add QC parameters for window
     hdr[HMW+'PHOTO MAX']  = (pfit.amplitude.value,'[adu/pix/frame]');
@@ -345,9 +345,9 @@ def estimate_windows (cmean, hdr, output='outout_window'):
     ffit = fitter (init, x, fx);
     fxc,fxw = ffit.mean.value,ffit.stddev.value;
         
-    mircx_mystic_log.info ('Max amplitude fringe: %f adu/pix/frame'%(ffit.amplitude.value));
-    mircx_mystic_log.info ('Limit fringe in spectral direction: %f %f'%(fyc,fyw));
-    mircx_mystic_log.info ('Limit fringe in spatial direction: %f %f'%(fxc,fxw));
+    log.info ('Max amplitude fringe: %f adu/pix/frame'%(ffit.amplitude.value));
+    log.info ('Limit fringe in spectral direction: %f %f'%(fyc,fyw));
+    log.info ('Limit fringe in spatial direction: %f %f'%(fxc,fxw));
 
     # Add QC parameters for window
     hdr[HMW+'FRINGE MAX']  = (ffit.amplitude.value,'[adu/pix/frame]');
@@ -382,11 +382,11 @@ def estimate_windows (cmean, hdr, output='outout_window'):
     if (pxc < 1) or (pxc > nx) or (pxw < 0.25) or (pxw > 10): quality = 0.0;
     
     # Set quality
-    mircx_mystic_log.info (HMQ+'QUALITY = %f'%quality);
+    log.info (HMQ+'QUALITY = %f'%quality);
     hdr[HMQ+'QUALITY'] = (quality, 'quality of data');
 
     # Figures
-    mircx_mystic_log.info ('Figures');
+    log.info ('Figures');
     
     # Figures of photo
     fig,ax = plt.subplots(3,1);
@@ -428,7 +428,7 @@ def compute_beam_map (hdrs,bkg,flat,threshold,output='output_beam_map',filetype=
     '''
     Compute BEAM_MAP product.
     '''
-    elog = mircx_mystic_log.trace ('compute_beam_map');
+    elog = log.trace ('compute_beam_map');
 
     # Check inputs
     headers.check_input (hdrs, required=1);
@@ -436,14 +436,14 @@ def compute_beam_map (hdrs,bkg,flat,threshold,output='output_beam_map',filetype=
     headers.check_input (flat, required=1, maximum=1);
     
     # Load background
-    mircx_mystic_log.info ('Load %s'%bkg[0]['ORIGNAME']);
+    log.info ('Load %s'%bkg[0]['ORIGNAME']);
     bkg_cube = pyfits.getdata (bkg[0]['ORIGNAME'],0);
     
     # Compute bad pixels position from background
     bad_img = define_badpixels (bkg,threshold);
 
     # Load flat
-    mircx_mystic_log.info ('Load %s'%flat[0]['ORIGNAME']);
+    log.info ('Load %s'%flat[0]['ORIGNAME']);
     flat_img = pyfits.getdata (flat[0]['ORIGNAME'],'FLAT');
 
     # Crop the FLAT image. For now, this is not working.
@@ -461,18 +461,18 @@ def compute_beam_map (hdrs,bkg,flat,threshold,output='output_beam_map',filetype=
     check_empty_window (cube, hdr);
     
     # Get dimensions
-    mircx_mystic_log.info ('Data size: '+str(cube.shape));
+    log.info ('Data size: '+str(cube.shape));
     nr,nf,ny,nx = cube.shape;
 
     # Compute the sum
-    mircx_mystic_log.info ('Compute sum over ramps and frames');
+    log.info ('Compute sum over ramps and frames');
     csum = np.sum (cube, axis=(0,1));
 
     # Estimate windows position
     pmap, fmap = estimate_windows (csum, hdr, output=output);
 
     # File
-    mircx_mystic_log.info ('Create file');
+    log.info ('Create file');
     
     # First HDU
     hdu0 = pyfits.PrimaryHDU (csum[None,None,:,:]);
@@ -499,7 +499,7 @@ def compute_beam_profile (hdrs,output='output_beam_profile',filetype='BEAM_PROFI
     keywords defining the fringe window and the photometric
     windows, as well as the spectral shift between them.
     '''
-    elog = mircx_mystic_log.trace ('compute_beam_profile');
+    elog = log.trace ('compute_beam_profile');
 
     # Check inputs
     headers.check_input (hdrs, required=1);
@@ -513,14 +513,14 @@ def compute_beam_profile (hdrs,output='output_beam_profile',filetype='BEAM_PROFI
     # Load data as images
     for h in hdrs:
         f = h['ORIGNAME'];
-        mircx_mystic_log.info ('Load file %s'%f);
+        log.info ('Load file %s'%f);
         csum = csum + pyfits.getdata (f).astype(float).sum (axis=(0,1));
 
     # Estimate windows position
     pmap, fmap = estimate_windows (csum, hdr, output=output);
 
     # File
-    mircx_mystic_log.info ('Create file');
+    log.info ('Create file');
     
     # First HDU
     hdu0 = pyfits.PrimaryHDU (csum[None,None,:,:]);
@@ -544,7 +544,7 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     already extracted and re-aligned spectrally
     '''
     
-    elog = mircx_mystic_log.trace ('compute_preproc');
+    elog = log.trace ('compute_preproc');
 
     # Check inputs
     headers.check_input (hdrs,  required=1);
@@ -553,14 +553,14 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     headers.check_input (bmaps, required=1, maximum=6);
 
     # Load background
-    mircx_mystic_log.info ('Load %s'%bkg[0]['ORIGNAME']);
+    log.info ('Load %s'%bkg[0]['ORIGNAME']);
     bkg_cube = pyfits.getdata (bkg[0]['ORIGNAME'],0);
     
     # Compute bad pixels position
     bad_img = define_badpixels (bkg,threshold);
 
     # Load flat
-    mircx_mystic_log.info ('Load %s'%flat[0]['ORIGNAME']);
+    log.info ('Load %s'%flat[0]['ORIGNAME']);
     flat_img = pyfits.getdata (flat[0]['ORIGNAME'],'FLAT');
 
     # Crop the FLAT image. For now, this is not working.
@@ -575,7 +575,7 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
                                    linear=linear);
 
     # Get dimensions
-    mircx_mystic_log.info ('Data size: '+str(cube.shape));
+    log.info ('Data size: '+str(cube.shape));
     
     # Check background subtraction in empty region
     check_empty_window (cube, hdr);
@@ -587,7 +587,7 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     # Define the closest integer
     fxc = int(round(fxc0));
     fyc = int(round(fyc0));
-    mircx_mystic_log.info ('FRINGE CENTERX/Y = %i,%i'%(fxc,fyc));
+    log.info ('FRINGE CENTERX/Y = %i,%i'%(fxc,fyc));
 
     # Expected size on spatial and spectral direction are hardcoded
     fxw = int(setup.fringe_widthx (hdr) / 2);
@@ -600,7 +600,7 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     overflow2 = (fyc+ns+1) - cube.shape[2];
     if overflow1 > 0 or overflow2 > 0:
         overflow = np.maximum (overflow1, overflow2);
-        mircx_mystic_log.warning ('Hard window too short, reduce spectrum from %i to %i'%(ns,ns-overflow));
+        log.warning ('Hard window too short, reduce spectrum from %i to %i'%(ns,ns-overflow));
         ns -= overflow;
     
     # Keep track of crop value
@@ -620,7 +620,7 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     # Robust measure of total flux in fringe
     value = np.sum (medfilt (np.mean (fringe, axis=(0,1)), (1,11)));
     hdr[HMW+'FRINGE MEAN'] = (value,'[adu/frame] total flux');
-    mircx_mystic_log.info ('FRINGE MEAN = %.2f [adu/frame]'%value);
+    log.info ('FRINGE MEAN = %.2f [adu/frame]'%value);
 
     # Same for photometries
     nr,nf,ny,nx = fringe.shape;
@@ -628,13 +628,13 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     photos = np.zeros ((6,nr,nf,ny,2*pxw+1));
     for bmap in bmaps:
         if bmap == []: continue;
-        mircx_mystic_log.info ('Use %s: %s'%(bmap['FILETYPE'],bmap['ORIGNAME']));
+        log.info ('Use %s: %s'%(bmap['FILETYPE'],bmap['ORIGNAME']));
         beam = int(bmap['FILETYPE'][4:5]) - 1;
         
         # Get the position of the photo spectra
         pxc = int(round(bmap['MIRC QC WIN PHOTO CENTERX']));
         pyc = int(round(bmap['MIRC QC WIN PHOTO CENTERY']));
-        mircx_mystic_log.info ('PHOTO%i CENTERX/Y = %i,%i'%(beam,pxc,pyc));
+        log.info ('PHOTO%i CENTERX/Y = %i,%i'%(beam,pxc,pyc));
 
         # Set the required crop in header
         hdr[HMW+'PHOTO%i STARTX'%(beam)] = (pxc-pxw, '[pix] python-def');
@@ -644,10 +644,10 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
         # Robust measure of max flux in photometry
         value = np.sum (medfilt (np.mean (photos[beam,:,:,:,:], axis=(0,1)), (3,1)));
         hdr[HMW+'PHOTO%i MEAN'%(beam)] = (value,'[adu/frame], total flux');
-        mircx_mystic_log.info ('PHOTO%i MEAN = %.2f [adu/frame]'%(beam,value));
+        log.info ('PHOTO%i MEAN = %.2f [adu/frame]'%(beam,value));
 
     # Figures
-    mircx_mystic_log.info ('Figures');
+    log.info ('Figures');
 
     # Fringe and photo mean
     fig,ax = plt.subplots(2,1);
@@ -677,7 +677,7 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     files.write (fig, output+'_timecont.png');
     
     # File
-    mircx_mystic_log.info ('Create file');
+    log.info ('Create file');
     
     # First HDU
     hdu0 = pyfits.PrimaryHDU (fringe.astype('float32'));

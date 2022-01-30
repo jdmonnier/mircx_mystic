@@ -9,7 +9,7 @@ from astropy.coordinates import SkyCoord
 import numpy as np
 import os
 
-from . import mircx_mystic_log, setup, files, plot, headers, version;
+from . import log, setup, files, plot, headers, version;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 from .version import revision;
 
@@ -36,7 +36,7 @@ def create (hdr,lbd,y0=None):
     hdulist = pyfits.HDUList ([hdu0]);
 
     # Create OI_WAVELENGTH table
-    mircx_mystic_log.info ('Create OI_WAVELENGTH table');
+    log.info ('Create OI_WAVELENGTH table');
     dlbd = np.abs (lbd * 0 + np.mean (np.diff(lbd)));
     tbhdu = pyfits.BinTableHDU.from_columns ( \
             [pyfits.Column (name='EFF_WAVE', format='1E', array=lbd, unit='m'), \
@@ -48,7 +48,7 @@ def create (hdr,lbd,y0=None):
     hdulist.append(tbhdu);
 
     # Create OI_TARGET table
-    mircx_mystic_log.info ('Create OI_TARGET table');
+    log.info ('Create OI_TARGET table');
     name = hdr['OBJECT'];
     coord = SkyCoord (hdr['RA'],hdr['DEC'], unit=(units.hourangle, units.deg));
     ra0  = coord.ra.to('deg').value;
@@ -82,7 +82,7 @@ def create (hdr,lbd,y0=None):
     hdulist.append(tbhdu);
 
     # Create OI_ARRAY table
-    mircx_mystic_log.info ('Create OI_ARRAY table');
+    log.info ('Create OI_ARRAY table');
     diameter = np.ones (6) * 1.0;
     staindex = range (1,7);
     telname = ['S1','S2','E1','E2','W1','W2'];
@@ -123,7 +123,7 @@ def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None,nchun
     mjd shall be (sample)
     '''
 
-    mircx_mystic_log.info ('Compute OI_VIS2');
+    log.info ('Compute OI_VIS2');
     hdr = hdulist[0].header;
     ns,ny,nb = u_power.shape;
 
@@ -156,7 +156,7 @@ def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None,nchun
 
     # Enlarge error with systematics. FIXME: this somewhat conservative
     # as we estimate the bias with several frequencies.
-    mircx_mystic_log.info ('Enlarge statistical errors with systematics');
+    log.info ('Enlarge statistical errors with systematics');
     vis2err = np.sqrt (vis2err**2 + vis2sys**2);
 
     # Construct mjd[ns,ny,nb]
@@ -222,7 +222,7 @@ def add_vis2 (hdulist,mjd0,u_power,b_power,l_power,output='output',y0=None,nchun
         val = rep_nan (np.sqrt(ucoord[b]**2 + vcoord[b]**2));
         hdr[HMQ+'BASELENGTH'+name] = (val,'[m] uv coordinate');
         
-    mircx_mystic_log.info ('OI_VIS2 plots');
+    log.info ('OI_VIS2 plots');
     
     # Correlation plot
     fig,axes = plt.subplots (5,3, sharex=True);
@@ -294,7 +294,7 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None,nchunk=10):
     mjd shall be (sample)
     '''
 
-    mircx_mystic_log.info ('Compute OI_VIS');
+    log.info ('Compute OI_VIS');
     hdr = hdulist[0].header;
     ns,ny,nb = c_cpx.shape;
 
@@ -363,7 +363,7 @@ def add_vis (hdulist,mjd0, c_cpx, c_norm, output='output',y0=None,nchunk=10):
     tbhdu.header['DATE-OBS'] = hdr['DATE-OBS'];
     hdulist.append(tbhdu);
 
-    mircx_mystic_log.info ('OI_VIS plots');
+    log.info ('OI_VIS plots');
     
     # Correlation plot
     fig,axes = plt.subplots (5,3, sharex=True);
@@ -435,7 +435,7 @@ def add_vis_plot (c_cpx, c_norm, output='output',y0=None,label='1'):
     Plot the visphi - for debugging
     '''
 
-    mircx_mystic_log.info ('Plot REF_PHI');
+    log.info ('Plot REF_PHI');
     ns,ny,nb = c_cpx.shape;
 
     # Spectral channel for QC
@@ -485,7 +485,7 @@ def add_flux (hdulist,mjd0,p_flux,output='output',y0=None):
     mjd shall be (sample)
     '''
     
-    mircx_mystic_log.info ('Compute OI_FLUX');
+    log.info ('Compute OI_FLUX');
     hdr = hdulist[0].header;
     ns,ny,nt = p_flux.shape;
 
@@ -561,7 +561,7 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None,nchunk=10):
     mjd shall be (sample)
     '''
     
-    mircx_mystic_log.info ('Compute OI_T3');
+    log.info ('Compute OI_T3');
     hdr = hdulist[0].header;
     ns,ny,nt = t_product.shape;
 
@@ -659,7 +659,7 @@ def add_t3 (hdulist,mjd0,t_product,t_norm,output='output',y0=None,nchunk=10):
         val = rep_nan (t3phiErr[y0,t])*r2d;
         hdr[HMQ+'T3PHI'+name+' ERR'] = (val,'[deg] visibility at lbd0');
     
-    mircx_mystic_log.info ('OI_T3 plots');
+    log.info ('OI_T3 plots');
     
     # Correlation plot
     fig,axes = plt.subplots (5,4, sharex=True, sharey=True);

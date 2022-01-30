@@ -1,7 +1,7 @@
 import numpy as np;
 from astropy.io import fits as pyfits;
 
-from . import headers, mircx_mystic_log, setup;
+from . import log, headers, setup;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
 def flux (hdr, y0, photo):
@@ -9,7 +9,7 @@ def flux (hdr, y0, photo):
     Add QC to hdr about flux
     '''
     
-    mircx_mystic_log.info ('Compute QC for xchan flux');
+    log.info ('Compute QC for xchan flux');
     
     for t in range(6):
         val = np.mean (photo[:,:,y0,t], axis=(0,1));
@@ -23,7 +23,7 @@ def snr (hdr, y0, base_snr0, base_snr):
     Add QC to hdr about snr.
     '''
     
-    mircx_mystic_log.info ('Compute QC for SNR');
+    log.info ('Compute QC for SNR');
     
     for b,name in enumerate (setup.base_name ()):
         val = rep_nan (np.mean (base_snr0[:,:,:,b]));
@@ -38,7 +38,7 @@ def power (hdr, y0, base_power, bias_power, norm_power):
     '''
 
     # QC for power
-    mircx_mystic_log.info ('Compute QC for power');
+    log.info ('Compute QC for power');
     
     for b,name in enumerate (setup.base_name ()):
         val = rep_nan (np.mean (norm_power[:,:,y0,b], axis=(0,1)));
@@ -49,7 +49,7 @@ def power (hdr, y0, base_power, bias_power, norm_power):
         hdr[HMQ+'POWER'+name+' STD'] = (val,'Fringe Power at lbd0');
 
     # QC for bias
-    mircx_mystic_log.info ('Compute QC for bias');
+    log.info ('Compute QC for bias');
     
     qc_power = np.mean (bias_power[:,:,y0,:], axis=(0,1));
     hdr[HMQ+'BIASMEAN MEAN'] = (np.mean (qc_power),'Bias Power at lbd0');

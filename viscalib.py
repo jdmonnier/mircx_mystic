@@ -7,7 +7,7 @@ from astropy.io import fits as pyfits
 import matplotlib.pyplot as plt;
 import matplotlib.colors as mcolors;
 
-from . import files, headers, mircx_mystic_log, setup, oifits, signal, plot;
+from . import log, files, headers, setup, oifits, signal, plot;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
 from .setup import visparam;
@@ -53,7 +53,7 @@ def tf_time_weight (hdus, hdutf, delta):
 
     Return the OIFITS_SCI_TF, as a FITS handler.
     '''
-    mircx_mystic_log.info ('Interpolate %i TF with time_weight'%len(hdutf));
+    log.info ('Interpolate %i TF with time_weight'%len(hdutf));
 
     # Copy OIFITS_SCI to build OIFITS_TF
     hdutfs = pyfits.HDUList([hdu.copy() for hdu in hdus]);
@@ -80,7 +80,7 @@ def tf_time_weight (hdus, hdutf, delta):
         err[flg] = np.nan;
 
         # Verbose 
-        mircx_mystic_log.info (o[1]+": %i valid TF points over %i"%(np.sum(np.isfinite(val)),val.size));
+        log.info (o[1]+": %i valid TF points over %i"%(np.sum(np.isfinite(val)),val.size));
 
         # Don't give added advantage for <2% percent error
         #  or 0.1deg for phase, Idea from John Monnier
@@ -97,8 +97,8 @@ def tf_time_weight (hdus, hdutf, delta):
         # Check date
         mjd0[~np.isfinite(mjd0)] = 0.0;
         mjd[~np.isfinite(mjd)]   = 0.0;
-        if np.sum(mjd0 <= 0): mircx_mystic_log.warning ('Invalid MJDs in SCI !!');
-        if np.sum(mjd  <= 0): mircx_mystic_log.warning ('Invalid MJDs in TFs !!');
+        if np.sum(mjd0 <= 0): log.warning ('Invalid MJDs in SCI !!');
+        if np.sum(mjd  <= 0): log.warning ('Invalid MJDs in TFs !!');
 
         # JDM recommends also adding weight from distance in sky for CHARA... esp. for visphi.
         # Compute the weights at science time (ntf,nb,nc)
@@ -153,7 +153,7 @@ def tf_time_weight (hdus, hdutf, delta):
 
         # Verbose
         valid = (~hdutfs[o[0]].data['FLAG']) & np.isfinite (hdutfs[o[0]].data[o[1]]);
-        mircx_mystic_log.info (o[1]+": %i valid interpolated points over %i"%(np.sum(valid),valid.size));
+        log.info (o[1]+": %i valid interpolated points over %i"%(np.sum(valid),valid.size));
         # log.info ("(%i un-flagged points)"%(np.sum(~hdutfs[o[0]].data['FLAG'])));
         # log.info ("(%i finite points)"%(np.sum(np.isfinite(hdutfs[o[0]].data[o[1]]))));
             
@@ -168,7 +168,7 @@ def tf_divide (hdus, hdutf):
     Return the calibrated OIFITS_CALIBRATED (a FITS handler).
     '''
 
-    mircx_mystic_log.info ('Divide data by interpolated TF');
+    log.info ('Divide data by interpolated TF');
 
     # Copy OIFITS_SCI to build OIFITS_CALIBRATED
     hdusc = pyfits.HDUList([hdu.copy() for hdu in hdus]);
@@ -183,7 +183,7 @@ def tf_divide (hdus, hdutf):
     for o in obs:
         # Verbose
         valid = (~hdusc[o[0]].data['FLAG']) & np.isfinite(hdusc[o[0]].data[o[1]]);
-        mircx_mystic_log.info (o[1]+": %i valid raw points over %i"%(np.sum(valid),valid.size));
+        log.info (o[1]+": %i valid raw points over %i"%(np.sum(valid),valid.size));
         # log.info ("(%i un-flagged points)"%(np.sum(~hdusc[o[0]].data['FLAG'])));
         # log.info ("(%i finite points)"%(np.sum(np.isfinite(hdusc[o[0]].data[o[1]]))));
         
@@ -226,7 +226,7 @@ def tf_divide (hdus, hdutf):
 
         # Verbose
         valid = (~hdusc[o[0]].data['FLAG']) & np.isfinite (hdusc[o[0]].data[o[1]]);
-        mircx_mystic_log.info (o[1]+": %i valid calibrated points over %i"%(np.sum(valid),valid.size));
+        log.info (o[1]+": %i valid calibrated points over %i"%(np.sum(valid),valid.size));
         # log.info ("(%i un-flagged points)"%(np.sum(~hdusc[o[0]].data['FLAG'])));
         # log.info ("(%i finite points)"%(np.sum(np.isfinite(hdusc[o[0]].data[o[1]]))));
         
@@ -245,14 +245,14 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
     of the form [('name1',diam1,err1),('name2',diam2,err2),...] where the diam
     and err are in [mas]. The input hdrs shall be a list of FITS headers.
     '''
-    elog = mircx_mystic_log.trace ('compute_all_viscalib');
+    elog = log.trace ('compute_all_viscalib');
 
     # Check inputs
     headers.check_input (hdrs, required=1);
 
     # Get setup name (assume the same for all file)
     setup_name = '/'.join([str(hdrs[0].get(k,'--')) for k in keys]);
-    elog = mircx_mystic_log.trace ('setup: '+setup_name);
+    elog = log.trace ('setup: '+setup_name);
 
     # Get OIFITS_SCI and OIFITS_CAL from input catalog
     scis, calibs = headers.get_sci_cal (hdrs, catalog);
@@ -263,11 +263,11 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
     for calib in calibs:
         f = calib['ORIGNAME'];
 
-        mircx_mystic_log.info ('Load %s (%s)'%(f,calib['FILETYPE']));
+        log.info ('Load %s (%s)'%(f,calib['FILETYPE']));
         hdulist = pyfits.open (f);
 
         if calib[HMP+'CALIB MODEL_NAME'] != 'UD_H':
-           mircx_mystic_log.warning ('MODEL_NAME is not supported');
+           log.warning ('MODEL_NAME is not supported');
            continue;
 
         # Get diameter in [rad]
@@ -275,21 +275,21 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
         diamErr = calib[HMP+'CALIB PARAM2'] * 4.84813681109536e-09;
 
         # Compute the VIS TF
-        mircx_mystic_log.info ('Compute vis amp TF');
+        log.info ('Compute vis amp TF');
         spf = get_spfreq (hdulist,'OI_VIS');
         visamp = signal.airy (diam * spf); # JDM no error analysis added for diameters?
         hdulist['OI_VIS'].data['VISAMP'] /= visamp;
         hdulist['OI_VIS'].data['VISAMPERR'] /= visamp;
 
         # Compute the VIS2 TF
-        mircx_mystic_log.info ('Compute vis2 TF');
+        log.info ('Compute vis2 TF');
         spf = get_spfreq (hdulist,'OI_VIS2');
         v2 = signal.airy (diam * spf)**2;
         hdulist['OI_VIS2'].data['VIS2DATA'] /= v2;
         hdulist['OI_VIS2'].data['VIS2ERR'] /= v2;
 
         # Compute the T3AMP TF
-        mircx_mystic_log.info ('Compute t3amp TF');
+        log.info ('Compute t3amp TF');
         spf = get_spfreq (hdulist,'OI_T3');
         v123 = signal.airy (diam * spf);
         v123 = v123[0,:,:] * v123[1,:,:] * v123[2,:,:];
@@ -307,7 +307,7 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
     hdusci, hdutfs = [], [];
     for sci in scis:
     
-        mircx_mystic_log.info ('Load SCI %s'%(sci['ORIGNAME']));
+        log.info ('Load SCI %s'%(sci['ORIGNAME']));
         hdus = pyfits.open (sci['ORIGNAME']);
 
         # Check
@@ -434,7 +434,7 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
             files.write (fig,output+'_t3amp.png');
             plt.close ("all");
         else:
-            mircx_mystic_log.info("Skipping individual plots:")
+            log.info("Skipping individual plots:")
 
         # JDM unix comment: ulimit -n 5000 to incraes elimit or
         # import resource
@@ -450,15 +450,15 @@ def compute_all_viscalib (hdrs, catalog, deltaTf=0.05,
     
     #JDM other diagnostic figs? liek visamp vs vis2data, or t3amp vs product of vis2? 
 
-    mircx_mystic_log.info ('Figures for the trends');
+    log.info ('Figures for the trends');
     
     # Check of amount of files to plot
-    mircx_mystic_log.info ('Number of transfer function %i'%ntf);
+    log.info ('Number of transfer function %i'%ntf);
     if ntf == 0:
         raise ValueError ('No calibrator for this setup');
 
     nsci = len (hdusci);
-    mircx_mystic_log.info ('Number of calibrated science %i'%nsci);
+    log.info ('Number of calibrated science %i'%nsci);
     if nsci == 0:
         raise ValueError ('No calibrated science for this setup');
         

@@ -11,7 +11,7 @@ from scipy.ndimage import gaussian_filter
 import numpy as np
 import os
 
-from . import headers, mircx_mystic_log, plot;
+from . import log, headers, plot;
 from .headers import HM, HMQ, HMP, HMW;
 from .version import revision, git_hash, git_date, git_branch;
 from .setup import coef_flat
@@ -23,7 +23,7 @@ def ensure_dir (outputDir):
     others (in orthanc for instance).
     '''
     if not os.path.exists (outputDir):
-        mircx_mystic_log.info ('Create directory: %s'%outputDir);
+        log.info ('Create directory: %s'%outputDir);
         os.makedirs (outputDir);
         os.chmod (outputDir, 0o777);
 
@@ -70,7 +70,7 @@ def write (hdulist,filename,dpi=100):
 
     # Use this function to save figure as well
     if type(hdulist) is matplotlib.figure.Figure:
-        mircx_mystic_log.info ('Write %s'%filename);
+        log.info ('Write %s'%filename);
         hdulist.savefig (filename,dpi=dpi);
         os.chmod (filename,0o666);
         return;
@@ -79,7 +79,7 @@ def write (hdulist,filename,dpi=100):
     hdr = hdulist[0].header;
     
     fileinfo = filename + ' ('+hdr['FILETYPE']+')';
-    mircx_mystic_log.info ('Write %s'%fileinfo);
+    log.info ('Write %s'%fileinfo);
 
     # Add the pipeline version
     hdr[HMP+'REV'] = (revision,'Version of mircx_pipeline');
@@ -138,7 +138,7 @@ def load_raw (hdrs, differentiate=True,
     is the data as shape [nfile*nramp, nframes, ny, ny], and cubemp is
     the MJD of each frame as shape [nfile*nramp, nframes]
     '''
-    mircx_mystic_log.info ('Load RAW files in mode coaddRamp=%s'%str(coaddRamp));
+    log.info ('Load RAW files in mode coaddRamp=%s'%str(coaddRamp));
 
     # Build output header as the copy
     # of the first passed header
@@ -154,7 +154,7 @@ def load_raw (hdrs, differentiate=True,
     # Loop on files
     for h in hdrs:
         fileinfo = h['ORIGNAME'] + ' (' +h['FILETYPE']+')';
-        mircx_mystic_log.info ('Load %s'%fileinfo);
+        log.info ('Load %s'%fileinfo);
         hdulist = pyfits.open(h['ORIGNAME']);
 
         # Read compressed data. 
@@ -183,7 +183,7 @@ def load_raw (hdrs, differentiate=True,
 
         # Integrity check
         if np.min (data) == np.max (data):
-            mircx_mystic_log.error ('All values are equal');
+            log.error ('All values are equal');
             raise ValueError ('RAW data are corrupted')
 
         # Dimensions
@@ -300,14 +300,14 @@ def load_raw (hdrs, differentiate=True,
         cubem.append (mjd);
 
     # Allocate memory
-    mircx_mystic_log.info ('Allocate memory');
+    log.info ('Allocate memory');
     shape = cube[0].shape;
     nramp = sum ([c.shape[0] for c in cube]);
     cubenp = np.zeros ((nramp,shape[1],shape[2],shape[3]),dtype='float32');
     cubemp = np.zeros ((nramp,shape[1]));
 
     # Set data in cube, and free initial memory in its way
-    mircx_mystic_log.info ('Set data in cube');
+    log.info ('Set data in cube');
     ramp = 0;
     for c in range (len(cube)):
         cubenp[ramp:ramp+cube[c].shape[0],:,:,:] = cube[c];
@@ -318,16 +318,16 @@ def load_raw (hdrs, differentiate=True,
 
     # Apply flat
     if flat is not None:
-        mircx_mystic_log.info ('Apply flat');
+        log.info ('Apply flat');
         cubenp /= flat[None,None,:,:];
     else:
-        mircx_mystic_log.info ('No flat applied');
+        log.info ('No flat applied');
 
     # Recompute badpixels
     if badpix is None:
-        mircx_mystic_log.info ('No badpixel map');
+        log.info ('No badpixel map');
     else:
-        mircx_mystic_log.info ('Recompute %i bad pixels (interpolate in spectral direction only)'%np.sum (badpix));
+        log.info ('Recompute %i bad pixels (interpolate in spectral direction only)'%np.sum (badpix));
         ref = np.mean (cubenp, axis=(0,1));
         idx = np.argwhere (badpix);
         # cubenp[:,:,idx[:,0],idx[:,1]] = 0.25 * cubenp[:,:,idx[:,0]-1,idx[:,1]-1] + \
@@ -346,14 +346,14 @@ def load_raw (hdrs, differentiate=True,
 
     # Some verbose
     nr,nf,ny,nx = cubenp.shape;
-    mircx_mystic_log.info ('Number of files loaded = %i'%hdr[HMQ+'NFILE']);
-    mircx_mystic_log.info ('Number of ramp loaded = %i'%hdr[HMQ+'NRAMP']);
-    mircx_mystic_log.info ('Number of frames loaded = %i'%(hdr[HMQ+'NRAMP']*nf));
-    mircx_mystic_log.info ('Number of saturated frames = %i'%hdr[HMQ+'NSAT']);
+    log.info ('Number of files loaded = %i'%hdr[HMQ+'NFILE']);
+    log.info ('Number of ramp loaded = %i'%hdr[HMQ+'NRAMP']);
+    log.info ('Number of frames loaded = %i'%(hdr[HMQ+'NRAMP']*nf));
+    log.info ('Number of saturated frames = %i'%hdr[HMQ+'NSAT']);
 
     # Fraction of saturation
     fsat = 1.0 * hdr[HMQ+'NSAT'] / (hdr[HMQ+'NRAMP']*nf);
-    mircx_mystic_log.check (fsat,'Fraction of saturated frames = %.3f'%fsat);
+    log.check (fsat,'Fraction of saturated frames = %.3f'%fsat);
     hdr[HMQ+'FSAT']  = (fsat,'fraction of saturated frames');
 
     return hdr,cubenp,cubemp;

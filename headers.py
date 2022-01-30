@@ -7,7 +7,7 @@ from astropy.table import Table;
 
 import os, glob, pickle, datetime, re, csv;
 
-from . import mircx_mystic_log
+from . import log
 
 # Global shortcut
 HM  = 'HIERARCH MIRC ';
@@ -104,7 +104,7 @@ def get_mjd (hdr, origin=['linux','gps','mjd'], check=2.0):
     # Check the difference in [s]
     delta = np.abs (mjdu-mjdl) * 24 * 3600;
     if (delta > check):
-        mircx_mystic_log.warning ('UTC-OBS and TIME are different by %.1f s!!'%delta);
+        log.warning ('UTC-OBS and TIME are different by %.1f s!!'%delta);
 
     # Return the requested one
     for o in origin:
@@ -122,7 +122,7 @@ def loaddir (dirs, uselog=True):
     Load the headers of all files mircx*.fit* from
     the input list of directory
     '''
-    elog = mircx_mystic_log.trace ('loaddir');
+    elog = log.trace ('loaddir');
 
     # Ensure this is a list
     if type(dirs) == str:
@@ -132,10 +132,10 @@ def loaddir (dirs, uselog=True):
     hdrs = [];
     for dir in dirs:
         if os.path.isdir (dir) is False:
-            mircx_mystic_log.info ('Skip directory (does not exist): '+dir);
+            log.info ('Skip directory (does not exist): '+dir);
             continue;
         
-        mircx_mystic_log.info ('Load directory: '+dir);
+        log.info ('Load directory: '+dir);
         files  = glob.glob (dir+'/mircx*.fits');
         files += glob.glob (dir+'/mystic*.fits');
         files += glob.glob (dir+'/mircx*.fits.fz');
@@ -143,7 +143,7 @@ def loaddir (dirs, uselog=True):
 
         # Check if any
         if len(files) == 0:
-            mircx_mystic_log.warning ('No mircx*fits or mircx*fits.fz files in this directory');
+            log.warning ('No mircx*fits or mircx*fits.fz files in this directory');
             continue;
 
         # Sort them alphabetically
@@ -155,12 +155,12 @@ def loaddir (dirs, uselog=True):
         fpkl = dir+'/mircx_hdrs.txt';
         if uselog and os.path.isfile (fpkl):
             try:
-                mircx_mystic_log.info ('Load header log %s'%fpkl);
+                log.info ('Load header log %s'%fpkl);
                 # hlog = pickle.load (open(fpkl, 'rb'));
                 with open (fpkl) as file:
                     hlog = [pyfits.Header.fromstring (l) for l in file];
             except:
-                mircx_mystic_log.info ('Failed to load log (continue anyway)');
+                log.info ('Failed to load log (continue anyway)');
 
         # Load header
 
@@ -169,13 +169,13 @@ def loaddir (dirs, uselog=True):
         # Dump log
         if uselog:
             try:
-                mircx_mystic_log.info ('Write header log %s'%fpkl);
+                log.info ('Write header log %s'%fpkl);
                 if os.path.isfile (fpkl): os.remove (fpkl);
                 # pickle.dump (hdrs_here, open(fpkl, 'wb'), -1);
                 with open (fpkl,'w') as file:
                     for h in hdrs_here: file.write (h.tostring()); file.write('\n');
             except:
-                mircx_mystic_log.info ('Failed to write log (continue anyway)');
+                log.info ('Failed to write log (continue anyway)');
         
         # Append headers
         hdrs.extend (hdrs_here);
@@ -194,7 +194,7 @@ def load (files, hlog=[]):
     last modification of the file, the header is loaded. The hlog
     system allows to speed up the loading of large number of headers.
     '''
-    elog = mircx_mystic_log.trace ('load');
+    elog = log.trace ('load');
     hdrs = []
 
     # Files available in log
@@ -213,7 +213,7 @@ def load (files, hlog=[]):
                 # Check if not modified since last loaded
                 tmod  = Time (os.path.getmtime(f),format='unix',scale='utc').mjd;
                 if (tmod > hdr['MJD-LOAD']): raise;
-                mircx_mystic_log.info ('Recover header %i over %i (%s)'%(fn+1,len(files),f));
+                log.info ('Recover header %i over %i (%s)'%(fn+1,len(files),f));
             # Read header from file
             except:
                 # Read compressed file
@@ -222,24 +222,24 @@ def load (files, hlog=[]):
                 # Read normal file
                 else:
                     hdr = pyfits.getheader(f, 0);
-                mircx_mystic_log.info('Read header %i over %i (%s)'%(fn+1,len(files),f));
+                log.info('Read header %i over %i (%s)'%(fn+1,len(files),f));
 
             # Add file name
             hdr['ORIGNAME'] = f;
 
             # Test if FRAME_RATE is in header
             if 'HIERARCH MIRC FRAME_RATE' not in hdr and 'EXPOSURE' in hdr:
-                mircx_mystic_log.warning ('Assume FRAME_RATE is 1/EXPOSURE');
+                log.warning ('Assume FRAME_RATE is 1/EXPOSURE');
                 hdr['HIERARCH MIRC FRAME_RATE'] = 1e3/hdr['EXPOSURE'];
 
             # Check change of card
             if 'ENDFR' in hdr:
-                mircx_mystic_log.warning ('Old data with ENDFR');
+                log.warning ('Old data with ENDFR');
                 hdr.rename_keyword ('ENDFR','LASTFR');
 
             # Check NBIN
             if 'NBIN' not in hdr and hdr['FILETYPE'] is not 'FLAT_MAP':
-                mircx_mystic_log.warning ('Old data with no NBIN (set to one)');
+                log.warning ('Old data with no NBIN (set to one)');
                 hdr['NBIN'] = 1;
 
             # Reformat DATE-OBS
@@ -256,16 +256,16 @@ def load (files, hlog=[]):
 
             # Check if STS data
             if hdr.get ('HIERARCH MIRC STS_IR_FOLD','OUT') == 'IN':
-                mircx_mystic_log.info ('Set OBJECT = STS because STS_IR_FOLD is IN');
+                log.info ('Set OBJECT = STS because STS_IR_FOLD is IN');
                 hdr['OBJECT'] = 'STS';
 
             
             # Check if ETALON
             if hdr.get ('HIERARCH MIRC ARMADA','OUT') == 'IN':
                 if hdr['OBJECT'][-1]=='E':
-                    mircx_mystic_log.info ('ETALON is IN for OBJECT');
+                    log.info ('ETALON is IN for OBJECT');
                 else:    
-                    mircx_mystic_log.info ('Set OBJECT = OBJECT_E because ETALON is IN');
+                    log.info ('Set OBJECT = OBJECT_E because ETALON is IN');
                     hdr['OBJECT'] += '_E';
 
             # Append
@@ -274,10 +274,10 @@ def load (files, hlog=[]):
         except (KeyboardInterrupt, SystemExit):
             raise;
         except Exception as exc:
-            mircx_mystic_log.warning ('Cannot get header of '+f+' ('+str(exc)+')');
+            log.warning ('Cannot get header of '+f+' ('+str(exc)+')');
             
 
-    mircx_mystic_log.info ('%i headers loaded'%len(hdrs));
+    log.info ('%i headers loaded'%len(hdrs));
     return hdrs;
 
 def frame_mjd (hdr):
@@ -297,7 +297,7 @@ def frame_mjd (hdr):
     # If binning
     nbin = hdr.get ('NBIN',1);
     if  nbin > 1:
-        mircx_mystic_log.info ('Data are binned by %i'%nbin);
+        log.info ('Data are binned by %i'%nbin);
 
     # Build counter
     counter = np.arange (0, nframe, nbin);
@@ -337,7 +337,7 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
     - the total integration is larger than Delta
     The output is a list of list.
     '''
-    elog = mircx_mystic_log.trace ('group_headers');
+    elog = log.trace ('group_headers');
     
     groups = [[]];
     mjd = -10e9;
@@ -363,24 +363,24 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
 
         # If no previous
         if groups[-1] == []:
-            mircx_mystic_log.info('New group %s'%fileinfo);
+            log.info('New group %s'%fileinfo);
             groups[-1].append(h);
             continue;
 
         # If no match with last, we start new group
         if match (h,groups[-1][-1],keys,delta) is False:
-            mircx_mystic_log.info('New group (gap) %s'%fileinfo);
+            log.info('New group (gap) %s'%fileinfo);
             groups.append([h]);
             continue;
 
         # If no match with first, we start new group
         if match (h,groups[-1][0],keys,Delta) is False:
-            mircx_mystic_log.info('New group (integration) %s'%fileinfo);
+            log.info('New group (integration) %s'%fileinfo);
             groups.append([h]);
             continue;
         
         # Else, add to current group
-        mircx_mystic_log.info('Add file %s'%fileinfo);
+        log.info('Add file %s'%fileinfo);
         groups[-1].append(h);
 
     # Clean from void groups
@@ -392,7 +392,7 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
         for i in range(np.shape(groups)[0]):
             if np.shape(groups[i])[0] > 3:
                 groups[i] = groups[i][1:];
-                mircx_mystic_log.info ('Ignore the first BACKGROUND files (more than 3)');
+                log.info ('Ignore the first BACKGROUND files (more than 3)');
     
     return groups;
 
@@ -436,9 +436,9 @@ def assoc (h, allh, tag, keys=[], which='closest', required=0, quality=None):
             
     # Check required
     if len (out) < required:
-        mircx_mystic_log.warning ('Cannot find %i %s (%i rejected for quality)'%(required,tag,l1-len(out)))
+        log.warning ('Cannot find %i %s (%i rejected for quality)'%(required,tag,l1-len(out)))
     elif required > 0:
-        mircx_mystic_log.info ('Find %i %s (%s ...)'%(len(out),tag,out[0]['ORIGNAME']));
+        log.info ('Find %i %s (%s ...)'%(len(out),tag,out[0]['ORIGNAME']));
         
     return out
 
@@ -453,7 +453,7 @@ def assoc_flat (h, allh):
 
     # Check
     if len (flats) < 1:
-        mircx_mystic_log.warning ('Cannot find FLAT');
+        log.warning ('Cannot find FLAT');
         return [];
 
     # Get closest gain
@@ -461,7 +461,7 @@ def assoc_flat (h, allh):
     flat = flats[m];
 
     # Return
-    mircx_mystic_log.info ('Find 1 FLAT (%s)'%os.path.basename(flat['ORIGNAME']));
+    log.info ('Find 1 FLAT (%s)'%os.path.basename(flat['ORIGNAME']));
     return [flat];
 
 def clean_option (opt):
@@ -506,7 +506,7 @@ def parse_argopt_catalog (input):
 
     # Catalog is a list
     if input[-5:] == '.list':
-        mircx_mystic_log.info ('Calibrators given as list');
+        log.info ('Calibrators given as list');
         catalog = ascii.read (input);
         return catalog;
 
@@ -541,7 +541,7 @@ def update_diam_from_jmmc (catalog):
     
     # Init
     searchCal = 'http://apps.jmmc.fr/~sclws/getstar/sclwsGetStarProxy.php';
-    voTableToTsv = os.path.dirname (mircx_mystic_log.__file__) + '/sclguiVOTableToTSV.xsl';
+    voTableToTsv = os.path.dirname (log.__file__) + '/sclguiVOTableToTSV.xsl';
 
     # Loop on stars in catalog, query for the one
     # with err = 0 and diam = 0
@@ -550,12 +550,12 @@ def update_diam_from_jmmc (catalog):
 
             try:
                 # Call online SearchCal
-                mircx_mystic_log.info ('Query JMMC SearchCal for star '+c[0]);
+                log.info ('Query JMMC SearchCal for star '+c[0]);
                 os.system ('wget '+searchCal+'?star='+c[0]+' -O mircx_searchcal.vot -o mircx_searchcal.log');
 
                 # Not found
                 if 'has not been found' in open('mircx_searchcal.vot').read():
-                    mircx_mystic_log.warning (c[0]+' has not been found');
+                    log.warning (c[0]+' has not been found');
                     continue;
 
                 # Convert and parse
@@ -564,10 +564,10 @@ def update_diam_from_jmmc (catalog):
                 c[1] = float (answer[1][answer[0].index('UD_H')]);
                 c[2]  = float (answer[1][answer[0].index('e_LDD')]);
                 
-                mircx_mystic_log.info ('%s found %.4f +- %.4f mas'%(c[0],c[1],c[2]));
+                log.info ('%s found %.4f +- %.4f mas'%(c[0],c[1],c[2]));
                 
             except:
-                mircx_mystic_log.error ('Cannot reach JMMC SearchCal or parse answer');
+                log.error ('Cannot reach JMMC SearchCal or parse answer');
                 
                 
 def get_sci_cal (hdrs, catalog):
@@ -584,12 +584,12 @@ def get_sci_cal (hdrs, catalog):
         t = catalog['PARAM1'];
         t = catalog['PARAM2'];
     except:
-        mircx_mystic_log.error ('Calibrators not specified correclty');
+        log.error ('Calibrators not specified correclty');
         raise (ValueError);
 
     # Check if enought
     if len (catalog) == 0:
-        mircx_mystic_log.error ('No valid calibrators');
+        log.error ('No valid calibrators');
         raise (ValueError);
 
     # Get values
@@ -606,7 +606,7 @@ def get_sci_cal (hdrs, catalog):
         
         if len(idx) > 0 and iscal[idx[0]] == 'CAL':
             idx = idx[0];
-            mircx_mystic_log.info ('%s (%s) -> OIFITS_CAL (%s, %f,%f)'%(h['ORIGNAME'],h['OBJECT'], \
+            log.info ('%s (%s) -> OIFITS_CAL (%s, %f,%f)'%(h['ORIGNAME'],h['OBJECT'], \
                       catalog[idx]['MODEL_NAME'],catalog[idx]['PARAM1'],catalog[idx]['PARAM2']));
             h['FILETYPE'] += '_CAL';
             h[HMP+'CALIB MODEL_NAME'] = (catalog[idx]['MODEL_NAME']);
@@ -614,7 +614,7 @@ def get_sci_cal (hdrs, catalog):
             h[HMP+'CALIB PARAM2'] = (catalog[idx]['PARAM2']);
             cals.append (h);
         else:
-            mircx_mystic_log.info ('%s (%s) -> OIFITS_SCI'%(h['ORIGNAME'],h['OBJECT']));
+            log.info ('%s (%s) -> OIFITS_SCI'%(h['ORIGNAME'],h['OBJECT']));
             h['FILETYPE'] += '_SCI';
             scis.append (h);
 

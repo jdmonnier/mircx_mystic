@@ -1,14 +1,14 @@
 import subprocess
 import sys, os, socket
 import smtplib
-from . import mircx_mystic_log
+from . import log
 
 try:
     from email.mime.multipart import MIMEMultipart
-    mircx_mystic_log.info('Loaded python3 MIMEMultipart')
+    log.info('Loaded python3 MIMEMultipart')
 except ModuleNotFoundError:
     from email.MIMEMultipart import MIMEMultipart
-    mircx_mystic_log.info('Loaded python MIMEMultipart')
+    log.info('Loaded python MIMEMultipart')
 try:
     from email.mime.text import MIMEText
 except ModuleNotFoundError:
@@ -26,18 +26,18 @@ def send_email(msg, fromaddr, toaddr):
     try:
         server.login("mircx.mystic@gmail.com", os.environ['MAILLOGIN'])
     except KeyError:
-        mircx_mystic_log.error('password for '+fromaddr+' not found')
-        mircx_mystic_log.error('Please ensure $MAILLOGIN is set')
+        log.error('password for '+fromaddr+' not found')
+        log.error('Please ensure $MAILLOGIN is set')
         if fromaddr == 'mircx.mystic@gmail.com':
-            mircx_mystic_log.error('Contact Narsi Anugu for password for '+fromaddr)
+            log.error('Contact Narsi Anugu for password for '+fromaddr)
         server.quit()
         sys.exit()
     except SMTPAuthenticationError:
-        mircx_mystic_log.error('Unable to send email!')
-        mircx_mystic_log.error('Gmail does not recognise your device.')
-        mircx_mystic_log.info('Either login to gmail for mircx.mystic@gmail.com and approve')
-        mircx_mystic_log.info('this device or contact Narsi Anugu or Claire Davies to do this')
-        mircx_mystic_log.info('for you.')
+        log.error('Unable to send email!')
+        log.error('Gmail does not recognise your device.')
+        log.info('Either login to gmail for mircx.mystic@gmail.com and approve')
+        log.info('this device or contact Narsi Anugu or Claire Davies to do this')
+        log.info('for you.')
     server.sendmail(fromaddr, toaddr, msg.as_string())
     server.quit()
 
@@ -78,9 +78,9 @@ def sendSummary(toaddr,fromaddr,outFile,inDir):
     msg.attach(part)
     try:
         send_email(msg, fromaddr, toaddr)
-        mircx_mystic_log.info('Emailed summary report ('+filename+') to:')
-        mircx_mystic_log.info(toaddr)
+        log.info('Emailed summary report ('+filename+') to:')
+        log.info(toaddr)
     except smtplib.SMTPAuthenticationError:
-        mircx_mystic_log.error('Failed to send summary report ('+filename+') to '+toaddr)
-        mircx_mystic_log.error('Check with Narsi Anugu for permissions')
+        log.error('Failed to send summary report ('+filename+') to '+toaddr)
+        log.error('Check with Narsi Anugu for permissions')
         sys.exit()

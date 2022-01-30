@@ -22,7 +22,7 @@ from scipy.interpolate import interp1d
 from scipy.optimize import minimize
 from itertools import permutations # could make self but easier if in anaconda
 
-from . import files, headers, mircx_mystic_log, setup, oifits, signal, plot, qc;
+from . import log, files, headers, setup, oifits, signal, plot, qc;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
 def extract_maps (hdr, bmaps):
@@ -44,13 +44,13 @@ def extract_maps (hdr, bmaps):
     for bmap in bmaps:
         if bmap == []: continue;
             
-        mircx_mystic_log.info ('Load BEAM_MAP file %s'%bmap['ORIGNAME']);
+        log.info ('Load BEAM_MAP file %s'%bmap['ORIGNAME']);
         mean_map = pyfits.getdata (bmap['ORIGNAME']);
         beam = int(bmap['FILETYPE'][4:5]) - 1;
 
         # Check that this xchan was extracted in hdr
         if HMW+'PHOTO%i STARTX'%(beam) not in hdr:
-            mircx_mystic_log.info ('Beam %i not preproc in this file, skip'%(beam+1));
+            log.info ('Beam %i not preproc in this file, skip'%(beam+1));
             continue;
 
         # Crop fringe window
@@ -70,7 +70,7 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
     '''
     Compute the SPEC_CAL from list of PREPROC
     '''
-    elog = mircx_mystic_log.trace ('compute_speccal');
+    elog = log.trace ('compute_speccal');
 
     # Check inputs
     headers.check_input (hdrs,  required=1);
@@ -80,13 +80,13 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
         f = h['ORIGNAME'];
         
         # Load file
-        mircx_mystic_log.info ('Load PREPROC file %i over %i (%s)'%(ih+1,len(hdrs),f));
+        log.info ('Load PREPROC file %i over %i (%s)'%(ih+1,len(hdrs),f));
         hdr = pyfits.getheader (f);
         fringe = pyfits.getdata (f).astype(float);
 
         # Verbose on data size
         nr,nf,ny,nx = fringe.shape;
-        mircx_mystic_log.info ('Data size: '+str(fringe.shape));
+        log.info ('Data size: '+str(fringe.shape));
 
         # Define output
         if ih == 0:
@@ -94,29 +94,29 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
             spectrum = np.zeros (ny);
 
         # Accumulate spectrum
-        mircx_mystic_log.info ('Accumulate spectrum');
+        log.info ('Accumulate spectrum');
         tmp = medfilt (np.mean (fringe, axis=(0,1)), (1,11));
         spectrum += np.mean (tmp, axis=-1);
         
         # Remove the mean DC-shape
-        mircx_mystic_log.info ('Compute the mean DC-shape');
+        log.info ('Compute the mean DC-shape');
         fringe_map = np.mean (fringe, axis=(0,1), keepdims=True);
         fringe_map /= np.sum (fringe_map);
 
-        mircx_mystic_log.info ('Compute the mean DC-flux');
+        log.info ('Compute the mean DC-flux');
         fringe_dc = np.sum (fringe, axis=(2,3), keepdims=True);
 
-        mircx_mystic_log.info ('Remove the DC');
+        log.info ('Remove the DC');
         fringe -= fringe_map * fringe_dc;
         
         # Coherence integration
-        mircx_mystic_log.info ('Coherent integration');
+        log.info ('Coherent integration');
         fringe = uniform_filter (fringe,(0,ncoher,0,0),mode='constant');
 
         # We accumulate the full-window auto-correlation
         # instead of the FFT**2 because this allows to oversampled
         # the integrated PSD after the incoherent integration.
-        mircx_mystic_log.info ('Accumulate auto-correlation');
+        log.info ('Accumulate auto-correlation');
         data = fringe.reshape (nr*nf,ny,nx);
         for y in range(ny):
             for s in range(nr*nf):
@@ -133,7 +133,7 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
 
     # Get center of spectrum
     fyc,fyw = signal.getwidth (spectrum);
-    mircx_mystic_log.info ('Expect center of spectrum (lbd0) on %f'%fyc);
+    log.info ('Expect center of spectrum (lbd0) on %f'%fyc);
 
     # Build expected wavelength table
     lbdref,lbd0,dlbd = setup.lbd0 (hdr);
@@ -151,7 +151,7 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
     idmax = np.argmax (freq > 1.25*freq0.max());
 
     # Compute zero-padded PSD
-    mircx_mystic_log.info ('PSD with huge zero-padding %i'%nfreq);
+    log.info ('PSD with huge zero-padding %i'%nfreq);
     psd = np.abs (fftpack.fft (correl, n=nfreq, axis=-1, overwrite_x=False));
 
     # Remove bias and normalise to the maximum in the interesting range
@@ -160,7 +160,7 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
     psd /= norm;
 
     # Correlate each wavelength channel with a template
-    mircx_mystic_log.info ('Fit PSD with model');
+    log.info ('Fit PSD with model');
     res = [];
     for y in range (ny):
         args = (freq[idmin:idmax],freq0,delta0,psd[y,idmin:idmax]);
@@ -171,7 +171,7 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
         for s00 in np.linspace (0.8*s0,1.2*s0, 20):
             rr = least_squares (signal.psd_projection, s00, args=args, bounds=(0.8*s00,1.2*s00));
             if (rr.fun[0] < res[-1].fun[0]): res[-1] = rr;
-        mircx_mystic_log.info ('Best merit 1-c=%.4f found at s/s0=%.4f'%(res[-1].fun[0],res[-1].x[0]/s0));
+        log.info ('Best merit 1-c=%.4f found at s/s0=%.4f'%(res[-1].fun[0],res[-1].x[0]/s0));
 
     # Get wavelengths
     yfit = 1.0 * np.arange (ny);
@@ -182,7 +182,7 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
     lbdlaw = lbdfit.copy ();
 
     if (fitorder > 0 and is_valid.sum() > 5):
-        mircx_mystic_log.info ('Fit measure with order %i polynomial'%fitorder);
+        log.info ('Fit measure with order %i polynomial'%fitorder);
         hdr[HMQ+'LBDFIT_ORDER'] = (fitorder, 'order to fit the lbd solution (0 is no fit)');
         
         # Run a quadratic fit on valid values, except the
@@ -193,17 +193,17 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
         # Replace the fitted values by the polynomial
         lbdlaw[is_fit] = np.poly1d (poly)(yfit[is_fit]);
     else:
-        mircx_mystic_log.info ('Keep raw measure (no fit of lbd solution)');
+        log.info ('Keep raw measure (no fit of lbd solution)');
 
-    mircx_mystic_log.info ('Compute QC');
+    log.info ('Compute QC');
     
     # Compute quality of projection
     projection = (1. - res[int(ny/2)].fun[0]) * norm[int(ny/2),0];
-    mircx_mystic_log.info ('Projection quality = %g'%projection);
+    log.info ('Projection quality = %g'%projection);
 
     # Typical difference with prediction
     delta = np.median (np.abs (lbd-lbdfit));
-    mircx_mystic_log.info ('Median delta = %.3f um'%(delta*1e6));
+    log.info ('Median delta = %.3f um'%(delta*1e6));
 
     # Residual of fit
     rms_res = np.std (lbdlaw[is_fit]-lbdfit[is_fit]);
@@ -211,7 +211,7 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
 
     # Set quality to zero if clearly wrong fit
     if rms_res > 10e-9 or med_res > 10e-9:
-        mircx_mystic_log.warning ('Spectral calibration is probably faulty, set QUALITY to 0');
+        log.warning ('Spectral calibration is probably faulty, set QUALITY to 0');
         projection = 0.0;
 
     # Set QC
@@ -226,9 +226,9 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
     except:  y0 = -99.0
     hdr[HMQ+'LBDREF'] = (rep_nan (lbdref), '[m] lbdref');
     hdr[HMQ+'YLBDREF'] = (rep_nan (y0), 'ypos of %.3fum in cropped window'%(lbdref*1e6));
-    mircx_mystic_log.info (HMQ+'YLBDREF = %e  (%.3fum)'%(y0,lbdref*1e6));
+    log.info (HMQ+'YLBDREF = %e  (%.3fum)'%(y0,lbdref*1e6));
 
-    mircx_mystic_log.info ('Figures');
+    log.info ('Figures');
 
     # Polynomial fit
     fig,ax = plt.subplots (2,sharex=True);
@@ -281,7 +281,7 @@ def compute_speccal (hdrs, output='output_speccal', filetype='SPEC_CAL',
     files.write (fig,output+'_psd.png');
 
     # File
-    mircx_mystic_log.info ('Create file');
+    log.info ('Create file');
 
     # First HDU
     hdu0 = pyfits.PrimaryHDU (lbdlaw);
@@ -321,7 +321,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     '''
     Compute the RTS
     '''
-    elog = mircx_mystic_log.trace ('compute_rts');
+    elog = log.trace ('compute_rts');
 
     # Check inputs
     save_all_freqs = headers.clean_option (save_all_freqs);
@@ -332,7 +332,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
 
     # Load the wavelength table
     f = speccal[0]['ORIGNAME'];
-    mircx_mystic_log.info ('Load SPEC_CAL file %s'%f);
+    log.info ('Load SPEC_CAL file %s'%f);
     lbd = pyfits.getdata (f);
 
     # Get valid spectral channels
@@ -341,7 +341,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     
     # Load DATA
     f = hdrs[0]['ORIGNAME'];
-    mircx_mystic_log.info ('Load PREPROC file %s'%f);
+    log.info ('Load PREPROC file %s'%f);
     hdr = pyfits.getheader (f);
     fringe = pyfits.getdata (f).astype(float);
     photo  = pyfits.getdata (f, 'PHOTOMETRY_PREPROC').astype(float);
@@ -350,29 +350,29 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     # Load other files if any
     for h in hdrs[1:]:
         f = h['ORIGNAME'];
-        mircx_mystic_log.info ('Load PREPROC file %s'%f);
+        log.info ('Load PREPROC file %s'%f);
         fringe = np.append (fringe, pyfits.getdata (f).astype(float), axis=0);
         photo  = np.append (photo, pyfits.getdata (f, 'PHOTOMETRY_PREPROC').astype(float), axis=1);
         mjd    = np.append (mjd, pyfits.getdata (f, 'MJD'), axis=0);
 
     # Dimensions
     nr,nf,ny,nx = fringe.shape
-    mircx_mystic_log.info ('fringe.shape = %s'%str(fringe.shape));
-    mircx_mystic_log.info ('mean(fringe) = %f adu/pix/frame'%np.mean(fringe,axis=(0,1,2,3)));
+    log.info ('fringe.shape = %s'%str(fringe.shape));
+    log.info ('mean(fringe) = %f adu/pix/frame'%np.mean(fringe,axis=(0,1,2,3)));
 
     # Saturation checks
     fsat  = 1.0 * np.sum (np.mean (np.sum (fringe,axis=1),axis=0)>40000) / (ny*nx);
-    mircx_mystic_log.info (HMQ+'FRAC_SAT = %.3f'%rep_nan (fsat));
+    log.info (HMQ+'FRAC_SAT = %.3f'%rep_nan (fsat));
     hdr[HMQ+'FRAC_SAT'] = (rep_nan (fsat), 'fraction of saturated pixel');
 
     # Get fringe and photo maps
-    mircx_mystic_log.info ('Read data for photometric and fringe profiles');
+    log.info ('Read data for photometric and fringe profiles');
     fringe_map, photo_map = extract_maps (hdr, profiles);
     
     # Define profile for optimal extraction of photometry
     # The same profile is used for all spectral channels
     # JDM2020: what is spectrum is curved?
-    mircx_mystic_log.info ('Compute profile');
+    log.info ('Compute profile');
     profile = np.mean (photo_map, axis=3, keepdims=True);
 
     # Remove edge of the profile
@@ -400,11 +400,11 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     files.write (fig,output+'_profile.png');
 
     # Optimal extraction of photometry with profile
-    mircx_mystic_log.info ('Extract photometry with profile');
+    log.info ('Extract photometry with profile');
     photo = np.sum (photo * profile, axis=-1);
 
     # Shift between photo and fringes in spectral direction
-    mircx_mystic_log.info ('Compute spectral offsets in beam_map');
+    log.info ('Compute spectral offsets in beam_map');
     shifty = np.zeros (6);
     upper = np.sum (medfilt (fringe_map,[1,1,1,1,11]), axis=(1,2,4));
     lower = np.sum (medfilt (photo_map,[1,1,1,1,1]) * profile, axis=(1,2,4));
@@ -413,19 +413,19 @@ def compute_rts (hdrs, profiles, kappas, speccal,
                                               upsample_factor=100)[0][0];
 
     # Re-align photometry
-    mircx_mystic_log.info ('Register photometry to fringe');
+    log.info ('Register photometry to fringe');
     for b in range(6):
         photo[b,:,:,:] = subpix_shift (photo[b,:,:,:], [0,0,-shifty[b]]);
 
     # Keep only valid channels
-    mircx_mystic_log.info ('Keep only valid channels');
+    log.info ('Keep only valid channels');
     photo  = photo[:,:,:,is_valid];
     fringe = fringe[:,:,is_valid,:];
     fringe_map = fringe_map[:,:,:,is_valid,:];
     photo_map  = photo_map[:,:,:,is_valid,:];
 
     # Plot photometry versus time
-    mircx_mystic_log.info ('Plot photometry');
+    log.info ('Plot photometry');
     fig,axes = plt.subplots (3,2,sharex=True);
     fig.suptitle ('Xchan flux (adu) \n' + headers.summary (hdr));
     plot.compact (axes);
@@ -438,7 +438,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     files.write (fig,output+'_photo.png');
 
     # Plot ramp of flux in fringe
-    mircx_mystic_log.info ('Plot fringe ramp');
+    log.info ('Plot fringe ramp');
     fig,ax = plt.subplots ();
     fig.suptitle (headers.summary (hdr));
     ax.plot (np.mean (fringe, axis=(0,3)));
@@ -447,12 +447,12 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     files.write (fig,output+'_fringeramp.png');
 
     # Get data for kappa_matrix
-    mircx_mystic_log.info ('Read data for kappa matrix');
+    log.info ('Read data for kappa matrix');
     fringe_kappa, photo_kappa = extract_maps (hdr, kappas);
     
     # Build kappa from input data.
     # kappa(nb,nr,nf,ny)
-    mircx_mystic_log.info ('Build kappa-matrix with profile, filtering and registration, and keep valid');
+    log.info ('Build kappa-matrix with profile, filtering and registration, and keep valid');
     upper = np.sum (medfilt (fringe_kappa,[1,1,1,1,11]), axis=-1);
     lower = np.sum (medfilt (photo_kappa,[1,1,1,1,1]) * profile, axis=-1);
     for b in range(6):
@@ -469,7 +469,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     kappa[kappa < skappa/10] = 0.0;
 
     # Kappa-matrix as spectrum
-    mircx_mystic_log.info ('Plot kappa');
+    log.info ('Plot kappa');
     spec_upper = np.mean (upper, axis=(1,2));
     spec_lower = np.mean (lower, axis=(1,2));
     spec_kappa = np.mean (kappa, axis=(1,2));
@@ -501,11 +501,11 @@ def compute_rts (hdrs, profiles, kappas, speccal,
 
     # kappa is defined so that photok is the
     # total number of adu in the fringe
-    mircx_mystic_log.info ('Compute photok');
+    log.info ('Compute photok');
     photok = photo * kappa;
 
     # QC about the fringe dc
-    mircx_mystic_log.info ('Compute fringedc / photok');
+    log.info ('Compute fringedc / photok');
     photok_sum = np.sum (photok,axis=(0,3));
     fringe_sum = np.sum (fringe,axis=(2,3));
     dc_ratio = np.sum (fringe_sum) / np.sum (photok_sum);
@@ -513,21 +513,21 @@ def compute_rts (hdrs, profiles, kappas, speccal,
 
     # Scale the photometry to the fringe DC. FIXME: this is done
     # for all wavelength together, not per-wavelength.
-    mircx_mystic_log.info ('Scale the photometries by %.4f'%dc_ratio);
+    log.info ('Scale the photometries by %.4f'%dc_ratio);
     photok *= dc_ratio;
 
     # We save this estimation of the photometry
     # for the further visibility normalisation
-    mircx_mystic_log.info ('Save photometry for normalisation');
+    log.info ('Save photometry for normalisation');
     photok0 = photok.copy();
 
     # Smooth photometry
     if psmooth > 0:
-        mircx_mystic_log.info ('Smooth photometry by sigma=%i frames'%psmooth);
+        log.info ('Smooth photometry by sigma=%i frames'%psmooth);
         photok = uniform_filter (photok,(0,0,psmooth,0),mode='nearest');
 
     # Warning because of saturation
-    mircx_mystic_log.info ('Deal with saturation in the filtering');
+    log.info ('Deal with saturation in the filtering');
     isok  = 1.0 * (np.sum (fringe,axis=(2,3)) != 0);
     trans = uniform_filter (isok,(0,psmooth),mode='nearest');
     photok *= isok[None,:,:,None] / np.maximum (trans[None,:,:,None],1e-10);
@@ -535,21 +535,21 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     # Temporal / Spectral averaging of photometry
     # to be discussed (note that this is only for the
     # continuum removal, not for normalisation)
-    mircx_mystic_log.info ('Temporal / Spectral averaging of photometry');
+    log.info ('Temporal / Spectral averaging of photometry');
     spectra  = np.mean (photok, axis=(1,2), keepdims=True);
     spectra /= np.sum (spectra, axis=3, keepdims=True) + 1e-20;
     injection = np.sum (photok, axis=3, keepdims=True);
     photok = spectra*injection;
      
     # Compute flux in fringes. fringe_map is normalised
-    mircx_mystic_log.info ('Compute dc in fringes');
+    log.info ('Compute dc in fringes');
     # fringe_map  = medfilt (fringe_map, [1,1,1,1,11]);
     # fringe_map  = median_filter (fringe_map, size=[1,1,1,1,11],mode='nearest');
     fringe_map /= np.sum (fringe_map, axis=-1, keepdims=True) + 1e-20;
     cont = np.einsum ('Brfy,Brfyx->rfyx', photok, fringe_map);
 
     # Check dc
-    mircx_mystic_log.info ('Figure of DC in fringes');
+    log.info ('Figure of DC in fringes');
     fig,ax = plt.subplots ();
     fig.suptitle (headers.summary (hdr));
     cont_mean = np.mean (cont,axis=(2,3));
@@ -571,12 +571,12 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     fringe_sum = fringe.sum (axis=3);
 
     # Remove the DC predicted from xchan
-    mircx_mystic_log.info ('Subtract dc with profiles predicted from xchan');
+    log.info ('Subtract dc with profiles predicted from xchan');
     fringe -= cont;
     del cont;
 
     # Remove the residual DC with a mean profile
-    mircx_mystic_log.info ('Subtract residual dc with mean profile');
+    log.info ('Subtract residual dc with mean profile');
     fringe_meanmap = fringe_map.mean (axis=0);
     fringe_meanmap /= np.sum (fringe_meanmap, axis=-1, keepdims=True) + 1e-20;
     dcres = fringe.sum (axis=-1, keepdims=True);
@@ -584,7 +584,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     del dcres, fringe_meanmap;
 
     # Check residual
-    mircx_mystic_log.info ('Figure of DC residual');
+    log.info ('Figure of DC residual');
     fig,axes = plt.subplots (2, 1, sharex=True);
     fig.suptitle (headers.summary (hdr));
     axes[0].plot (fringe_img[int(ny/2),:], label='fringe');
@@ -596,7 +596,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     files.write (fig,output+'_dcres.png');
 
     # Model (x,f)
-    mircx_mystic_log.info ('Model of data');
+    log.info ('Model of data');
     nfq = int(nx/2);
     f = 1. * np.arange(1,nfq+1);
     x = 1. * np.arange(nx) / nx;
@@ -613,13 +613,13 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     scale0 = 1.0 * ifreq_max / np.abs (freqs * nx).max();
 
     # Compute the expected scaling
-    mircx_mystic_log.info ("ifreqs as float");
-    mircx_mystic_log.info (freqs * scale0 * nx);
+    log.info ("ifreqs as float");
+    log.info (freqs * scale0 * nx);
 
     # Compute the expected scaling
-    mircx_mystic_log.info ("ifreqs as integer");
+    log.info ("ifreqs as integer");
     ifreqs = np.round (freqs * scale0 * nx).astype(int);
-    mircx_mystic_log.info (ifreqs);
+    log.info (ifreqs);
 
     # Dimensions
     nb = len(ifreqs);
@@ -631,7 +631,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     model = np.zeros ((nx,nfq*2+1));
     cf = 0.j + np.zeros ((nr*nf,ny,nfq+1));
     for y in np.arange(ny):
-        mircx_mystic_log.info ('Project channel %i (centered)'%y);
+        log.info ('Project channel %i (centered)'%y);
         amp = np.ones (nx);
         model[:,0] = amp;
         scale = lbd0 / lbd[y] / scale0;
@@ -644,11 +644,11 @@ def compute_rts (hdrs, profiles, kappas, speccal,
 
     # Free input fringes images
     if (save_all_freqs == False):
-        mircx_mystic_log.info ('Free fringe');
+        log.info ('Free fringe');
         del fringe;        
 
     # DFT at fringe frequencies
-    mircx_mystic_log.info ('Extract fringe frequency');
+    log.info ('Extract fringe frequency');
     base_dft  = cf[:,:,:,np.abs(ifreqs)];
 
     # Take complex conjugated for negative frequencies
@@ -666,10 +666,10 @@ def compute_rts (hdrs, profiles, kappas, speccal,
 
     # Free DFT images
     if (save_all_freqs == False):
-        mircx_mystic_log.info ('Free cf');
+        log.info ('Free cf');
         del cf;
 
-    mircx_mystic_log.info ('Compute crude vis2 with various coherent');
+    log.info ('Compute crude vis2 with various coherent');
         
     # Compute crude normalisation for vis2
     bbeam = setup.base_beam ();
@@ -689,7 +689,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
         power = np.mean (np.real (base_s[:,1:,:] * np.conj(base_s[:,0:-1,:])), axis=(0,1)) - b2;
         vis2[:,i] = power / norm;
         
-    mircx_mystic_log.info ('Compute QC DECOHER_TAU0');
+    log.info ('Compute QC DECOHER_TAU0');
     
     # Time and model
     fps = hdr['HIERARCH MIRC FRAME_RATE'];
@@ -709,10 +709,10 @@ def compute_rts (hdrs, profiles, kappas, speccal,
             vis2m[b,:] = signal.decoherence (timem, popt[0], popt[1]);
             hdr[HMQ+'DECOHER'+name+'_TAU0'] = (rep_nan (popt[1]), '[ms] coherence time with 5/3');
         except:
-            mircx_mystic_log.warning ("Fail to fit on baseline %i, continue anyway"%b);
+            log.warning ("Fail to fit on baseline %i, continue anyway"%b);
         
     # Figures
-    mircx_mystic_log.info ('Figures');
+    log.info ('Figures');
 
     # Plot the decoherence
     fig,axes = plt.subplots (5,3, sharex=True);
@@ -765,7 +765,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     files.write (fig,output+'_psd.png');
 
     # File
-    mircx_mystic_log.info ('Create file');
+    log.info ('Create file');
 
     # First HDU
     hdu = pyfits.PrimaryHDU ([]);
@@ -867,7 +867,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
 
 
     if (save_all_freqs):
-        mircx_mystic_log.info ("Save all frequencies for John's test");
+        log.info ("Save all frequencies for John's test");
         hdu = pyfits.ImageHDU (cf.real.astype('float32'));
         hdu.header['EXTNAME'] = ('ALL_DFT_REAL','total flux in the fringe envelope');
         hdu.header['BUNIT'] = 'adu';
@@ -904,7 +904,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
     '''
     Compute the OIFITS from the RTS
     '''
-    elog = mircx_mystic_log.trace ('compute_vis');
+    elog = log.trace ('compute_vis');
 
     # Check inputs
     headers.check_input (hdrs, required=1);
@@ -912,7 +912,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
 
     # Get data
     f = hdrs[0]['ORIGNAME'];
-    mircx_mystic_log.info ('Load RTS file %s'%f);
+    log.info ('Load RTS file %s'%f);
     hdr = pyfits.getheader (f);
     base_dft  = pyfits.getdata (f, 'BASE_DFT_IMAG').astype(float) * 1.j;
     base_dft += pyfits.getdata (f, 'BASE_DFT_REAL').astype(float);
@@ -925,7 +925,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
     # Load other files if any
     for h in hdrs[1:]:
         f = h['ORIGNAME'];
-        mircx_mystic_log.info ('Load RTS file %s'%f);
+        log.info ('Load RTS file %s'%f);
         base_dft = np.append (base_dft, \
                    pyfits.getdata (f, 'BASE_DFT_IMAG').astype(float) * 1.j + \
                    pyfits.getdata (f, 'BASE_DFT_REAL').astype(float), axis=0);
@@ -938,7 +938,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
                    
     # Dimensions
     nr,nf,ny,nb = base_dft.shape;
-    mircx_mystic_log.info ('Data size: '+str(base_dft.shape));
+    log.info ('Data size: '+str(base_dft.shape));
         
     # Check parameters consistency
     if ncs + ncoher + 2 > nf:
@@ -958,7 +958,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
         dlbd = np.mean (np.diff (lbd[4:-4]));
     
     # Verbose spectral resolution
-    mircx_mystic_log.info ('lbd0=%.3e, dlbd=%.3e um (R=%.1f)'%(lbd0*1e6,dlbd*1e6,np.abs(lbd0/dlbd)));
+    log.info ('lbd0=%.3e, dlbd=%.3e um (R=%.1f)'%(lbd0*1e6,dlbd*1e6,np.abs(lbd0/dlbd)));
 
     # Coherence length
     coherence_length = lbd0**2 / np.abs (dlbd);
@@ -969,18 +969,18 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
 
     # Check if nan in photometry
     nnan = np.sum (np.isnan (photo));
-    if nnan > 0: mircx_mystic_log.warning ('%i NaNs in photometry'%nnan);
+    if nnan > 0: log.warning ('%i NaNs in photometry'%nnan);
         
     # Check if nan in fringe
     nnan = np.sum (np.isnan (base_dft));
-    if nnan > 0: mircx_mystic_log.warning ('%i NaNs in fringe'%nnan);
+    if nnan > 0: log.warning ('%i NaNs in fringe'%nnan);
 
-    mircx_mystic_log.info ('Mean photometries: %e'%np.mean (photo));
+    log.info ('Mean photometries: %e'%np.mean (photo));
     photo_original=photo.copy()
     # Do spectro-temporal averaging of photometry
     # JDM2020 The principal components should be basd on shutters not mean of data...!!
     if avgphot is True:
-        mircx_mystic_log.info ('Do spectro-temporal averaging of photometry');
+        log.info ('Do spectro-temporal averaging of photometry');
         hdr[HMP+'AVGPHOT'] = (True,'spectro-temporal averaging of photometry');
         
         for b in range (6):
@@ -993,22 +993,22 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
             ms = np.einsum ('rfy,ys->rfs', photo[:,:,:,b], np.linalg.pinv (M));
             photo[:,:,:,b] = np.einsum ('rfs,sy->rfy',ms,M);
             
-        mircx_mystic_log.info ('Mean photometries: %e'%np.mean (photo));
+        log.info ('Mean photometries: %e'%np.mean (photo));
     else:
-        mircx_mystic_log.info ('No spectro-temporal averaging of photometry');
+        log.info ('No spectro-temporal averaging of photometry');
         hdr[HMP+'AVGPHOT'] = (False,'spectro-temporal averaging of photometry');
         
     # Do coherent integration
-    mircx_mystic_log.info ('Coherent integration over %i frames'%ncoher);
+    log.info ('Coherent integration over %i frames'%ncoher);
     base_dft = signal.uniform_filter_cpx (base_dft,(0,ncoher,0,0),mode='constant');
     bias_dft = signal.uniform_filter_cpx (bias_dft,(0,ncoher,0,0),mode='constant');
 
     # Smooth photometry over the same amount 
-    mircx_mystic_log.info ('Smoothing of photometry over %i frames'%ncoher);
+    log.info ('Smoothing of photometry over %i frames'%ncoher);
     photo = uniform_filter (photo,(0,ncoher,0,0),mode='constant');
 
     #  Remove edges
-    mircx_mystic_log.info ('Remove edge of coherence integration for each ramp');
+    log.info ('Remove edge of coherence integration for each ramp');
     edge = int(ncoher/2);
     base_dft = base_dft[:,edge:nf-edge,:,:];
     bias_dft = bias_dft[:,edge:nf-edge,:,:];
@@ -1022,7 +1022,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
 
     nscan =  np.int(2**(np.ceil(np.log2(ny*2+1)))); #64; round to next highest factor of 2?
 
-    mircx_mystic_log.info ('Compute 2d FFT (nscan=%i)'%nscan);
+    log.info ('Compute 2d FFT (nscan=%i)'%nscan);
 
     ## iterate 2 times to improve group delay
     base_dft_original = base_dft.copy ()
@@ -1211,7 +1211,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
             # >robust to some 'bad' delays
             #iterate over all possible tel ORDERS.
             #there is one where all opds are positive and match delays.
-            mircx_mystic_log.info('Starting t-order method:')
+            log.info('Starting t-order method:')
             tperm = list(permutations([0,1,2,3,4,5]))
             tnum=len(tperm)
             tperm = tperm[0:tnum//2]
@@ -1309,7 +1309,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
             search_snrs = snrs.copy()
             sort_method = 'sort_opd' # 'sort_snr'
             if sort_method=='sort_snr':
-                mircx_mystic_log.info("Using sort_snr Method")
+                log.info("Using sort_snr Method")
                 b_ref = np.argmax(snrs[:,0]) # REF.
                 search_snrs[b_ref,1]=-1
                 cutoff = np.sort(search_snrs[:,1])[15-nbase]
@@ -1321,9 +1321,9 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
                 search_opds[fixedin,1]=search_opds[fixedin,0] # to help when missing tels.
 
             if sort_method=='sort_opd':
-                mircx_mystic_log.info("Using sort_opd Method")
-                mircx_mystic_log.info(search_snrs.T.astype(int))
-                mircx_mystic_log.info(search_opds.T.astype(int))
+                log.info("Using sort_opd Method")
+                log.info(search_snrs.T.astype(int))
+                log.info(search_opds.T.astype(int))
                 #remove baselines with largest opds. though remove zero snrs first. easy way is to assign large opds if snr =0
                 search_opds = np.where(search_snrs ==0, 500., search_opds)
                 temp= np.max(np.abs(search_opds),axis=1)
@@ -1333,8 +1333,8 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
                     search_snrs[:,1]= np.where(temp >= cutoff, 0, search_snrs[:,1])
                 b_ref = np.argmax(search_snrs[:,0]) # find strongest remaining fringe1
                 search_snrs[b_ref,1]=0 #remove fringe2.
-                mircx_mystic_log.info(search_snrs.T.astype(int))
-                mircx_mystic_log.info(search_opds.T.astype(int))
+                log.info(search_snrs.T.astype(int))
+                log.info(search_opds.T.astype(int))
                 goodin=np.squeeze(np.argwhere(search_snrs[:,1]>0))
                 fixedin=np.squeeze(np.argwhere(search_snrs[:,1]==0))
                 search_opds[fixedin,1]=search_opds[fixedin,0] # to help when missing tels.
@@ -1365,7 +1365,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
             #use Best one.    
             bestorder=np.argsort(merit)
             bestone=bestorder[0]
-            mircx_mystic_log.info ('rms error  %.1f um'%(merit[bestone]*scale_gd*1e6));
+            log.info ('rms error  %.1f um'%(merit[bestone]*scale_gd*1e6));
             np.base_repr(bestorder[0],base=2)
             tsep_vector = -1*(np.squeeze(test_results_jdm[bestone,:])-np.squeeze(topd_jdm))*2 
             sep_vector  = -1*(np.squeeze(test_gd_jdm[bestone,:])-np.squeeze(opd_jdm) )*2
@@ -1535,7 +1535,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
             #tracking_snrs = base_scan_peak[]
 
         if gd_method == 'double-delta':
-                mircx_mystic_log.info("Starting with double-delta method.")
+                log.info("Starting with double-delta method.")
 
                 # maybe waste of time, but getting reference positions using new separations:
                 opds_peak,     snr_peak,     base_scan_peak     = fft_gdt2(sep_vector,base_dft_original, bias_dft_original, nscan, \
@@ -1562,7 +1562,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
                 imshow_gdt(base_scan_peak1 ,opds1=A_opds*scale_gd*1e6,opds2=B_opds*scale_gd*1e6, scale=scale_gd*1e6,title=headers.summary(hdr)+"\nOPD",file=output+'_base_trend.png')
                 base_gd = tracking_opds.copy() # for later plotting
 
-                mircx_mystic_log.info("Finished with double-delta method.")
+                log.info("Finished with double-delta method.")
 
     else:
         #SINGLE
@@ -1596,25 +1596,25 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
     # Reduce norm power far from white-fringe
     #JDM this needs checked if there is a correlation.
     if gd_attenuation == True or gd_attenuation == 'TRUE':
-        mircx_mystic_log.info ('Apply coherence envelope of %.1f um'%(coherence_length*1e6));
+        log.info ('Apply coherence envelope of %.1f um'%(coherence_length*1e6));
         attenuation = np.sinc(base_gd/coherence_length) 
     else:
-        mircx_mystic_log.info ('Dont apply coherence envelope');
+        log.info ('Dont apply coherence envelope');
         attenuation = base_gd * 0.0 + 1.0;
 
     # Compute selection flag from SNR
-    mircx_mystic_log.info ('SNR selection > %.2f'%snr_threshold);
+    log.info ('SNR selection > %.2f'%snr_threshold);
     hdr[HMQ+'SNR_THRESHOLD'] = (snr_threshold, 'to accept fringe');
     snr_smooth_filter=np.maximum(np.minimum(nincoh*4, nr//4),3).astype(int) # if median snr is above bar then keep. smooth to avoid biased over selection near threshold
     median_snr = median_filter(tracking_snr,size=(snr_smooth_filter,1,1,1),mode='nearest',origin=0)
     if snr_threshold > 0:
         base_flag  = 1. * (median_snr > snr_threshold);
     else:
-        mircx_mystic_log.info('For this foreground data we accept all fringes but we do not track on them')
+        log.info('For this foreground data we accept all fringes but we do not track on them')
         base_flag = tracking_snr *0.0 + 1.0
 
     # Compute selection flag from GD
-    mircx_mystic_log.info ('GDT Motion selection MU > %.2f'%(gd_threshold*.5*coherence_length*1e6));
+    log.info ('GDT Motion selection MU > %.2f'%(gd_threshold*.5*coherence_length*1e6));
     hdr[HMQ+'GD_THRESHOLD'] = (gd_threshold*.5*coherence_length*1e6, 'microns to accept fringe');
     gd_smoothl=np.maximum(np.minimum(nincoh*4,nr//4).astype(int),3) # smooth before filtering. 
     # SLIGHTLY CHANGE interpretation. we look for deviations away from the reference position, not 0.
@@ -1637,7 +1637,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
 
 
     # Compute selection flag from SNR
-    mircx_mystic_log.info ('Flux selection > %.2f'%flux_threshold);
+    log.info ('Flux selection > %.2f'%flux_threshold);
     hdr[HMQ+'FLUX_THRESHOLD'] = (flux_threshold, 'to accept fringe');
     base_flag  *= (photo_mean[:,:,:,bbeam[:,0]] > flux_threshold);
     base_flag  *= (photo_mean[:,:,:,bbeam[:,1]] > flux_threshold);
@@ -1684,7 +1684,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
     hdulist = oifits.create (hdr, lbd, y0=y0);
 
     # Compute OI_FLUX
-    mircx_mystic_log.info ('Compute Flux by simple mean, without selection');
+    log.info ('Compute Flux by simple mean, without selection');
     
     p_flux = np.nanmean (photo, axis=1);
     
@@ -1695,11 +1695,11 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
 
     # Compute OI_VIS2
     if ncs > 0:
-        mircx_mystic_log.info ('Compute Cross Spectrum with offset of %i frames'%ncs);
+        log.info ('Compute Cross Spectrum with offset of %i frames'%ncs);
         bias_power = np.real (bias_dft_original[:,ncs:,:,:] * np.conj(bias_dft_original[:,0:-ncs,:,:]));
         base_power = np.real (base_dft_original[:,ncs:,:,:] * np.conj(base_dft_original[:,0:-ncs,:,:]));
     else:
-        mircx_mystic_log.info ('Compute Cross Spectrum without offset');
+        log.info ('Compute Cross Spectrum without offset');
         bias_power = np.abs (bias_dft_original)**2;
         base_power = np.abs (base_dft_original)**2;
 
@@ -1734,7 +1734,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
     # Compute OI_VIS
     if vis_reference == 'self':
 
-        mircx_mystic_log.info ('Compute VIS by self-tracking');
+        log.info ('Compute VIS by self-tracking');
         hdulist[0].header[HMP+'VIS_REF'] = ('SELF', 'vis reference');
 
         #probalby should weight the next amp by gd_weights. 
@@ -1745,7 +1745,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
         #phase_ref_method = "time-shift" # "classic"
         phase_ref_method = "bias-free" # "classic" "time-shift"
         if phase_ref_method == 'bias-free':
-            mircx_mystic_log.info('using bias-free method of oi-vis')
+            log.info('using bias-free method of oi-vis')
             #JDM may need to deal with baseflag earlier.
             #JDM figured out (hopefully) how to bias correct the cvis without time-shifting.
             c_cpx_ref = np.mean (c_cpx, axis=2, keepdims=True);
@@ -1788,7 +1788,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
 
 
         elif phase_ref_method == 'time-shift':
-            mircx_mystic_log.info('using time-shift method of oi-vis')
+            log.info('using time-shift method of oi-vis')
             # scipy shift does not support complex nuumbres.
             c_cpx_prime_real =  shift(np.real(c_cpx), (0,+ncoher,0,0), mode='constant', cval=0.0) + \
                                 shift(np.real(c_cpx), (0,-ncoher,0,0), mode='constant', cval=0.0) 
@@ -1839,7 +1839,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
 
 
         #show results.
-        mircx_mystic_log.info ('software fringe tracked: Compute OPD-scan Power with offset of %i frames'%ncs);
+        log.info ('software fringe tracked: Compute OPD-scan Power with offset of %i frames'%ncs);
         #
         #base_scan0 = np.real (base_scan0[:,ncs:,:,:] * np.conj(base_scan0[0:,0:-ncs,:,:]))
         #base_flag[5:8,0,0,3]=np.nan
@@ -1863,7 +1863,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
         c_cpx = np.nanmean (c_cpx * base_flag, axis=1);
 
     elif vis_reference == 'spec-diff':
-        mircx_mystic_log.info ('Compute VIS by taking spectral-differential');
+        log.info ('Compute VIS by taking spectral-differential');
         hdulist[0].header[HMP+'VIS_REF'] = ('SPEC-DIFF', 'vis reference');
         c_cpx  = base_dft_original * np.exp (2.j*np.pi * base_gd / lbd[None,None,:,None]);
 
@@ -1873,7 +1873,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
 
 
     elif vis_reference == 'absolute':
-        mircx_mystic_log.info ('Compute VIS without subtracting mean/gd');
+        log.info ('Compute VIS without subtracting mean/gd');
         hdulist[0].header[HMP+'VIS_REF'] = ('ABSOLUTE', 'vis reference');
         c_cpx  = np.nanmean (c_cpx * base_flag, axis=1);
 
@@ -1922,20 +1922,20 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
 
     # Compute OI_T3
     if nbs > 0:
-        mircx_mystic_log.info ('Compute Bispectrum with offset of %i frames'%nbs);
+        log.info ('Compute Bispectrum with offset of %i frames'%nbs);
         t_cpx = (base_dft_original*base_flag)[:,:,:,setup.triplet_base()];
         t_cpx = t_cpx[:,2*nbs:,:,:,0] * t_cpx[:,nbs:-nbs,:,:,1] * np.conj (t_cpx[:,:-2*nbs,:,:,2]);
     else:
-        mircx_mystic_log.info ('Compute Bispectrum without offset');
+        log.info ('Compute Bispectrum without offset');
         t_cpx = (base_dft_original*base_flag)[:,:,:,setup.triplet_base()];
         t_cpx = t_cpx[:,:,:,:,0] * t_cpx[:,:,:,:,1] * np.conj (t_cpx[:,:,:,:,2]);
 
     # Load BBIAS_COEFF
     if coeff == []:
-        mircx_mystic_log.info ('No BBIAS_COEFF file');
+        log.info ('No BBIAS_COEFF file');
     else:
         f = coeff[0]['ORIGNAME'];
-        mircx_mystic_log.info ('Load BBIAS_COEFF file %s'%f);
+        log.info ('Load BBIAS_COEFF file %s'%f);
         bbias_coeff0 = pyfits.getdata (f, 'C0');
         bbias_coeff1 = pyfits.getdata (f, 'C1');
         bbias_coeff2 = pyfits.getdata (f, 'C2');
@@ -1958,16 +1958,16 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
         bbias_coeff2[idx] = np.nan;
 
         # Debias with C0
-        mircx_mystic_log.info ('Debias with C0');
+        log.info ('Debias with C0');
         t_cpx -= bbias_coeff0[None,None,:,None]/(ncoher*ncoher*ncoher);
 
         # Debias with C1
-        mircx_mystic_log.info ('Debias with C1');
+        log.info ('Debias with C1');
         Ntotal = photo.sum (axis=-1,keepdims=True);
         t_cpx -= bbias_coeff1[None,None,:,None] * Ntotal[:,:np.size(t_cpx,1),:,:]/(ncoher*ncoher);
 
         # Debias with C2
-        mircx_mystic_log.info ('Debias with C2');
+        log.info ('Debias with C2');
         xps = np.real (base_dft_original[:,ncs:,:,:] * np.conj(base_dft_original[:,0:-ncs,:,:]));
         xps0 = np.real (bias_dft_original[:,ncs:,:,:] * np.conj(bias_dft_original[:,0:-ncs,:,:]));
         xps -= np.mean (xps0, axis=-1, keepdims=True);
@@ -1997,7 +1997,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
     oifits.add_t3 (hdulist, mjd_ramp, t_cpx, t_norm, output=output, y0=y0,nchunk=nchunk);
 
     # Figures
-    mircx_mystic_log.info ('Figures');
+    log.info ('Figures');
 
     # Plot the 'opd-scan'
 
@@ -2149,7 +2149,7 @@ def compute_vis (hdrs, coeff, output='output_oifits', filetype='OIFITS',
     files.write (fig,output+'_powergd.png');
     
     # File
-    mircx_mystic_log.info ('Create file');
+    log.info ('Create file');
 
     # First HDU
     hdulist[0].header['FILETYPE'] = filetype;
@@ -2173,7 +2173,7 @@ def gd_gravity_solver(opds, snrs, start_topd=None, softlength=2.,niter=200):
     ii=0
     for i_test in range(niter):
         tel_gravity, tel_potential, tel_opds = signal.get_gd_gravity(new_tel, snrs,opds,softlength=softlength)
-        mircx_mystic_log.info("GRAVITY : step %i topds %.1f  %.1f %.1f %.1f %.1f %.1f  pots %.1f %.1f %.1f %.1f %.1f %.1f  "\
+        log.info("GRAVITY : step %i topds %.1f  %.1f %.1f %.1f %.1f %.1f  pots %.1f %.1f %.1f %.1f %.1f %.1f  "\
             %(i_test,new_tel[ii,0,0,0],new_tel[ii,0,0,1],new_tel[ii,0,0,2],new_tel[ii,0,0,3],new_tel[ii,0,0,4],new_tel[ii,0,0,5],\
                 tel_potential[ii,0,0,0],tel_potential[ii,0,0,1],tel_potential[ii,0,0,2],tel_potential[ii,0,0,3],tel_potential[ii,0,0,4],tel_potential[ii,0,0,5]))
         diff_tel = tel_gravity - tel_gravity[:,:,:,0][:,:,:,None]
@@ -2266,7 +2266,7 @@ def binary_detector(ref_scan, ref_snr_raw, ref_opds_raw,scale=1.0,title="Results
         ierr=fitter_gauss.fit_info['ierr']
         ierrs[i_b]=ierr
         if ierr >4:
-            mircx_mystic_log.info("Detected Gauss2 Fit Failure baseline %i ierr: %i"%(i_b,ierr))
+            log.info("Detected Gauss2 Fit Failure baseline %i ierr: %i"%(i_b,ierr))
         gauss2_params[i_b,:]=best_fit_gauss2.parameters
         gauss2_scan[:,i_b]=best_fit_gauss2(x)
     #Binary detector!
@@ -2280,7 +2280,7 @@ def binary_detector(ref_scan, ref_snr_raw, ref_opds_raw,scale=1.0,title="Results
     peakratio_limit =   .025+.975*np.exp(-.5*(.5*nsig)**2) #.05+.95*np.exp(-.5*(.65*nsig)**2)
     binary_detector_flags = (peakratio > peakratio_limit)  & (wt2 > 5) & (nsig >3.0) & (ierrs <= 4) \
         & (np.abs(gauss2_params[:,1]) < nscan/2) & (np.abs(gauss2_params[:,4]) < nscan/2) # might find peaks around bright singles.
-    mircx_mystic_log.info("b,peakratio,wt1,wt2,nsig,ierr  %i %f %f %f %f %i"%(11,peakratio[11],wt1[11],wt2[11],nsig[11],ierrs[11]))
+    log.info("b,peakratio,wt1,wt2,nsig,ierr  %i %f %f %f %f %i"%(11,peakratio[11],wt1[11],wt2[11],nsig[11],ierrs[11]))
    #peakratio_limit =   .025+.975*np.exp(-.5*(.625*nsig)**2) #.05+.95*np.exp(-.5*(.65*nsig)**2)
     #binary_detector_flags = (peakratio > peakratio_limit)  & (wt2 > 3) & (nsig >2.0) # might find peaks around bright singles.
 
@@ -2502,7 +2502,7 @@ def binary_detector_amps(base_dft,bias_dft,photo,nscan,ncs=1,scale=1.0,title="Re
     # now... envelopes hsould never go too low, but there could be problems with kappa matrix, or 
     # missing flux so. 
     if np.any(envelopes < .05):
-        mircx_mystic_log.warning("At least on envelope has <5% of mean value. possible bad kappa matrix.")  
+        log.warning("At least on envelope has <5% of mean value. possible bad kappa matrix.")  
         envelopes = np.maximum(envelopes,.05)
     fringe_power = fringe_power / envelopes
     bias_power =   bias_power /  envelopes
@@ -2578,7 +2578,7 @@ def binary_detector_amps(base_dft,bias_dft,photo,nscan,ncs=1,scale=1.0,title="Re
         ierr=fitter_gauss.fit_info['ierr']
         ierrs[i_b]=ierr
         if ierr >4:
-            mircx_mystic_log.info("Detected Gauss2 Fit Failure baseline %i ierr: %i"%(i_b,ierr))
+            log.info("Detected Gauss2 Fit Failure baseline %i ierr: %i"%(i_b,ierr))
         gauss2_params[i_b,:]=best_fit_gauss2.parameters
         gauss2_scan[:,i_b]=best_fit_gauss2(x)
 
@@ -2595,7 +2595,7 @@ def binary_detector_amps(base_dft,bias_dft,photo,nscan,ncs=1,scale=1.0,title="Re
     peakratio_limit =   .025+.975*np.exp(-.5*(.75*nsig)**2) #.05+.95*np.exp(-.5*(.65*nsig)**2)
     binary_detector_flags = (peakratio > peakratio_limit)  & (wt2 > 3) & (nsig >2.0) & (ierrs <= 4) \
         & (np.abs(gauss2_params[:,1]) < nscan/2) & (np.abs(gauss2_params[:,4]) < nscan/2) # might find peaks around bright singles.
-    mircx_mystic_log.info("b,peakratio,wt1,wt2,nsig,ierr  %i %f %f %f %f %i"%(11,peakratio[11],wt1[11],wt2[11],nsig[11],ierrs[11]))
+    log.info("b,peakratio,wt1,wt2,nsig,ierr  %i %f %f %f %f %i"%(11,peakratio[11],wt1[11],wt2[11],nsig[11],ierrs[11]))
    #peakratio_limit =   .025+.975*np.exp(-.5*(.625*nsig)**2) #.05+.95*np.exp(-.5*(.65*nsig)**2)
     #binary_detector_flags = (peakratio > peakratio_limit)  & (wt2 > 3) & (nsig >2.0) # might find peaks around bright singles.
 

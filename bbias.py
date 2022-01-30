@@ -18,14 +18,14 @@ from scipy.optimize import least_squares, curve_fit;
 from scipy.ndimage.morphology import binary_closing, binary_opening;
 from scipy.ndimage.morphology import binary_dilation, binary_erosion;
 
-from . import files, headers, mircx_mystic_log, setup, oifits, signal, plot, qc;
+from . import log, files, headers, setup, oifits, signal, plot, qc;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
 def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetype='BBIAS_COEFF'):
     '''
     Compute the BBIAS_COEFF
     '''
-    elog = mircx_mystic_log.trace ('compute_bbias_coeff');
+    elog = log.trace ('compute_bbias_coeff');
 
     # FIXME: hardcode ncoherent for bbias computation (low is less noisy)
     ncoher = 3
@@ -57,7 +57,7 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         f1 = h1['ORIGNAME'];
         
         # Load all_dft data
-        mircx_mystic_log.info ('Load RTS file %i over %i (%s)'%(ih+1,len(all),f1));
+        log.info ('Load RTS file %i over %i (%s)'%(ih+1,len(all),f1));
         all_dft  = pyfits.getdata (f1, 'ALL_DFT_IMAG').astype(float) * 1.j;
         all_dft += pyfits.getdata (f1, 'ALL_DFT_REAL').astype(float);
 
@@ -65,7 +65,7 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         photo  = pyfits.getdata (f1, 'PHOTOMETRY').astype(float);
 
         # Smooth DATA,PHOTO
-        mircx_mystic_log.info('NCOHERENT %s'%ncoher);
+        log.info('NCOHERENT %s'%ncoher);
         new_frms = np.arange(int(np.size(all_dft,1)/ncoher))*ncoher+1;
 
         all_dft = signal.uniform_filter_cpx (all_dft,(0,ncoher,0,0),mode='constant');
@@ -79,7 +79,7 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
 
         # Compute unbiased visibility of DATA
         # based on cross-spectrum with 1-shift
-        mircx_mystic_log.info('Compute unbiased visibility of DATA');
+        log.info('Compute unbiased visibility of DATA');
         data_xps = np.real (all_dft[:,1:,:,:] * np.conj(all_dft[:,:-1,:,:]));
         data_xps = data_xps[:,new_frms,:,:]*ncoher*ncoher;
         data_xps0 = np.mean(data_xps[:,:,:,b0:b1+1],axis=-1,keepdims=True);
@@ -87,7 +87,7 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
 
         # Now loop through triangles to compute bispectrum and sum of v2
         # FIXME this routine could be made faster
-        mircx_mystic_log.info('Compute bispectrum and v2 sum of bias closing triangles');
+        log.info('Compute bispectrum and v2 sum of bias closing triangles');
         bs=[];
         tri_sumv2=[];
         for tri in tri_list:
@@ -146,11 +146,11 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
         photometry=np.append(photometry,photo,axis=0);
         sum_vis2=np.append(sum_vis2,tri_sumv2,axis=0);
 
-        mircx_mystic_log.info ('Cleanup memory');
+        log.info ('Cleanup memory');
         del bs, photo, tri_sumv2, all_dft, data_xps, data_xps0, t_cpx, sumv2;
 
     ## measure coefficients
-    mircx_mystic_log.info('Measure bbias coefficients');
+    log.info('Measure bbias coefficients');
     C0 = [];
     C1 = [];
     C2 = [];
@@ -192,7 +192,7 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
             C2.append(result[0][2]);
 
             # Figures
-            mircx_mystic_log.info ('Figures');
+            log.info ('Figures');
             fig,ax = plt.subplots ();
             fig.suptitle ('Bispectrum - Photometry');
             ax.plot(p,b,'.');
@@ -214,7 +214,7 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
             plt.close ("all");
 
             ## photometry resids 
-            mircx_mystic_log.info ('Figures');
+            log.info ('Figures');
             fig,ax = plt.subplots ();
             fig.suptitle ('Photometry Residuals');
             ax.plot(p,resid,'.');
@@ -237,7 +237,7 @@ def compute_bbias_coeff (hdrs, bkgs, fgs, ncoher, output='output_bbias', filetyp
     C2 = np.array(C2);
 
     # File
-    mircx_mystic_log.info ('Create file');
+    log.info ('Create file');
 
     # First HDU
     hdu0 = pyfits.PrimaryHDU ([]);
