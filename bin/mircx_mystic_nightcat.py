@@ -7,6 +7,10 @@ import glob
 import os
 
 from mircx_mystic import log, setup;
+import datetime as datetime
+import tkinter as tk
+from tkinter import filedialog
+
 
 #
 # Implement options
@@ -16,37 +20,27 @@ from mircx_mystic import log, setup;
 description = \
 """
 description:
-  Run the mircx pipeline. The RAW data format shall
-  be .fits and/or .fits.fz  The format .fits.gz
-  is not supported.
-
-  The reduction is decomposed into 3 steps: preproc, rts,
-  oifits. Each have them can be (des)activated, or tuned,
-  with the following options.
+  Will create a night catalog summary directory with helpful files needed for rest of
+  the pipeline. Will recognize fits, fits.fz files but NOT fits.gz
 
   The input and output directories are relative to the
   current directory.
 
+  if you leave blank, the default identifier is today's date and raw data directory chosen by 
+  dialog pickfile, out output directory is local.
 """
 
 epilog = \
 """
-examples:
 
-  # Run the entire reduction
+Examples:
   
+fully-specified:
+  mircx_mystic_nightcat.py --raw-dir=/path/to/raw/data/ --mrx_dir=/path/to/reduced/data/ -id=JDM2022Jan04
+
+defaults:
   cd /path/where/I/want/my/reduced/data/
-  mircx_reduce.py --raw-dir=/path/to/raw/data/
-
-  # Do the preproc step only
-  
-  mircx_reduce.py --raw-dir=/path/to/raw/data/ --rts=FALSE --oifits=FALSE
-
-  # Rerun the oifits step only, use a different
-  # threshold for SNR selection, dump the results
-  # into a different directory
-  
-  mircx_reduce.py --preproc=FALSE --rts=FALSE snr-threshold=4.0 --oifits-dir=oifits_new
+  mirc_mystic_nightcat.py
 
 
 """
@@ -59,147 +53,31 @@ parser = argparse.ArgumentParser (description=description, epilog=epilog,
 TrueFalse = ['TRUE','FALSE'];
 TrueFalseOverwrite = ['TRUE','FALSE','OVERWRITE'];
 
-preproc = parser.add_argument_group ('(1) preproc',
-                    '\nCreates  the BACKGROUND, BEAM, PREPROC and SPEC_CAL\n'
-                    'intermediate products, which mostly corresponds to\n'
-                    'detector images cleaned from the detector artifact.');
+nightcat = parser.add_argument_group ('(1) nightcat',
+                    '\nCreates a summary directory containting\n'
+                    'nightly summary in editable ASCII format and header info in panda dataframes');
 
-preproc.add_argument ("--preproc", dest="preproc",default='TRUE',
-                     choices=TrueFalseOverwrite,
-                     help="compute the PREPROC products [%(default)s]");
-
-preproc.add_argument ("--raw-dir", dest="raw_dir",default='./',type=str,
+nightcat.add_argument ("--raw-dir", dest="raw_dir",default=None,type=str,
                      help="directory of raw data [%(default)s]");
 
-preproc.add_argument ("--preproc-dir", dest="preproc_dir",default='./preproc/',type=str,
-                     help="directory of products [%(default)s]");
+nightcat.add_argument ("--mrx-dir", dest="mirx_dir",default='./',type=str,
+                     help="directory of mrx pipeline products [%(default)s]");
 
-preproc.add_argument ("--max-integration-time-preproc", dest="max_integration_time_preproc",
-                      default=30.,type=float,
-                      help='maximum integration into a single file, in (s).\n'
-                      'This apply to PREPROC, and RTS steps [%(default)s]');
-
-preproc.add_argument ("--threshold", dest="threshold",default=5.,type=float,
-                     help='threshold in sigma for identifying bad pixels [%(default)s]');
-
-preproc.add_argument ("--mean-quality", dest="mean_quality", type=float,
-                     default=20.0, help="minimum quality to consider the BEAM_MEAN as a valid window for cropping the data in the preproc [%(default)s]");
-
-preproc.add_argument("--linearize", help="fix detector linearity", action="store_true")
-
-preproc.add_argument ("--speccal-order", dest="speccal_order", type=int,
-                    default=2, help="order of polynomial fitting in spectral calib [%(default)s]");
-
-rts = parser.add_argument_group ('(2) rts',
-                  '\nCreates RTS intermediate products, which are the\n'
-                  'coherent flux and the photometric flux in real time,\n'
-                  'cleaned from the instrumental behavior.');
-
-rts.add_argument ("--rts", dest="rts",default='TRUE',
-                  choices=TrueFalseOverwrite,
-                  help="compute the RTS products [%(default)s]");
-
-rts.add_argument ("--rts-dir", dest="rts_dir",default='./rts/',type=str,
-                  help="directory of products [%(default)s]");
-
-rts.add_argument ("--profile-quality", dest="profile_quality", type=float,
-                  default=20.0, help="minimum quality to consider the BEAM_PROFILE as a valid profile for extraction [%(default)s]");
-
-rts.add_argument ("--kappa-quality", dest="kappa_quality", type=float,
-                  default=5.0, help="minimum quality to consider the BEAM_MAP as a valid kappa matrix [%(default)s]");
-
-rts.add_argument ("--kappa-gain", dest="kappa_gain",default='TRUE',
-                  choices=TrueFalse,
-                  help="use GAIN to associate kappa [%(default)s]");
-
-rts.add_argument ("--save-all-freqs", dest="save_all_freqs",default='FALSE',
-                  choices=TrueFalse,
-                  help="save the entire FFTs in RTS file [%(default)s]");
-
-rts.add_argument ("--rm-preproc", dest="rm_preproc",default='FALSE',
-                  choices=TrueFalse,
-                  help="rm the PREPROC file after computing the RTS [%(default)s]");
-
-oifits = parser.add_argument_group ('(3) oifits',
-                     '\nCreates the final OIFITS products, which are the\n' 
-                     'uncalibrated mean visibilities and closure phases\n'
-                     'computed by selecting and averaging the data in RTS.');
-
-oifits.add_argument ("--oifits", dest="oifits",default='TRUE',
-                     choices=TrueFalseOverwrite,
-                     help="compute the OIFITS products [%(default)s]");
-
-oifits.add_argument ("--oifits-dir", dest="oifits_dir",default='./oifits/',type=str,
-                     help="directory of products [%(default)s]");
-
-oifits.add_argument ("--max-integration-time-oifits", dest="max_integration_time_oifits",
-                      default=150.,type=float,
-                      help='maximum integration into a single file, in (s).\n'
-                      'This apply to OIFITS steps [%(default)s]');
-
-oifits.add_argument ("--ncoherent", dest="ncoherent", type=int,
-                     default=5, help="number of frames for coherent integration [%(default)s]");
-
-#oifits.add_argument ("--nincoherent", dest="nincoherent", type=int,
-#                     default=5, help="number of ramps for incoherent integration [%(default)s]");
-
-oifits.add_argument ("--gdt_tincoh", dest="gdt_tincoh", type=float,
-                     default=0.5, help="number of SECONDS for incoherent integration [%(default)s]");
-
-oifits.add_argument ("--ncs", dest="ncs", type=int,
-                     default=1, help="number of frame-offset for cross-spectrum [%(default)s]");
-
-oifits.add_argument ("--nbs", dest="nbs", type=int,
-                     default=4, help='only used when bbias=FALSE, this is the shift for the bispectrum [%(default)s]');
-
-oifits.add_argument ("--snr-threshold", dest="snr_threshold", type=float,
-                     default=2.0, help="SNR threshold for fringe rejection [%(default)s]");
-
-oifits.add_argument ("--flux-threshold", dest="flux_threshold", type=float,
-                     default=20.0, help="FLUX threshold for rejection [%(default)s]");
-
-oifits.add_argument ("--gd-threshold", dest="gd_threshold", type=float,
-                     default=0.5, help="GD threshold for rejection in fraction of gd tracking window, 1=accept all [%(default)s]");
-
-oifits.add_argument ("--gd-attenuation", dest="gd_attenuation",default='FALSE',
-                     choices=TrueFalse,
-                     help="correct from the attenuation due to GD assuming square pixel-based bandpass[%(default)s]");
-
-oifits.add_argument ("--vis-reference", dest="vis_reference",default='self',
-                     choices=['self','spec-diff','absolute'],
-                     help="phase reference for VIS estimator [%(default)s]");
-
-oifits.add_argument ("--rm-rts", dest="rm_rts",default='FALSE',
-                     choices=TrueFalse,
-                     help="rm the RTS file after computing the OIFITS [%(default)s]");
-
+nightcat.add_argument ("--id", dest="mrx_id",
+                     default=datetime.date.today().strftime('%Y%b%d'),type=str,
+                     help="unique identifier for data reduction [%(default)s]");
 
 advanced = parser.add_argument_group ('advanced user arguments');
-                                         
-advanced.add_argument ("--bbias", dest="bbias",default='TRUE',
-                     choices=TrueFalseOverwrite,
-                     help="compute the BBIAS_COEFF product [%(default)s]");
-
-advanced.add_argument ("--reduce-foreground", dest="reduce_foreground",default='TRUE',
-                     choices=TrueFalse,
-                     help="reduce the FOREGROUND into OIFITS [%(default)s]");
-
+                                        
 advanced.add_argument ("--debug", dest="debug",default='FALSE',
                      choices=TrueFalse,
                      help="stop on error [%(default)s]");
-
-advanced.add_argument ("--max-file", dest="max_file",default=3000,type=int,
-                     help=argparse.SUPPRESS);
 
 advanced.add_argument ('--help', action='help',
                      help=argparse.SUPPRESS);
 
 advanced.add_argument ('-h', action='help',
                      help=argparse.SUPPRESS);
-
-advanced.add_argument ('--selection', dest="selection",default='FALSE',
-                     choices=TrueFalseOverwrite,
-                    help=argparse.SUPPRESS);
 
 
 
@@ -211,27 +89,30 @@ advanced.add_argument ('--selection', dest="selection",default='FALSE',
 argopt = parser.parse_args ();
 
 # Verbose
-elog = log.trace ('mircx_reduce');
+elog = log.trace ('mircx_mystic_nightcat');
 
 # Set debug
 if argopt.debug == 'TRUE':
     log.info ('start debug mode')
     import pdb;
 
-## force choices when --bbias=TRUE
-if argopt.bbias != 'FALSE':
-    log.info ('bbias is TRUE so force save-all-freqs=TRUE');
-    argopt.save_all_freqs = 'TRUE';
-    argopt.ncs = 1;
-    argopt.nbs = 0;
+
 
     
 #
-# Compute Preproc
+# Compute NIGHT CATALOG and summary files, including header stuff.
 #
 
-if argopt.preproc != 'FALSE':
-    overwrite = (argopt.preproc == 'OVERWRITE');
+if True == True:
+    log.info("Starting Nightcat Routines:")
+
+    #get raw directory if none passes
+    if argopt.raw_dir == None:
+        log.info("No Raw Diretory Passed. Using Dialog Pickfile")
+        root = tk.Tk()
+        root.withdraw()
+        argopt.raw_dir = filedialog.askdirectory(title = "Select PATH to DATA")
+
 
     # List inputs
     hdrs = mrx.headers.loaddir (argopt.raw_dir);

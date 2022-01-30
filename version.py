@@ -15,8 +15,8 @@ def get_from_dir (arg):
 
 def info ():
     print ('---------------------------------------------');
-    print ('Module mircx_pipeline version %s'%revision);
-    print ('Please report any bugs to lebouquj@umich.edu');
+    print ('Module mircx_mystic pipeline version %s'%revision);
+    print ('Please report any bugs to monnier@umich.edu');
     print ('Git commit: %s (%s)'%(git_hash[:8],git_date));
     print ('Git branch: %s%s'%(git_branch,git_status));
     print ('Matplotlib backend: '+mpl.get_backend());
@@ -24,7 +24,7 @@ def info ():
     print ('---------------------------------------------');
 
 # Revision hardcoded name
-revision = '1.3.3';
+revision = '2.0.0';
 
 # some information from the GIT repository, if available
 git_date = get_from_dir ('git log -1 --format=%cd --date=format:%Y-%m-%dT%H:%M:%S');
