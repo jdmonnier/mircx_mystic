@@ -1,14 +1,14 @@
 import os, sys, re
 import pandas as pd
 
-from . import headers, log, files
+from . import headers, files, mircx_mystic_log
 
 try:
     from astroquery.simbad import Simbad
 except ImportError:
-    log.error('astroquery.simbad not found!')
-    log.info('Assigning sci and cal types to targets requires access to SIMBAD')
-    log.info('Try "sudo pip install astroquery"')
+    mircx_mystic_log.error('astroquery.simbad not found!')
+    mircx_mystic_log.info('Assigning sci and cal types to targets requires access to SIMBAD')
+    mircx_mystic_log.info('Try "sudo pip install astroquery"')
     raise ImportError
     sys.exit()
 
@@ -36,20 +36,20 @@ def targList(d,rawBase,redDir):
         dotargList = 'yes'
     if dotargList == 'yes':
         # Load all the headers from observing date:
-        log.info('Read headers from raw data directory')
+        mircx_mystic_log.info('Read headers from raw data directory')
         hdrs = headers.loaddir(rawBase+'/'+d)
         # create python list of object names:
-        log.info('Retrieve object names from headers')
+        mircx_mystic_log.info('Retrieve object names from headers')
         objs = []
         for h in hdrs:
             try:
                 if h['OBJECT'] != '' and h['OBJECT'] != 'NOSTAR' and h['OBJECT'] != 'STS':
                     objs.append(h['OBJECT'])
             except KeyError:
-                log.warning('Not all headers contain OBJECT key word.')
-                log.info('Continuing.')
+                mircx_mystic_log.warning('Not all headers contain OBJECT key word.')
+                mircx_mystic_log.info('Continuing.')
         
-        log.info('Cleanup memory')
+        mircx_mystic_log.info('Cleanup memory')
         del hdrs
         
         objs = list(set(objs))
@@ -57,21 +57,21 @@ def targList(d,rawBase,redDir):
         if os.path.isfile(redDir+'/'+d+'_targets.list') != True:
             files.ensure_dir(redDir);
             # write target list summary file:
-            log.info('Write '+redDir+'/'+d+'_targets.list')
+            mircx_mystic_log.info('Write '+redDir+'/'+d+'_targets.list')
             with open(redDir+'/'+d+'_targets.list', 'w') as output:
                 for obj in objs:
                     if type(obj) != str:
                         objs.remove(obj)
                     output.write(obj+'\n')
             if len(objs) == 0:
-                log.error('No target names retrieved from headers.')
-                log.info('Exiting.')
+                mircx_mystic_log.error('No target names retrieved from headers.')
+                mircx_mystic_log.info('Exiting.')
                 sys.exit()
             else:
-                log.info('File written successfully')
+                mircx_mystic_log.info('File written successfully')
     else:
-        log.info('Target lists already exist.')
-        log.info('Reading target names from '+redDir+'/'+d+'_targets.list')
+        mircx_mystic_log.info('Target lists already exist.')
+        mircx_mystic_log.info('Reading target names from '+redDir+'/'+d+'_targets.list')
         objs = []
         with open(redDir+'/'+d+'_targets.list', 'r') as input:
             for line in input:
@@ -89,24 +89,24 @@ def queryJSDC(targ,m):
         connected = True
     except ConnectionError:
         connected = False
-        log.warning(mirrs[m]+' VizieR server down')
+        mircx_mystic_log.warning(mirrs[m]+' VizieR server down')
         while connected == False:
             try:
                 Vizier.VIZIER_SERVER=mirrs[m+1]
             except IndexError:
-                log.error('Failed to connect to VizieR mirrors')
-                log.error('Check internet connection and retry')
+                mircx_mystic_log.error('Failed to connect to VizieR mirrors')
+                mircx_mystic_log.error('Check internet connection and retry')
                 sys.exit()
             try:
                 result = Vizier.query_object(targ, catalog=['II/346'])
                 connected = True
-                log.info('JSDC info retrieved from mirror site')
+                mircx_mystic_log.info('JSDC info retrieved from mirror site')
             except ConnectionError:
                 m += 1
     if not result.keys():
         # If nothing is returned from JSDC, assume the target is SCI:
-        log.info('Nothing returned from JSDC for '+targ)
-        log.info(targ+' will be treated as SCI')
+        mircx_mystic_log.info('Nothing returned from JSDC for '+targ)
+        mircx_mystic_log.info(targ+' will be treated as SCI')
         return 'sci'
     
     ind = -999
@@ -171,26 +171,26 @@ def queryLocal(targs,db):
         # First, retrieve alternative IDs for target from SIMBAD:
         try:
             alt_ids = Simbad.query_objectids(targ)
-            log.info('Alternative IDs for '+targ+' retrieved from SIMBAD.')
+            mircx_mystic_log.info('Alternative IDs for '+targ+' retrieved from SIMBAD.')
             connected = True
         except ConnectionError:
             connected = False
             if m == 0:
-                log.warning('Main SIMBAD server down')
+                mircx_mystic_log.warning('Main SIMBAD server down')
             else:
-                log.warning(mirrs[m]+' SIMBAD server down')
+                mircx_mystic_log.warning(mirrs[m]+' SIMBAD server down')
             while connected == False:
                 try:
                     Simbad.SIMBAD_SERVER = mirrs[m+1]
                 except IndexError:
-                    log.error('Failed to connect to SIMBAD mirrors')
-                    log.error('Check internet connection and try again')
+                    mircx_mystic_log.error('Failed to connect to SIMBAD mirrors')
+                    mircx_mystic_log.error('Check internet connection and try again')
                     sys.exit()
                 try:
                     alt_ids = Simbad.query_objectids(targ)
                     connected = True
-                    log.info('Alternative IDs for '+targ+' retrieved from SIMBAD mirror:')
-                    log.info(mirrs[m])
+                    mircx_mystic_log.info('Alternative IDs for '+targ+' retrieved from SIMBAD mirror:')
+                    mircx_mystic_log.info(mirrs[m])
                 except ConnectionError:
                     m += 1
         # Then query all alternative IDs for target against MIRCX database
@@ -204,8 +204,8 @@ def queryLocal(targs,db):
                 targNew = re.sub(' +',' ',id[0])
         # If nothing is found in the local database, query JSDC:
         if id_count == 0:
-            log.warning('Target '+targ+' not found in local database')
-            log.info('Querying JSDC catalog at VizieR...')
+            mircx_mystic_log.warning('Target '+targ+' not found in local database')
+            mircx_mystic_log.info('Querying JSDC catalog at VizieR...')
             calsci = queryJSDC(targ,m)
             if len(calsci.split(',')) == 1:
                 outline = targ.replace('_', ' ')+', , , , , SCI, , , \n'
@@ -226,27 +226,27 @@ def queryLocal(targs,db):
         # If one match is found, read in the information from the local database
         elif id_count == 1:
             if targNew == targ:
-                log.info('Target '+targ+' located in '+db)
+                mircx_mystic_log.info('Target '+targ+' located in '+db)
             else:
-                log.info('Target '+targ+' located in '+db+' as '+targNew)
+                mircx_mystic_log.info('Target '+targ+' located in '+db+' as '+targNew)
             if 'SCI' in m_scical[m_targs.index(targNew)]:
-                log.info(targ+' recognised as SCI')
+                mircx_mystic_log.info(targ+' recognised as SCI')
                 scical.append('SCI')
             else:
-                log.info(targ+' recognised as CAL')
+                mircx_mystic_log.info(targ+' recognised as CAL')
                 if 'UD_H' in m_modTyp[m_targs.index(targNew)]:
                     ud_H = float(pd.Series.tolist(localDB['PARAM1'])[m_targs.index(targNew)])
                     eud_H = float(pd.Series.tolist(localDB['PARAM2'])[m_targs.index(targNew)])
                     calInf = calInf+targ.replace(' ','_')+','+'{0:.6f}'.format(ud_H)+','+'{0:.6f}'.format(eud_H)+','
                     scical.append('CAL')
                 else:
-                    log.error('Model type '+m_modTyp[m_targs.index(targNew)]+' not supported')
-                    log.info('This CAL will not be used in the calibration')
+                    mircx_mystic_log.error('Model type '+m_modTyp[m_targs.index(targNew)]+' not supported')
+                    mircx_mystic_log.info('This CAL will not be used in the calibration')
                     scical.append('(CAL)')
         # If multiple entries are found for the same target, raise an error:
         elif id_count > 1:
-            log.error('Multiple entries found for '+targ+' in '+db)
-            log.error('Please rectify this before continuing.')
+            mircx_mystic_log.error('Multiple entries found for '+targ+' in '+db)
+            mircx_mystic_log.error('Please rectify this before continuing.')
             sys.exit()
     return calInf.replace(' ', ''), scical
 

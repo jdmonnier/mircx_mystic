@@ -9,7 +9,7 @@ from astropy import units;
 from astropy.time import Time;
 
 from .headers import HM, HMQ, HMP, HMW, HC, rep_nan;
-from . import log;
+from . import mircx_mystic_log;
 
 # Default value for the IERS server
 # astropy.utils.iers.conf.iers_auto_url = 'ftp://ftp.iers.org/products/eop/rapid/standard/finals2000A.data';
@@ -59,7 +59,7 @@ def nspec (hdr):
     channel depending on the insturmental setup
     '''
     n = int((hdr['FR_ROW2'] - hdr['FR_ROW1'])/2)*2 - 1;
-    log.info ('nrow = %i'%n);
+    mircx_mystic_log.info ('nrow = %i'%n);
     return n;
 
 def fringe_widthx (hdr):
@@ -130,11 +130,11 @@ def lbd0 (hdr):
 
     # Unknown configuration
     else:
-        log.error ('Unknown CONF_NA');
+        mircx_mystic_log.error ('Unknown CONF_NA');
         raise ValueError('CONF_NA unsuported (yet?)');
 
     # Verbose
-    log.info ('Configuration '+hdr['CONF_NA']+'lbd = %fum dlbd = %fum'%(lbd0*1e6,dlbd*1e6));
+    mircx_mystic_log.info ('Configuration '+hdr['CONF_NA']+'lbd = %fum dlbd = %fum'%(lbd0*1e6,dlbd*1e6));
 
     return lbdref,lbd0,dlbd;
 
@@ -335,7 +335,7 @@ def compute_uv_frame_basic (icrs, obstime):
         astropy.utils.iers.conf.iers_auto_url = 'ftp://ftp.iers.org/products/eop/rapid/standard/finals2000A.data';
         itrs = icrs.transform_to (ITRS(obstime=obstime));
     except:
-        log.warning ('Fail to run icrs.transform_to ITRS, so try with another server');
+        mircx_mystic_log.warning ('Fail to run icrs.transform_to ITRS, so try with another server');
         astropy.utils.iers.conf.iers_auto_url = 'http://maia.usno.navy.mil/ser7/finals2000A.all';
         itrs = icrs.transform_to (ITRS(obstime=obstime));
         
@@ -379,7 +379,7 @@ def compute_uv_frame (icrs,obstime):
         astropy.utils.iers.conf.iers_auto_url = 'ftp://ftp.iers.org/products/eop/rapid/standard/finals2000A.data';
         aa = AltAz (obstime=obstime, location=EarthLocation.of_site('CHARA'));
     except:
-        log.warning ('Fail to run icrs.transform_to ITRS, so try with another server');
+        mircx_mystic_log.warning ('Fail to run icrs.transform_to ITRS, so try with another server');
         astropy.utils.iers.conf.iers_auto_url = 'http://maia.usno.navy.mil/ser7/finals2000A.all';
         aa = AltAz (obstime=obstime, location=EarthLocation.of_site('CHARA'));
     
@@ -433,7 +433,7 @@ def tel_xyz (hdr):
             z = hdr['HIERARCH CHARA '+t+'_BASELINE_Z'];
             default[t] = x,y,z;
         except:
-            log.warning ('Cannot read XYZ of '+t+' (use default and set in header)');
+            mircx_mystic_log.warning ('Cannot read XYZ of '+t+' (use default and set in header)');
             x,y,z = default[t];
             hdr['HIERARCH CHARA '+t+'_BASELINE_X'] = x;
             hdr['HIERARCH CHARA '+t+'_BASELINE_Y'] = y;
@@ -485,7 +485,7 @@ def sky_coord (hdr):
         coord_icrs = coord_icrs.apply_space_motion (new_obstime=meantime);
     
     except:
-        log.info ('Cannot propagate PM_RA and PM_DEC in coordinates');
+        mircx_mystic_log.info ('Cannot propagate PM_RA and PM_DEC in coordinates');
         
         # Build structure
         coord_icrs = SkyCoord (dec=dec_icrs,ra=ra_icrs,distance=distance, 
@@ -513,10 +513,10 @@ def base_uv (hdr):
             u[b] = -hdr['U_'+t[1]+'-'+t[0]];
             v[b] = -hdr['V_'+t[1]+'-'+t[0]];
         else:
-            log.warning ('Cannot read UV base %i (%s-%s) in header.'%(b,t[0],t[1]));
+            mircx_mystic_log.warning ('Cannot read UV base %i (%s-%s) in header.'%(b,t[0],t[1]));
             
         if u[b] == v[b]:
-            log.warning ('ucoord == vcoord base %i (%s-%s) in header.'%(b,t[0],t[1]));
+            mircx_mystic_log.warning ('ucoord == vcoord base %i (%s-%s) in header.'%(b,t[0],t[1]));
 
     return np.array ([u,v]);
 
@@ -534,7 +534,7 @@ def compute_base_uv (hdr,mjd=None,baseid='base'):
     If given, the mdj parameter should match the number
     of computed baseline (either 15 or 20).
     '''
-    log.info ('Compute uv with erfa');
+    mircx_mystic_log.info ('Compute uv with erfa');
 
     # Get the physical telescope position (read from header)
     telpos = tel_xyz (hdr);
