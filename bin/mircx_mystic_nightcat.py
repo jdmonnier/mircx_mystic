@@ -1,6 +1,7 @@
 #! /usr/bin/env python                                                          
 # -*- coding: iso-8859-15 -*-                                                   
 
+
 import mircx_mystic as mrx
 import argparse
 import glob
@@ -10,7 +11,6 @@ from mircx_mystic import log, setup;
 import datetime as datetime
 import tkinter as tk
 from tkinter import filedialog
-
 
 #
 # Implement options
@@ -82,7 +82,7 @@ advanced.add_argument ('-h', action='help',
 
 
 #
-# Initialisation
+# Initialization
 #
 
 # Parse argument
@@ -96,9 +96,6 @@ if argopt.debug == 'TRUE':
     log.info ('start debug mode')
     import pdb;
 
-
-
-    
 #
 # Compute NIGHT CATALOG and summary files, including header stuff.
 #
@@ -139,9 +136,9 @@ if True == True:
             filetype = 'BACKGROUND_MEAN';
             output = mrx.files.output (argopt.preproc_dir, gp[0], 'bkg');
             
-            if os.path.exists (output+'.fits') and overwrite is False:
-                log.info ('Product already exists');
-                continue;
+            #if os.path.exists (output+'.fits') and overwrite is False:
+            #    log.info ('Product already exists');
+            #    continue;
                 
             log.setFile (output+'.log');
 
@@ -178,9 +175,9 @@ if True == True:
             filetype = 'BEAM%i_MAP'%mrx.headers.get_beam (gp[0]);
             output = mrx.files.output (argopt.preproc_dir, gp[0], filetype);
             
-            if os.path.exists (output+'.fits') and overwrite is False:
-                log.info ('Product already exists');
-                continue;
+            #if os.path.exists (output+'.fits') and overwrite is False:
+            #    log.info ('Product already exists');
+            #    continue;
             
             log.setFile (output+'.log');
 
@@ -226,9 +223,9 @@ if True == True:
             filetype = 'BEAM%i_MEAN'%mrx.headers.get_beam (gp[0]);
             output = mrx.files.output (argopt.preproc_dir, gp[0], filetype);
             
-            if os.path.exists (output+'.fits') and overwrite is False:
-                log.info ('Product already exists');
-                continue;
+            #if os.path.exists (output+'.fits') and overwrite is False:
+            #    log.info ('Product already exists');
+            #    continue;
             
             log.setFile (output+'.log');
 
@@ -263,9 +260,9 @@ if True == True:
             filetype = 'BEAM%i_PROFILE'%mrx.headers.get_beam (gp[0]);
             output = mrx.files.output (argopt.preproc_dir, gp[0], filetype);
             
-            if os.path.exists (output+'.fits') and overwrite is False:
-                log.info ('Product already exists');
-                continue;
+            #if os.path.exists (output+'.fits') and overwrite is False:
+            #    log.info ('Product already exists');
+            #    continue;
             
             log.setFile (output+'.log');
 
@@ -314,9 +311,9 @@ if True == True:
             filetype = gp[0]['FILETYPE']+'_PREPROC';
             output = mrx.files.output (argopt.preproc_dir, gp[0], filetype);
             
-            if os.path.exists (output+'.fits') and overwrite is False:
-                log.info ('Product already exists');
-                continue;
+            #if os.path.exists (output+'.fits') and overwrite is False:
+            #    log.info ('Product already exists');
+            #    continue;
 
             log.setFile (output+'.log');
 
@@ -371,9 +368,9 @@ if True == True:
             filetype = 'SPEC_CAL';
             output = mrx.files.output (argopt.preproc_dir, gp[0], filetype);
             
-            if os.path.exists (output+'.fits') and overwrite is False:
-                log.info ('Product already exists');
-                continue;
+            #if os.path.exists (output+'.fits') and overwrite is False:
+            #    log.info ('Product already exists');
+            #    continue;
 
             log.setFile (output+'.log');
             

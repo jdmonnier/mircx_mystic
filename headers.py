@@ -1,4 +1,7 @@
+import pdb
+from syslog import LOG_WARNING
 import numpy as np;
+import pandas as pd;
 
 from astropy.io import fits as pyfits;
 from astropy.time import Time;
@@ -8,6 +11,7 @@ from astropy.table import Table;
 import os, glob, pickle, datetime, re, csv;
 
 from . import log
+counters={'gpstime':0, 'etalon':0, 'sts':0}
 
 # Global shortcut
 HM  = 'HIERARCH MIRC ';
@@ -15,6 +19,7 @@ HMQ = 'HIERARCH MIRC QC ';
 HMP = 'HIERARCH MIRC PRO ';
 HMW = 'HIERARCH MIRC QC WIN ';
 HC = 'HIERARCH CHARA ';
+
 
 def str2bool (s):
     if s == True or s == 'TRUE': return True;
@@ -76,7 +81,7 @@ def clean_date_obs (hdr):
           hdr['DATE-OBS'][0:2] + '-' + \
           hdr['DATE-OBS'][3:5];
 
-def get_mjd (hdr, origin=['linux','gps','mjd'], check=2.0):
+def get_mjd (hdr, origin=['linux','gps','mjd'], check=2.0,Warning=True):
     '''
     Return the MJD-OBS as computed either by Linux time
     TIME_S + 1e-9 * TIME_US  (note than TIME_US is actually
@@ -103,19 +108,19 @@ def get_mjd (hdr, origin=['linux','gps','mjd'], check=2.0):
 
     # Check the difference in [s]
     delta = np.abs (mjdu-mjdl) * 24 * 3600;
-    if (delta > check):
-        log.warning ('UTC-OBS and TIME are different by %.1f s!!'%delta);
+    if (delta > check) & (Warning == True):
+        log.warning ('IN %s : UTC-OBS and TIME are different by %.1f s!! '%(hdr['ORIGNAME'],delta));
 
     # Return the requested one
-    for o in origin:
+    for o in origin:  # if origin in array, then returns result in priority order.
         if o == 'linux' and mjdl != 0.0:
-            return mjdl;
+            return mjdl, (delta > check);
         if o == 'gps' and mjdu != 0.0:
-            return mjdu;
+            return mjdu, (delta > check);
         if o == 'mjd' and mjd != 0.0:
-            return mjd;
+            return mjd, (delta > check);
     
-    return 0.0;
+    return 0.0, None;
     
 def loaddir (dirs, uselog=True):
     '''
@@ -141,31 +146,46 @@ def loaddir (dirs, uselog=True):
         files += glob.glob (dir+'/mircx*.fits.fz');
         files += glob.glob (dir+'/mystic*.fits.fz');
 
+        files = [ x for x in files if "fibexpmap" not in x ] # remove non-data files.
+
         # Check if any
         if len(files) == 0:
-            log.warning ('No mircx*fits or mircx*fits.fz files in this directory');
+            log.warning ('No mircx or mystic data files in this directory');
             continue;
 
         # Sort them alphabetically
         files = sorted (files);
 
-        # Load existing log if any
+        # Load existing log if any ; look for info in summary directory.
         hlog = [];
         # fpkl = dir+'/mircx_hdrs.pkl';
         fpkl = dir+'/mircx_hdrs.txt';
-        if uselog and os.path.isfile (fpkl):
-            try:
-                log.info ('Load header log %s'%fpkl);
-                # hlog = pickle.load (open(fpkl, 'rb'));
-                with open (fpkl) as file:
-                    hlog = [pyfits.Header.fromstring (l) for l in file];
-            except:
-                log.info ('Failed to load log (continue anyway)');
+        #if uselog and os.path.isfile (fpkl):
+        #    try:
+        #        log.info ('Load header log %s'%fpkl);
+        #        # hlog = pickle.load (open(fpkl, 'rb'));
+        #        with open (fpkl) as file:
+        #            hlog = [pyfits.Header.fromstring (l) for l in file];
+        #    except:
+        #        log.info ('Failed to load log (continue anyway)');
 
         # Load header
 
         hdrs_here = load (files, hlog=hlog);
-                
+        test_hdr=hdrs_here[0:3]
+        
+
+
+        hdrs_here[0].keys()  
+        phdrs=pd.DataFrame(hdrs_here)
+        #pd.to_csv("file")
+        # JDM for reasons I don't understand, I can't write good pickle/feather files
+        # without 'cleaningup' through a csv file.  The speed to read/write csv is 
+        # small, so will live with this but strange.
+
+#for x in phdrs.keys(): print(x,phdrs[x].dtype)
+        pdb.set_trace()
+        
         # Dump log
         if uselog:
             try:
@@ -201,6 +221,9 @@ def load (files, hlog=[]):
     filesin = [os.path.split (h['ORIGNAME'])[1] for h in hlog];
 
     # Loop on files
+    log.info("Number of files to read: %i "%len(files))
+    log.info("First File: %s "%files[0])
+    log.info("Last File : %s"%files[-1])
     for fn,f in enumerate (files):
         try:
             
@@ -222,7 +245,7 @@ def load (files, hlog=[]):
                 # Read normal file
                 else:
                     hdr = pyfits.getheader(f, 0);
-                log.info('Read header %i over %i (%s)'%(fn+1,len(files),f));
+                #log.info('Read header %i over %i (%s)'%(fn+1,len(files),f));
 
             # Add file name
             hdr['ORIGNAME'] = f;
@@ -246,8 +269,12 @@ def load (files, hlog=[]):
             clean_date_obs (hdr);
 
             # Compute MJD from information in header
-            mjd = get_mjd (hdr);
-
+            mjd, temp_flag = get_mjd (hdr, Warning = (counters["gpstime"] == 0));
+            #mjd, temp_flag = get_mjd (hdr, Warning = True);
+            if (counters["gpstime"] == 0) & temp_flag:
+                    log.warning("Additional time discrepancy warnings suppressed.")
+            if (temp_flag): 
+                counters["gpstime"]+=1            
             # Set in header
             hdr['MJD-OBS'] = (mjd, '[mjd] Observing time');
 
@@ -256,27 +283,40 @@ def load (files, hlog=[]):
 
             # Check if STS data
             if hdr.get ('HIERARCH MIRC STS_IR_FOLD','OUT') == 'IN':
-                log.info ('Set OBJECT = STS because STS_IR_FOLD is IN');
+                #log.info ('Set OBJECT = STS because STS_IR_FOLD is IN');
                 hdr['OBJECT'] = 'STS';
+                counters["sts"] +=1
 
             
             # Check if ETALON
             if hdr.get ('HIERARCH MIRC ARMADA','OUT') == 'IN':
-                if hdr['OBJECT'][-1]=='E':
-                    log.info ('ETALON is IN for OBJECT');
-                else:    
-                    log.info ('Set OBJECT = OBJECT_E because ETALON is IN');
-                    hdr['OBJECT'] += '_E';
+                counters["etalon"] +=1
+                #if hdr['OBJECT'][-1]=='E':
+                #    #log.info ('ETALON is IN for OBJECT');  
+            #else:    
+                #    #log.info ('Set OBJECT = OBJECT_E because ETALON is IN');
+                if hdr['OBJECT'][-1] != 'E': 
+                    hdr['OBJECT'] += '_E';  # JDM slightly preferes ETALON_OBJECT... but we will keep
 
             # Append
             hdrs.append (hdr);
-            
+    
         except (KeyboardInterrupt, SystemExit):
             raise;
         except Exception as exc:
             log.warning ('Cannot get header of '+f+' ('+str(exc)+')');
-            
+        
+        #progress bar
+        if fn == len(files)//4:   
+            log.info("PROGRESS 25% Done")
+        if fn == len(files)//2:   
+            log.info("PROGRESS 50% Done")
+        if fn == len(files)*3//4: 
+            log.info("PROGRESS 75% Done")
 
+    log.info('Number of files with time discrepancy: %i '%counters['gpstime'])
+    log.info('Number of files with STS: %i '%counters['sts'])
+    log.info('Number of files with Etalon: %i '%counters['etalon'])
     log.info ('%i headers loaded'%len(hdrs));
     return hdrs;
 

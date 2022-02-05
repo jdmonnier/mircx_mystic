@@ -1,4 +1,5 @@
-from . import log
+import mircx_mystic as mrx
+from mrx import log
 
 def calTest(files, UDD, obj, outDir, uset3amp=False, fixUDD=True, detLim=True, observables=['v2', 'cp']):
     """
