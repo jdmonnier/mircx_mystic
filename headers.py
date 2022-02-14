@@ -261,7 +261,7 @@ def load (files, hlog=[]):
                 hdr.rename_keyword ('ENDFR','LASTFR');
 
             # Check NBIN
-            if 'NBIN' not in hdr and hdr['FILETYPE'] is not 'FLAT_MAP':
+            if 'NBIN' not in hdr and hdr['FILETYPE'] != 'FLAT_MAP':
                 log.warning ('Old data with no NBIN (set to one)');
                 hdr['NBIN'] = 1;
 
@@ -600,7 +600,7 @@ def update_diam_from_jmmc (catalog):
 
                 # Convert and parse
                 os.system ('xsltproc '+voTableToTsv+' mircx_searchcal.vot > mircx_searchcal.tsv');
-                answer = [l for l in csv.reader(open('mircx_searchcal.tsv'),delimiter='\t') if l[0][0] is not '#'];
+                answer = [l for l in csv.reader(open('mircx_searchcal.tsv'),delimiter='\t') if l[0][0] != '#'];
                 c[1] = float (answer[1][answer[0].index('UD_H')]);
                 c[2]  = float (answer[1][answer[0].index('e_LDD')]);
                 

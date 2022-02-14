@@ -4,20 +4,8 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        
 
 
-    
-
-        
-
-        {
-            "name": "test",
-            "type": "python",
-            "request": "launch",
-            "program": "/Users/monnier/Python/MIRCX_MYSTIC/mircx_mystic/bin/mircx_mystic_nightcat.py",
-            "console": "integratedTerminal"
-        },
         {
             "name": "Python: Current File",
             "type": "python",
@@ -26,6 +14,14 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "test",
+            "type": "python",
+            "request": "launch",
+            "program": "/Users/monnier/Python/MIRCX_MYSTIC/mircx_mystic/bin/mircx_mystic_nightcat.py",
+            "console": "integratedTerminal"
+        },
+
+        {
             "name": "JDM Laptop M1: nightcat: 2019Aug06_small",
             "type": "python",
             "request": "launch",
@@ -33,8 +29,8 @@
                 "PYTHONPATH": "/Users/monnier/Python/MIRCX_MYSTIC/"
             },
             "program": "/Users/monnier/Python/MIRCX_MYSTIC/mircx_mystic/bin/mircx_mystic_nightcat.py",
-                     "cwd": "/Users/monnier/MIRCX_MYSTIC_REDUCED/2019Aug06_small/",
-                     "console": "integratedTerminal",
+            "cwd": "/Users/monnier/MIRCX_MYSTIC_REDUCED/2019Aug06_small/",
+            "console": "integratedTerminal",
             //"console": "internalConsole",
             "args": [
                 "--raw-dir=/Users/monnier/DATA/MIRCX/2021Sep15/",
