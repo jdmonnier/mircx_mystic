@@ -1,8 +1,0 @@
-{
-    "python.analysis.extraPaths": ["/Users/monnier/Python/MIRCX_MYSTIC:"],
-    "python.envFile": "${workspaceFolder}/.env",
-    "terminal.integrated.env.osx": {
-        "PYTHONPATH": "/Users/monnier/Python/MIRCX_MYSTIC:"
-    },
-    "python.analysis.logLevel": "Trace"
-}           

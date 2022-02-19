@@ -2,13 +2,15 @@ import pdb
 from syslog import LOG_WARNING
 import numpy as np;
 import pandas as pd;
+import sys
 
 from astropy.io import fits as pyfits;
 from astropy.time import Time;
 from astropy.io import ascii;
 from astropy.table import Table;
 
-import os, glob, pickle, datetime, re, csv;
+
+import os, glob, pickle, datetime, re, csv, gc;
 
 from . import log
 counters={'gpstime':0, 'etalon':0, 'sts':0}
@@ -109,7 +111,7 @@ def get_mjd (hdr, origin=['linux','gps','mjd'], check=2.0,Warning=True):
     # Check the difference in [s]
     delta = np.abs (mjdu-mjdl) * 24 * 3600;
     if (delta > check) & (Warning == True):
-        log.warning ('IN %s : UTC-OBS and TIME are different by %.1f s!! '%(hdr['ORIGNAME'],delta));
+        log.warning ('IN %s :\n   UTC-OBS and TIME are different by %.1f s!! '%(hdr['ORIGNAME'],delta));
 
     # Return the requested one
     for o in origin:  # if origin in array, then returns result in priority order.
@@ -156,69 +158,23 @@ def loaddir (dirs, uselog=True):
         # Sort them alphabetically
         files = sorted (files);
 
-        # Load existing log if any ; look for info in summary directory.
-        hlog = [];
-        # fpkl = dir+'/mircx_hdrs.pkl';
-        fpkl = dir+'/mircx_hdrs.txt';
-        #if uselog and os.path.isfile (fpkl):
-        #    try:
-        #        log.info ('Load header log %s'%fpkl);
-        #        # hlog = pickle.load (open(fpkl, 'rb'));
-        #        with open (fpkl) as file:
-        #            hlog = [pyfits.Header.fromstring (l) for l in file];
-        #    except:
-        #        log.info ('Failed to load log (continue anyway)');
-
-        # Load header
-
-        hdrs_here = load (files, hlog=hlog);
-        test_hdr=hdrs_here[0:3]
+        # Load headers
+        hdrs_here = load (files);
         
-
-
-        hdrs_here[0].keys()  
-        phdrs=pd.DataFrame(hdrs_here)
-        #pd.to_csv("file")
-        # JDM for reasons I don't understand, I can't write good pickle/feather files
-        # without 'cleaningup' through a csv file.  The speed to read/write csv is 
-        # small, so will live with this but strange.
-
-#for x in phdrs.keys(): print(x,phdrs[x].dtype)
-        pdb.set_trace()
-        
-        # Dump log
-        if uselog:
-            try:
-                log.info ('Write header log %s'%fpkl);
-                if os.path.isfile (fpkl): os.remove (fpkl);
-                # pickle.dump (hdrs_here, open(fpkl, 'wb'), -1);
-                with open (fpkl,'w') as file:
-                    for h in hdrs_here: file.write (h.tostring()); file.write('\n');
-            except:
-                log.info ('Failed to write log (continue anyway)');
-        
-        # Append headers
+        # Append headers in case of multiple directories -- not used...
         hdrs.extend (hdrs_here);
+
+
 
     return hdrs;
 
-def load (files, hlog=[]):
+def load (files):
     '''
     Load the headers of all input files. The following keywords
     are added to each header: MJD-OBS, MJD-LOAD and ORIGNAME.
     The output is a list of FITS headers.
-
-    The hlog is a list of already loaded headers. The function 
-    first search for the filename in this list (ORIGNAME). If the 
-    file is not in the list, or if its MJD-LOAD is past from the
-    last modification of the file, the header is loaded. The hlog
-    system allows to speed up the loading of large number of headers.
     '''
-    elog = log.trace ('load');
     hdrs = []
-
-    # Files available in log
-    filesin = [os.path.split (h['ORIGNAME'])[1] for h in hlog];
 
     # Loop on files
     log.info("Number of files to read: %i "%len(files))
@@ -227,25 +183,23 @@ def load (files, hlog=[]):
     for fn,f in enumerate (files):
         try:
             
-            # Recover header in hlog
-            try:
-                # Look for it
-                # thing_index = thing_list.index(elem) if elem in thing_list else -1
+            # Read compressed file
+            if f[-7:] == 'fits.fz':
+                #hdr = pyfits.getheader(f, 1);
+                hdulist=pyfits.open(f,memmap=False)
+                hdr=hdulist[1].header.copy()
+                del hdulist[1].header
+                hdulist.close()
+                del hdulist
 
-                hdr = hlog[filesin.index (os.path.split (f)[1])];
-                # Check if not modified since last loaded
-                tmod  = Time (os.path.getmtime(f),format='unix',scale='utc').mjd;
-                if (tmod > hdr['MJD-LOAD']): raise;
-                log.info ('Recover header %i over %i (%s)'%(fn+1,len(files),f));
-            # Read header from file
-            except:
-                # Read compressed file
-                if f[-7:] == 'fits.fz':
-                    hdr = pyfits.getheader(f, 1);
-                # Read normal file
-                else:
-                    hdr = pyfits.getheader(f, 0);
-                #log.info('Read header %i over %i (%s)'%(fn+1,len(files),f));
+            # Read normal file
+            else:
+                #hdr = pyfits.getheader(f, 0);
+                hdulist=pyfits.open(f,memmap=False)
+                hdr=hdulist[0].header.copy()
+                del hdulist[0].header # save a little memory along the way.
+                hdulist.close()
+                del hdulist
 
             # Add file name
             hdr['ORIGNAME'] = f;
@@ -314,6 +268,7 @@ def load (files, hlog=[]):
         if fn == len(files)*3//4: 
             log.info("PROGRESS 75% Done")
 
+    gc.collect()
     log.info('Number of files with time discrepancy: %i '%counters['gpstime'])
     log.info('Number of files with STS: %i '%counters['sts'])
     log.info('Number of files with Etalon: %i '%counters['etalon'])
