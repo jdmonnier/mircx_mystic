@@ -222,6 +222,13 @@ def load (files):
             # Reformat DATE-OBS
             clean_date_obs (hdr);
 
+            if 'DPOL_ROW' in hdr:
+                    if hdr['DPOL_ROW'] !=0:
+                    # check if config ends with _WOLL and hdr['CONF_NA']
+                    conf_na = hdr['CONF_NA'].strip()
+                    if conf_na[-5:] != '_WOLL': hdr['CONF_NA']=conf_na+'_WOLL'
+
+
             # Compute MJD from information in header
             mjd, temp_flag = get_mjd (hdr, Warning = (counters["gpstime"] == 0));
             #mjd, temp_flag = get_mjd (hdr, Warning = True);
