@@ -149,18 +149,22 @@ phdrs=pd.DataFrame(hdrs)
 phdrs.to_csv(os.path.join(path,mrx_root+'_headers.csv'))
 mrx_list={'raw_dir':os.path.abspath(argopt.raw_dir),'mrx_utdate':mrx_utdate,'mrx_id':argopt.mrx_id, 'mrx_dir':os.path.abspath(argopt.mrx_dir), 'mrx_instrument':mrx_instrument,'mrx_root':mrx_id}
 json_file=os.path.join(path,mrx_root+'_metadata.json') 
+
 with open(json_file, 'w') as f:
   json.dump(mrx_list, f, ensure_ascii=False,indent=4,sort_keys=True)
   f.close()
 
-with open(json_file) as f:
-    result = json.load(f)
-    f.close()
-
-print('Original: '+mrx_list['mrx_dir'])
-print('CHECK: '  +result['mrx_dir'])
+#with open(json_file) as f:
+#    result = json.load(f)
+#    f.close()
 #data_dictionary = pickle.load( open( "savename.pickle, "rb" ))
 #locals().update(data_dictionary)
+
+# Make Groups based only only FILETYPE and then write summary
+# nightcat txt file.
+# This file can also be edited. 
+
+
 
 del elog
 log.closeFile()
