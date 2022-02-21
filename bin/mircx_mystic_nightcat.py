@@ -164,7 +164,34 @@ with open(json_file, 'w') as f:
 # nightcat txt file.
 # This file can also be edited. 
 
+newhdrs=mrx.headers.p2h(phdrs)
+for h in hdrs: print(h['FILETYPE'])
+for h in newhdrs: print(h['FILETYPE'])
 
+columns=['OBJECT','CONFIG','HWP','FILETYPE','FILES']
+# Group backgrounds
+keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT']
+gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
+
+gps1 = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=False);
+
+
+gps2 = mrx.headers.group (newhdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
+
+for g in gps2: print(g[0]["OBJECT"],g[0]['FILETYPE'])
+#Students = {'Student': ['Amit', 'Cody',
+#                        'Darren', 'Drew'],
+#            'RollNumber': [1, 5, 10, 15],
+#            'Grade': ['A', 'C', 'F', 'B']}
+#df = pd.DataFrame(students,
+##                  columns =['Student', 'RollNumber',
+#                            'Grade'])
+# displaying the original DataFrame
+##Print("Original DataFrame")
+#print(df)
+ 
+# saving as a CSV file
+#df.to_csv('Students.csv', sep ='\t')
 
 del elog
 log.closeFile()
