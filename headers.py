@@ -192,6 +192,7 @@ def load (files):
                 del hdulist[1].header
                 hdulist.close()
                 del hdulist
+                fnum=int(f[-13:-8])  # might not always be true.
 
             # Read normal file
             else:
@@ -201,9 +202,11 @@ def load (files):
                 del hdulist[0].header # save a little memory along the way.
                 hdulist.close()
                 del hdulist
+                fnum=int(f[-10:-5])
 
             # Add file name
             hdr['ORIGNAME'] = f;
+            hdr['FILENUM'] = fnum;
 
             # Test if FRAME_RATE is in header
             if 'HIERARCH MIRC FRAME_RATE' not in hdr and 'EXPOSURE' in hdr:

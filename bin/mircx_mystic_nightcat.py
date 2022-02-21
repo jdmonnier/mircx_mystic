@@ -171,14 +171,14 @@ for h in newhdrs: print(h['FILETYPE'])
 columns=['OBJECT','CONFIG','HWP','FILETYPE','FILES']
 # Group backgrounds
 keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT']
-gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
+#gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
 
-gps1 = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=False);
 
+#gps1 = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=False);
 
 gps2 = mrx.headers.group (newhdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
+for g in gps2: print(g[0]["OBJECT"],'\t',g[0]['CONF_NA'],'\t',g[0]['FILETYPE'],'\t',g[0]['FILENUM'],'-',g[-1]['FILENUM'] )
 
-for g in gps2: print(g[0]["OBJECT"],g[0]['FILETYPE'])
 #Students = {'Student': ['Amit', 'Cody',
 #                        'Darren', 'Drew'],
 #            'RollNumber': [1, 5, 10, 15],
