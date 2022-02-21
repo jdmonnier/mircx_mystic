@@ -1,4 +1,5 @@
 import pdb
+from pydoc import pathdirs
 from syslog import LOG_WARNING
 import numpy as np;
 import pandas as pd;
@@ -621,3 +622,11 @@ def get_sci_cal (hdrs, catalog):
             scis.append (h);
 
     return scis,cals;
+
+def p2h (phdrs): # convert panda frame to our standard header list of dictionaries
+    hdr0=[]
+    allh=phdrs.transpose().to_dict()
+    for i in range(len(phdrs)):
+        temp=allh[i]
+        hdr0.append(temp)
+    return hdr0;
