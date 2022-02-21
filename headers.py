@@ -333,7 +333,7 @@ def match (h1,h2,keys,delta):
     # Ensure binary output
     return True if answer else False;
 
-def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
+def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[], logLevel=1):
     '''
     Group the input headers into list of compatible files.
     A new group is started if:
@@ -369,24 +369,24 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
 
         # If no previous
         if groups[-1] == []:
-            log.info('New group %s'%fileinfo);
+            if logLevel > 4: log.info('New group %s'%fileinfo);
             groups[-1].append(h);
             continue;
 
         # If no match with last, we start new group
         if match (h,groups[-1][-1],keys,delta) is False:
-            log.info('New group (gap) %s'%fileinfo);
+            if logLevel > 4: log.info('New group (gap) %s'%fileinfo);
             groups.append([h]);
             continue;
 
         # If no match with first, we start new group
         if match (h,groups[-1][0],keys,Delta) is False:
-            log.info('New group (integration) %s'%fileinfo);
+            if logLevel > 4: log.info('New group (integration) %s'%fileinfo);
             groups.append([h]);
             continue;
         
         # Else, add to current group
-        log.info('Add file %s'%fileinfo);
+        if logLevel > 9: log.info('Add file %s'%fileinfo);
         groups[-1].append(h);
 
     # Clean from void groups
@@ -394,11 +394,12 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
     
     # For the BACKGROUND, remove the first file if there is more than 3 files
     # because it is often contaminated with light (slow shutter)
-    if mtype == 'BACKGROUND':
-        for i in range(np.shape(groups)[0]):
-            if np.shape(groups[i])[0] > 3:
-                groups[i] = groups[i][1:];
-                log.info ('Ignore the first BACKGROUND files (more than 3)');
+    # This needs to be more robust for all kinds of shutters. will be done later.
+    #if mtype == 'BACKGROUND':
+    #    for i in range(np.shape(groups)[0]):
+    #        if np.shape(groups[i])[0] > 3:
+    #            groups[i] = groups[i][1:];
+    #            if logLevel > 4: log.info ('Ignore the first BACKGROUND files (more than 3)');
     
     return groups;
 
