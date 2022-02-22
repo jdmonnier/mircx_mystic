@@ -63,7 +63,7 @@ nightcat = parser.add_argument_group('(1) nightcat',
                                      'nightly summary in editable ASCII format and header info in panda dataframes')
 
 nightcat.add_argument("--raw-dir", dest="raw_dir", default=None, type=str,
-                      help="directory of raw data [%(default)s]")
+                      help="directory of raw data (or SUMMARY dir) [%(default)s]")
 
 nightcat.add_argument("--mrx-dir", dest="mrx_dir", default='./', type=str,
                       help="directory of mrx pipeline products [%(default)s]")
@@ -71,6 +71,10 @@ nightcat.add_argument("--mrx-dir", dest="mrx_dir", default='./', type=str,
 nightcat.add_argument("--id", dest="mrx_id",
                       default='ID'+datetime.date.today().strftime('%Y%b%d'), type=str,
                       help="unique identifier for data reduction [%(default)s]")
+
+nightcat.add_argument("--log-level", dest="logLevel",
+                      default=1, type=int,
+                      help="log verbosity, 1= minimal, 10=most detailed [%(default)s]")
 
 advanced = parser.add_argument_group('advanced user arguments')
 
@@ -88,6 +92,7 @@ advanced.add_argument('-h', action='help',
 #
 # Initialization
 #
+str_to_remove = [' ','-','_','!','#','@','$','%','^','&','*','(',')']
 
 # Parse argument
 argopt = parser.parse_args()
@@ -117,42 +122,66 @@ if argopt.raw_dir == None:
     root.withdraw()
     argopt.raw_dir = filedialog.askdirectory(title="Select PATH to DATA")
 
-# List inputs
-hdrs = mrx.headers.loaddir(argopt.raw_dir)
-
-# Create Summary directory and save hdrs with all info needed to contineu 
-# analysis without requiring future info about data location
-
-str_to_remove = [' ','-','_','!','#','@','$','%','^','&','*','(',')']
-mrx_instrument = hdrs[0]["INSTRUME"] # assume all files from same instrument
-mrx_id = argopt.mrx_id
-
-# strip weird characters since we are creating a filename from these
-for str0 in str_to_remove: mrx_instrument=mrx_instrument.replace(str0,'')
-for str0 in str_to_remove: mrx_id=mrx_id.replace(str0,'')
- # assume all data from same UTNIGHT
-# this could be an issues ifyou want to combine data from multiple nights
-# but one should not do this but rather share reduced info like wavelength tables,
-# kappa matrices, instead....
-mrx_utdate = (datetime.date.fromisoformat(hdrs[0]["DATE-OBS"])).strftime("%Y%b%d")
-mrx_root = mrx_utdate+'_'+mrx_instrument+'_'+mrx_id
-mrx_summary_dir=mrx_root+'_SUMMARY'
-path = os.path.join(argopt.mrx_dir, mrx_summary_dir)
-log.info('Creating SUMMARY directory: %s' % (path))
-if os.path.exists(path): ## guard
-    log.error("SUMMARY path already exists. Remove or change --id.   ABORTING")
-    quit()
-os.mkdir(path)
+if argopt.raw_dir[-8:] =='_SUMMARY':
+    # load json file to retrieve raw-dir, etc.
+    # USE the headers.csv file to create new block.csv (NO OVERWRITE)
+    # remake figures.
+    log.info("Chose SUMMARY directory. Will use saved heaers and info from metadata.json")
+    mrx_root=argopt.raw_dir.split('/')[-1][:-8]
+    json_file=os.path.join(argopt.raw_dir,mrx_root+'_metadata.json')
+    with open(json_file) as f:
+        jsonresult = json.load(f)
+        f.close()
+        raw_dir=''
+        mrx_dir=''
+        mrx_root='' 
+        locals().update(jsonresult)
+        argopt.raw_dir=raw_dir
+        argopt.mrx_dir=mrx_dir
+        mrx_summary_dir=mrx_root+'_SUMMARY'
+        path = os.path.join(argopt.mrx_dir, mrx_summary_dir)
+        phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'))
 
 
-phdrs=pd.DataFrame(hdrs)
-phdrs.to_csv(os.path.join(path,mrx_root+'_headers.csv'))
-mrx_list={'raw_dir':os.path.abspath(argopt.raw_dir),'mrx_utdate':mrx_utdate,'mrx_id':argopt.mrx_id, 'mrx_dir':os.path.abspath(argopt.mrx_dir), 'mrx_instrument':mrx_instrument,'mrx_root':mrx_id}
-json_file=os.path.join(path,mrx_root+'_metadata.json') 
+else: # read header.
+    # List inputs
+    hdrs = mrx.headers.loaddir(argopt.raw_dir)
 
-with open(json_file, 'w') as f:
-  json.dump(mrx_list, f, ensure_ascii=False,indent=4,sort_keys=True)
-  f.close()
+    # Create Summary directory and save hdrs with all info needed to contineu 
+    # analysis without requiring future info about data location
+
+    mrx_instrument = hdrs[0]["INSTRUME"] # assume all files from same instrument
+    mrx_id = argopt.mrx_id
+
+    # strip weird characters since we are creating a filename from these
+    for str0 in str_to_remove: mrx_instrument=mrx_instrument.replace(str0,'')
+    for str0 in str_to_remove: mrx_id=mrx_id.replace(str0,'')
+    # assume all data from same UTNIGHT
+    # this could be an issues ifyou want to combine data from multiple nights
+    # but one should not do this but rather share reduced info like wavelength tables,
+    # kappa matrices, instead....
+    mrx_utdate = (datetime.date.fromisoformat(hdrs[0]["DATE-OBS"])).strftime("%Y%b%d")
+    mrx_root = mrx_utdate+'_'+mrx_instrument+'_'+mrx_id
+    mrx_summary_dir=mrx_root+'_SUMMARY'
+    path = os.path.join(argopt.mrx_dir, mrx_summary_dir)
+    log.info('Creating SUMMARY directory: %s' % (path))
+    if os.path.exists(path): ## guard
+        log.error("SUMMARY path already exists. Remove or change --id.   ABORTING")
+        quit()
+    os.mkdir(path)
+
+    phdrs=pd.DataFrame(hdrs)
+    phdrs.to_csv(os.path.join(path,mrx_root+'_headers.csv'))
+
+    mrx_list={'raw_dir':os.path.abspath(argopt.raw_dir),'mrx_utdate':mrx_utdate,
+        'mrx_id':argopt.mrx_id, 'mrx_dir':os.path.abspath(argopt.mrx_dir), 
+        'mrx_instrument':mrx_instrument,'mrx_root':mrx_root}
+    json_file=os.path.join(path,mrx_root+'_metadata.json') 
+
+    with open(json_file, 'w') as f:
+        json.dump(mrx_list, f, ensure_ascii=False,indent=4,sort_keys=True)
+        f.close()
+
 
 #with open(json_file) as f:
 #    result = json.load(f)
@@ -164,20 +193,43 @@ with open(json_file, 'w') as f:
 # nightcat txt file.
 # This file can also be edited. 
 
-newhdrs=mrx.headers.p2h(phdrs)
-for h in hdrs: print(h['FILETYPE'])
-for h in newhdrs: print(h['FILETYPE'])
+hdrs=mrx.headers.p2h(phdrs)
+#for h in hdrs: print(h['FILETYPE'])
+#for h in hdrs: print(h['FILETYPE'])
 
-columns=['OBJECT','CONFIG','HWP','FILETYPE','FILES']
 # Group backgrounds
 keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT']
-#gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
+
+gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
+
+#for g in gps: 
+#    print(g[0]["OBJECT"],'\t',g[0]['CONF_NA'],'\t',g[0]['FILETYPE'],'\t',g[0]['FILENUM'],'-',g[-1]['FILENUM'] )
+
+group_first = [item[0] for item in gps]
+group_last = [item[-1] for item in gps]
+
+columns=['BLOCK','OBJECT','CONF_NA','HWP','FILETYPE','START','END']
+block_dict= {}
+block_dict['BLOCK']=list(range(len(group_first)))
+block_dict['OBJECT']=[temp['OBJECT'] for temp in group_first]
+block_dict['CONF_NA']=[temp['CONF_NA'] for temp in group_first]
+block_dict['FILETYPE']=[temp['FILETYPE'] for temp in group_first]
+block_dict['START']=[temp['FILENUM'] for temp in group_first]
+block_dict['END']=[temp['FILENUM'] for temp in group_last]
+pblock = pd.DataFrame(block_dict,columns=columns)
+pblock_file=os.path.join(path,mrx_root+'_blocks.csv')
+if os.path.exists(pblock_file): ## guard
+    log.warning(pblock_file+' already exists. NOT OVERWRITING!! ')
+    log.info('Loading old Block file')
+    pblock = pd.read_csv(pblock_file)
+else:
+    pblock.to_csv(pblock_file,index=False,sep=',')
+    log.info("Writing block file:"+mrx_root+'_blocks.csv')
 
 
-#gps1 = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=False);
-
-gps2 = mrx.headers.group (newhdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
-for g in gps2: print(g[0]["OBJECT"],'\t',g[0]['CONF_NA'],'\t',g[0]['FILETYPE'],'\t',g[0]['FILENUM'],'-',g[-1]['FILENUM'] )
+#blockdata=
+#[temp['FILENUM'] for temp in group_first]
+#blockdata = {'BLOCK': range(len(gps2)), 'OBJECT': 
 
 #Students = {'Student': ['Amit', 'Cody',
 #                        'Darren', 'Drew'],
