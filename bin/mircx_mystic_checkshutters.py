@@ -39,7 +39,7 @@ epilog = \
 Examples:
   
 fully-specified:
-  mircx_mystic_nightcat.py --raw-dir=/path/to/raw/data/ --mrx_dir=/path/to/reduced/data/ -id=JDM2022Jan04
+  mircx_mystic_checkshutters.py --summary-dir=/path/to/reduced/summary
 
 defaults:
   cd /path/where/I/want/my/reduced/data/
@@ -55,21 +55,13 @@ parser = argparse.ArgumentParser(description=description, epilog=epilog,
 TrueFalse = ['TRUE', 'FALSE']
 TrueFalseOverwrite = ['TRUE', 'FALSE', 'OVERWRITE']
 
-nightcat = parser.add_argument_group('(1) nightcat',
-                                     '\nCreates a summary directory containting\n'
-                                     'nightly summary in editable ASCII format and header info in panda dataframes')
+checkshutters = parser.add_argument_group('(1) checkshutters',
+                                     '\nChecks accuracy of shutter blocks in blocks file')
 
-nightcat.add_argument("--raw-dir", dest="raw_dir", default=None, type=str,
-                      help="directory of raw data (or SUMMARY dir) [%(default)s]")
+checkshutters.add_argument("--summary-dir", dest="summary_dir", default=None, type=str,
+                      help="directory of SUMMARY  [%(default)s]")
 
-nightcat.add_argument("--mrx-dir", dest="mrx_dir", default='./', type=str,
-                      help="directory of mrx pipeline products [%(default)s]")
-
-nightcat.add_argument("--id", dest="mrx_id",
-                      default='ID'+datetime.date.today().strftime('%Y%b%d'), type=str,
-                      help="unique identifier for data reduction [%(default)s]")
-
-nightcat.add_argument("--log-level", dest="logLevel",
+checkshutters.add_argument("--log-level", dest="logLevel",
                       default=1, type=int,
                       help="log verbosity, 1= minimal, 10=most detailed [%(default)s]")
 
@@ -95,13 +87,13 @@ str_to_remove = [' ','-','_','!','#','@','$','%','^','&','*','(',')']
 argopt = parser.parse_args()
 
 #
-tempfile='.mircx_mystic_nightcat.temp.log'
+tempfile='.mircx_mystic_checkshutters.temp.log'
 #remove tempfile if already exists
 if os.path.exists(tempfile): os.remove(tempfile)
 log.setFile(tempfile) ## will get renamed
 
 # Verbose
-elog = log.trace('mircx_mystic_nightcat')  # for Timing.
+elog = log.trace('mircx_mystic_checkshutters')  # for Timing.
 
 # Set debug
 if argopt.debug == 'TRUE':
@@ -109,9 +101,8 @@ if argopt.debug == 'TRUE':
     import pdb
 
 #
-# Compute NIGHT CATALOG and summary files, including header stuff.
+#  Check Shutters... time consuming but important to do.
 #
-
 # get raw directory if none passes
 if argopt.raw_dir == None:
     log.info("No Raw Directory Passed. Using Dialog Pickfile")
