@@ -1,8 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 
-
-
+# TODO. fix permissions on filest olllow read/write by all, group,owner...
 
 import mircx_mystic as mrx
 import argparse
@@ -12,7 +11,7 @@ import sys
 import pickle
 import json
 
-from mircx_mystic import log, setup
+from mircx_mystic import log, setup, files
 import datetime as datetime
 import tkinter as tk
 from tkinter import filedialog
@@ -164,11 +163,14 @@ else: # read header.
     mrx_root = mrx_utdate+'_'+mrx_instrument+'_'+mrx_id
     mrx_summary_dir=mrx_root+'_SUMMARY'
     path = os.path.join(argopt.mrx_dir, mrx_summary_dir)
-    log.info('Creating SUMMARY directory: %s' % (path))
+    #log.info('Creating SUMMARY directory: %s' % (path))
     if os.path.exists(path): ## guard
         log.error("SUMMARY path already exists. Remove or change --id.   ABORTING")
-        quit()
-    os.mkdir(path)
+        del elog
+        log.closeFile()
+        sys.exit()
+    files.ensure_dir(path)
+    #os.mkdir(path)
 
     phdrs=pd.DataFrame(hdrs)
     phdrs.to_csv(os.path.join(path,mrx_root+'_headers.csv'))
