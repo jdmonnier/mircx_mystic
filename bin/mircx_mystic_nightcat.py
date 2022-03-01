@@ -126,7 +126,7 @@ if argopt.raw_dir[-8:] =='_SUMMARY':
     # load json file to retrieve raw-dir, etc.
     # USE the headers.csv file to create new block.csv (NO OVERWRITE)
     # remake figures.
-    log.info("Chose SUMMARY directory. Will use saved heaers and info from metadata.json")
+    log.info("Chose SUMMARY directory. Will use saved headers and info from metadata.json")
     mrx_root=argopt.raw_dir.split('/')[-1][:-8]
     json_file=os.path.join(argopt.raw_dir,mrx_root+'_metadata.json')
     with open(json_file) as f:
@@ -248,6 +248,14 @@ else:
 del elog
 log.closeFile()
 
+# Move tempfile.
+logfile =  os.path.join(path,mrx_root+'_nightcat.log') 
+fout=open(logfile,'a')
+fin =open(tempfile,'r')
+fout.writelines( fin.readlines() )
+fout.close()
+fin.close()
+os.remove(tempfile)
 
 
 exit()

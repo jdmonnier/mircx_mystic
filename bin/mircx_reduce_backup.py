@@ -1,12 +1,12 @@
 #! /usr/bin/env python                                                          
 # -*- coding: iso-8859-15 -*-                                                   
 
-import mircx_pipeline as mrx
+import mircx_mystic as mrx
 import argparse
 import glob
 import os
 
-from mircx_pipeline import log, setup;
+from mircx_mystic_nightcat import log, setup;
 
 #
 # Implement options
