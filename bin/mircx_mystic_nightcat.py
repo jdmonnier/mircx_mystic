@@ -198,8 +198,8 @@ hdrs=mrx.headers.p2h(phdrs)
 #for h in hdrs: print(h['FILETYPE'])
 
 # Group backgrounds
-keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT']
-
+# JDM for the 'block' file maybe we only want to group by target, conf, hwp, filetype....
+keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT','CONF_NA']
 gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
 
 #for g in gps: 

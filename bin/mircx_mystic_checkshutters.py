@@ -1,9 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 
-
-
-
 import mircx_mystic as mrx
 import argparse
 import glob
@@ -26,13 +23,13 @@ import pandas as pd
 description = \
     """
 description:
-  Will create a night catalog summary directory with helpful files needed for rest of
-  the pipeline. Will recognize fits, fits.fz files but NOT fits.gz
+  Following nightcat, this will touch all the files to create average photometric channel profiles 
+  as a way to check and fix shutter problems.  Since knowledge of shutters is key to smooth functioning
+  of all steps of pipeline, including preproc, we will have a dedicated routine.
+  
+  Only input is the summary directory, using keyword or dialog pickfile.
 
-  The input and output directories are relative to the
-  current directory.
-
-  if you leave blank, the default identifier is today's date and raw data directory chosen by 
+  if you leave blank, the SUMMARY directory chosen by 
   dialog pickfile, out output directory is local.
 """
 
