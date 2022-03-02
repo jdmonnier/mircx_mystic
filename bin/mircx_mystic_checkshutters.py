@@ -1,6 +1,14 @@
 #! /usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 
+# TODO 
+#   1. organize groups based on detector and mode. loop over these groups
+#   2. define background based on median filtering and determine noise. 
+#   3. same for each shutter type.
+#   4. then go through each file and attempt to check shutters.
+#   5. alternatively just inspect each block in block file and mark badfiles .
+
+
 import mircx_mystic as mrx
 import argparse
 import glob
