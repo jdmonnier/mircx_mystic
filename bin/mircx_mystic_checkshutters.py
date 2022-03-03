@@ -1,6 +1,18 @@
 #! /usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 
+# 2022March. JDM Notes.
+# No program will be perfect for all possible screwed up conditions.
+# Here want to find obvious problems with wrong shutters being open, not consistent with FILETYPE.
+# Can also provide a few diagonstic plots to help identify more unuusal problems..  e.g., issues with mystic skies
+# Also, since this routine requires opening all the data files, it might be smart to do a few other diagnostic stuff here,
+# such as calculate the xx Hz background signal, estimate fluxes per telescope, estimate bad pixels... 
+#
+# One thorny issue is sometimes folks change gain during observing which strongly changes the background.. so 
+# do we require this suggest we need to first estimate backgrounds for each (gain, conf_na) config.
+# this also allows to remove hot pixels, which imght otherwise be hard to identify.
+
+
 # TODO 
 #   1. organize groups based on detector and mode. loop over these groups
 #   2. define background based on median filtering and determine noise. 
@@ -8,7 +20,7 @@
 #   4. then go through each file and attempt to check shutters.
 #   5. alternatively just inspect each block in block file and mark badfiles .
 
-
+import matplotlib.pyplot as plt
 import mircx_mystic as mrx
 import argparse
 import glob
@@ -17,7 +29,7 @@ import sys
 import pickle
 import json
 
-from mircx_mystic import log, setup
+from mircx_mystic import log, setup, files, headers
 import datetime as datetime
 import tkinter as tk
 from tkinter import filedialog
@@ -112,91 +124,100 @@ if argopt.debug == 'TRUE':
 #  Check Shutters... time consuming but important to do.
 #
 # get raw directory if none passes
-if argopt.raw_dir == None:
-    log.info("No Raw Directory Passed. Using Dialog Pickfile")
+if argopt.summary_dir == None:
+    log.info("No Summary Directory Passed. Using Dialog Pickfile")
     root = tk.Tk()
     root.withdraw()
-    argopt.raw_dir = filedialog.askdirectory(title="Select PATH to DATA")
+    argopt.summary_dir = filedialog.askdirectory(title="Select PATH to SUMMARY DIR")
 
-if argopt.raw_dir[-8:] =='_SUMMARY':
-    # load json file to retrieve raw-dir, etc.
-    # USE the headers.csv file to create new block.csv (NO OVERWRITE)
-    # remake figures.
-    log.info("Chose SUMMARY directory. Will use saved headers and info from metadata.json")
-    mrx_root=argopt.raw_dir.split('/')[-1][:-8]
-    json_file=os.path.join(argopt.raw_dir,mrx_root+'_metadata.json')
-    with open(json_file) as f:
-        jsonresult = json.load(f)
-        f.close()
-        raw_dir=''
-        mrx_dir=''
-        mrx_root='' 
-        locals().update(jsonresult)
-        argopt.raw_dir=raw_dir
-        argopt.mrx_dir=mrx_dir
-        mrx_summary_dir=mrx_root+'_SUMMARY'
-        path = os.path.join(argopt.mrx_dir, mrx_summary_dir)
-        phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'))
+#Guard
+if argopt.summary_dir[-8:] != '_SUMMARY':
+    log.error("Choose valid SUMMARY directory. The following does not exist:\n %s "%(argopt.summary_dir))
+    del elog
+    log.closeFile()
+    sys.exit()
 
 
-else: # read header.
-    # List inputs
-    hdrs = mrx.headers.loaddir(argopt.raw_dir)
-
-    # Create Summary directory and save hdrs with all info needed to contineu 
-    # analysis without requiring future info about data location
-
-    mrx_instrument = hdrs[0]["INSTRUME"] # assume all files from same instrument
-    mrx_id = argopt.mrx_id
-
-    # strip weird characters since we are creating a filename from these
-    for str0 in str_to_remove: mrx_instrument=mrx_instrument.replace(str0,'')
-    for str0 in str_to_remove: mrx_id=mrx_id.replace(str0,'')
-    # assume all data from same UTNIGHT
-    # this could be an issues ifyou want to combine data from multiple nights
-    # but one should not do this but rather share reduced info like wavelength tables,
-    # kappa matrices, instead....
-    mrx_utdate = (datetime.date.fromisoformat(hdrs[0]["DATE-OBS"])).strftime("%Y%b%d")
-    mrx_root = mrx_utdate+'_'+mrx_instrument+'_'+mrx_id
-    mrx_summary_dir=mrx_root+'_SUMMARY'
-    path = os.path.join(argopt.mrx_dir, mrx_summary_dir)
-    log.info('Creating SUMMARY directory: %s' % (path))
-    if os.path.exists(path): ## guard
-        log.error("SUMMARY path already exists. Remove or change --id.   ABORTING")
-        quit()
-    os.mkdir(path)
-
-    phdrs=pd.DataFrame(hdrs)
-    phdrs.to_csv(os.path.join(path,mrx_root+'_headers.csv'))
-
-    mrx_list={'raw_dir':os.path.abspath(argopt.raw_dir),'mrx_utdate':mrx_utdate,
-        'mrx_id':argopt.mrx_id, 'mrx_dir':os.path.abspath(argopt.mrx_dir), 
-        'mrx_instrument':mrx_instrument,'mrx_root':mrx_root}
-    json_file=os.path.join(path,mrx_root+'_metadata.json') 
-
-    with open(json_file, 'w') as f:
-        json.dump(mrx_list, f, ensure_ascii=False,indent=4,sort_keys=True)
-        f.close()
-
-
-#with open(json_file) as f:
-#    result = json.load(f)
-#    f.close()
-#data_dictionary = pickle.load( open( "savename.pickle, "rb" ))
-#locals().update(data_dictionary)
-
-# Make Groups based only only FILETYPE and then write summary
-# nightcat txt file.
-# This file can also be edited. 
+# load json file to retrieve raw-dir, etc.
+# USE the headers.csv file to create new block.csv (NO OVERWRITE)
+# remake figures.
+log.info("Chose SUMMARY directory. Will use saved headers,metadata,blocks")
+mrx_root=argopt.summary_dir.split('/')[-1][:-8]
+json_file=os.path.join(argopt.summary_dir,mrx_root+'_metadata.json')
+with open(json_file) as f:
+    jsonresult = json.load(f)
+    f.close()
+raw_dir=''
+mrx_dir=''
+mrx_root='' 
+locals().update(jsonresult)
+mrx_summary_dir=mrx_root+'_SUMMARY' # should match argopt.summary_dir
+path = os.path.join(mrx_dir, mrx_summary_dir)  # # should match argopt.summary_dir
+phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'))
+pblock_file=os.path.join(path,mrx_root+'_blocks.csv')
+pblock = pd.read_csv(pblock_file)
 
 hdrs=mrx.headers.p2h(phdrs)
-#for h in hdrs: print(h['FILETYPE'])
-#for h in hdrs: print(h['FILETYPE'])
+blocks=mrx.headers.p2h(pblock)
 
-# Group backgrounds
-keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT']
+#TODO
+#Fix phdrs based on blocks and meta data.
+#  update ORIGNAME based on raw_dir. 
+#  update FILETYPE based on BLOCK (actually all columns!)
+#  Remove rows that aren't in block or in BADFILES 
+#  make this into a funciton call.
 
-gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
+
+# Group backgrounds for each (gain, conf_na)
+bg_phdrs = phdrs.loc[phdrs['FILETYPE'] =='BACKGROUND'] # select only Background
+bg_hdrs= mrx.headers.p2h(bg_phdrs)
+#bgfiles_gps=bg_phdrs.groupby(by=keys)['ORIGNAME'].apply(list)
+#for bgfiles in bgfiles_gps:
+#    for file in bgfiles:
+
+keys = ['CONF_NA','GAIN']
+bg_pgps = bg_phdrs.groupby(by=keys)
+bg_dict = bg_pgps.indices
+keylist=list(bg_dict.keys())
+for key in keylist:
+    print(key)
+    print(bg_dict[key])
+    for file in bg_dict[key]:
+        hdr0=[bg_hdrs[file]] # pass a list of 1 to next code.
+        hdr0
+        __,cube,__ = files.load_raw (hdr0, coaddRamp='mean',
+                            removeBias=False,differentiate=False,
+                            saturationThreshold=None,
+                            continuityThreshold=None,
+                            linear=False,badpix=None,flat=None);
+        plt.plot(cube[0,:,10,20])
+
+
+        print(file)
+
+#plt.clf()
+#differentiate=True,
+#              removeBias=True, background=None, coaddRamp=False,
+#              badpix=None, flat=None, output='output',
+#              saturationThreshold=60000,
+#              continuityThreshold=10000,
+#              linear=True): # depricate `linear` after testing
+
+
+#keys = ['CONF_NA','GAIN']
+#bg_pgps = bg_phdrs.groupby(by=keys)
+
+#log.info(bg_pgps.size())
+
+#ngroups = pgps.ngroups
+#bg_dict = bg_pgps.indices
+#keylist=list(bg_dict.keys())
+
+
+
+
+
+#bg_gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
 
 #for g in gps: 
 #    print(g[0]["OBJECT"],'\t',g[0]['CONF_NA'],'\t',g[0]['FILETYPE'],'\t',g[0]['FILENUM'],'-',g[-1]['FILENUM'] )

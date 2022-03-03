@@ -17,11 +17,12 @@ from . import log
 counters={'gpstime':0, 'etalon':0, 'sts':0}
 
 # Global shortcut
-HM  = 'HIERARCH MIRC ';
-HMQ = 'HIERARCH MIRC QC ';
-HMP = 'HIERARCH MIRC PRO ';
-HMW = 'HIERARCH MIRC QC WIN ';
-HC = 'HIERARCH CHARA ';
+# removing HIERARCH for 2.0
+HM  = 'MIRC ';
+HMQ = 'MIRC QC ';
+HMP = 'MIRC PRO ';
+HMW = 'MIRC QC WIN ';
+HC = 'CHARA ';
 
 
 def str2bool (s):
@@ -43,8 +44,8 @@ def summary (hdr):
     value = 'G%i-L%i-R%i  %.4f %s'%(hdr.get('GAIN',0),hdr.get('NLOOPS',0),hdr.get('NREADS',0),
                                  hdr.get('MJD-OBS',0.0),hdr.get('OBJECT','unknown'));
 
-    if 'HIERARCH MIRC PRO NCOHER' in hdr:
-        value += ' NCOHER=%i'%(hdr.get('HIERARCH MIRC PRO NCOHER',0));
+    if 'MIRC PRO NCOHER' in hdr:
+        value += ' NCOHER=%i'%(hdr.get('MIRC PRO NCOHER',0));
 
     return value;
 
@@ -209,9 +210,9 @@ def load (files):
             hdr['FILENUM'] = fnum;
 
             # Test if FRAME_RATE is in header
-            if 'HIERARCH MIRC FRAME_RATE' not in hdr and 'EXPOSURE' in hdr:
+            if 'MIRC FRAME_RATE' not in hdr and 'EXPOSURE' in hdr:
                 log.warning ('Assume FRAME_RATE is 1/EXPOSURE');
-                hdr['HIERARCH MIRC FRAME_RATE'] = 1e3/hdr['EXPOSURE'];
+                hdr['MIRC FRAME_RATE'] = 1e3/hdr['EXPOSURE'];
 
             # Check change of card
             if 'ENDFR' in hdr:
@@ -247,14 +248,14 @@ def load (files):
             hdr['MJD-LOAD'] =  (Time.now().mjd, '[mjd] Last loading time (UTC)');
 
             # Check if STS data
-            if hdr.get ('HIERARCH MIRC STS_IR_FOLD','OUT') == 'IN':
+            if hdr.get ('MIRC STS_IR_FOLD','OUT') == 'IN':
                 #log.info ('Set OBJECT = STS because STS_IR_FOLD is IN');
                 hdr['OBJECT'] = 'STS';
                 counters["sts"] +=1
 
             
             # Check if ETALON
-            if hdr.get ('HIERARCH MIRC ARMADA','OUT') == 'IN':
+            if hdr.get ('MIRC ARMADA','OUT') == 'IN':
                 counters["etalon"] +=1
                 #if hdr['OBJECT'][-1]=='E':
                 #    #log.info ('ETALON is IN for OBJECT');  
@@ -309,7 +310,10 @@ def frame_mjd (hdr):
     counter = np.arange (0, nframe, nbin);
 
     # Time step between frames in [d]
-    delta = 1./hdr['HIERARCH MIRC FRAME_RATE'] / 24/3600;
+    # with new headers, the HIERRACH is removed from dictionary.
+
+    delta = 1./hdr['MIRC FRAME_RATE'] / 24/3600; 
+
     
     # Compute assuming MJD-OBS is time of first frame
     mjd = hdr['MJD-OBS'] + delta * counter;
@@ -402,6 +406,7 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[], logL
     #            if logLevel > 4: log.info ('Ignore the first BACKGROUND files (more than 3)');
     
     return groups;
+
 
 def assoc (h, allh, tag, keys=[], which='closest', required=0, quality=None):
     '''
@@ -630,7 +635,8 @@ def get_sci_cal (hdrs, catalog):
 def p2h (phdrs): # convert panda frame to our standard header list of dictionaries
     hdr0=[]
     allh=phdrs.transpose().to_dict()
-    for i in range(len(phdrs)):
-        temp=allh[i]
+    keylist=list(allh.keys())
+    for key in keylist:
+        temp=allh[key]
         hdr0.append(temp)
     return hdr0;

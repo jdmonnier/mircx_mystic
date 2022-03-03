@@ -29,7 +29,7 @@ description:
   the pipeline. Will recognize fits, fits.fz files but NOT fits.gz
 
   The input and output directories are relative to the
-  current directory.
+  current directory.p
 
   if you leave blank, the default identifier is today's date and raw data directory chosen by 
   dialog pickfile, out output directory is local.
@@ -131,15 +131,15 @@ if argopt.raw_dir[-8:] =='_SUMMARY':
     with open(json_file) as f:
         jsonresult = json.load(f)
         f.close()
-        raw_dir=''
-        mrx_dir=''
-        mrx_root='' 
-        locals().update(jsonresult)
-        argopt.raw_dir=raw_dir
-        argopt.mrx_dir=mrx_dir
-        mrx_summary_dir=mrx_root+'_SUMMARY'
-        path = os.path.join(argopt.mrx_dir, mrx_summary_dir)
-        phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'))
+    raw_dir=''
+    mrx_dir=''
+    mrx_root='' 
+    locals().update(jsonresult)
+    argopt.raw_dir=raw_dir
+    argopt.mrx_dir=mrx_dir
+    mrx_summary_dir=mrx_root+'_SUMMARY'
+    path = os.path.join(argopt.mrx_dir, mrx_summary_dir)
+    phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'))
 
 
 else: # read header.

@@ -143,9 +143,9 @@ def load_raw (hdrs, differentiate=True,
     # Build output header as the copy
     # of the first passed header
     hdr = hdrs[0].copy();
-    hdr[HMQ+'NFILE'] = (0,'total number of files loaded');
-    hdr[HMQ+'NRAMP'] = (0,'total number of ramp loaded');
-    hdr[HMQ+'NSAT']  = (0,'total number of saturated frames');
+    hdr[HMQ+'NFILE'] = 0 #,'total number of files loaded');
+    hdr[HMQ+'NRAMP'] = 0 #,'total number of ramp loaded');
+    hdr[HMQ+'NSAT']  = 0 #,'total number of saturated frames');
     hdr['BZERO'] = 0;
 
     cube  = [];
@@ -278,20 +278,24 @@ def load_raw (hdrs, differentiate=True,
                 # Count total number of zeroed frames
                 nsat += nf - mark;
 
+        #JDM. Apparantly the hdr object from fits is fancy and the code uses some features....
+
         # Increase nsat in header
-        hdr[HMQ+'NSAT'] += nsat;
+        hdr[HMQ+'NSAT'] += nsat # hdr[HMQ+'NSAT'][0]+nsat,hdr[HMQ+'NSAT'][1] ## remove the tuple?
 
         # Add this RAW file in hdr
-        nraw = len (hdr['*MIRC PRO RAW*']);
-        hdr['HIERARCH MIRC PRO RAW%i'%(nraw+1,)] = os.path.basename (h['ORIGNAME'])[-50:];
-        hdr['HIERARCH MIRC QC NFILE'] += 1;
-        hdr['HIERARCH MIRC QC NRAMP'] += data.shape[0];
+        keylist =list(hdr.keys())
+        rawlist = list(filter(lambda x: 'MIRC PRO RAW' in x, keylist))
+        nraw = len(rawlist)
+        hdr['MIRC PRO RAW%i'%(nraw+1,)] = os.path.basename (h['ORIGNAME'])[-50:];
+        hdr['MIRC QC NFILE'] += 1;
+        hdr['MIRC QC NRAMP'] += data.shape[0];
 
         # Co-add ramp if required
-        if coaddRamp is 'mean':
+        if coaddRamp == 'mean':
             data = np.mean (data,axis=0,keepdims=True);
             mjd  = np.mean (mjd, axis=0,keepdims=True);
-        elif coaddRamp is 'sum':
+        elif coaddRamp == 'sum':
             data = np.sum (data,axis=0,keepdims=True);
             mjd  = np.sum (mjd, axis=0,keepdims=True);
 
