@@ -21,7 +21,9 @@
 #   5. alternatively just inspect each block in block file and mark badfiles .
 
 import matplotlib.pyplot as plt
+import plotly.express as px
 import mircx_mystic as mrx
+import numpy as np
 import argparse
 import glob
 import os
@@ -179,10 +181,16 @@ keys = ['CONF_NA','GAIN']
 bg_pgps = bg_phdrs.groupby(by=keys)
 bg_dict = bg_pgps.indices
 keylist=list(bg_dict.keys())
-for key in keylist:
+bgarray_list = []
+for key in keylist: # loop over all the key groups found. 
     print(key)
     print(bg_dict[key])
-    for file in bg_dict[key]:
+    tuple_keys=['NAXIS4','NAXIS3','NAXIS2','NAXIS1']
+    #dimx,dimy=bg_hdrs[bg_dict[key][0]]['NAXIS1'] , bg_hdrs[bg_dict[key][0]]['NAXIS2']
+    #DIMX=bg_hdrs[bg_dict[key][0]]['NAXIS2']
+    nramps,nframes,dimx,dimy=[bg_hdrs[bg_dict[key][0]][temp0] for temp0 in tuple_keys] 
+    bgtemp = np.zeros([dimx,dimy,len(bg_dict[key])])
+    for i,file in enumerate(bg_dict[key]): 
         hdr0=[bg_hdrs[file]] # pass a list of 1 to next code.
         hdr0
         __,cube,__ = files.load_raw (hdr0, coaddRamp='mean',
@@ -190,10 +198,19 @@ for key in keylist:
                             saturationThreshold=None,
                             continuityThreshold=None,
                             linear=False,badpix=None,flat=None);
-        plt.plot(cube[0,:,10,20])
-
+        bgtemp[:,:,i] = (cube[0,-2,:,:]-cube[0,0,:,:])/(nframes-1)
+        
+        #plt.plot(cube[0,:,10,20])
+        #plt.clf()
 
         print(file)
+    medbg = np.median(bgtemp,axis=2)
+    bgarray_list.append(medbg)
+    fig=px.imshow(bgtemp[:,:,0]-medbg)
+    fig.show()
+    print('finish plt')
+
+
 
 #plt.clf()
 #differentiate=True,
