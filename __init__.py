@@ -1,5 +1,5 @@
 """
-Module to reduce the MIRCX data
+Module to reduce the MIRCX MYSTIC data
 """
 
 # General modules

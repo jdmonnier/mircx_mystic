@@ -32,6 +32,7 @@ import pickle
 import json
 
 from mircx_mystic import log, setup, files, headers
+from mircx_mystic import checkshutters
 import datetime as datetime
 import tkinter as tk
 from tkinter import filedialog
@@ -77,13 +78,13 @@ parser = argparse.ArgumentParser(description=description, epilog=epilog,
 TrueFalse = ['TRUE', 'FALSE']
 TrueFalseOverwrite = ['TRUE', 'FALSE', 'OVERWRITE']
 
-checkshutters = parser.add_argument_group('(1) checkshutters',
+checkshutters_args = parser.add_argument_group('(1) checkshutters',
                                      '\nChecks accuracy of shutter blocks in blocks file')
 
-checkshutters.add_argument("--summary-dir", dest="summary_dir", default=None, type=str,
+checkshutters_args.add_argument("--summary-dir", dest="summary_dir", default=None, type=str,
                       help="directory of SUMMARY  [%(default)s]")
 
-checkshutters.add_argument("--log-level", dest="logLevel",
+checkshutters_args.add_argument("--log-level", dest="logLevel",
                       default=1, type=int,
                       help="log verbosity, 1= minimal, 10=most detailed [%(default)s]")
 
@@ -168,7 +169,9 @@ blocks=mrx.headers.p2h(pblock)
 #  update FILETYPE based on BLOCK (actually all columns!)
 #  Remove rows that aren't in block or in BADFILES 
 #  make this into a funciton call.
-
+plt.show(block=False)
+bgarrays,bgkeys = checkshutters.bgkeys(phdrs)
+allarrays,allkeys=checkshutters.allshutterkeys(phdrs)
 
 # Group backgrounds for each (gain, conf_na)
 bg_phdrs = phdrs.loc[phdrs['FILETYPE'] =='BACKGROUND'] # select only Background
@@ -177,11 +180,11 @@ bg_hdrs= mrx.headers.p2h(bg_phdrs)
 #for bgfiles in bgfiles_gps:
 #    for file in bgfiles:
 
-keys = ['CONF_NA','GAIN']
+keys = ['CONF_NA','GAIN','NLOOPS','NREADS']
 bg_pgps = bg_phdrs.groupby(by=keys)
 bg_dict = bg_pgps.indices
 keylist=list(bg_dict.keys())
-bgarray_list = []
+bgarrays={}
 for key in keylist: # loop over all the key groups found. 
     print(key)
     print(bg_dict[key])
@@ -190,26 +193,39 @@ for key in keylist: # loop over all the key groups found.
     #DIMX=bg_hdrs[bg_dict[key][0]]['NAXIS2']
     nramps,nframes,dimx,dimy=[bg_hdrs[bg_dict[key][0]][temp0] for temp0 in tuple_keys] 
     bgtemp = np.zeros([dimx,dimy,len(bg_dict[key])])
+    gaintest=np.zeros(len(bg_dict[key]))
     for i,file in enumerate(bg_dict[key]): 
         hdr0=[bg_hdrs[file]] # pass a list of 1 to next code.
-        hdr0
-        __,cube,__ = files.load_raw (hdr0, coaddRamp='mean',
+
+        
+        hdrcheck,cube,__ = files.load_raw (hdr0, coaddRamp='mean',
                             removeBias=False,differentiate=False,
                             saturationThreshold=None,
                             continuityThreshold=None,
                             linear=False,badpix=None,flat=None);
-        bgtemp[:,:,i] = (cube[0,-2,:,:]-cube[0,0,:,:])/(nframes-1)
-        
+        nframes=hdrcheck['NAXIS3']
+        nbin=hdrcheck['NBIN'] #JDM not debugged.
+        if nframes < 4:
+            breakpoint # will fail if frames per reset <4
+        bgtemp[:,:,i] = (cube[0,-2,:,:]-cube[0,1,:,:])/(nframes-3.)/nbin
+        gaintest[i]=hdrcheck['NAXIS3']
         #plt.plot(cube[0,:,10,20])
         #plt.clf()
 
         print(file)
+    bgtemp.shape
+    plt.clf()
+    plt.plot(bgtemp[10,100,:])
+    plt.plot(bgtemp[30,280,:])
+    #plt.plot(cube[0,:,10,20])
     medbg = np.median(bgtemp,axis=2)
-    bgarray_list.append(medbg)
-    fig=px.imshow(bgtemp[:,:,0]-medbg)
-    fig.show()
+    bgarrays[key] = medbg
+    #ig=px.imshow(bgtemp[:,:,0]-medbg)
+    #fig.show()
     print('finish plt')
 
+
+print("Check bgarry_list and keys")
 
 
 #plt.clf()
