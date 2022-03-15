@@ -214,6 +214,10 @@ def load (files):
                 log.warning ('Assume FRAME_RATE is 1/EXPOSURE');
                 hdr['MIRC FRAME_RATE'] = 1e3/hdr['EXPOSURE'];
 
+            # Test if NBIN is in header
+            if 'NBIN' not in hdr:
+                hdr['NBIN'] = 1; 
+
             # Check change of card
             if 'ENDFR' in hdr:
                 log.warning ('Old data with ENDFR');

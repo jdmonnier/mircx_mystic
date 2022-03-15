@@ -169,9 +169,46 @@ blocks=mrx.headers.p2h(pblock)
 #  update FILETYPE based on BLOCK (actually all columns!)
 #  Remove rows that aren't in block or in BADFILES 
 #  make this into a funciton call.
-plt.show(block=False)
-bgarrays,bgkeys = checkshutters.bgkeys(phdrs)
-allarrays,allkeys=checkshutters.allshutterkeys(phdrs)
+#plt.show(block=False)
+
+#temp={'bgarrays':bgarrays,'bgkeys':bgkeys}
+#with open('temp_bgarray.pkl','wb') as f:
+#    pickle.dump(temp,f)
+
+with open('temp_bgarray.pkl','rb') as f:
+    loaded_dict = pickle.load(f)
+locals().update(loaded_dict)
+#bgarrays,bgkeys = checkshutters.bgkeys(phdrs)
+
+allprofiles,profilekeys = checkshutters.shutterprofiles (phdrs,bgarrays,bgkeys)
+
+#temp={'allprofiles':allprofiles,'profilekeys':profilekeys}
+#with open('temp_allarray.pkl','wb') as f:
+#   pickle.dump(temp,f)
+
+with open('temp_allarray.pkl','rb') as f:
+    loaded_dict = pickle.load(f)
+locals().update(loaded_dict)
+plt.clf()
+keylist=list(allprofiles.keys())
+for key in keylist:
+    plt.plot(allprofiles[key],label=key)
+plt.legend()
+plt.show()
+
+
+#allarrays,allkeys=checkshutters.allshutterkeys(phdrs)
+allk=list(allarrays.keys())
+bgk=[allk[i][1:5] for i in range(len(allk))]
+allprofiles={}
+for allk0, bgk0 in zip(allk, bgk):
+    temp = np.median( allarrays[allk0]-bgarrays[bgk0],axis=0)
+    allprofiles[allk0]=temp # what to do about mystic background?
+
+# did this work?
+
+
+
 
 # Group backgrounds for each (gain, conf_na)
 bg_phdrs = phdrs.loc[phdrs['FILETYPE'] =='BACKGROUND'] # select only Background

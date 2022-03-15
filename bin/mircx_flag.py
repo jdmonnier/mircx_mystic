@@ -7,7 +7,7 @@ import os
 import copy
 from fnmatch import fnmatch
 
-from mircx_pipeline import log, files;
+from mircx_mystic import log, files;
 from astropy.io import fits as pyfits;
 
 #
