@@ -8,7 +8,8 @@ from astropy.stats import sigma_clipped_stats;
 from astropy.io import fits as pyfits;
 from astropy.modeling import models, fitting;
 
-from skimage.feature import register_translation;
+#from skimage.feature import register_translation;
+from skimage.registration import phase_cross_correlation;
 
 from scipy import fftpack;
 from scipy.signal import medfilt;

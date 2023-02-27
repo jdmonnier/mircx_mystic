@@ -8,7 +8,8 @@ from astropy.stats import sigma_clipped_stats;
 from astropy.io import fits as pyfits;
 from astropy.modeling import models, fitting;
 
-from skimage.feature import register_translation;
+#from skimage.feature import register_translation;
+from skimage.registration import phase_cross_correlation;
 
 from scipy import fftpack;
 from scipy.signal import medfilt;
@@ -364,7 +365,7 @@ def estimate_windows (cmean, hdr, output='outout_window'):
     f_spectra /= np.max (f_spectra);
 
     # Shift between photo and fringes in spectral direction
-    shifty = register_translation (p_spectra[:,None],f_spectra[:,None], \
+    shifty = phase_cross_correlation (p_spectra[:,None],f_spectra[:,None], \
                                    upsample_factor=100)[0][0];
 
     # Compute shifted spectra
