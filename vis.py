@@ -9,7 +9,8 @@ from astropy.stats import sigma_clipped_stats;
 from astropy.io import fits as pyfits;
 from astropy.modeling import models, fitting;
 
-from skimage.feature import register_translation;
+#JDM  from skimage.feature import register_translation;
+from skimage.registration import phase_cross_correlation;
 
 from scipy import fftpack;
 from scipy.signal import medfilt;
@@ -409,7 +410,7 @@ def compute_rts (hdrs, profiles, kappas, speccal,
     upper = np.sum (medfilt (fringe_map,[1,1,1,1,11]), axis=(1,2,4));
     lower = np.sum (medfilt (photo_map,[1,1,1,1,1]) * profile, axis=(1,2,4));
     for b in range (6):
-        shifty[b] = register_translation (lower[b,:,None],upper[b,:,None],
+        shifty[b] = phase_cross_correlation (lower[b,:,None],upper[b,:,None],
                                               upsample_factor=100)[0][0];
 
     # Re-align photometry
