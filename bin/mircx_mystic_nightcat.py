@@ -29,10 +29,13 @@ description:
   the pipeline. Will recognize fits, fits.fz files but NOT fits.gz
 
   The input and output directories are relative to the
-  current directory.p
+  current directory.
 
   if you leave blank, the default identifier is today's date and raw data directory chosen by 
   dialog pickfile, out output directory is local.
+
+  in the output directory, the following filetypes are created:
+    
 """
 
 epilog = \
@@ -139,7 +142,7 @@ if argopt.raw_dir[-8:] =='_SUMMARY':
     argopt.mrx_dir=mrx_dir
     mrx_summary_dir=mrx_root+'_SUMMARY'
     path = os.path.join(argopt.mrx_dir, mrx_summary_dir)
-    phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'))
+    phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'),low_memory=False)
 
 
 else: # read header.
@@ -201,7 +204,7 @@ hdrs=mrx.headers.p2h(phdrs)
 
 # Group backgrounds
 # JDM for the 'block' file maybe we only want to group by target, conf, hwp, filetype....
-keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT','CONF_NA']
+keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT','MIRC COMBINER_TYPE','CONF_NA']
 gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
 
 #for g in gps: 
@@ -210,11 +213,12 @@ gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous
 group_first = [item[0] for item in gps]
 group_last = [item[-1] for item in gps]
 
-columns=['BLOCK','OBJECT','CONF_NA','HWP','FILETYPE','START','END']
+columns=['BLOCK','OBJECT','COMBINER_TYPE','CONFIG','HWP','FILETYPE','START','END']
 block_dict= {}
 block_dict['BLOCK']=list(range(len(group_first)))
 block_dict['OBJECT']=[temp['OBJECT'] for temp in group_first]
-block_dict['CONF_NA']=[temp['CONF_NA'] for temp in group_first]
+block_dict['COMBINER_TYPE']=[temp['MIRC COMBINER_TYPE'] for temp in group_first]
+block_dict['CONFIG']=[temp['CONF_NA'] for temp in group_first]
 block_dict['FILETYPE']=[temp['FILETYPE'] for temp in group_first]
 block_dict['START']=[temp['FILENUM'] for temp in group_first]
 block_dict['END']=[temp['FILENUM'] for temp in group_last]
