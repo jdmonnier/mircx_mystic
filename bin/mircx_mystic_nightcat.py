@@ -122,7 +122,7 @@ if argopt.raw_dir == None:
     log.info("No Raw Directory Passed. Using Dialog Pickfile")
     root = tk.Tk()
     root.withdraw()
-    argopt.raw_dir = filedialog.askdirectory(title="Select PATH to DATA")
+    argopt.raw_dir = filedialog.askdirectory(title="Select PATH to DATA",initialdir='./')
 
 if argopt.raw_dir[-8:] =='_SUMMARY':
     # load json file to retrieve raw-dir, etc.
@@ -204,7 +204,7 @@ hdrs=mrx.headers.p2h(phdrs)
 
 # Group backgrounds
 # JDM for the 'block' file maybe we only want to group by target, conf, hwp, filetype....
-keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT','MIRC COMBINER_TYPE','CONF_NA']
+keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT','MIRC COMBINER_TYPE','CONF_NA','GAIN']
 gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
 
 #for g in gps: 
@@ -213,12 +213,13 @@ gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous
 group_first = [item[0] for item in gps]
 group_last = [item[-1] for item in gps]
 
-columns=['BLOCK','OBJECT','COMBINER_TYPE','CONFIG','HWP','FILETYPE','START','END']
+columns=['BLOCK','OBJECT','COMBINER_TYPE','CONFIG','GAIN','HWP','FILETYPE','START','END']
 block_dict= {}
 block_dict['BLOCK']=list(range(len(group_first)))
 block_dict['OBJECT']=[temp['OBJECT'] for temp in group_first]
 block_dict['COMBINER_TYPE']=[temp['MIRC COMBINER_TYPE'] for temp in group_first]
 block_dict['CONFIG']=[temp['CONF_NA'] for temp in group_first]
+block_dict['GAIN']=[temp['GAIN'] for temp in group_first]
 block_dict['FILETYPE']=[temp['FILETYPE'] for temp in group_first]
 block_dict['START']=[temp['FILENUM'] for temp in group_first]
 block_dict['END']=[temp['FILENUM'] for temp in group_last]
