@@ -644,3 +644,28 @@ def p2h (phdrs): # convert panda frame to our standard header list of dictionari
         temp=allh[key]
         hdr0.append(temp)
     return hdr0;
+
+def updatehdrs(hdrs,blocks):
+    #Information in the block file takes precedence of the header information.
+    #loop over the blocks then modify hdrs based on the numbers and add new block field.
+    #remove hdrs entries not explicitly included in blocks.
+    for hdr in hdrs:
+        for block in blocks:
+            if hdr['FILENUM'] >= block['START'] and hdr['FILENUM'] <= block['END']:
+                hdr['BLOCK']=block['BLOCK']
+                inkeys=['BLOCK','OBJECT','COMBINER_TYPE','CONFIG','GAIN','FILETYPE']
+                outkeys=['BLOCK','OBJECT','MIRC COMBINER_TYPE','CONF_NA','GAIN','FILETYPE']
+                #JDM detail. Since HWP angles are all 6 beams, we cant use blocks to over-ride. you will need to set
+                #the header csv tables to the correct values if not correct.
+                for inkey,outkey in zip(inkeys,outkeys):
+                    if hdr[outkey] != block[inkey]:
+                        hdr[outkey]=block[inkey]
+                        log.info('Updated Header %i %s from %s to %s'%(hdr['FILENUM'],outkey,hdr[outkey],block[inkey]))
+        if 'BLOCK' not in hdr.keys():
+            hdr['BLOCK']=''
+            log.info('Removed Header %i from hdrs since not referenced in block csv'%(hdr['FILENUM']))
+    #hdrs=[hdr if hdr['BLOCK'] != ''  for hdr in hdrs]    
+    hdrs=[hdr for hdr in hdrs if hdr['BLOCK'] !='' ]
+
+    # remove hdrs with 
+    return hdrs

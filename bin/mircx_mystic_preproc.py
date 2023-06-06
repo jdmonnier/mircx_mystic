@@ -1,9 +1,28 @@
 #! /usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 
-# TODO. fix permissions on filest olllow read/write by all, group,owner...
 
+
+#2023June. JDM Notes.
+#I. Backgrounds. 
+#  Most preproc steps depend on initial analysis of backgrounds.
+# A. First load in all backgrounds, grouped by camera mode (loops reads frames/ramp gain), combiner, spectral mode, polarization (not HWP angle for now).
+# B. within each group, measure the interference frequency and amplitude, identify bad pixels, find means and errors, estimate 
+#   1. Analyse each ramp to detect contamination.
+# Repeate for SKIES.
+# 
+
+# TODO 
+#   1. organize groups based on detector and mode. loop over these groups
+#   2. define background based on median filtering and determine noise. 
+#   3. same for each shutter type.
+#   4. then go through each file and attempt to check shutters.
+#   5. alternatively just inspect each block in block file and mark badfiles .
+
+import matplotlib.pyplot as plt
+#import plotly.express as px
 import mircx_mystic as mrx
+import numpy as np
 import argparse
 import glob
 import os
@@ -11,7 +30,8 @@ import sys
 import pickle
 import json
 
-from mircx_mystic import log, setup, files
+from mircx_mystic import log, setup, files, headers,preproc
+#from mircx_mystic import checkshutters
 import datetime as datetime
 import tkinter as tk
 from tkinter import filedialog
@@ -25,17 +45,12 @@ import pandas as pd
 description = \
     """
 description:
-  Will create a night catalog summary directory with helpful files needed for rest of
-  the pipeline. Will recognize fits, fits.fz files but NOT fits.gz
+  Following nightcat, this will create preproc data.
+  
+  Only input is the summary directory, using keyword or dialog pickfile.
 
-  The input and output directories are relative to the
-  current directory.
-
-  if you leave blank, the default identifier is today's date and raw data directory chosen by 
+  if you leave blank, the SUMMARY directory chosen by 
   dialog pickfile, out output directory is local.
-
-  in the output directory, the following filetypes are created:
-    
 """
 
 epilog = \
@@ -44,11 +59,11 @@ epilog = \
 Examples:
   
 fully-specified:
-  mircx_mystic_nightcat.py --raw-dir=/path/to/raw/data/ --mrx_dir=/path/to/reduced/data/ -id=JDM2022Jan04
+  mircx_mystic_preproc.py --summary-dir=/path/to/reduced/summary
 
 defaults:
   cd /path/where/I/want/my/reduced/data/
-  mirc_mystic_nightcat.py
+  mirc_mystic_preproc.py
 
 
 """
@@ -60,21 +75,13 @@ parser = argparse.ArgumentParser(description=description, epilog=epilog,
 TrueFalse = ['TRUE', 'FALSE']
 TrueFalseOverwrite = ['TRUE', 'FALSE', 'OVERWRITE']
 
-nightcat = parser.add_argument_group('(1) nightcat',
-                                     '\nCreates a summary directory containting\n'
-                                     'nightly summary in editable ASCII format and header info in panda dataframes')
+preproc_args = parser.add_argument_group('preproc arguments',
+                                     '\nPreprocesses the raw data to create preproc data free of detector anolmalies.')
 
-nightcat.add_argument("--raw-dir", dest="raw_dir", default=None, type=str,
-                      help="directory of raw data (or SUMMARY dir) [%(default)s]")
+preproc_args.add_argument("--summary-dir", dest="summary_dir", default=None, type=str,
+                      help="directory of SUMMARY  [%(default)s]")
 
-nightcat.add_argument("--mrx-dir", dest="mrx_dir", default='./', type=str,
-                      help="directory of mrx pipeline products [%(default)s]")
-
-nightcat.add_argument("--id", dest="mrx_id",
-                      default='ID'+datetime.date.today().strftime('%Y%b%d'), type=str,
-                      help="unique identifier for data reduction [%(default)s]")
-
-nightcat.add_argument("--log-level", dest="logLevel",
+preproc_args.add_argument("--log-level", dest="logLevel",
                       default=1, type=int,
                       help="log verbosity, 1= minimal, 10=most detailed [%(default)s]")
 
@@ -100,13 +107,13 @@ str_to_remove = [' ','-','_','!','#','@','$','%','^','&','*','(',')']
 argopt = parser.parse_args()
 
 #
-tempfile='.mircx_mystic_nightcat.temp.log'
+tempfile='.mircx_mystic_preproc.temp.log'
 #remove tempfile if already exists
 if os.path.exists(tempfile): os.remove(tempfile)
 log.setFile(tempfile) ## will get renamed
 
 # Verbose
-elog = log.trace('mircx_mystic_nightcat')  # for Timing.
+elog = log.trace('mircx_mystic_preproc')  # for Timing.
 
 # Set debug
 if argopt.debug == 'TRUE':
@@ -114,99 +121,183 @@ if argopt.debug == 'TRUE':
     import pdb
 
 #
-# Compute NIGHT CATALOG and summary files, including header stuff.
+#  Check Shutters... time consuming but important to do.
 #
-
 # get raw directory if none passes
-if argopt.raw_dir == None:
-    log.info("No Raw Directory Passed. Using Dialog Pickfile")
+if argopt.summary_dir == None:
+    log.info("No Summary Directory Passed. Using Dialog Pickfile")
     root = tk.Tk()
     root.withdraw()
-    argopt.raw_dir = filedialog.askdirectory(title="Select PATH to DATA",initialdir='./')
-    log.info("Chose RAW directory %s"%(argopt.raw_dir))
+    argopt.summary_dir = filedialog.askdirectory(title="Select PATH to SUMMARY DIR",initialdir='./')
 
-if argopt.raw_dir[-8:] =='_SUMMARY':
-    # load json file to retrieve raw-dir, etc.
-    # USE the headers.csv file to create new block.csv (NO OVERWRITE)
-    # remake figures.
-    log.info("Chose SUMMARY directory %s. Will use saved headers and info from metadata.json"%(argopt.raw_dir))
-    mrx_root=argopt.raw_dir.split('/')[-1][:-8]
-    json_file=os.path.join(argopt.raw_dir,mrx_root+'_metadata.json')
-    with open(json_file) as f:
-        jsonresult = json.load(f)
-        f.close()
-    raw_dir=''
-    mrx_dir=''
-    mrx_root='' 
-    locals().update(jsonresult)
-    argopt.raw_dir=raw_dir
-    argopt.mrx_dir=mrx_dir
-    mrx_summary_dir=mrx_root+'_SUMMARY'
-    path = os.path.join(argopt.mrx_dir, mrx_summary_dir)
-    phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'),low_memory=False)
+#Guard
+if argopt.summary_dir[-8:] != '_SUMMARY':
+    log.error("Choose valid SUMMARY directory. The following does not exist:\n %s "%(argopt.summary_dir))
+    del elog
+    log.closeFile()
+    sys.exit()
 
 
-else: # read header.
-    # List inputs
-    hdrs = mrx.headers.loaddir(argopt.raw_dir)
+# load json file to retrieve raw-dir, etc.
+# USE the headers.csv file to create new block.csv (NO OVERWRITE)
+# remake figures.
+log.info("Chose SUMMARY directory %s"%(argopt.summary_dir))
+log.info("     Will use saved headers,metadata,blocks")
+mrx_root=argopt.summary_dir.split('/')[-1][:-8]
+json_file=os.path.join(argopt.summary_dir,mrx_root+'_metadata.json')
+with open(json_file) as f:
+    jsonresult = json.load(f)
+    f.close()
+raw_dir=''
+mrx_dir=''
+mrx_root='' 
+locals().update(jsonresult)
+mrx_summary_dir=mrx_root+'_SUMMARY' # should match argopt.summary_dir
+path = os.path.join(mrx_dir, mrx_summary_dir)  # # should match argopt.summary_dir
+phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'))
+pblock_file=os.path.join(path,mrx_root+'_blocks.csv',low_memory=False)
+pblock = pd.read_csv(pblock_file,comment='#')
 
-    # Create Summary directory and save hdrs with all info needed to contineu 
-    # analysis without requiring future info about data location
+hdrs=mrx.headers.p2h(phdrs)  # might change one day to use panda data frames throughout code...
+blocks=mrx.headers.p2h(pblock)
 
-    mrx_instrument = hdrs[0]["INSTRUME"] # assume all files from same instrument
-    mrx_id = argopt.mrx_id
+hdrs=mrx.headers.updatehdrs(hdrs,blocks) # update headers with block info.
 
-    # strip weird characters since we are creating a filename from these
-    for str0 in str_to_remove: mrx_instrument=mrx_instrument.replace(str0,'')
-    for str0 in str_to_remove: mrx_id=mrx_id.replace(str0,'')
-    # assume all data from same UTNIGHT
-    # this could be an issues ifyou want to combine data from multiple nights
-    # but one should not do this but rather share reduced info like wavelength tables,
-    # kappa matrices, instead....
-    mrx_utdate = (datetime.date.fromisoformat(hdrs[0]["DATE-OBS"])).strftime("%Y%b%d")
-    mrx_root = mrx_utdate+'_'+mrx_instrument+'_'+mrx_id
-    mrx_summary_dir=mrx_root+'_SUMMARY'
-    path = os.path.join(argopt.mrx_dir, mrx_summary_dir)
-    #log.info('Creating SUMMARY directory: %s' % (path))
-    if os.path.exists(path): ## guard
-        log.error("SUMMARY path already exists. Remove or change --id.   ABORTING")
-        del elog
-        log.closeFile()
-        sys.exit()
-    files.ensure_dir(path)
-    #os.mkdir(path)
-
-    phdrs=pd.DataFrame(hdrs)
-    phdrs.to_csv(os.path.join(path,mrx_root+'_headers.csv'))
-
-    mrx_list={'raw_dir':os.path.abspath(argopt.raw_dir),'mrx_utdate':mrx_utdate,
-        'mrx_id':argopt.mrx_id, 'mrx_dir':os.path.abspath(argopt.mrx_dir), 
-        'mrx_instrument':mrx_instrument,'mrx_root':mrx_root}
-    json_file=os.path.join(path,mrx_root+'_metadata.json') 
-
-    with open(json_file, 'w') as f:
-        json.dump(mrx_list, f, ensure_ascii=False,indent=4,sort_keys=True)
-        f.close()
-
-
-#with open(json_file) as f:
-#    result = json.load(f)
-#    f.close()
-#data_dictionary = pickle.load( open( "savename.pickle, "rb" ))
-#locals().update(data_dictionary)
-
-# Make Groups based only only FILETYPE and then write summary
-# nightcat txt file.
-# This file can also be edited. 
-
-hdrs=mrx.headers.p2h(phdrs)
-#for h in hdrs: print(h['FILETYPE'])
-#for h in hdrs: print(h['FILETYPE'])
+breakpoint();
 
 # Group backgrounds
-# JDM for the 'block' file maybe we only want to group by target, conf, hwp, filetype....
 keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT','MIRC COMBINER_TYPE','CONF_NA','GAIN','MIRC STEPPER HWP_ELEVATOR POS','MIRC HWP0 POS']
 gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
+
+#for g in gps: 
+#    print(g[0]["OBJECT"],'\t',g[0]['CONF_NA'],'\t',g[0]['FILETYPE'],'\t',g[0]['FILENUM'],'-',g[-1]['FILENUM'] )
+
+
+
+
+#TODO
+#Fix phdrs based on blocks and meta data.
+#  update ORIGNAME based on raw_dir. 
+#  update FILETYPE based on BLOCK (actually all columns!)
+#  Remove rows that aren't in block or in BADFILES 
+#  make this into a funciton call.
+#plt.show(block=False)
+
+#temp={'bgarrays':bgarrays,'bgkeys':bgkeys}
+#with open('temp_bgarray.pkl','wb') as f:
+#    pickle.dump(temp,f)
+
+with open('temp_bgarray.pkl','rb') as f:
+    loaded_dict = pickle.load(f)
+locals().update(loaded_dict)
+#bgarrays,bgkeys = checkshutters.bgkeys(phdrs)
+
+allprofiles,profilekeys = checkshutters.shutterprofiles (phdrs,bgarrays,bgkeys)
+
+#temp={'allprofiles':allprofiles,'profilekeys':profilekeys}
+#with open('temp_allarray.pkl','wb') as f:
+#   pickle.dump(temp,f)
+
+with open('temp_allarray.pkl','rb') as f:
+    loaded_dict = pickle.load(f)
+locals().update(loaded_dict)
+plt.clf()
+keylist=list(allprofiles.keys())
+for key in keylist:
+    plt.plot(allprofiles[key],label=key)
+plt.legend()
+plt.show()
+
+
+#allarrays,allkeys=checkshutters.allshutterkeys(phdrs)
+allk=list(allarrays.keys())
+bgk=[allk[i][1:5] for i in range(len(allk))]
+allprofiles={}
+for allk0, bgk0 in zip(allk, bgk):
+    temp = np.median( allarrays[allk0]-bgarrays[bgk0],axis=0)
+    allprofiles[allk0]=temp # what to do about mystic background?
+
+# did this work?
+
+
+# Group backgrounds for each (gain, conf_na)
+bg_phdrs = phdrs.loc[phdrs['FILETYPE'] =='BACKGROUND'] # select only Background
+bg_hdrs= mrx.headers.p2h(bg_phdrs)
+#bgfiles_gps=bg_phdrs.groupby(by=keys)['ORIGNAME'].apply(list)
+#for bgfiles in bgfiles_gps:
+#    for file in bgfiles:
+
+keys = ['CONF_NA','GAIN','NLOOPS','NREADS']
+bg_pgps = bg_phdrs.groupby(by=keys)
+bg_dict = bg_pgps.indices
+keylist=list(bg_dict.keys())
+bgarrays={}
+for key in keylist: # loop over all the key groups found. 
+    print(key)
+    print(bg_dict[key])
+    tuple_keys=['NAXIS4','NAXIS3','NAXIS2','NAXIS1']
+    #dimx,dimy=bg_hdrs[bg_dict[key][0]]['NAXIS1'] , bg_hdrs[bg_dict[key][0]]['NAXIS2']
+    #DIMX=bg_hdrs[bg_dict[key][0]]['NAXIS2']
+    nramps,nframes,dimx,dimy=[bg_hdrs[bg_dict[key][0]][temp0] for temp0 in tuple_keys] 
+    bgtemp = np.zeros([dimx,dimy,len(bg_dict[key])])
+    gaintest=np.zeros(len(bg_dict[key]))
+    for i,file in enumerate(bg_dict[key]): 
+        hdr0=[bg_hdrs[file]] # pass a list of 1 to next code.
+
+        
+        hdrcheck,cube,__ = files.load_raw (hdr0, coaddRamp='mean',
+                            removeBias=False,differentiate=False,
+                            saturationThreshold=None,
+                            continuityThreshold=None,
+                            linear=False,badpix=None,flat=None);
+        nframes=hdrcheck['NAXIS3']
+        nbin=hdrcheck['NBIN'] #JDM not debugged.
+        if nframes < 4:
+            breakpoint # will fail if frames per reset <4
+        bgtemp[:,:,i] = (cube[0,-2,:,:]-cube[0,1,:,:])/(nframes-3.)/nbin
+        gaintest[i]=hdrcheck['NAXIS3']
+        #plt.plot(cube[0,:,10,20])
+        #plt.clf()
+
+        print(file)
+    bgtemp.shape
+    plt.clf()
+    plt.plot(bgtemp[10,100,:])
+    plt.plot(bgtemp[30,280,:])
+    #plt.plot(cube[0,:,10,20])
+    medbg = np.median(bgtemp,axis=2)
+    bgarrays[key] = medbg
+    #ig=px.imshow(bgtemp[:,:,0]-medbg)
+    #fig.show()
+    print('finish plt')
+
+
+print("Check bgarry_list and keys")
+
+
+#plt.clf()
+#differentiate=True,
+#              removeBias=True, background=None, coaddRamp=False,
+#              badpix=None, flat=None, output='output',
+#              saturationThreshold=60000,
+#              continuityThreshold=10000,
+#              linear=True): # depricate `linear` after testing
+
+
+#keys = ['CONF_NA','GAIN']
+#bg_pgps = bg_phdrs.groupby(by=keys)
+
+#log.info(bg_pgps.size())
+
+#ngroups = pgps.ngroups
+#bg_dict = bg_pgps.indices
+#keylist=list(bg_dict.keys())
+
+
+
+
+
+#bg_gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
 
 #for g in gps: 
 #    print(g[0]["OBJECT"],'\t',g[0]['CONF_NA'],'\t',g[0]['FILETYPE'],'\t',g[0]['FILENUM'],'-',g[-1]['FILENUM'] )
@@ -214,28 +305,14 @@ gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous
 group_first = [item[0] for item in gps]
 group_last = [item[-1] for item in gps]
 
-columns=['BLOCK','OBJECT','COMBINER_TYPE','CONFIG','GAIN','HWP','FILETYPE','START','END']
+columns=['BLOCK','OBJECT','CONF_NA','HWP','FILETYPE','START','END']
 block_dict= {}
 block_dict['BLOCK']=list(range(len(group_first)))
 block_dict['OBJECT']=[temp['OBJECT'] for temp in group_first]
-if 'MIRC COMBINER_TYPE' in hdrs[0].keys():    
-    block_dict['COMBINER_TYPE']=[temp['MIRC COMBINER_TYPE'] for temp in group_first]
-else: 
-    block_dict['COMBINER_TYPE']='ALL-IN-ONE'
-block_dict['CONFIG']=[temp['CONF_NA'] for temp in group_first]
-block_dict['GAIN']=[temp['GAIN'] for temp in group_first]
+block_dict['CONF_NA']=[temp['CONF_NA'] for temp in group_first]
 block_dict['FILETYPE']=[temp['FILETYPE'] for temp in group_first]
 block_dict['START']=[temp['FILENUM'] for temp in group_first]
 block_dict['END']=[temp['FILENUM'] for temp in group_last]
-
-#HWP column tricky since mode did not always exist.
-if 'MIRC HWP0 POS' in hdrs[0].keys():
-    block_dict['HWP']=[temp['MIRC HWP0 POS'] for temp in group_first] #set if it exists
-if 'MIRC STEPPER HWP_ELEVATOR POS' in hdrs[0].keys(): # if keyword exists then use it zero out the other values
-    # if stepper goes up/down during night, should catch that.
-    hwp_state = [(temp['MIRC STEPPER HWP_ELEVATOR POS'] < 1000000) for temp in group_first]
-    block_dict['HWP']=['' if hstate else hpol for hpol,hstate in zip(block_dict['HWP'],hwp_state) ]
-
 pblock = pd.DataFrame(block_dict,columns=columns)
 pblock_file=os.path.join(path,mrx_root+'_blocks.csv')
 if os.path.exists(pblock_file): ## guard

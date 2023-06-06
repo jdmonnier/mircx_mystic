@@ -3,6 +3,8 @@ import os;
 
 import matplotlib.pyplot as plt;
 import matplotlib.colors as mcolors;
+import matplotlib
+matplotlib.use('TkAgg')
 
 from astropy.stats import sigma_clipped_stats;
 from astropy.io import fits as pyfits;
