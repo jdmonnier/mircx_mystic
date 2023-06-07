@@ -62,6 +62,25 @@ def output (outputDir,hdr,suffix):
     output = outputDir + '/' + name + '_' + suffix;
     return output;
 
+
+def blockoutput (outputDir,bnum,suffix):
+    '''
+    Return a string like: ./outputDir/mircx00550_suffix
+    '''
+    
+    # Build diretory if needed
+    ensure_dir (outputDir);
+
+    # Get filename
+    name = ('block%s'%(format(bnum, '04d')))
+
+    # Clean as lower and continuous
+    suffix = suffix.lower().replace('_',''); 
+
+    # Return
+    output = outputDir + '/' + name + '_' + suffix;
+    return output;
+
 def write (hdulist,filename,dpi=100):
     '''
     Write file. The input shall be a hdulist or

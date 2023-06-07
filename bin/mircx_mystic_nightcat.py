@@ -207,6 +207,7 @@ hdrs=mrx.headers.p2h(phdrs)
 # JDM for the 'block' file maybe we only want to group by target, conf, hwp, filetype....
 keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT','MIRC COMBINER_TYPE','CONF_NA','GAIN','MIRC STEPPER HWP_ELEVATOR POS','MIRC HWP0 POS']
 gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
+# JDM. might want to have a MAXIMUM size for a group... esp for backgrounds, etc. but 
 
 #for g in gps: 
 #    print(g[0]["OBJECT"],'\t',g[0]['CONF_NA'],'\t',g[0]['FILETYPE'],'\t',g[0]['FILENUM'],'-',g[-1]['FILENUM'] )

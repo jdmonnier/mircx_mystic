@@ -361,7 +361,6 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[], logL
 
     # Define the regular expression to match file type
     regex = re.compile ('^'+mtype+'$');
-
     # Sort by time
     hdrs = sorted (hdrs,key=lambda h: h['MJD-OBS']);
     
@@ -491,12 +490,13 @@ def check_input (hdrs, required=1, maximum=100000):
     '''
     Check the input when provided as hdrs
     '''
-
+    breakpoint()
     # Ensure a list
     if type (hdrs) is not list:
         hdrs = [hdrs];
 
     # Check inputs are headers
+    # JDM. in new version this is just a plain dict not a pyfits object... problem?
     hdrs = [h for h in hdrs if type(h) is pyfits.header.Header or \
             type(h) is pyfits.hdu.compressed.CompImageHeader];
 

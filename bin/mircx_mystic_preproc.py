@@ -153,26 +153,50 @@ mrx_dir=''
 mrx_root='' 
 locals().update(jsonresult)
 mrx_summary_dir=mrx_root+'_SUMMARY' # should match argopt.summary_dir
+preproc_dir=mrx_root+'_PREPROC' # path to preproc.
+# do not allow custom preproc. only ONE per instrument per night per SUMMARY directory.
 path = os.path.join(mrx_dir, mrx_summary_dir)  # # should match argopt.summary_dir
-phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'))
-pblock_file=os.path.join(path,mrx_root+'_blocks.csv',low_memory=False)
-pblock = pd.read_csv(pblock_file,comment='#')
+preproc_path= os.path.join(path,preproc_dir)
+phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'),low_memory=False)
+pblock_file=os.path.join(path,mrx_root+'_blocks.csv')
+pblock = pd.read_csv(pblock_file,comment='#',low_memory=False)
 
 hdrs=mrx.headers.p2h(phdrs)  # might change one day to use panda data frames throughout code...
 blocks=mrx.headers.p2h(pblock)
 
 hdrs=mrx.headers.updatehdrs(hdrs,blocks) # update headers with block info.
 
-breakpoint();
 
 # Group backgrounds
-keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT','MIRC COMBINER_TYPE','CONF_NA','GAIN','MIRC STEPPER HWP_ELEVATOR POS','MIRC HWP0 POS']
-gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
+#keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT','MIRC STEPPER HWP_ELEVATOR POS','MIRC HWP0 POS'] # etalon? # same as blcoks?
+keys = ['BLOCK']
+gps = mrx.headers.group (hdrs, 'BACKGROUND', keys=keys,delta=1e20, Delta=1e20,continuous=True);
 
-#for g in gps: 
-#    print(g[0]["OBJECT"],'\t',g[0]['CONF_NA'],'\t',g[0]['FILETYPE'],'\t',g[0]['FILENUM'],'-',g[-1]['FILENUM'] )
+for gp in gps: 
+    #print("HEADERS: LEN ",len(g),'\t', g[0]["OBJECT"],'\t',g[0]['CONF_NA'],'\t',g[0]['FILETYPE'],'\t',g[0]['FILENUM'],'-',g[-1]['FILENUM'] )
+    b=[b for b in blocks if b['BLOCK'] == gp[0]['BLOCK'] ]
+    #print("BLOCK:   LEN ",len(b),'\t',b[0]["OBJECT"],'\t',b[0]['CONFIG'],'\t',b[0]['FILETYPE'],'\t',b[0]['START'],'-',b[0]['END'] )
+    
+    # Compute all background ramp and statistics for each block in preproc directory
+    filetype = 'BACKGROUND_MEAN' # goes in header
+    output =  mrx.files.blockoutput(preproc_path, gp[0]['BLOCK'], 'bkg') # goes in filename
+    log.info('Compute BACKGROUND_MEAN for BLOCK %i:' % (gp[0]['BLOCK']))
+    log.info('Writing File: %s' % (output+'.fits'))
+
+    # skip if file already exists
+    if os.path.exists (output+'.fits') and overwrite is False:
+        log.info ('%s already exists. Skipping creation.' % (output+'.fits'))
+        continue;
+    
+    log.setFile(output+'.log')
+    mrx.compute_background(gp, output=output, filetype=filetype)
+    log.closeFile()
+
+#log.info('Cleanup memory')
+del gps
 
 
+breakpoint();
 
 
 #TODO
@@ -318,7 +342,7 @@ pblock_file=os.path.join(path,mrx_root+'_blocks.csv')
 if os.path.exists(pblock_file): ## guard
     log.warning(pblock_file+' already exists. NOT OVERWRITING!! ')
     log.info('Loading old Block file')
-    pblock = pd.read_csv(pblock_file)
+    pblock = pd.read_csv(pblock_file,low_memory=False)
 else:
     pblock.to_csv(pblock_file,index=False,sep=',')
     log.info("Writing block file:"+mrx_root+'_blocks.csv')
