@@ -15,6 +15,7 @@ from skimage.registration import phase_cross_correlation;
 
 from scipy import fftpack;
 from scipy.signal import medfilt;
+from scipy.signal import lombscargle;
 from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter;
 from scipy.optimize import least_squares;
@@ -289,33 +290,39 @@ def compute_background_archive (hdrs, output='output_bkg', filetype='BACKGROUND_
     del elog;
     return hdulist;
 
-def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN'): # depricate `linear` after testing
+def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN',logLevel=1): 
     '''
     Compute BACKGROUND_MEAN file from a sequence of
     BACKGROUND. The output file had the mean and rms over
     all frames, written as ramp.
+
     '''
     elog = log.trace ('compute_background');
     # Check inputs
     # headers.check_input (hdrs, required=1);
 
     # Load files
-    hdr,cube,mjd = files.load_raw (hdrs, coaddRamp='mean',
-                                   saturationThreshold=None,
-                                   continuityThreshold=None,
-                                   linear=False);
-    log.info ('Data size: '+str(cube.shape));
+    hdr,cube,mjd = files.load_raw_only (hdrs,logLevel=logLevel);
+    log.info ('Block Background Data Size (nr,nf,ny,nz): '+str(cube.shape));
+    nr,nf,ny,nx = cube.shape;
 
+    hdr,cube,mjd = remove_interference(hdr,cube,mjd,logLevel=logLevel)
+
+    # Someone to detect light in the shutters?
+    #   Find median total flux in a frame and look for outliers.
+    #   
+    #   Recall some pixels enar end of ramp or corners are odd so ignore edges for this.
+    #   will fail in nx <5 ny<5 nf<4.. could be less strict if a future problem.
+    medians = np.median( np.sum( (cube[:,-2,2:ny-2,2:nx-2]-cube[:,1,2:ny-2:,2:nx-2])/(nf-1), axis=2),axis=1) 
+    # Find bad pixels
+    # subtract mean ramp and save
+    # unwwrap find
+    # Find Bad Pixels -
     # Background mean
     log.info ('Compute mean and rms over input files');
     bkg_mean = np.mean (cube, axis=0);
     bkg_err  = np.std (cube, axis=0) / np.sqrt (cube.shape[0]);
 
-    # Load all ramp of first file to measure readout noise
-    __,cube,__ = files.load_raw (hdrs[0:1], coaddRamp='none',
-                                 saturationThreshold=None,
-                                 continuityThreshold=None,
-                                 linear=linear);
 
     # Compute temporal rms
     log.info ('Compute rms over ramp/frame of first file');
@@ -875,3 +882,62 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     del elog;
     return hdulist;
 
+def remove_interference(hdr,cube,mjd,logLevel=1):
+    # Removes sinusoidal interferograms from the data. Assumes RAW data -- no differences.
+    # assume the block of data are CONTINUOUS in time. not gaps in the block.. The block creation
+    # should require continuous file blocks in time not just in file #.. hmm.  
+    #  
+    # some common camera problems.
+    #  last frame of a blck is sometimes bad -- very high value.
+    #  top row is usually bad (all zeros) . sometimes more than 1 row if using polaization mode (this dpends on # of subwindows)
+    nr,nf,ny,nx = cube.shape
+    # find the bad rows.. should only be one or two. if values never change in row)
+    test = np.median(cube[:,-2,:,:],axis=(0,2)) - np.median( cube[:,0,:,:],axis=(0,2) )
+    maxrows=np.max(np.argwhere(test > .1) ) # assume its alwasy the top rows that are bad.
+    data = np.diff (cube[:,:-1,0:maxrows+1,:],axis=1)
+    mjd_test = mjd[:,:-1,]
+    data -= np.mean(data,axis=1,keepdims=True) # median average flux from each pixel per ramp.
+    data = np.mean(data,axis=3) # average across row.
+    nr1,nf1,ny1 = data.shape
+    rowtimes =np.linspace(0,np.median(np.diff(mjd,axis=1))/ny*(maxrows),maxrows+1)
+    mjd_data = (0.5 * (mjd[:,0:-2] + mjd[:,1:-1]))[:,:,None]+rowtimes[None,None,:]
+
+    breakpoint() ;  
+    mjd_data1 = np.reshape(mjd_data[:,:,None],(nr1,nf1,ny1))
+    ft= np.fft.rfft(data.ravel())
+    times=mjd_data.ravel()
+    times=times-np.floor(times[0])
+    times=times*24*3600 
+    freqs = np.linspace(93,97,1000) #Hz
+    result = lombscargle(times,data.ravel(),freqs*2*np.pi,precenter=True)
+    
+    # JDM. lombscargle slow... 
+    #data_unwrap = np.reshape(data[0:-],(nr-1)*(nf-1)*ny)
+    
+
+
+    #data = np.append(data,  )
+    data1 = np.append(data,0.5*(data[0:nr-1,-1,:,:]+data[1:,0,:,:]),1)
+    data1=np.append(data, np.mean(data,axis=1,keepdims=True),1)
+
+    data -= np.mean(cube,axis=1,keepdims=True) # subtract average flux from each pixel
+
+
+    data=np.append(data, np.mean(data,axis=1,keep=True),1)
+    data[:,-1,:,:]=data[:,-2,:,:]
+
+    #mjd = 0.5 * (mjd[:,0:-1] + mjd[:,1:])[:,0:-1];
+
+
+    if hdr[0]['NBIN'] == 1:
+        #subtract average flux from each pixel (or smoothed version?)
+        #bias = 
+        data_sum = np.sum (data, axis=(3)); # sum rows since nloops ruins this axis anyway for timing.
+
+    else: # nbin >1
+        log.info ('NBIN>1: No proper interference removal YET. Using old method of reference columns. ');
+        ids = np.append (np.arange(15), data.shape[-1] - np.arange(1,15));
+        bias = np.median (data[:,:,:,ids],axis=3);
+        bias = gaussian_filter (bias,[0,0,1]);
+        data = data - bias[:,:,:,None];
+    return hdr,data,mjd;

@@ -19,7 +19,7 @@ else:
     GREEN   = col.Fore.GREEN;
 
 # Create the logger
-logger = logging.getLogger ('mircx_pipeline');
+logger = logging.getLogger ('mircx_mystic_pipeline');
 logger.setLevel (logging.INFO);
 
 # Create the handler for stream

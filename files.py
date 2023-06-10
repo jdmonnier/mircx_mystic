@@ -122,12 +122,14 @@ def linearize (data, gain):
     # apply nonlinearity connection
     data[:] = (-1. + np.sqrt(1. + 4. * coef_flat(gain) * data))/(2. * coef_flat(gain))
 
+
+
 def load_raw (hdrs, differentiate=True,
               removeBias=True, background=None, coaddRamp=False,
               badpix=None, flat=None, output='output',
               saturationThreshold=60000,
               continuityThreshold=10000,
-              linear=True): # depricate `linear` after testing
+              linear=False,  ): 
     '''
     Load data and append into gigantic cube. The output cube is
     of shape: [nfile*nramp, nframes, ny, ny].
@@ -145,7 +147,7 @@ def load_raw (hdrs, differentiate=True,
     subtracted together.
 
     If removeBias==True, the detector bias interference is removed
-    by using the median of the edges columns.
+    by detecting the sinusoidal interference signal and subtracting it.
 
     If background is not None, thus background cube is subtracted
     from the data.
@@ -198,7 +200,7 @@ def load_raw (hdrs, differentiate=True,
         data = data.astype ('float32');
 
         # Close file
-        hdulist.close();
+        hdulist.close(); # JDM Memory leak worries...
 
         # Integrity check
         if np.min (data) == np.max (data):
@@ -264,8 +266,10 @@ def load_raw (hdrs, differentiate=True,
         # Remove bias. Note that the median should be taken
         # with an odd number of samples, to be unbiased.
         # WARNING: because of median, our best estimate of the bias
-        # is to +/-1nph (convolved by the effect of gaussian_filter)
+        # is to +/-1nph (convolved by the effect of gaussian_filter):
         if removeBias is True:
+            # Subtract mean for
+            breakpoint(); # don't do it this way.  interference will be removed after badpixels are known...
             ids = np.append (np.arange(15), data.shape[-1] - np.arange(1,15));
             bias = np.median (data[:,:,:,ids],axis=3);
             bias = gaussian_filter (bias,[0,0,1]);
@@ -378,5 +382,117 @@ def load_raw (hdrs, differentiate=True,
     fsat = 1.0 * hdr[HMQ+'NSAT'] / (hdr[HMQ+'NRAMP']*nf);
     log.check (fsat,'Fraction of saturated frames = %.3f'%fsat);
     hdr[HMQ+'FSAT']  = (fsat,'fraction of saturated frames');
+
+    return hdr,cubenp,cubemp;
+
+
+def load_raw_only (hdrs,logLevel=1):   
+    '''
+    Load data group and append into gigantic cube. The output cube is
+    of shape: [nfile*nramp, nframes, ny, ny].
+
+    Don't do any processing, just load the data.
+
+    Return (hdr, cubenp, cubemp) where hdr is the header of file, cubenp
+    is the data as shape [nfile*nramp, nframes, ny, ny], and cubemp is
+    the MJD of each frame as shape [nfile*nramp, nframes]
+    '''
+    #log.info ('Load RAW files in mode coaddRamp=%s'%str(coaddRamp));
+
+    # Build output header as the copy
+    # of the first passed header
+    hdr = hdrs[0].copy();
+    hdr[HMQ+'NFILE'] = 0 #,'total number of files loaded');
+    hdr[HMQ+'NRAMP'] = 0 #,'total number of ramp loaded');
+    #hdr[HMQ+'NSAT']  = 0 #,'total number of saturated frames');
+    hdr['BZERO'] = 0; #JDM. Is this needed?
+
+    cube  = [];
+    cubem = [];
+
+    # Loop on files
+    for h in hdrs:
+        fileinfo = h['ORIGNAME'] + ' (' +h['FILETYPE']+')';
+        if logLevel>4: log.info ('Load %s'%fileinfo);
+        hdulist = pyfits.open(h['ORIGNAME']);
+
+        # Read compressed data. 
+        if h['ORIGNAME'][-7:] == 'fits.fz':
+            # Manipulate the header to fake only one dimension
+            nx = hdulist[1].header['NAXIS1'];
+            ny = hdulist[1].header['NAXIS2'];
+            nf = hdulist[1].header['NAXIS3'];
+            nr = hdulist[1].header['NAXIS4'];
+            hdulist[1].header['NAXIS'] = 1;
+            hdulist[1].header['NAXIS1'] = nr*nf*ny*nx;
+            # Uncompress and reshape data
+            data = hdulist[1].data;
+            data.shape = (nr,nf,ny,nx);
+            detector_gain = hdulist[1].header['GAIN'];
+        # Read normal data. 
+        else:
+            data = hdulist[0].data;
+            detector_gain = hdulist[0].header['GAIN'];
+
+        # Convert to float
+        data = data.astype ('float32');
+
+        # Close file
+        hdulist.close(); # JDM Memory leak worries...
+
+        # Integrity check
+        if np.min (data) == np.max (data):
+            log.error ('All values are equal');
+            raise ValueError ('RAW data are corrupted')
+
+        # Dimensions
+        nr,nf,ny,nx = data.shape;
+        if logLevel >4:    log.info ('Data size: '+str(data.shape));
+
+
+        #  MJD of each frame
+        mjd = headers.frame_mjd (h);
+        mjd = mjd.reshape (nr,nf);
+
+
+        # Loop on ramps
+        
+
+        # Add this RAW file in hdr
+        keylist =list(hdr.keys())
+        rawlist = list(filter(lambda x: 'MIRC PRO RAW' in x, keylist))
+        nraw = len(rawlist)
+        hdr['MIRC PRO RAW%i'%(nraw+1,)] = os.path.basename (h['ORIGNAME'])[-50:];
+        hdr['MIRC QC NFILE'] += 1;
+        hdr['MIRC QC NRAMP'] += data.shape[0];
+
+        # Append the data in the final cube
+        cube.append  (data);
+        cubem.append (mjd);
+
+    # Allocate memory
+    #log.info ('Allocate memory');
+    shape = cube[0].shape;
+    nramp = sum ([c.shape[0] for c in cube]);
+    cubenp = np.zeros ((nramp,shape[1],shape[2],shape[3]),dtype='float32');
+    cubemp = np.zeros ((nramp,shape[1]));
+
+    # Set data in cube, and free initial memory in its way
+    #log.info ('Set data in cube');
+    ramp = 0;
+    for c in range (len(cube)):
+        cubenp[ramp:ramp+cube[c].shape[0],:,:,:] = cube[c];
+        cubemp[ramp:ramp+cube[c].shape[0],:]     = cubem[c];
+        ramp += cube[c].shape[0];
+        cube[c]  = None;
+        cubem[c] = None;
+
+    # Some verbose
+    nr,nf,ny,nx = cubenp.shape;
+    if logLevel >4: log.info ('Number of files loaded = %i'%hdr[HMQ+'NFILE']);
+    if logLevel >4:log.info ('Number of ramp loaded = %i'%hdr[HMQ+'NRAMP']);
+    if logLevel >4:log.info ('Number of frames loaded = %i'%(hdr[HMQ+'NRAMP']*nf));
+    #log.info ('Number of saturated frames = %i'%hdr[HMQ+'NSAT']);
+
 
     return hdr,cubenp,cubemp;

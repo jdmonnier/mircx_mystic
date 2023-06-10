@@ -30,7 +30,7 @@ import sys
 import pickle
 import json
 
-from mircx_mystic import log, setup, files, headers,preproc
+from mircx_mystic import log, setup, files, headers,preproc # JDM why pylance difference?
 #from mircx_mystic import checkshutters
 import datetime as datetime
 import tkinter as tk
@@ -105,7 +105,7 @@ str_to_remove = [' ','-','_','!','#','@','$','%','^','&','*','(',')']
 
 # Parse argument
 argopt = parser.parse_args()
-
+logLevel=argopt.logLevel;
 #
 tempfile='.mircx_mystic_preproc.temp.log'
 #remove tempfile if already exists
@@ -188,9 +188,8 @@ for gp in gps:
         log.info ('%s already exists. Skipping creation.' % (output+'.fits'))
         continue;
     
-    log.setFile(output+'.log')
-    mrx.compute_background(gp, output=output, filetype=filetype)
-    log.closeFile()
+    # will create a 
+    mrx.compute_background(gp, output=output, filetype=filetype,logLevel=logLevel)
 
 #log.info('Cleanup memory')
 del gps
@@ -370,7 +369,7 @@ del elog
 log.closeFile()
 
 # Move tempfile.
-logfile =  os.path.join(path,mrx_root+'_nightcat.log') 
+logfile =  os.path.join(path,mrx_root+'_preproc.log') 
 fout=open(logfile,'a')
 fin =open(tempfile,'r')
 fout.writelines( fin.readlines() )
