@@ -116,7 +116,7 @@ if argopt.debug == 'TRUE':
 #
 # Compute NIGHT CATALOG and summary files, including header stuff.
 #
-
+logLevel = argopt.logLevel;
 # get raw directory if none passes
 if argopt.raw_dir == None:
     log.info("No Raw Directory Passed. Using Dialog Pickfile")
