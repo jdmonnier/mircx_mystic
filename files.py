@@ -129,7 +129,7 @@ def load_raw (hdrs, differentiate=True,
               badpix=None, flat=None, output='output',
               saturationThreshold=60000,
               continuityThreshold=10000,
-              linear=False,  ): 
+              linear=False  ): 
     '''
     Load data and append into gigantic cube. The output cube is
     of shape: [nfile*nramp, nframes, ny, ny].

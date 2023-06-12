@@ -35,7 +35,7 @@ global detmode;
 detmode = ['NREADS','NLOOPS','NBIN','GAIN','FRMPRST'];
 
 global camtiming;
-detmode = ['NREADS','NLOOPS','NBIN'];
+camtiming = ['NREADS','NLOOPS','NBIN','FRMPRST','CROPROWS','CROPCOLS']; #affects timing in detail
 
 global insmode;
 insmode = ['FILTER1','FILTER2','CONF_NA','MIRCX_SPECTRO_XY','MIRCX_SPECTRO_FOC','MIRC COMBINER_TYPE'];

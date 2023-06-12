@@ -9,10 +9,13 @@ from astropy.io import fits as pyfits;
 from astropy.time import Time;
 from astropy.io import ascii;
 from astropy.table import Table;
-
+import matplotlib.pyplot as plt;
+import matplotlib
+matplotlib.use('TkAgg')
+#from . import setup
 
 import os, glob, pickle, datetime, re, csv, gc;
-
+import mircx_mystic as mrx;
 from . import log
 counters={'gpstime':0, 'etalon':0, 'sts':0}
 
@@ -49,12 +52,13 @@ def summary (hdr):
 
     return value;
 
-def setup (hdr, params):
-    '''
-    Return the setup as string
-    '''
-    value = ' / '.join([str(hdr.get(p,'--')) for p in params]);
-    return value;
+# name conflicts with main library. I will comment out as not used it seems.
+#def setup (hdr, params):
+#    '''
+#    Return the setup as string
+#    '''
+#    value = ' / '.join([str(hdr.get(p,'--')) for p in params]);
+#    return value;
 
 def get_beam (hdr):
     '''
@@ -113,7 +117,7 @@ def get_mjd (hdr, origin=['linux','gps','mjd'], check=2.0,Warning=True):
     # Check the difference in [s]
     delta = np.abs (mjdu-mjdl) * 24 * 3600;
     if (delta > check) & (Warning == True):
-        log.warning ('IN %s :\n   UTC-OBS and TIME are different by %.1f s!! '%(hdr['ORIGNAME'],delta));
+        log.warning ('IN %s :\n   UTC-OBS and TIME differ %.1f s. Use Priority Origin: %s'%(hdr['ORIGNAME'],delta,origin[0]));
 
     # Return the requested one
     for o in origin:  # if origin in array, then returns result in priority order.
@@ -126,7 +130,7 @@ def get_mjd (hdr, origin=['linux','gps','mjd'], check=2.0,Warning=True):
     
     return 0.0, None;
     
-def loaddir (dirs, uselog=True):
+def loaddir (dirs, uselog=True,logLevel=1):
     '''
     Load the headers of all files mircx*.fit* from
     the input list of directory
@@ -161,19 +165,19 @@ def loaddir (dirs, uselog=True):
         files = sorted (files);
 
         # Load headers
-        hdrs_here = load (files);
+        hdrs_here = load (files,logLevel=logLevel);
         
         # Append headers in case of multiple directories -- not used...
         hdrs.extend (hdrs_here);
 
-
-
     return hdrs;
 
-def load (files):
+def load (files,logLevel=1):
     '''
     Load the headers of all input files. The following keywords
     are added to each header: MJD-OBS, MJD-LOAD and ORIGNAME.
+    This routine 'fixes' various issues with the headers that arose over the years, including reconciling times and 
+    identifying use of etalon, etc. 
     The output is a list of FITS headers.
     '''
     hdrs = []
@@ -266,7 +270,7 @@ def load (files):
             #else:    
                 #    #log.info ('Set OBJECT = OBJECT_E because ETALON is IN');
                 if hdr['OBJECT'][-1] != 'E': 
-                    hdr['OBJECT'] += '_E';  # JDM slightly preferes ETALON_OBJECT... but we will keep
+                    hdr['OBJECT'] += '_E';  # JDM slightly preferes ETALON_OBJECT... but we will keep for now 
 
             # Append
             hdrs.append (hdr);
@@ -283,6 +287,42 @@ def load (files):
             log.info("PROGRESS 50% Done")
         if fn == len(files)*3//4: 
             log.info("PROGRESS 75% Done")
+    log.info("PROGRESS 100% Done")
+
+    if logLevel>4: log.info('Reconciling frames time to consistent frame rate.')
+    # JDM. Note that the reset time is currently about 1/10 of frametime. Frame rates are calculated
+    # based on first frame so the measured framerate is going to be off since this does not account for
+    # reset time.  We could add complexity to the time calculation but it seems not worth it since we don't record
+    # all camera parameters in header so not sure how reset time changes with other parameters and over time, firmware
+    # #changes, etc. 
+    # Specific Example:
+    # For a 8loops 6reads, 320x44 pixels, the true frame rate is 2.7294ms with reset time 0.26ms.  
+    # The reported frametimes are 2.7346ms for 50 frames/reset and 2.7320 ms for 100 frames/reset.
+    # I had hoped to get ultra precise timing for removing the interference but this reset error will limit the preciison 
+    # to timing error of +/- 1/20 frametime.  This is phase error of ~5 degs for a 94Hz signal with typical frametime of 2.7ms.
+    
+    # first group detector settings which should always have the same frame rate exactly.
+
+    keys = ['NREADS','NLOOPS','NBIN','FRMPRST','CROPROWS','CROPCOLS']
+    gps = keygroup (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=False);
+    for gp in gps:
+        startfrs=np.array([gp0['STARTFR'] for gp0 in gp])
+        #lastfrs=np.array([gp0['LASTFR'] for gp0 in gp])
+        times=np.array([gp0['MJD-OBS'] for gp0 in gp])
+        dtimes=np.array([gp0['EXPOSURE'] for gp0 in gp]) # use zip?
+        restart_times = times-(np.median(dtimes)/1000./24./3600)*startfrs #all nums treated at double?
+        quickref=[gp0['ORIGNAME'] for gp0 in gp]
+        for hdr in hdrs:
+            if hdr['ORIGNAME'] in quickref:  
+                log.info('Found %s'%hdr['ORIGNAME'])
+                hdr['EXPOSURE']=np.median(dtimes) # unify 
+                hdr['RESTART0']=hdr['MJD-OBS']-(hdr['EXPOSURE']/1000./24./3600)*hdr['STARTFR']
+
+        breakpoint()
+    # Identify camera restarts by either startfrs going down with time (typical case) or rarely if the the restart_times difference is large,
+    # say 
+
+    breakpoint()
 
     gc.collect()
     log.info('Number of files with time discrepancy: %i '%counters['gpstime'])
@@ -316,7 +356,9 @@ def frame_mjd (hdr):
     # Time step between frames in [d]
     # with new headers, the HIERRACH is removed from dictionary.
 
-    delta = 1./hdr['MIRC FRAME_RATE'] / 24/3600; 
+    #delta = 1./hdr['MIRC FRAME_RATE'] / 24/3600; 
+    delta = hdr['EXPOSURE'] / 24/3600/1000; # should be more accurate.
+
 
     
     # Compute assuming MJD-OBS is time of first frame
@@ -410,6 +452,70 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[], logL
     
     return groups;
 
+def keygroup (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[], logLevel=1):
+    '''
+    Group the input headers into list of compatible files.
+    A new group is started if:
+    - keys change
+    - the time distance between consecutive is larger than delta.
+    - the total integration is larger than Delta
+    The output is a list of list.
+    '''
+    #elog = log.trace ('keygroup_headers');
+    
+    groups = [[]];
+    mjd = -10e9;
+
+    # Define the regular expression to match file type
+    regex = re.compile ('^'+mtype+'$');
+    # Sort by time
+    hdrs = sorted (hdrs,key=lambda h: h['MJD-OBS']);
+    
+    # Assume hdrs is sorted
+    for h in hdrs:
+        fileinfo = h['ORIGNAME'] + ' (' +h['FILETYPE']+')';
+        
+        # if different type, start new group and continue
+        if bool (re.match (regex, h['FILETYPE'])) is False:
+            if groups[-1] != [] and str2bool (continuous):
+                groups.append([]);
+            continue;
+
+        # If no previous
+        if groups[-1] == []:
+            if logLevel > 4: log.info('New group %s'%fileinfo);
+            groups[-1].append(h);
+            continue;
+
+        # If no match with last, we start new group
+        if match (h,groups[-1][-1],keys,delta) is False:
+            if logLevel > 4: log.info('New group (gap) %s'%fileinfo);
+            groups.append([h]);
+            continue;
+
+        # If no match with first, we start new group
+        if match (h,groups[-1][0],keys,Delta) is False:
+            if logLevel > 4: log.info('New group (integration) %s'%fileinfo);
+            groups.append([h]);
+            continue;
+        
+        # Else, add to current group
+        if logLevel > 9: log.info('Add file %s'%fileinfo);
+        groups[-1].append(h);
+
+    # Clean from void groups
+    groups = [g for g in groups if g != []];
+    
+    # For the BACKGROUND, remove the first file if there is more than 3 files
+    # because it is often contaminated with light (slow shutter)
+    # This needs to be more robust for all kinds of shutters. will be done later.
+    #if mtype == 'BACKGROUND':
+    #    for i in range(np.shape(groups)[0]):
+    #        if np.shape(groups[i])[0] > 3:
+    #            groups[i] = groups[i][1:];
+    #            if logLevel > 4: log.info ('Ignore the first BACKGROUND files (more than 3)');
+    
+    return groups;
 
 def assoc (h, allh, tag, keys=[], which='closest', required=0, quality=None):
     '''
@@ -669,3 +775,14 @@ def updatehdrs(hdrs,blocks):
 
     # remove hdrs with 
     return hdrs
+
+#def keyupdatehdrs(hdrs,idkey=[],idval=[], newkey=[],newval=[]):
+    #Information in the blocks precedence of the header information.
+    #loop over the blocks then modify hdrs based on the numbers and add new block field.
+    #remove hdrs entries not explicitly included in blocks.
+#    for hdr in hdrs:
+#            if hdr[idkey] = idval:
+#                hdr[newkey]=newval; # fancy way to do this?
+                        #log.info('Updated Header %i %s from %s to %s'%(hdr['FILENUM'],outkey,hdr[outkey],block[inkey]))
+
+ #   return hdrs

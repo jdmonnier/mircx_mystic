@@ -123,7 +123,6 @@ if argopt.raw_dir == None:
     root = tk.Tk()
     root.withdraw()
     argopt.raw_dir = filedialog.askdirectory(title="Select PATH to DATA",initialdir='./')
-    log.info("Chose RAW directory %s"%(argopt.raw_dir))
 
 if argopt.raw_dir[-8:] =='_SUMMARY':
     # load json file to retrieve raw-dir, etc.
@@ -143,12 +142,20 @@ if argopt.raw_dir[-8:] =='_SUMMARY':
     argopt.mrx_dir=mrx_dir
     mrx_summary_dir=mrx_root+'_SUMMARY'
     path = os.path.join(argopt.mrx_dir, mrx_summary_dir)
-    phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'),low_memory=False)
-
+    try:
+        phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'),low_memory=False)
+    except: # if no headers.csv file, then create it
+        log.info("JSON file exists but no headers.csv file found. Creating it from raw data")
+        hdrs = mrx.headers.loaddir(argopt.raw_dir,logLevel=logLevel)
+        phdrs=pd.DataFrame(hdrs)
+        phdrs.to_csv(os.path.join(path,mrx_root+'_headers.csv'))
+#if json file exists but no headers, then use the raw_dir info to load it.
 
 else: # read header.
+    log.info("Chose RAW directory %s"%(argopt.raw_dir))
+
     # List inputs
-    hdrs = mrx.headers.loaddir(argopt.raw_dir)
+    hdrs = mrx.headers.loaddir(argopt.raw_dir,logLevel=logLevel)
 
     # Create Summary directory and save hdrs with all info needed to contineu 
     # analysis without requiring future info about data location

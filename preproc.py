@@ -890,6 +890,10 @@ def remove_interference(hdr,cube,mjd,logLevel=1):
     # some common camera problems.
     #  last frame of a blck is sometimes bad -- very high value.
     #  top row is usually bad (all zeros) . sometimes more than 1 row if using polaization mode (this dpends on # of subwindows)
+    #  camera could get reset during block so there is a discontinuity in the sine wave.. will need to look for that in order to
+    #  avoid lomb scargle which is just terribly slow and data is almost always equally spaced...
+    #  problem here is making a routine that will always work for all data... eventually even nbin != 1
+
     nr,nf,ny,nx = cube.shape
     # find the bad rows.. should only be one or two. if values never change in row)
     test = np.median(cube[:,-2,:,:],axis=(0,2)) - np.median( cube[:,0,:,:],axis=(0,2) )
@@ -899,8 +903,20 @@ def remove_interference(hdr,cube,mjd,logLevel=1):
     data -= np.mean(data,axis=1,keepdims=True) # median average flux from each pixel per ramp.
     data = np.mean(data,axis=3) # average across row.
     nr1,nf1,ny1 = data.shape
+
+    # detect if there is a discontinuity in the timing. only have to check first of each ramp.
+    ramps_starts = mjd[:,0]
+    frame_num = (ramps_starts-np.min(ramps_starts))*24*3600*1000  / hdr['EXPOSURE']
+    # look into TIME_S	TIME_US keywords....
+    # JDM discovered some unexpected inconsistencies in the timing.. ugh.
+    breakpoint()
+    plt.plot(frame_num-np.arange(0,nr*nf,nf))
+
     rowtimes =np.linspace(0,np.median(np.diff(mjd,axis=1))/ny*(maxrows),maxrows+1)
     mjd_data = (0.5 * (mjd[:,0:-2] + mjd[:,1:-1]))[:,:,None]+rowtimes[None,None,:]
+    # look into 
+    # detect if there is a discontinuity in the timing.
+
 
     breakpoint() ;  
     mjd_data1 = np.reshape(mjd_data[:,:,None],(nr1,nf1,ny1))
