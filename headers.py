@@ -317,6 +317,7 @@ def load (files,logLevel=1):
                 log.info('Found %s'%hdr['ORIGNAME'])
                 hdr['EXPOSURE']=np.median(dtimes) # unify 
                 hdr['RESTART0']=hdr['MJD-OBS']-(hdr['EXPOSURE']/1000./24./3600)*hdr['STARTFR']
+    check=np.array([g['RESTART0'] for g in hdrs])
 
         breakpoint()
     # Identify camera restarts by either startfrs going down with time (typical case) or rarely if the the restart_times difference is large,
