@@ -81,9 +81,9 @@ preproc_args = parser.add_argument_group('preproc arguments',
 preproc_args.add_argument("--summary-dir", dest="summary_dir", default=None, type=str,
                       help="directory of SUMMARY  [%(default)s]")
 
-preproc_args.add_argument("--log-level", dest="logLevel",
-                      default=1, type=int,
-                      help="log verbosity, 1= minimal, 10=most detailed [%(default)s]")
+preproc_args.add_argument("--log", dest="logLevel", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                      default="INFO", help="log verbosity [%(default)s]")
+
 
 advanced = parser.add_argument_group('advanced user arguments')
 
@@ -105,7 +105,8 @@ str_to_remove = [' ','-','_','!','#','@','$','%','^','&','*','(',')']
 
 # Parse argument
 argopt = parser.parse_args()
-logLevel=argopt.logLevel;
+log.setLevel(argopt.logLevel);
+
 #
 tempfile='.mircx_mystic_preproc.temp.log'
 #remove tempfile if already exists
@@ -189,7 +190,7 @@ for gp in gps:
         continue;
     
     # will create a 
-    mrx.compute_background(gp, output=output, filetype=filetype,logLevel=logLevel)
+    mrx.compute_background(gp, output=output, filetype=filetype) # this routine will do a lot!
 
 #log.info('Cleanup memory')
 del gps

@@ -4,6 +4,8 @@ from syslog import LOG_WARNING
 import numpy as np;
 import pandas as pd;
 import sys
+import numpy.polynomial.polynomial as poly
+
 
 from astropy.io import fits as pyfits;
 from astropy.time import Time;
@@ -130,7 +132,7 @@ def get_mjd (hdr, origin=['linux','gps','mjd'], check=2.0,Warning=True):
     
     return 0.0, None;
     
-def loaddir (dirs, uselog=True,logLevel=1):
+def loaddir (dirs, uselog=True):
     '''
     Load the headers of all files mircx*.fit* from
     the input list of directory
@@ -165,14 +167,14 @@ def loaddir (dirs, uselog=True,logLevel=1):
         files = sorted (files);
 
         # Load headers
-        hdrs_here = load (files,logLevel=logLevel);
+        hdrs_here = load (files);
         
         # Append headers in case of multiple directories -- not used...
         hdrs.extend (hdrs_here);
 
     return hdrs;
 
-def load (files,logLevel=1):
+def load (files):
     '''
     Load the headers of all input files. The following keywords
     are added to each header: MJD-OBS, MJD-LOAD and ORIGNAME.
@@ -289,7 +291,7 @@ def load (files,logLevel=1):
             log.info("PROGRESS 75% Done")
     log.info("PROGRESS 100% Done")
 
-    if logLevel>4: log.info('Reconciling frames time to consistent frame rate.')
+    log.debug('Reconciling frames time to consistent frame rate.')
     # JDM. Note that the reset time is currently about 1/10 of frametime. Frame rates are calculated
     # based on first frame so the measured framerate is going to be off since this does not account for
     # reset time.  We could add complexity to the time calculation but it seems not worth it since we don't record
@@ -303,7 +305,9 @@ def load (files,logLevel=1):
     
     # first group detector settings which should always have the same frame rate exactly.
 
-    keys = ['NREADS','NLOOPS','NBIN','FRMPRST','CROPROWS','CROPCOLS']
+    keys = ['NREADS','NLOOPS','NBIN','CROPROWS','CROPCOLS','FRMPRST']
+    for h in hdrs: h['MJD-OBS0']=h['MJD-OBS'] # save original time
+
     gps = keygroup (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=False);
     for gp in gps:
         startfrs=np.array([gp0['STARTFR'] for gp0 in gp])
@@ -311,19 +315,53 @@ def load (files,logLevel=1):
         times=np.array([gp0['MJD-OBS'] for gp0 in gp])
         dtimes=np.array([gp0['EXPOSURE'] for gp0 in gp]) # use zip?
         restart_times = times-(np.median(dtimes)/1000./24./3600)*startfrs #all nums treated at double?
+
+         # find gaps of >10 seconds
+
+        gaps = restart_times-np.roll(restart_times,1)
+        gaptime=10. #Seconds
+        starts=np.concatenate( (np.array([0]),  (np.where( gaps  > gaptime/24./3600. ) )[0] ) )
+        lasts=np.roll(starts,-1)
+        lasts[-1]=len(times)
+        new_mjds=np.zeros(len(startfrs))
+        new_exposure=np.zeros(len(dtimes))
+        for in0,in1 in zip(starts,lasts):
+            #use a robust linear fit to each continuous chunk. TOTAL overkill but will handle any weird outlines well!!
+            x=(startfrs[in0:in1]-np.median(startfrs[in0:in1]))/1000000
+            y=times[in0:in1] -np.median(times[in0:in1])
+            coefs = poly.polyfit(x, y, 1) # I'd have loved to use a robust estimator    
+            new_y = poly.polyval(x, coefs)
+            new_mjds[in0:in1] = new_y+np.median(times[in0:in1])
+            new_exposure[in0:in1]=coefs[1]*24*3600/1000 #update.
+            #median_frame = np.median(startfrs[in0:in1])
+            #median_time0 = np.median(times[in0:in1] - (np.median(dtimes)/1000./24./3600)*(startfrs[in0:in1]-median_frame))
+            #new_mjds[in0:in1]=median_time0+(np.median(dtimes)/1000./24./3600)*(startfrs[in0:in1]-median_frame)
+        #check
+        diffs=new_mjds-times
+        log.debug('Maximum time change in cam setting: %f milliseconds'%(24*3600*1000.*np.max(np.abs(new_mjds-times))))
+        #plt.plot(diffs*24*3600*1000.)
+        #plt.show()
+        #breakpoint()
+        #Update the original headers with the median EXPOSURE (detimes) for each camera mode
         quickref=[gp0['ORIGNAME'] for gp0 in gp]
         for hdr in hdrs:
-            if hdr['ORIGNAME'] in quickref:  
-                log.info('Found %s'%hdr['ORIGNAME'])
-                hdr['EXPOSURE']=np.median(dtimes) # unify 
-                hdr['RESTART0']=hdr['MJD-OBS']-(hdr['EXPOSURE']/1000./24./3600)*hdr['STARTFR']
-        check=np.array([g['RESTART0'] for g in hdrs])
+            if hdr['ORIGNAME'] in quickref:
+                index= list.index(quickref,hdr['ORIGNAME'])
+                #log.info('Found %s'%hdr['ORIGNAME'])
+                hdr['EXPOSURE']=new_exposure[index] # unify 
+                hdr['MIRC FRAME_RATE']=1000./hdr['EXPOSURE']
+                hdr['MJD-OBS']=new_mjds[index] #save original MJD-OBS before overwriting!
+                hdr['RESTART0']= hdr['MJD-OBS']-(hdr['EXPOSURE']/1000./24./3600)*hdr['STARTFR'] #make perfect
 
-        breakpoint()
+    check_diffs=np.array([g['MJD-OBS']-g['MJD-OBS0'] for g in hdrs])
+    alltimes=np.array([g['MJD-OBS'] for g in hdrs])
+    exposures = np.array([g['EXPOSURE'] for g in hdrs])
+    restarts=np.array([g['RESTART0'] for g in hdrs])
+    log.info('MJD-OBS corrected for jitter (max change %f mS)'%(24*3600*1000.*np.max(np.abs(check_diffs))))
+
+    #breakpoint()
     # Identify camera restarts by either startfrs going down with time (typical case) or rarely if the the restart_times difference is large,
     # say 
-
-    breakpoint()
 
     gc.collect()
     log.info('Number of files with time discrepancy: %i '%counters['gpstime'])
@@ -384,7 +422,7 @@ def match (h1,h2,keys,delta):
     # Ensure binary output
     return True if answer else False;
 
-def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[], logLevel=1):
+def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
     '''
     Group the input headers into list of compatible files.
     A new group is started if:
@@ -419,24 +457,24 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[], logL
 
         # If no previous
         if groups[-1] == []:
-            if logLevel > 4: log.info('New group %s'%fileinfo);
+            log.debug('New group %s'%fileinfo);
             groups[-1].append(h);
             continue;
 
         # If no match with last, we start new group
         if match (h,groups[-1][-1],keys,delta) is False:
-            if logLevel > 4: log.info('New group (gap) %s'%fileinfo);
+            log.debug('New group (gap) %s'%fileinfo);
             groups.append([h]);
             continue;
 
         # If no match with first, we start new group
         if match (h,groups[-1][0],keys,Delta) is False:
-            if logLevel > 4: log.info('New group (integration) %s'%fileinfo);
+            log.debug('New group (integration) %s'%fileinfo);
             groups.append([h]);
             continue;
         
         # Else, add to current group
-        if logLevel > 9: log.info('Add file %s'%fileinfo);
+        log.debug('Add file %s'%fileinfo);
         groups[-1].append(h);
 
     # Clean from void groups
@@ -449,11 +487,11 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[], logL
     #    for i in range(np.shape(groups)[0]):
     #        if np.shape(groups[i])[0] > 3:
     #            groups[i] = groups[i][1:];
-    #            if logLevel > 4: log.info ('Ignore the first BACKGROUND files (more than 3)');
+    #            log.debug ('Ignore the first BACKGROUND files (more than 3)');
     
     return groups;
 
-def keygroup (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[], logLevel=1):
+def keygroup (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
     '''
     Group the input headers into list of compatible files.
     A new group is started if:
@@ -484,24 +522,24 @@ def keygroup (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[], l
 
         # If no previous
         if groups[-1] == []:
-            if logLevel > 4: log.info('New group %s'%fileinfo);
+            log.debug('New group %s'%fileinfo);
             groups[-1].append(h);
             continue;
 
         # If no match with last, we start new group
         if match (h,groups[-1][-1],keys,delta) is False:
-            if logLevel > 4: log.info('New group (gap) %s'%fileinfo);
+            log.debug('New group (gap) %s'%fileinfo);
             groups.append([h]);
             continue;
 
         # If no match with first, we start new group
         if match (h,groups[-1][0],keys,Delta) is False:
-            if logLevel > 4: log.info('New group (integration) %s'%fileinfo);
+            log.debug('New group (integration) %s'%fileinfo);
             groups.append([h]);
             continue;
         
         # Else, add to current group
-        if logLevel > 9: log.info('Add file %s'%fileinfo);
+        log.debug('Add file %s'%fileinfo);
         groups[-1].append(h);
 
     # Clean from void groups
@@ -514,7 +552,7 @@ def keygroup (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[], l
     #    for i in range(np.shape(groups)[0]):
     #        if np.shape(groups[i])[0] > 3:
     #            groups[i] = groups[i][1:];
-    #            if logLevel > 4: log.info ('Ignore the first BACKGROUND files (more than 3)');
+    #            log.debug ('Ignore the first BACKGROUND files (more than 3)');
     
     return groups;
 

@@ -107,12 +107,12 @@ log.setLevel(argopt.logLevel);
 log.setFile(tempfile) ## will get renamed
 
 #test loggins
-log.debug('test log.debug')
-log.info('test log.info')
-log.warning('test log.warning')
-log.error('test log.error')
-log.critical('test log.critical')
-breakpoint()
+#log.debug('test log.debug')
+#log.info('test log.info')
+#log.warning('test log.warning')
+#log.error('test log.error')
+#log.critical('test log.critical')
+#breakpoint()
 
 # Verbose
 elog = log.trace('mircx_mystic_nightcat')  # for Timing.
@@ -125,7 +125,7 @@ if argopt.debug == 'TRUE':
 #
 # Compute NIGHT CATALOG and summary files, including header stuff.
 #
-logLevel = argopt.logLevel;
+
 # get raw directory if none passes
 if argopt.raw_dir == None:
     log.info("No Raw Directory Passed. Using Dialog Pickfile")
@@ -155,7 +155,7 @@ if argopt.raw_dir[-8:] =='_SUMMARY':
         phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'),low_memory=False)
     except: # if no headers.csv file, then create it
         log.info("JSON file exists but no headers.csv file found. Creating it from raw data")
-        hdrs = mrx.headers.loaddir(argopt.raw_dir,logLevel=logLevel)
+        hdrs = mrx.headers.loaddir(argopt.raw_dir)
         phdrs=pd.DataFrame(hdrs)
         phdrs.to_csv(os.path.join(path,mrx_root+'_headers.csv'))
 #if json file exists but no headers, then use the raw_dir info to load it.
@@ -164,7 +164,7 @@ else: # read header.
     log.info("Chose RAW directory %s"%(argopt.raw_dir))
 
     # List inputs
-    hdrs = mrx.headers.loaddir(argopt.raw_dir,logLevel=logLevel)
+    hdrs = mrx.headers.loaddir(argopt.raw_dir)
 
     # Create Summary directory and save hdrs with all info needed to contineu 
     # analysis without requiring future info about data location

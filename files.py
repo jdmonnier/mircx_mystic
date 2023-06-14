@@ -386,7 +386,7 @@ def load_raw (hdrs, differentiate=True,
     return hdr,cubenp,cubemp;
 
 
-def load_raw_only (hdrs,logLevel=1):   
+def load_raw_only (hdrs):   
     '''
     Load data group and append into gigantic cube. The output cube is
     of shape: [nfile*nramp, nframes, ny, ny].
@@ -413,7 +413,7 @@ def load_raw_only (hdrs,logLevel=1):
     # Loop on files
     for h in hdrs:
         fileinfo = h['ORIGNAME'] + ' (' +h['FILETYPE']+')';
-        if logLevel>4: log.info ('Load %s'%fileinfo);
+        log.debug ('Load %s'%fileinfo);
         hdulist = pyfits.open(h['ORIGNAME']);
 
         # Read compressed data. 
@@ -447,7 +447,7 @@ def load_raw_only (hdrs,logLevel=1):
 
         # Dimensions
         nr,nf,ny,nx = data.shape;
-        if logLevel >4:    log.info ('Data size: '+str(data.shape));
+        log.debug ('Data size: '+str(data.shape));
 
 
         #  MJD of each frame
@@ -489,9 +489,9 @@ def load_raw_only (hdrs,logLevel=1):
 
     # Some verbose
     nr,nf,ny,nx = cubenp.shape;
-    if logLevel >4: log.info ('Number of files loaded = %i'%hdr[HMQ+'NFILE']);
-    if logLevel >4:log.info ('Number of ramp loaded = %i'%hdr[HMQ+'NRAMP']);
-    if logLevel >4:log.info ('Number of frames loaded = %i'%(hdr[HMQ+'NRAMP']*nf));
+    log.debug ('Number of files loaded = %i'%hdr[HMQ+'NFILE']);
+    log.debug ('Number of ramp loaded = %i'%hdr[HMQ+'NRAMP']);
+    log.debug ('Number of frames loaded = %i'%(hdr[HMQ+'NRAMP']*nf));
     #log.info ('Number of saturated frames = %i'%hdr[HMQ+'NSAT']);
 
 

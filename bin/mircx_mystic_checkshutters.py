@@ -84,9 +84,8 @@ checkshutters_args = parser.add_argument_group('(1) checkshutters',
 checkshutters_args.add_argument("--summary-dir", dest="summary_dir", default=None, type=str,
                       help="directory of SUMMARY  [%(default)s]")
 
-checkshutters_args.add_argument("--log-level", dest="logLevel",
-                      default=1, type=int,
-                      help="log verbosity, 1= minimal, 10=most detailed [%(default)s]")
+checkshutters_args.add_argument("--log", dest="logLevel", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                      default="INFO", help="log verbosity [%(default)s]")
 
 advanced = parser.add_argument_group('advanced user arguments')
 

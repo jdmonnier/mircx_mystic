@@ -89,8 +89,6 @@ def memory ():
 
 def setLevel(logLevel):
     logger.setLevel(getattr(logging, logLevel))
-    #logging.basicConfig(level=getattr(logging, logLevel))
-    #info("Setting level to %s"%logLevel)
 
 # Logging functions
 

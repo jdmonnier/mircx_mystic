@@ -290,7 +290,7 @@ def compute_background_archive (hdrs, output='output_bkg', filetype='BACKGROUND_
     del elog;
     return hdulist;
 
-def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN',logLevel=1): 
+def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN'): 
     '''
     Compute BACKGROUND_MEAN file from a sequence of
     BACKGROUND. The output file had the mean and rms over
@@ -302,11 +302,11 @@ def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN',lo
     # headers.check_input (hdrs, required=1);
 
     # Load files
-    hdr,cube,mjd = files.load_raw_only (hdrs,logLevel=logLevel);
+    hdr,cube,mjd = files.load_raw_only (hdrs);
     log.info ('Block Background Data Size (nr,nf,ny,nz): '+str(cube.shape));
     nr,nf,ny,nx = cube.shape;
 
-    hdr,cube,mjd = remove_interference(hdr,cube,mjd,logLevel=logLevel)
+    hdr,cube,mjd = remove_interference(hdr,cube,mjd)
 
     # Someone to detect light in the shutters?
     #   Find median total flux in a frame and look for outliers.
@@ -882,7 +882,7 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     del elog;
     return hdulist;
 
-def remove_interference(hdr,cube,mjd,logLevel=1):
+def remove_interference(hdr,cube,mjd):
     # Removes sinusoidal interferograms from the data. Assumes RAW data -- no differences.
     # assume the block of data are CONTINUOUS in time. not gaps in the block.. The block creation
     # should require continuous file blocks in time not just in file #.. hmm.  
