@@ -12,15 +12,25 @@ except:
     BLUE    = '';
     GREEN   = '';
 else:
+    COL_WARNING = col.Fore.YELLOW
+    COL_ERROR   = col.Fore.RED 
+    COL_DEBUG   = col.Fore.BLUE
+    COL_INFO    = col.Fore.GREEN
+    COL_CRITICAL= col.Fore.WHITE + col.Back.BLACK
     RED     = col.Fore.RED;
     MAGENTA = col.Fore.MAGENTA;
-    RESET   = col.Fore.RESET;
+    RESET   = col.Fore.RESET + col.Back.RESET;
     BLUE    = col.Fore.BLUE;
     GREEN   = col.Fore.GREEN;
+    YELLOW  = col.Fore.YELLOW;
+
+#Fore: BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, RESET.
+#Back: BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, RESET.
+#Style: DIM, NORMAL, BRIGHT, RESET_ALL
 
 # Create the logger
 logger = logging.getLogger ('mircx_mystic_pipeline');
-logger.setLevel (logging.INFO);
+logger.setLevel (logging.DEBUG); # show everything that comess through. adjust level through stream
 
 # Create the handler for stream
 logStream = logging.StreamHandler();
@@ -28,10 +38,10 @@ logger.addHandler (logStream);
 
 # Set the formater for this handler
 formatter = logging.Formatter (
-     "[%(color)s%(levelname)-7.7s"+RESET+"] %(asctime)s.%(msecs)03d [%(memory)s]: %(message)s",
+     "[%(color)s%(levelname)-8.8s"+RESET+"] %(asctime)s.%(msecs)03d [%(memory)s]: %(message)s",
      datefmt='%Y-%m-%dT%H:%M:%S');
 logStream.setFormatter (formatter);
-logStream.setLevel (logging.INFO);
+logStream.setLevel (logging.DEBUG); 
 
 def setFile (filename):
     '''
@@ -50,8 +60,9 @@ def setFile (filename):
     # Set this file as log (mode 'append')
     # since file already exists
     logfile = logging.FileHandler (filename, mode='a');
-    logfile.setLevel (logging.INFO);
-    formatter = logging.Formatter ("[%(levelname)-7.7s] "
+    logfile.setLevel (logging.DEBUG);
+    # No color in the file....
+    formatter = logging.Formatter ("[%(levelname)-8.8s] "
                                    "%(asctime)s.%(msecs)03d [%(memory)s]: %(message)s",
                                     datefmt='%Y-%m-%dT%H:%M:%S');
     logfile.setFormatter (formatter);
@@ -75,31 +86,42 @@ def memory ():
     if value >= 1e5: return '%5.2fM'%(value/1e6);
     return '%5.2fk'%(value/1e3);
 
+def setLevel(logLevel):
+    logger.setLevel(getattr(logging, logLevel))
+    #logging.basicConfig(level=getattr(logging, logLevel))
+    #info("Setting level to %s"%logLevel)
+
 # Logging functions
+
+
 def info(msg):
     mem = memory ();
-    logger.info (msg, extra={'color':BLUE,'memory':mem});
+    logger.info (msg, extra={'color':COL_INFO,'memory':mem});
 
 def warning(msg):
     mem = memory ();
-    logger.warning (msg, extra={'color':MAGENTA,'memory':mem});
+    logger.warning (msg, extra={'color':COL_WARNING,'memory':mem});
 
 def check(flag,msg):
     mem = memory ();
     if flag:
-        logger.warning (msg, extra={'color':MAGENTA,'memory':mem});
+        logger.warning (msg, extra={'color':COL_WARNING,'memory':mem});
     else:
-        logger.info (msg, extra={'color':BLUE,'memory':mem});
+        logger.info (msg, extra={'color':COL_INFO,'memory':mem});
 
 def error(msg):
     mem = memory ();
-    logger.error (traceback.format_exc(), extra={'color':RED,'memory':mem});
-    logger.error (msg, extra={'color':RED,'memory':mem});
+    logger.error (traceback.format_exc(), extra={'color':COL_ERROR,'memory':mem});
+    logger.error (msg, extra={'color':COL_ERROR,'memory':mem});
 
 def debug(msg):
     mem = memory ();
-    logger.debug (debug, extra={'color':RED,'memory':mem});
+    logger.debug (msg, extra={'color':COL_DEBUG,'memory':mem});
     
+def critical(msg):
+    mem = memory ();
+    logger.critical (msg, extra={'color':COL_CRITICAL,'memory':mem});
+
 # Trace class (measure time until killed)
 class trace:
     def __init__(self, funcname,color=True):
