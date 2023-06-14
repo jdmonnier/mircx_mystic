@@ -53,7 +53,6 @@ def setFile (filename):
             logger.removeHandler (h);
 
     # Create logfile and set permission
-    info ('Set logFile: '+filename);
     open (filename, 'w').close();
     os.chmod (filename,0o666);
 
@@ -67,6 +66,8 @@ def setFile (filename):
                                     datefmt='%Y-%m-%dT%H:%M:%S');
     logfile.setFormatter (formatter);
     logger.addHandler (logfile);
+    info ('Set logFile: '+filename);
+
 
 def closeFile ():
     '''

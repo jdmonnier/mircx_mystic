@@ -74,9 +74,8 @@ nightcat.add_argument("--id", dest="mrx_id",
                       default='ID'+datetime.date.today().strftime('%Y%b%d'), type=str,
                       help="unique identifier for data reduction [%(default)s]")
 
-nightcat.add_argument("--log-level", dest="logLevel",
-                      default=1, type=int,
-                      help="log verbosity, 1= minimal, 10=most detailed [%(default)s]")
+nightcat.add_argument("--log", dest="logLevel", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                      default="INFO", help="log verbosity [%(default)s]")
 
 advanced = parser.add_argument_group('advanced user arguments')
 
@@ -103,7 +102,17 @@ argopt = parser.parse_args()
 tempfile='.mircx_mystic_nightcat.temp.log'
 #remove tempfile if already exists
 if os.path.exists(tempfile): os.remove(tempfile)
+
+log.setLevel(argopt.logLevel);
 log.setFile(tempfile) ## will get renamed
+
+#test loggins
+log.debug('test log.debug')
+log.info('test log.info')
+log.warning('test log.warning')
+log.error('test log.error')
+log.critical('test log.critical')
+breakpoint()
 
 # Verbose
 elog = log.trace('mircx_mystic_nightcat')  # for Timing.
