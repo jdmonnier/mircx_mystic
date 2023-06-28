@@ -396,6 +396,9 @@ def load_raw_only (hdrs):
     Return (hdr, cubenp, cubemp) where hdr is the header of file, cubenp
     is the data as shape [nfile*nramp, nframes, ny, ny], and cubemp is
     the MJD of each frame as shape [nfile*nramp, nframes]
+
+    not if same_header is True then use the passed header info not the header in the file
+    which may have been updated or corrected by the header csv file
     '''
     #log.info ('Load RAW files in mode coaddRamp=%s'%str(coaddRamp));
 
@@ -447,8 +450,24 @@ def load_raw_only (hdrs):
 
         # Dimensions
         nr,nf,ny,nx = data.shape;
-        log.debug ('Data size: '+str(data.shape));
+        
+        # if entire row is same value, then mark as nan.
+        row_rms = np.repeat(np.nanstd(data,axis=3,keepdims=True),nx,axis=3);
+        data = np.where(row_rms < 0.1, np.nan,data)
+        # if pixel doesn't change for an entire ramp then mark bad
+        ramp_rms = np.repeat(np.nanstd(data,axis=1,keepdims=True),nf,axis=1);
+        data = np.where(ramp_rms < 0.1, np.nan,data)
 
+        #if hdr['INSTRUME'] == 'MIRC-X' or hdr['INSTRUME'] == 'MYSTIC':
+        satlevel = 65534 # for MIRC-X and MYSTIC 
+                             # use different load_raw_only for other instruments
+        
+        data = np.where(data > satlevel,np.nan,data) # to allow use of masked arrays
+        data[:,:,0,0:7] = np.nan # First 7 pixels contain frame # (in header)
+        # In some data, the last frame was corrupted at end of a sequence. Fixed around 2022.
+        # will catch that since all values were the same.
+         
+        log.debug ('Data size: '+str(data.shape));
 
         #  MJD of each frame
         mjd = headers.frame_mjd (h);

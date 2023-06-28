@@ -17,7 +17,7 @@ matplotlib.use('TkAgg')
 #from . import setup
 
 import os, glob, pickle, datetime, re, csv, gc;
-import mircx_mystic as mrx;
+#import mircx_mystic as mrx;
 from . import log
 counters={'gpstime':0, 'etalon':0, 'sts':0}
 
@@ -233,6 +233,11 @@ def load (files):
             if 'NBIN' not in hdr and hdr['FILETYPE'] != 'FLAT_MAP':
                 log.warning ('Old data with no NBIN (set to one)');
                 hdr['NBIN'] = 1;
+            
+            # Rationalize the few fields when BIN != 1
+            hdr['STARTFR'] /= hdr['NBIN'];
+            hdr['LASTFR']  = (hdr['LASTFR']-(hdr['NBIN']-1))/hdr['NBIN'];
+            hdr['FRMPRST']  /= hdr['NBIN'];
 
             # Reformat DATE-OBS
             clean_date_obs (hdr);
@@ -308,6 +313,7 @@ def load (files):
     keys = ['NREADS','NLOOPS','NBIN','CROPROWS','CROPCOLS','FRMPRST']
     for h in hdrs: h['MJD-OBS0']=h['MJD-OBS'] # save original time
 
+#JDM how does this work if NBIN=3?
     gps = keygroup (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=False);
     for gp in gps:
         startfrs=np.array([gp0['STARTFR'] for gp0 in gp])
@@ -327,12 +333,15 @@ def load (files):
         new_exposure=np.zeros(len(dtimes))
         for in0,in1 in zip(starts,lasts):
             #use a robust linear fit to each continuous chunk. TOTAL overkill but will handle any weird outlines well!!
-            x=(startfrs[in0:in1]-np.median(startfrs[in0:in1]))/1000000
-            y=times[in0:in1] -np.median(times[in0:in1])
+            xoffset=np.median(startfrs[in0:in1])
+            yoffset=np.median(times[in0:in1])
+            x=(startfrs[in0:in1]-xoffset)/1000000.
+            y=times[in0:in1] -yoffset
             coefs = poly.polyfit(x, y, 1) # I'd have loved to use a robust estimator    
             new_y = poly.polyval(x, coefs)
-            new_mjds[in0:in1] = new_y+np.median(times[in0:in1])
-            new_exposure[in0:in1]=coefs[1]*24*3600/1000 #update.
+            new_mjds[in0:in1] = new_y+yoffset
+            new_exposure[in0:in1]=coefs[1]*24.*3600./1000. #update.
+            
             #median_frame = np.median(startfrs[in0:in1])
             #median_time0 = np.median(times[in0:in1] - (np.median(dtimes)/1000./24./3600)*(startfrs[in0:in1]-median_frame))
             #new_mjds[in0:in1]=median_time0+(np.median(dtimes)/1000./24./3600)*(startfrs[in0:in1]-median_frame)
@@ -341,7 +350,6 @@ def load (files):
         log.debug('Maximum time change in cam setting: %f milliseconds'%(24*3600*1000.*np.max(np.abs(new_mjds-times))))
         #plt.plot(diffs*24*3600*1000.)
         #plt.show()
-        #breakpoint()
         #Update the original headers with the median EXPOSURE (detimes) for each camera mode
         quickref=[gp0['ORIGNAME'] for gp0 in gp]
         for hdr in hdrs:
@@ -352,12 +360,12 @@ def load (files):
                 hdr['MIRC FRAME_RATE']=1000./hdr['EXPOSURE']
                 hdr['MJD-OBS']=new_mjds[index] #save original MJD-OBS before overwriting!
                 hdr['RESTART0']= hdr['MJD-OBS']-(hdr['EXPOSURE']/1000./24./3600)*hdr['STARTFR'] #make perfect
-
+    
     check_diffs=np.array([g['MJD-OBS']-g['MJD-OBS0'] for g in hdrs])
     alltimes=np.array([g['MJD-OBS'] for g in hdrs])
     exposures = np.array([g['EXPOSURE'] for g in hdrs])
     restarts=np.array([g['RESTART0'] for g in hdrs])
-    log.info('MJD-OBS corrected for jitter (max change %f mS)'%(24*3600*1000.*np.max(np.abs(check_diffs))))
+    log.info('MJD-OBS corrected for jitter (max change %f mS)'%(24.*3600.*1000.*np.max(np.abs(check_diffs))))
 
     #breakpoint()
     # Identify camera restarts by either startfrs going down with time (typical case) or rarely if the the restart_times difference is large,
@@ -384,19 +392,14 @@ def frame_mjd (hdr):
     # Number of frame since start
     nframe = hdr['LASTFR'] - hdr['STARTFR'] + 1;
 
-    # If binning
-    nbin = hdr.get ('NBIN',1);
-    if  nbin > 1:
-        log.info ('Data are binned by %i'%nbin);
-
     # Build counter
-    counter = np.arange (0, nframe, nbin);
+    counter = np.arange(0,nframe)
 
     # Time step between frames in [d]
     # with new headers, the HIERRACH is removed from dictionary.
 
     #delta = 1./hdr['MIRC FRAME_RATE'] / 24/3600; 
-    delta = hdr['EXPOSURE'] / 24/3600/1000; # should be more accurate.
+    delta = hdr['EXPOSURE'] / 24./3600/1000; # should be more accurate.
 
 
     

@@ -11,7 +11,7 @@ import sys
 import pickle
 import json
 
-from mircx_mystic import log, setup, files
+from mircx_mystic import log, setup, files, headers
 import datetime as datetime
 import tkinter as tk
 from tkinter import filedialog
@@ -155,7 +155,7 @@ if argopt.raw_dir[-8:] =='_SUMMARY':
         phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'),low_memory=False)
     except: # if no headers.csv file, then create it
         log.info("JSON file exists but no headers.csv file found. Creating it from raw data")
-        hdrs = mrx.headers.loaddir(argopt.raw_dir)
+        hdrs = headers.loaddir(argopt.raw_dir)
         phdrs=pd.DataFrame(hdrs)
         phdrs.to_csv(os.path.join(path,mrx_root+'_headers.csv'))
 #if json file exists but no headers, then use the raw_dir info to load it.
@@ -164,7 +164,7 @@ else: # read header.
     log.info("Chose RAW directory %s"%(argopt.raw_dir))
 
     # List inputs
-    hdrs = mrx.headers.loaddir(argopt.raw_dir)
+    hdrs = headers.loaddir(argopt.raw_dir)
 
     # Create Summary directory and save hdrs with all info needed to contineu 
     # analysis without requiring future info about data location
@@ -215,14 +215,14 @@ else: # read header.
 # nightcat txt file.
 # This file can also be edited. 
 
-hdrs=mrx.headers.p2h(phdrs)
+hdrs=headers.p2h(phdrs)
 #for h in hdrs: print(h['FILETYPE'])
 #for h in hdrs: print(h['FILETYPE'])
 
 # Group backgrounds
 # JDM for the 'block' file maybe we only want to group by target, conf, hwp, filetype....
 keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT','MIRC COMBINER_TYPE','CONF_NA','GAIN','MIRC STEPPER HWP_ELEVATOR POS','MIRC HWP0 POS']
-gps = mrx.headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
+gps = headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
 # JDM. might want to have a MAXIMUM size for a group... esp for backgrounds, etc. but 
 
 #for g in gps: 
@@ -313,7 +313,7 @@ exit()
 #for x in phdrs.keys(): print(x,phdrs[x].dtype)        
 # List static calibrations. Don't use log of header since
 # these static files can be updated by git regularly
-hdrs_static = mrx.headers.loaddir(setup.static, uselog=False)
+hdrs_static = headers.loaddir(setup.static, uselog=False)
 
 #
 # Compute BACKGROUND_MEAN
@@ -321,7 +321,7 @@ hdrs_static = mrx.headers.loaddir(setup.static, uselog=False)
 
 # Group backgrounds
 keys = setup.detwin + setup.detmode + setup.insmode
-gps = mrx.headers.group(hdrs, 'BACKGROUND', keys=keys,
+gps = headers.group(hdrs, 'BACKGROUND', keys=keys,
                         delta=300, Delta=3600,
                         continuous=True)
 

@@ -158,20 +158,29 @@ preproc_dir=mrx_root+'_PREPROC' # path to preproc.
 # do not allow custom preproc. only ONE per instrument per night per SUMMARY directory.
 path = os.path.join(mrx_dir, mrx_summary_dir)  # # should match argopt.summary_dir
 preproc_path= os.path.join(path,preproc_dir)
-phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'),low_memory=False)
+
+if os.path.isfile(os.path.join(path,mrx_root+'_headers.csv')):
+    phdrs=pd.read_csv(os.path.join(path,mrx_root+'_headers.csv'),low_memory=False)
+else:
+    log.critical("Could not find header file in %s"%(path));
+    log.info("Try re-running mircx_mystic_nightcat again")
+    del elog
+    log.closeFile()
+    sys.exit()
 pblock_file=os.path.join(path,mrx_root+'_blocks.csv')
 pblock = pd.read_csv(pblock_file,comment='#',low_memory=False)
+
 
 hdrs=mrx.headers.p2h(phdrs)  # might change one day to use panda data frames throughout code...
 blocks=mrx.headers.p2h(pblock)
 
 hdrs=mrx.headers.updatehdrs(hdrs,blocks) # update headers with block info.
 
-
 # Group backgrounds
 #keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT','MIRC STEPPER HWP_ELEVATOR POS','MIRC HWP0 POS'] # etalon? # same as blcoks?
 keys = ['BLOCK']
 gps = mrx.headers.group (hdrs, 'BACKGROUND', keys=keys,delta=1e20, Delta=1e20,continuous=True);
+#gps = mrx.headers.group (hdrs, 'DATA', keys=keys,delta=1e20, Delta=1e20,continuous=True);
 
 for gp in gps: 
     #print("HEADERS: LEN ",len(g),'\t', g[0]["OBJECT"],'\t',g[0]['CONF_NA'],'\t',g[0]['FILETYPE'],'\t',g[0]['FILENUM'],'-',g[-1]['FILENUM'] )
@@ -404,7 +413,7 @@ hdrs_static = mrx.headers.loaddir(setup.static, uselog=False)
 #
 
 # Group backgrounds
-keys = setup.detwin + setup.detmode + setup.insmode
+keys = setup.detwin + setup.detmode + setup.insmode + 'RESTART0'
 gps = mrx.headers.group(hdrs, 'BACKGROUND', keys=keys,
                         delta=300, Delta=3600,
                         continuous=True)

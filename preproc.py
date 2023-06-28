@@ -23,6 +23,8 @@ from scipy.optimize import least_squares;
 from . import log, files, headers, setup, oifits, signal, plot;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
+import warnings
+warnings.filterwarnings(action='ignore', message='All-NaN slice encountered')
     
 def define_badpixels (bkg, threshold=5.):
     '''
@@ -302,11 +304,19 @@ def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN'):
     # headers.check_input (hdrs, required=1);
 
     # Load files
-    hdr,cube,mjd = files.load_raw_only (hdrs);
+    hdr,cube,mjd = files.load_raw_only (hdrs) ; # uses NANs # not differential.
     log.info ('Block Background Data Size (nr,nf,ny,nz): '+str(cube.shape));
     nr,nf,ny,nx = cube.shape;
 
-    hdr,cube,mjd = remove_interference(hdr,cube,mjd)
+    badPixelsMap,slopes,noises = bg_outliers_cum(cube) # only use for bg
+    # Mark bad pixels in cube. 1=good, nan=bad
+    
+    cube *= np.reshape(badPixelsMap, (1,1,ny,nx) )
+    #hdr,cube,mjd = remove_interference(hdr,cube,mjd)
+    hdr,cube,mjd = remove_interference_cum(hdr,cube,mjd)
+    breakpoint()
+    #Calculate badpixels
+    #
 
     # Someone to detect light in the shutters?
     #   Find median total flux in a frame and look for outliers.
@@ -883,9 +893,10 @@ def compute_preproc (hdrs,bkg,flat,bmaps,threshold,output='output_preproc',filet
     return hdulist;
 
 def remove_interference(hdr,cube,mjd):
-    # Removes sinusoidal interferograms from the data. Assumes RAW data -- no differences.
+
+    # Removes sinusoidal-like interferograms from the data. Assumes RAW data -- no differences.
     # assume the block of data are CONTINUOUS in time. not gaps in the block.. The block creation
-    # should require continuous file blocks in time not just in file #.. hmm.  
+    # should require continuous file blocks in time not just in file #.. Using RESTART0  
     #  
     # some common camera problems.
     #  last frame of a blck is sometimes bad -- very high value.
@@ -894,49 +905,85 @@ def remove_interference(hdr,cube,mjd):
     #  avoid lomb scargle which is just terribly slow and data is almost always equally spaced...
     #  problem here is making a routine that will always work for all data... eventually even nbin != 1
 
+    nbin=hdr['NBIN']
     nr,nf,ny,nx = cube.shape
-    # find the bad rows.. should only be one or two. if values never change in row)
+
+    # find the empty rows (near top of the array).. depends on number of subarray windows
     test = np.median(cube[:,-2,:,:],axis=(0,2)) - np.median( cube[:,0,:,:],axis=(0,2) )
     maxrows=np.max(np.argwhere(test > .1) ) # assume its alwasy the top rows that are bad.
     data = np.diff (cube[:,:-1,0:maxrows+1,:],axis=1)
-    mjd_test = mjd[:,:-1,]
+    # Find the columns with lowest fluxes (but no zero..)
+    
     data -= np.mean(data,axis=1,keepdims=True) # median average flux from each pixel per ramp.
-    data = np.mean(data,axis=3) # average across row.
+                                                 # this could more like a smooth high pass filter
+    col_values = np.mean(data,axis=(0,1,2))
+    insort=np.argsort(col_values)
+    numfaint=16
+    subdata=data[:,:,:,insort[0:numfaint]]
+
+    data = np.mean(data,axis=3)
+    subdata= np.mean(subdata,axis=3)
+
+    # average across row. # change to only be lowest pixels.
     nr1,nf1,ny1 = data.shape
 
-    # detect if there is a discontinuity in the timing. only have to check first of each ramp.
-    ramps_starts = mjd[:,0]
-    frame_num = (ramps_starts-np.min(ramps_starts))*24*3600*1000  / hdr['EXPOSURE']
-    # look into TIME_S	TIME_US keywords....
-    # JDM discovered some unexpected inconsistencies in the timing.. ugh.
-    breakpoint()
-    plt.plot(frame_num-np.arange(0,nr*nf,nf))
+    fullarray = np.zeros((nr,nf,ny))
+    fullarray[:,0:nf-2,0:maxrows+1]=data
+    #data=subdata
+    
+    # how to re accumulate if you want.
+    #data2 = np.concatenate((data1[:,0,:][:,None,:],data1),axis=1).cumsum(axis=1)
+    
+    #Note due double precision of MJD, the best we can do is ~1/1000 of a frame numerical precisions!
+    rowtimes =np.linspace(0,hdr['EXPOSURE']/1000./ny*(maxrows)/nbin,maxrows+1) #seconds
+    fullrowtimes =np.linspace(0,hdr['EXPOSURE']/1000./ny*(ny-1),ny) #seconds
 
-    rowtimes =np.linspace(0,np.median(np.diff(mjd,axis=1))/ny*(maxrows),maxrows+1)
-    mjd_data = (0.5 * (mjd[:,0:-2] + mjd[:,1:-1]))[:,:,None]+rowtimes[None,None,:]
-    # look into 
-    # detect if there is a discontinuity in the timing.
+    mjd0=np.min(mjd)    
+    #time=(mjd-mjd0)[:,:,None]*24*3600.+rowtimes3[None,None,:]
+    time=(mjd[:,0:-2]+hdr['EXPOSURE']/1000/2./24/3600.  - mjd0)[:,:,None]*24.*3600. +rowtimes[None,None,:] #seconds
+    fulltime=(mjd + hdr['EXPOSURE']/1000/2./24/3600.  - mjd0)[:,:,None]*24.*3600. +fullrowtimes[None,None,:] #seconds
 
+    # find EXACT FREQUENCY 
+    intime=np.argsort(fulltime.ravel())
+
+    zeropad=np.zeros((len(intime)*15))
+    signal=np.concatenate( (fullarray.ravel()[intime],zeropad))
+    signal=np.where(np.isnan(signal),0,signal)
+    ft= np.fft.rfft(signal)
+    hz=np.fft.rfftfreq(len(signal), d=hdr['EXPOSURE']/ny/1000.)
+    hzmax=hz[np.argmax(np.abs(ft))]
+    log.debug('Interference Removal: Peak of FFT at %f Hz. '%(hzmax))
+    if hzmax < 80:
+        log.warning('Peak of FFT at %f Hz. Recalculating peak to isolate interference'%(hzmax))
+        insubset = np.argwhere( (hz > 80) )
+        hzmax=hz[insubset[np.argmax(np.abs(ft[insubset]))]]
+        log.warning('New Peak of FFT at %f Hz. '%(hzmax))
+    
+    #calc period using fft method
+    period=1./hzmax; 
+    #tbin1,dbin1,data3=avg_fold(time,data,period,num=ny*40) # working well!
+    tbin,dbin,data2=avg_fold(time,data,period,num=ny*4) # working well!
+    tbin3,dbin3,data3=avg_fold(time,subdata,period,num=ny*4) # working well!
+
+
+    fullphases = (fulltime % period) / period
+
+    fullarray2 = np.zeros((nr,nf,ny))
+    fullarray2[:,0:nf-2,0:maxrows+1]=data2-np.mean(data2)
+    signal2=np.concatenate( (fullarray2.ravel()[intime],zeropad))
+    signal2=np.where(np.isnan(signal2),0,signal2)
+    ft2= np.fft.rfft(signal2)
+    ft3= np.fft.rfft(signal-signal2)
+
+
+    
 
     breakpoint() ;  
-    mjd_data1 = np.reshape(mjd_data[:,:,None],(nr1,nf1,ny1))
+    time_data1 = np.reshape(time_data[:,:,None],(nr1,nf1,ny1))
     ft= np.fft.rfft(data.ravel())
-    times=mjd_data.ravel()
-    times=times-np.floor(times[0])
-    times=times*24*3600 
-    freqs = np.linspace(93,97,1000) #Hz
-    result = lombscargle(times,data.ravel(),freqs*2*np.pi,precenter=True)
+    times=time_data.ravel()
+    #times=times-np.floor(times[0])
     
-    # JDM. lombscargle slow... 
-    #data_unwrap = np.reshape(data[0:-],(nr-1)*(nf-1)*ny)
-    
-
-
-    #data = np.append(data,  )
-    data1 = np.append(data,0.5*(data[0:nr-1,-1,:,:]+data[1:,0,:,:]),1)
-    data1=np.append(data, np.mean(data,axis=1,keepdims=True),1)
-
-    data -= np.mean(cube,axis=1,keepdims=True) # subtract average flux from each pixel
 
 
     data=np.append(data, np.mean(data,axis=1,keep=True),1)
@@ -952,8 +999,214 @@ def remove_interference(hdr,cube,mjd):
 
     else: # nbin >1
         log.info ('NBIN>1: No proper interference removal YET. Using old method of reference columns. ');
+        breakpoint()
         ids = np.append (np.arange(15), data.shape[-1] - np.arange(1,15));
         bias = np.median (data[:,:,:,ids],axis=3);
         bias = gaussian_filter (bias,[0,0,1]);
         data = data - bias[:,:,:,None];
     return hdr,data,mjd;
+
+def remove_interference_cum(hdr,cube,mjd):
+
+    # Removes sinusoidal-like interferograms from the data. Assumes RAW data -- no differences.
+    # assume the block of data are CONTINUOUS in time. not gaps in the block.. The block creation
+    # should require continuous file blocks in time not just in file # or the fft won't work 
+    #  
+    # some common camera problems.
+    #  last frame of a blck is sometimes bad -- very high value.
+    #  top row is usually bad (all zeros) . sometimes more than 1 row if using polaization mode (this dpends on # of subwindows)
+    #  camera could get reset during block so there is a discontinuity in the sine wave.. will need to look for that in order to
+    #  avoid lomb scargle which is just terribly slow and data is almost always equally spaced...
+    #  problem here is making a routine that will always work for all data... eventually even nbin != 1
+
+    nbin=hdr['NBIN']
+    tint=hdr['EXPOSURE']/1000. #seconds
+
+    nr,nf,ny,nx = cube.shape
+
+    data = np.diff (cube,axis=1,prepend=np.nan) # keep dimensions same.
+    # Find the columns with lowest fluxes (but no zero..)
+    data -= np.nanmean(data,axis=1,keepdims=True) # median average flux from each pixel per ramp.
+                                                 # this could more like a smooth high pass filter
+    col_values = np.nanmean(data,axis=(0,1,2))
+
+    insort=np.argsort(col_values)
+    numfaint=16
+    subdata=data[:,:,:,insort[0:numfaint]]
+
+    data = np.nanmean(data,axis=3)
+    #data -=np.nanmean(data,axis=1,keepdims=True)
+    #data2 = np.nanmean(data,axis=3)
+
+    subdata= np.nanmean(subdata,axis=3) # unused for now. could use if problems with peaks...
+
+    # average across row. # change to only be lowest pixels.
+    #nr1,nf1,ny1 = data.shape
+    
+    #data=subdata
+    
+    # how to re accumulate if you want.
+    #data2 = np.concatenate((data1[:,0,:][:,None,:],data1),axis=1).cumsum(axis=1)
+    
+    #Note due double precision of MJD, the best we can do is ~1/1000 of a frame numerical precisions!
+    rowtimes =np.linspace(0,tint/ny*(ny-1),ny) #seconds
+
+    mjd0=np.min(mjd)    
+    #time=(mjd-mjd0)[:,:,None]*24*3600.+rowtimes3[None,None,:]
+    time=(mjd - tint/2./24/3600.  - mjd0)[:,:,None]*24.*3600. +rowtimes[None,None,:] #seconds
+    # first entry is null. start at 1:
+
+    # find EXACT FREQUENCY 
+    #intime=np.argsort(time.ravel())
+    zeropad=np.zeros(len(time.ravel())*15)
+    data -=np.nanmean(data)
+    signal=np.concatenate( (data.ravel(),zeropad) )
+    signal = np.where(np.isnan(signal),0,signal)
+    ft= np.fft.rfft(signal)
+    #tt=time.ravel()
+    hz=np.fft.rfftfreq(len(signal), d=tint/ny )
+    
+    insubset=np.argmax(np.abs(ft))
+    hzmax=hz[insubset]
+
+    log.debug('Interference Removal: Peak of FFT at %f Hz. '%(hzmax))
+    
+    if hzmax < 80:
+        log.warning('Peak of FFT at %f Hz. Recalculating peak to isolate interference'%(hzmax))
+        insubset = np.argwhere( (hz > 80) )
+        hzmax=hz[insubset[np.argmax(np.abs(ft[insubset]))]]
+        log.warning('New Peak of FFT at %f Hz. '%(hzmax))
+    
+    nearmax=insubset+np.array([-2,-1,0,1,2])
+    xtemp=hz[nearmax]
+    ytemp = np.abs(ft[nearmax])
+    ytemp=ytemp/ytemp.max()
+    poly3=np.polyfit(xtemp,ytemp,2)
+    hzmax = -poly3[1]/(2*poly3[0])
+    log.debug('Interference Removal: Interpolated Peak of FFT at %f Hz. '%(hzmax))
+
+
+    #calc period using fft method
+    period=1./hzmax; 
+    #tbin1,dbin1,data3=avg_fold(time,data,period,num=ny*40) # working well!
+    tbin,dbin,data2=avg_fold(time,data,period,num=period/(tint/ny)*2) #period/tint*ny) # working well!
+    #tbin3,dbin3,data3=avg_fold(time,subdata,period,num=ny*) # working well!
+    #data2 -=np.nanmean(data2)
+    #signal2=np.concatenate( ( (data2).ravel(),zeropad))
+    #signal2 = np.where(np.isnan(signal2),0,signal2)
+    #ft2= np.fft.rfft(signal2)
+    #ft3=np.fft.rfft(signal-signal2)
+    #plt.plot(hz,np.abs(ft2))
+    #plt.plot(hz,np.abs(ft))
+    #plt.plot(hz,np.abs(ft3))
+    #plt.xlim(1220,1224)
+    #plt.xlim(93.9,94.1)
+
+    #plt.xlim(85,100)
+    #plt.show()
+    #breakpoint()
+    #Working at 200:1 level for first peak.
+
+    data = np.diff (cube,axis=1,prepend=np.nan) # keep dimensions same.
+    # Find the columns with lowest fluxes (but no zero..)
+    data_sinusoid = np.repeat(data2[:,:,:,np.newaxis],nx,axis=3)
+    data_fix=data-data_sinusoid
+
+    data_fix -= np.nanmean(data2,axis=1,keepdims=True) 
+    data_fix=data-data_sinusoid
+    data_alt = np.repeat(np.nanmedian(data[:,:,:,0:15],axis=3,keepdims=True),nx,axis=3)
+    data_fix2=data-data_alt
+    breakpoint()
+
+    fullphases = (fulltime % period) / period
+    fullarray2=np.interp(fullphases,tbin,dbin)
+
+    breakpoint() ;  
+    time_data1 = np.reshape(time_data[:,:,None],(nr1,nf1,ny1))
+    ft= np.fft.rfft(data.ravel())
+    times=time_data.ravel()
+    #times=times-np.floor(times[0])
+    
+
+
+    data=np.append(data, np.mean(data,axis=1,keep=True),1)
+    data[:,-1,:,:]=data[:,-2,:,:]
+
+    #mjd = 0.5 * (mjd[:,0:-1] + mjd[:,1:])[:,0:-1];
+
+
+    if hdr[0]['NBIN'] == 1:
+        #subtract average flux from each pixel (or smoothed version?)
+        #bias = 
+        data_sum = np.sum (data, axis=(3)); # sum rows since nloops ruins this axis anyway for timing.
+
+    else: # nbin >1
+        log.info ('NBIN>1: No proper interference removal YET. Using old method of reference columns. ');
+        breakpoint()
+        ids = np.append (np.arange(15), data.shape[-1] - np.arange(1,15));
+        bias = np.median (data[:,:,:,ids],axis=3);
+        bias = gaussian_filter (bias,[0,0,1]);
+        data = data - bias[:,:,:,None];
+    return hdr,data,mjd;
+
+def avg_fold(time0,data0,period,num=10,t0=0.0):
+    nr,nf,ny = data0.shape
+    num=np.int(num)
+    data=np.extract( np.isnan(data0.ravel()) == False,data0.ravel() )
+    time=np.extract( np.isnan(data0.ravel()) == False,time0.ravel() )
+    
+    phases = ((time-t0) % period) / period
+    index=np.argsort(phases)
+    tbin=np.linspace(0,1, num,endpoint=False)
+    binwidth=tbin[1]-tbin[0]
+    tbin += binwidth/2.
+    dbin=np.zeros(num)
+
+    for i in range(num): 
+        dbin[i]=np.median(np.extract((phases >= tbin[i]-binwidth/2) & (phases < tbin[i]+binwidth/2),data))
+        #dbin[i]=np.median(data[index[np.argwhere((phases[index] >= tbin[i]-binwidth/2) & (phases[index] < tbin[i]+binwidth/2))]])
+
+    tbin1 = np.concatenate( ([tbin[-1]-1],tbin,[tbin[0]+1]))
+    dbin1 = np.concatenate( ([dbin[-1]],dbin,[dbin[0]] ))
+    
+    data2=np.interp(((time0.ravel()-t0) % period) /period,tbin1,dbin1)
+    data2=np.reshape(data2,(nr,nf,ny))
+    data2=np.where(np.isnan(data0),np.nan,data2)
+    return tbin1,dbin1,data2
+
+
+def bg_outliers_cum(cube):
+    # only use to find bad pixel sfor backgrounds, not files with data in it!
+    # Nans are used when pixels saturated
+    nr,nf,ny,nx = cube.shape
+    diffdata = np.diff (cube,axis=1)
+    
+    # First remove pixels with large dark current
+    #ma_data = np.masked_invalid(data) # resistant to some bad shutters by medians across time.
+    median_counts = np.nanmedian(np.nanmean(diffdata,axis=1),axis=0)
+    slope,slope_rms = outlier_stats(median_counts)
+    nz_counts = np.nanmedian(np.nanstd(diffdata,axis=1),axis=0)
+    nz,nz_rms = outlier_stats(nz_counts)
+    # will need to check the defaults for MYSTIC
+    
+    badPixelMap = np.where( (median_counts > (np.max( (slope+5*slope_rms,2*slope)))), np.nan, 1.0)
+    badPixelMap *= np.where( (median_counts < (np.min( (slope-5*slope_rms,.5*slope)))) , np.nan, 1.0)
+    badPixelMap *= np.where( (nz_counts > (np.max( (nz+5*nz_rms,1.5*nz)))) , np.nan, 1.0)
+    badPixelMap *= np.where( (nz_counts < (np.min( (nz-5*nz_rms,.5*nz)))) , np.nan, 1.0)
+
+    return badPixelMap,median_counts,nz_counts
+
+def outlier_stats(x):
+    # Measure the percentile intervals and then estimate Standard Deviation of the distribution, 
+    # both from median to the 90th percentile and from the 10th to 90th percentile
+    # returns median, robust sigma
+    p90 = np.nanpercentile(x, 90)
+    p10 = np.nanpercentile(x, 10)
+    p50 = np.nanmedian(x)
+    # p50 to p90 is 1.2815 sigma
+    #rSig = (p90-p50)/1.2815
+    #print("Robust Sigma=", rSig)
+
+    rSig = (p90-p10)/(2*1.2815)
+    #print("Robust Sigma=", rSig)
+    return p50,rSig 
