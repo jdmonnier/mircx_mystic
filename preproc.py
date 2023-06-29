@@ -9,6 +9,7 @@ matplotlib.use('TkAgg')
 from astropy.stats import sigma_clipped_stats;
 from astropy.io import fits as pyfits;
 from astropy.modeling import models, fitting;
+from astropy.convolution import convolve, Gaussian1DKernel, Box1DKernel
 
 #from skimage.feature import register_translation;
 from skimage.registration import phase_cross_correlation;
@@ -25,6 +26,7 @@ from .headers import HM, HMQ, HMP, HMW, rep_nan;
 
 import warnings
 warnings.filterwarnings(action='ignore', message='All-NaN slice encountered')
+warnings.filterwarnings(action='ignore', message='Mean of empty slice')
     
 def define_badpixels (bkg, threshold=5.):
     '''
@@ -1021,13 +1023,20 @@ def remove_interference_cum(hdr,cube,mjd):
 
     nbin=hdr['NBIN']
     tint=hdr['EXPOSURE']/1000. #seconds
-
+    nloops=hdr['NLOOPS']
     nr,nf,ny,nx = cube.shape
 
     data = np.diff (cube,axis=1,prepend=np.nan) # keep dimensions same.
+    #the first and last reads can show offsets
+    #data[;,0:1,:,:]=np.nan
+    #data[:,-1,:,:]=np.nan
+
     # Find the columns with lowest fluxes (but no zero..)
     data -= np.nanmean(data,axis=1,keepdims=True) # median average flux from each pixel per ramp.
                                                  # this could more like a smooth high pass filter
+    alldata = data.ravel()
+
+
     col_values = np.nanmean(data,axis=(0,1,2))
 
     insort=np.argsort(col_values)
@@ -1035,6 +1044,8 @@ def remove_interference_cum(hdr,cube,mjd):
     subdata=data[:,:,:,insort[0:numfaint]]
 
     data = np.nanmean(data,axis=3)
+    #data = data[:,:,:,200]
+
     #data -=np.nanmean(data,axis=1,keepdims=True)
     #data2 = np.nanmean(data,axis=3)
 
@@ -1056,6 +1067,8 @@ def remove_interference_cum(hdr,cube,mjd):
     time=(mjd - tint/2./24/3600.  - mjd0)[:,:,None]*24.*3600. +rowtimes[None,None,:] #seconds
     # first entry is null. start at 1:
 
+
+    
     # find EXACT FREQUENCY 
     #intime=np.argsort(time.ravel())
     zeropad=np.zeros(len(time.ravel())*15)
@@ -1090,6 +1103,85 @@ def remove_interference_cum(hdr,cube,mjd):
     period=1./hzmax; 
     #tbin1,dbin1,data3=avg_fold(time,data,period,num=ny*40) # working well!
     tbin,dbin,data2=avg_fold(time,data,period,num=period/(tint/ny)*2) #period/tint*ny) # working well!
+    dbin -= np.mean(dbin)
+    phases=(time % period)/period
+    data_fullsin=np.interp(phases,tbin,dbin)
+
+    ntotal = nr*nf*nbin*ny*nloops*nx
+    # this seems intractable -- JDM :(
+    nphases=100
+    phase_model = np.linspace(0,1,nphases+1,endpoint=True)
+    counters = np.arange(ntotal,dtype='int')
+    counters6d = np.reshape(counters,(nr,nf,nbin,ny,nloops,nx))
+    phis6d=(((counters6d*(tint/nbin/ny/nloops/nx)) % period) / period)
+    phis6d_index = (phis6d // (1./nphases)).astype('int') 
+    phis2d_index =  np.reshape(np.transpose(phis6d_index,(2,4,0,1,3,5)),(nloops*nbin,nr*nf*ny*nx))
+    
+    #phis6d.itemsize*phis6d.size/1e9
+    cube0 = (cube-np.nanmedian(cube,axis=(0),keepdims=True)).astype('float32')
+    cube6d = np.repeat(np.repeat(np.reshape(cube0,(nr,nr,1,ny,1,nx)),nloops,axis=4),nbin,axis=2)
+    cube2d=  np.reshape(np.transpose(cube6d,(2,4,0,1,3,5)),(nloops*nbin,nr*nf*ny*nx))
+
+    cube1d = cube0.ravel()
+    # phis2d_index goes with cube1d
+
+    waveform = np.zeros(nphases+1)
+    #for i in range(nphases):
+    #    waveform[i]=np.nanmean(np.extract(phis6d_index == i, cube6d))
+
+
+    fitmatrix=np.zeros( (nphases,nphases) )
+    yvector=np.zeros( (nphases) )
+    #remove Nans to speed up things.
+    goodin=np.squeeze(np.argwhere(np.isnan(cube1d)==False))
+    goodphi2d=phis2d_index[:,goodin]
+    goodcube2d=cube2d[:,goodin]
+
+    #goodphi2d=np.extract(cube2d != np.nan, phis2d_index)
+    #goodcube2d=np.extract(cube2d != np.nan, cube2d)
+    print('Try making matrix')
+    breakpoint()
+for k in range(nphases): # top part too slow.
+    yvector[k]=np.sum(np.extract(goodphi2d == k,goodcube2d) )/(nloops*nbin)
+    Akj = np.sum(np.where(goodphi2d ==k, 1./nloops/nbin,0),axis=0)
+    good_j = np.squeeze(np.argwhere(Akj != 0))
+    goodphi2d_sub=goodphi2d[:,good_j] #not working
+    Akj_sub = Akj[good_j]
+    good_i=np.unique(goodphi2d_sub)
+    # speed up next section 
+    for i in good_i:
+        Aij_sub = np.sum(np.where(goodphi2d_sub ==i, 1./nloops/nbin,0),axis=0)
+        fitmatrix[k,i]=np.sum(Aij_sub*Akj_sub)
+        print('k: %i i: %i  yvector %f Matrix %f'%(k,i, yvector[k],fitmatrix[k,i]))
+
+
+    print(i,waveform[i])
+    index1=np.where( (phis6d)>phase_model[0]) & (phis6d < phase_model[1])
+    # if I had  phase,waveform
+    #waveform4d=np.nanmean(np.interp(phis6d,phase_model,waveform),axis=(2,4)
+    
+
+    # try another approach
+    num_cycles = np.int(np.floor(len(alldata)*(tint/ny/nx)/period)-1)
+    nbar= np.linspace(0,num_cycles,num_cycles,endpoint=False)
+    num_phis=np.int(np.floor(period/(tint/nx/ny/nloops)))
+
+    phi0=np.linspace(0,1,num_phis,endpoint=True)
+    result=np.zeros(num_phis)
+    offset=np.min(time)/period
+    for j in range(num_phis):
+        R=period*(phi0[j]+nbar-offset)/(tint/ny) 
+        R1 = (np.floor(R)*nx).astype(int)
+        R2 = ((R % (1./nloops) /(1./nloops))*nx).astype(int)
+        result[j]=np.nanmean(alldata[R1+R2])
+        print(j,num_phis,result[j])
+    dbin-=dbin.mean()
+    result-=result.mean()
+    plt.plot(phi0,result)
+    plt.plot(tbin,dbin)
+    plt.show()
+    breakpoint()
+
     #tbin3,dbin3,data3=avg_fold(time,subdata,period,num=ny*) # working well!
     #data2 -=np.nanmean(data2)
     #signal2=np.concatenate( ( (data2).ravel(),zeropad))
@@ -1108,14 +1200,27 @@ def remove_interference_cum(hdr,cube,mjd):
     #Working at 200:1 level for first peak.
 
     data = np.diff (cube,axis=1,prepend=np.nan) # keep dimensions same.
+    data -= np.nanmean(data,axis=(0),keepdims=True)
+    
     # Find the columns with lowest fluxes (but no zero..)
     data_sinusoid = np.repeat(data2[:,:,:,np.newaxis],nx,axis=3)
     data_fix=data-data_sinusoid
 
-    data_fix -= np.nanmean(data2,axis=1,keepdims=True) 
-    data_fix=data-data_sinusoid
     data_alt = np.repeat(np.nanmedian(data[:,:,:,0:15],axis=3,keepdims=True),nx,axis=3)
     data_fix2=data-data_alt
+    data_alt2 = np.repeat(np.nanmean(data[:,:,:,0:15],axis=3,keepdims=True),nx,axis=3)
+    data_fix3=data-data_alt2
+    #estimating based on first 15 ros working better than sinusoid model...
+    #more to look into.
+    # note last read in ramp is slightly off from normal. maybe should mark bad or fix.
+    plt.plot(data[1,:,:,:].ravel(),'o')
+    plt.plot(data_sinusoid[1,:,:,:].ravel(),'.')
+    plt.show()
+
+    data_fullsin2 = np.repeat(data_fullsin[:,:,:,np.newaxis],nx,axis=3)
+    cube2=data_fullsin2.cumsum(axis=1)
+    cube2 = np.concatenate((cube[:,0,:,:][:,None,:],data_fullsin2[:,1:,:,:]),axis=1).cumsum(axis=1)
+
     breakpoint()
 
     fullphases = (fulltime % period) / period
@@ -1127,6 +1232,7 @@ def remove_interference_cum(hdr,cube,mjd):
     times=time_data.ravel()
     #times=times-np.floor(times[0])
     
+
 
 
     data=np.append(data, np.mean(data,axis=1,keep=True),1)
@@ -1210,3 +1316,10 @@ def outlier_stats(x):
     rSig = (p90-p10)/(2*1.2815)
     #print("Robust Sigma=", rSig)
     return p50,rSig 
+
+def smooth(x,width=5, kernel='boxcar'):
+    if kernel == 'boxcar': the_kernel = Box1DKernel(width)
+    if kernel == 'gaussian': the_kernel = Gaussian1DKernel(width)
+
+    smoothed_data_box = convolve(x, the_kernel)
+    return smooth_data_box
