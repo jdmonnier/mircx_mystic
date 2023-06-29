@@ -10,6 +10,10 @@ mircx_mystic_nightcat.py --raw-dir=/path/to/raw/data/ --mrx_dir=/path/to/reduced
 
 
 STEP 2. must specify only previously run SUMMARY dir.
+
+mircx_mystic_preproc.py
+
+
 mircx_mystic_checkshutters.py
 
 
