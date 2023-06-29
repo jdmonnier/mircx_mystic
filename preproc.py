@@ -1126,8 +1126,8 @@ def remove_interference_cum(hdr,cube,mjd):
     # phis2d_index goes with cube1d
 
     waveform = np.zeros(nphases+1)
-    #for i in range(nphases):
-    #    waveform[i]=np.nanmean(np.extract(phis6d_index == i, cube6d))
+    for i in range(nphases):
+        waveform[i]=np.nanmean(np.extract(phis6d_index == i, cube6d))
 
 
     fitmatrix=np.zeros( (nphases,nphases) )
@@ -1139,22 +1139,27 @@ def remove_interference_cum(hdr,cube,mjd):
 
     #goodphi2d=np.extract(cube2d != np.nan, phis2d_index)
     #goodcube2d=np.extract(cube2d != np.nan, cube2d)
-    print('Try making matrix')
+    print('Try making matrix. try using pn library and check timing!')
+    #breakpoint()
+    for k in range(nphases): # top part too slow.
+        yvector[k]=np.sum(np.extract(goodphi2d == k,goodcube2d) )/(nloops*nbin)
+        Akj = np.sum(np.where(goodphi2d ==k, 1./nloops/nbin,0),axis=0)
+        good_j = np.squeeze(np.argwhere(Akj != 0))
+        goodphi2d_sub=goodphi2d[:,good_j] #not working
+        Akj_sub = Akj[good_j]
+        good_i=np.unique(goodphi2d_sub)
+        # speed up next section 
+        for i in good_i:
+            Aij_sub = np.sum(np.where(goodphi2d_sub ==i, 1./nloops/nbin,0),axis=0)
+            fitmatrix[k,i]=np.sum(Aij_sub*Akj_sub)
+            print('k: %i i: %i  yvector %f Matrix %f'%(k,i, yvector[k],fitmatrix[k,i]))
+    invmat=np.linalg.inv(fitmatrix)
+    waveform2 = np.matmult(invmat,yvector)
+    plt.plot(waveform )
+    plt.plot(waveform2,'.')
+    plt.show()
+    # check how well this removes artfifacts by feeding cube back into the avgfold analysis and FT.
     breakpoint()
-for k in range(nphases): # top part too slow.
-    yvector[k]=np.sum(np.extract(goodphi2d == k,goodcube2d) )/(nloops*nbin)
-    Akj = np.sum(np.where(goodphi2d ==k, 1./nloops/nbin,0),axis=0)
-    good_j = np.squeeze(np.argwhere(Akj != 0))
-    goodphi2d_sub=goodphi2d[:,good_j] #not working
-    Akj_sub = Akj[good_j]
-    good_i=np.unique(goodphi2d_sub)
-    # speed up next section 
-    for i in good_i:
-        Aij_sub = np.sum(np.where(goodphi2d_sub ==i, 1./nloops/nbin,0),axis=0)
-        fitmatrix[k,i]=np.sum(Aij_sub*Akj_sub)
-        print('k: %i i: %i  yvector %f Matrix %f'%(k,i, yvector[k],fitmatrix[k,i]))
-
-
     print(i,waveform[i])
     index1=np.where( (phis6d)>phase_model[0]) & (phis6d < phase_model[1])
     # if I had  phase,waveform
@@ -1177,10 +1182,10 @@ for k in range(nphases): # top part too slow.
         print(j,num_phis,result[j])
     dbin-=dbin.mean()
     result-=result.mean()
-    plt.plot(phi0,result)
-    plt.plot(tbin,dbin)
-    plt.show()
-    breakpoint()
+    #plt.plot(phi0,result)
+    #plt.plot(tbin,dbin)
+    #plt.show()
+    #breakpoint()
 
     #tbin3,dbin3,data3=avg_fold(time,subdata,period,num=ny*) # working well!
     #data2 -=np.nanmean(data2)
