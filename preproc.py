@@ -1128,7 +1128,7 @@ def remove_interference_cum(hdr,cube,mjd):
     waveform = np.zeros(nphases+1)
     for i in range(nphases):
         waveform[i]=np.nanmean(np.extract(phis6d_index == i, cube6d))
-
+        print(i,waveform[i])
 
     fitmatrix=np.zeros( (nphases,nphases) )
     yvector=np.zeros( (nphases) )
