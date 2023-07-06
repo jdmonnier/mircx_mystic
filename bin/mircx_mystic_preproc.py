@@ -199,6 +199,7 @@ for gp in gps:
         continue;
     
     # will create a 
+    #gp=gp[0:4]
     mrx.compute_background(gp, output=output, filetype=filetype) # this routine will do a lot!
 
 #log.info('Cleanup memory')

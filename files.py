@@ -404,6 +404,7 @@ def load_raw_only (hdrs):
 
     # Build output header as the copy
     # of the first passed header
+    continuityThreshold =10000
     hdr = hdrs[0].copy();
     hdr[HMQ+'NFILE'] = 0 #,'total number of files loaded');
     hdr[HMQ+'NRAMP'] = 0 #,'total number of ramp loaded');
@@ -450,6 +451,8 @@ def load_raw_only (hdrs):
 
         # Dimensions
         nr,nf,ny,nx = data.shape;
+        flag = np.zeros ((nr,nf), dtype=bool);
+
         
         # if entire row is same value, then mark as nan.
         row_rms = np.repeat(np.nanstd(data,axis=3,keepdims=True),nx,axis=3);
@@ -461,11 +464,34 @@ def load_raw_only (hdrs):
         #if hdr['INSTRUME'] == 'MIRC-X' or hdr['INSTRUME'] == 'MYSTIC':
         satlevel = 65534 # for MIRC-X and MYSTIC 
                              # use different load_raw_only for other instruments
+
         
         data = np.where(data > satlevel,np.nan,data) # to allow use of masked arrays
         data[:,:,0,0:7] = np.nan # First 7 pixels contain frame # (in header)
         # In some data, the last frame was corrupted at end of a sequence. Fixed around 2022.
         # will catch that since all values were the same.
+
+        # Check continuity in flux, to detect cosmics. We consider that the
+        # frames after a discontinuity are invalid (e.g saturated).
+        if continuityThreshold is not None:
+            #tmp = np.diff (data[:,:,2:-2,2:-2], axis=1); 
+            tmp = np.diff (data, axis=1); 
+            flag[:,1:] = np.nanmax(tmp,axis=(2,3)) > continuityThreshold;
+            
+            # Loop on ramps
+            ncrays = 0;
+            for r in range(nr):
+                # This ramp has flagged frames
+                if flag[r,:].any():
+                    # Detect first flagged frame in ramp.
+                    mark = np.argmax (flag[r,:]);
+                    # Take margin, to start discarding few frames before mark.
+                    mark = np.maximum (mark-3,0);
+                    # Zero frames starting at mark
+                    data[r,mark:,:,:] = np.nan;
+                    # Count total number of zeroed frames
+                    ncrays += nf - mark;
+            if ncrays > 0: log.info("Number of frames removed due to cosmic rays: %i"%ncrays);
          
         log.debug ('Data size: '+str(data.shape));
 

@@ -223,15 +223,19 @@ def load (files):
             # Test if NBIN is in header
             if 'NBIN' not in hdr:
                 hdr['NBIN'] = 1; 
+            
+            if 'MIRC COMBINER_TYPE' not in hdr:
+                hdr['MIRC COMBINER_TYPE'] = 'ALL-IN-ONE' # default to all-in-one for old data
+                log.debug ('Old data with no MIRC COMBINER_TYPE (set to ALL-IN-ONE)');
 
             # Check change of card
             if 'ENDFR' in hdr:
-                log.warning ('Old data with ENDFR');
+                log.debug ('Old data with ENDFR');
                 hdr.rename_keyword ('ENDFR','LASTFR');
 
             # Check NBIN
             if 'NBIN' not in hdr and hdr['FILETYPE'] != 'FLAT_MAP':
-                log.warning ('Old data with no NBIN (set to one)');
+                log.debug ('Old data with no NBIN (set to one)');
                 hdr['NBIN'] = 1;
             
             # Rationalize the few fields when BIN != 1
