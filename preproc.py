@@ -20,7 +20,6 @@ from scipy.signal import lombscargle;
 from scipy.ndimage.interpolation import shift as subpix_shift;
 from scipy.ndimage import gaussian_filter;
 from scipy.optimize import least_squares;
-from scipy.ndimage import convolve as sp_convolve
 
 from . import log, files, headers, setup, oifits, signal, plot;
 from .headers import HM, HMQ, HMP, HMW, rep_nan;
@@ -308,8 +307,6 @@ def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN'):
 
     # Load files
     hdr,cube,mjd = files.load_raw_only (hdrs) ; # uses NANs # not differential.
-    #hdr,cube,mjd = files.load_raw_only (hdrs) ; # uses NANs # not differential.
-
     log.info ('Block Background Data Size (nr,nf,ny,nz): '+str(cube.shape));
     nr,nf,ny,nx = cube.shape;
 
@@ -317,7 +314,6 @@ def compute_background (hdrs, output='output_bkg', filetype='BACKGROUND_MEAN'):
     # Mark bad pixels in cube. 1=good, nan=bad
     
     cube *= np.reshape(badPixelsMap, (1,1,ny,nx) )
-    
     #hdr,cube,mjd = remove_interference(hdr,cube,mjd)
     hdr,cube,mjd = remove_interference_cum(hdr,cube,mjd)
     breakpoint()
@@ -912,9 +908,6 @@ def remove_interference(hdr,cube,mjd):
     #  problem here is making a routine that will always work for all data... eventually even nbin != 1
 
     nbin=hdr['NBIN']
-
-    
-
     nr,nf,ny,nx = cube.shape
 
     # find the empty rows (near top of the array).. depends on number of subarray windows
@@ -1031,8 +1024,6 @@ def remove_interference_cum(hdr,cube,mjd):
     nbin=hdr['NBIN']
     tint=hdr['EXPOSURE']/1000. #seconds
     nloops=hdr['NLOOPS']
-
-
     nr,nf,ny,nx = cube.shape
 
     data = np.diff (cube,axis=1,prepend=np.nan) # keep dimensions same.
@@ -1080,22 +1071,13 @@ def remove_interference_cum(hdr,cube,mjd):
     
     # find EXACT FREQUENCY 
     #intime=np.argsort(time.ravel())
+    zeropad=np.zeros(len(time.ravel())*15)
     data -=np.nanmean(data)
-    if nbin > 0 :  # nbin > 1 # turn this off for now.
-        zeropad=np.zeros(len(time.ravel())*15*nbin)
-        signal=np.concatenate( (data.ravel(),zeropad) )
-        temp=np.zeros( (nr,nf,nbin,ny))
-        temp[:,:,0,:]=data
-        signal=np.concatenate( (temp.ravel(),zeropad) )
-        signal = np.where(np.isnan(signal),0,signal)
-        ft= np.fft.rfft(signal)
-        hz=np.fft.rfftfreq(len(signal), d=tint/ny/nbin )
-    else: # 
-        zeropad=np.zeros(len(time.ravel())*15)
-        signal=np.concatenate( (data.ravel(),zeropad) )
-        signal = np.where(np.isnan(signal),0,signal)
-        ft= np.fft.rfft(signal)
-        hz=np.fft.rfftfreq(len(signal), d=tint/ny )
+    signal=np.concatenate( (data.ravel(),zeropad) )
+    signal = np.where(np.isnan(signal),0,signal)
+    ft= np.fft.rfft(signal)
+    #tt=time.ravel()
+    hz=np.fft.rfftfreq(len(signal), d=tint/ny )
     
     insubset=np.argmax(np.abs(ft))
     hzmax=hz[insubset]
@@ -1127,7 +1109,7 @@ def remove_interference_cum(hdr,cube,mjd):
 
     ntotal = nr*nf*nbin*ny*nloops*nx
     # this seems intractable -- JDM :(
-    nphases=1000
+    nphases=100
     phase_model = np.linspace(0,1,nphases+1,endpoint=True)
     counters = np.arange(ntotal,dtype='int')
     counters6d = np.reshape(counters,(nr,nf,nbin,ny,nloops,nx))
@@ -1136,105 +1118,44 @@ def remove_interference_cum(hdr,cube,mjd):
     phis2d_index =  np.reshape(np.transpose(phis6d_index,(2,4,0,1,3,5)),(nloops*nbin,nr*nf*ny*nx))
     
     #phis6d.itemsize*phis6d.size/1e9
-    #method 1. too noisy from accumulated photon signals.
-    #cube0 = (cube-np.reshape(cube[:,0,:,:],(nr,1,ny,nx))).astype('float32')
-    #diffs= np.nanmean( np.diff(cube0,axis=1),axis=1,keepdims=True)
-    #means= np.nanmean( cube0,axis=1,keepdims=True)
-    #ivec = np.arange(nf).astype('float32')
-    #ivec -= ivec.mean()
-    #ivec4d= np.reshape(ivec,(1,nf,1,1))
-    #cube0=cube0-(means+ivec4d*diffs)
-    #breakpoint()
-
-    # Method B. use differences. works wel but has the double-peak from the delta function.
-    #cube0 = np.diff (cube,axis=1,prepend=np.nan) # keep dimensions same.
-    #cube0 -= np.nanmean(cube0,axis=1,keepdims=True)
-
-    #Method C. subtract smoothed version not line.
-    nkernel=21
-    kernel_width=10. / 2.355 # covert to fwhm
-    smooth_kernel=np.zeros((1,nkernel,1,1))
-    smooth_kernel[0,nkernel//2,0,0]=1.
-    smooth_kernel=gaussian_filter (smooth_kernel,[1,kernel_width,1,1],mode='nearest')
-    smooth_kernel /=np.sum(smooth_kernel)
-    cube_smooth = sp_convolve(cube,smooth_kernel,mode='nearest')
-    cube0 = cube- cube_smooth
-    #np.nanmedian(cube,axis=(0),keepdims=True)).astype('float32')
-    #print('remove more bad pixels')
-
-    cube6d = np.repeat(np.repeat(np.reshape(cube0,(nr,nf,1,ny,1,nx)),nloops,axis=4),nbin,axis=2)
+    cube0 = (cube-np.nanmedian(cube,axis=(0),keepdims=True)).astype('float32')
+    cube6d = np.repeat(np.repeat(np.reshape(cube0,(nr,nr,1,ny,1,nx)),nloops,axis=4),nbin,axis=2)
     cube2d=  np.reshape(np.transpose(cube6d,(2,4,0,1,3,5)),(nloops*nbin,nr*nf*ny*nx))
+
     cube1d = cube0.ravel()
     # phis2d_index goes with cube1d
-    #breakpoint()
-   
+
+    waveform = np.zeros(nphases+1)
+    for i in range(nphases):
+        waveform[i]=np.nanmean(np.extract(phis6d_index == i, cube6d))
+
 
     fitmatrix=np.zeros( (nphases,nphases) )
     yvector=np.zeros( (nphases) )
     #remove Nans to speed up things.
     goodin=np.squeeze(np.argwhere(np.isnan(cube1d)==False))
-    goodphi2d=phis2d_index[:,goodin] #crashed.. memory error (too much)
+    goodphi2d=phis2d_index[:,goodin]
     goodcube2d=cube2d[:,goodin]
-
-    waveform = np.zeros(nphases+1)
-
-    for i in range(nphases):
-        #waveform[i]=np.nanmean(np.extract(phis6d_index == i, cube6d)) #original
-        #waveform[i]=np.nanmean(cube6d[phis6d_index == i]) n#also works faster.
-        waveform[i]=np.mean(goodcube2d[goodphi2d == i])
-        print(i,waveform[i])
-    waveform[-1]=waveform[0]
-    waveform -= np.mean(waveform)
-
 
     #goodphi2d=np.extract(cube2d != np.nan, phis2d_index)
     #goodcube2d=np.extract(cube2d != np.nan, cube2d)
     print('Try making matrix. try using pn library and check timing!')
-    print('Size GB: goodphi2d:  %f '%(goodphi2d.size*goodphi2d.itemsize/1e9))
-
-    #breakpoint()
-    #first use a fake model to check inversion.
-    #data = np.diff (cube,axis=1,prepend=np.nan) # keep dimensions same.
-    #data -= np.nanmean(data,axis=1,keepdims=True) # median average flux from each pixel per ramp.
-                                                 # this could more like a smooth high pass filter
-
-    #goodmodel2d=waveform[goodphi2d] # np.interp(goodphi2d,phase_model,waveform)
-    #goodmodel1d=np.mean(goodmodel2d,axis=0)
-    #fakedata=np.repeat( np.reshape(goodmodel1d,(1,goodmodel1d.size)),nloops*nbin,axis=0)
-    #goodcube2d_0=goodcube2d
-    #goodcube1d_0=goodcube1d
-    #goodcube2d=fakedata
-    #goodcube1d=goodmodel1d
-
+    
     #breakpoint()
     for k in range(nphases): # top part too slow.
-        yvector[k]=np.sum(goodcube2d[goodphi2d == k]) / (nloops*nbin)
-        #yvector[k]=np.sum(np.extract(goodphi2d == k,goodcube2d) )/(nloops*nbin) # original
-        # Method 1. Fastest
-        Akj = np.count_nonzero(goodphi2d == k, axis=0)/nloops/nbin
-
-        # Method 2. Original Method.. crasehs using too much memory sometimes
-        #Akj = np.sum(np.where(goodphi2d ==k, 1./nloops/nbin,0),axis=0) #original
-        
-        # Method 3. Works but 2x slower than Method 1
-        #temp=np.where(goodphi2d ==k, 1,0)
-        #temp=temp.astype('int8')
-        #Akj_2=np.sum(temp,axis=0) /nloops/nbin
-        
+        yvector[k]=np.sum(np.extract(goodphi2d == k,goodcube2d) )/(nloops*nbin)
+        Akj = np.sum(np.where(goodphi2d ==k, 1./nloops/nbin,0),axis=0)
         good_j = np.squeeze(np.argwhere(Akj != 0))
-        goodphi2d_sub=goodphi2d[:,good_j] 
+        goodphi2d_sub=goodphi2d[:,good_j] #not working
         Akj_sub = Akj[good_j]
         good_i=np.unique(goodphi2d_sub)
         # speed up next section 
         for i in good_i:
-            # Aij_sub = np.sum(np.where(goodphi2d_sub ==i, 1./nloops/nbin,0),axis=0) # original
-            Aij_sub = np.count_nonzero(goodphi2d_sub == i, axis=0)/nloops/nbin # faster
-
+            Aij_sub = np.sum(np.where(goodphi2d_sub ==i, 1./nloops/nbin,0),axis=0)
             fitmatrix[k,i]=np.sum(Aij_sub*Akj_sub)
             print('k: %i i: %i  yvector %f Matrix %f'%(k,i, yvector[k],fitmatrix[k,i]))
     invmat=np.linalg.inv(fitmatrix)
-    waveform2 = np.matmul(invmat,yvector)
-    #breakpoint()
+    waveform2 = np.matmult(invmat,yvector)
     plt.plot(waveform )
     plt.plot(waveform2,'.')
     plt.show()
@@ -1247,9 +1168,9 @@ def remove_interference_cum(hdr,cube,mjd):
     
 
     # try another approach
-    num_cycles = (np.floor(len(alldata)*(tint/ny/nx)/period)-1).astype('int')
+    num_cycles = np.int(np.floor(len(alldata)*(tint/ny/nx)/period)-1)
     nbar= np.linspace(0,num_cycles,num_cycles,endpoint=False)
-    num_phis=(np.floor(period/(tint/nx/ny/nloops))).astype('int')
+    num_phis=np.int(np.floor(period/(tint/nx/ny/nloops)))
 
     phi0=np.linspace(0,1,num_phis,endpoint=True)
     result=np.zeros(num_phis)
@@ -1342,7 +1263,7 @@ def remove_interference_cum(hdr,cube,mjd):
 
 def avg_fold(time0,data0,period,num=10,t0=0.0):
     nr,nf,ny = data0.shape
-    num=(num).astype('int')
+    num=np.int(num)
     data=np.extract( np.isnan(data0.ravel()) == False,data0.ravel() )
     time=np.extract( np.isnan(data0.ravel()) == False,time0.ravel() )
     
@@ -1378,37 +1299,12 @@ def bg_outliers_cum(cube):
     slope,slope_rms = outlier_stats(median_counts)
     nz_counts = np.nanmedian(np.nanstd(diffdata,axis=1),axis=0)
     nz,nz_rms = outlier_stats(nz_counts)
-    firstRead = np.nanmedian(cube[:,0,:,:] ,axis=0)
-    fRead, fRead_rms = outlier_stats(firstRead) # looking for pixels that start ramp at crazy values
     # will need to check the defaults for MYSTIC
-   
-
-
-    badPixelMap = np.where( (median_counts > (np.max( (slope+5*slope_rms,2.5*slope)))), np.nan, 1.0)
+    
+    badPixelMap = np.where( (median_counts > (np.max( (slope+5*slope_rms,2*slope)))), np.nan, 1.0)
     badPixelMap *= np.where( (median_counts < (np.min( (slope-5*slope_rms,.5*slope)))) , np.nan, 1.0)
     badPixelMap *= np.where( (nz_counts > (np.max( (nz+5*nz_rms,1.5*nz)))) , np.nan, 1.0)
     badPixelMap *= np.where( (nz_counts < (np.min( (nz-5*nz_rms,.5*nz)))) , np.nan, 1.0)
-    badPixelMap *= np.where( (firstRead > (np.min( (fRead+5*fRead_rms,40000.)))) , np.nan, 1.0) 
-
-    # another problem seen in older gain 90 data are pixels taht suddenly have high dark current then goes back to normal ..
-    # these pixels are tricky to catch in data but clear in backgrounds.  Strategy will be to find them in backgrounds then union them.
-    # intermittenent pixels can cause severe miscalibraiotn since the cark current can be much stronger than sky signals!! this is different than
-    # a cosmic ray ands hould invalidate that pixels -- unless it turns out MOST pixels have this problem :(
-    medians_per_ramp = np.nanmedian(diffdata,axis=1)
-    glitchmax = np.nanmax(medians_per_ramp,axis=0)
-    badPixelMap *= np.where( (glitchmax > (np.max( (slope+5*slope_rms,3.5*slope)))), np.nan, 1.0)
-    # possible problem is if there shutters weren't closed properly and the first reads are high.
-    # so there should be some kind of checking first. ugh.
-
-    nbad = np.count_nonzero(np.isnan(badPixelMap))
-    log.info('Found %d bad pixels in backgrounds (%f %%)' % (nbad,100*nbad/len(badPixelMap.ravel())))
-
-    # some pixels are always bad in cube due to readout issue not actually bad pixels
-    #  -- bad rows, etc.  lets include these in the badPixelmap..
-    badPixelMap *= np.where(  np.isnan(median_counts), np.nan, 1.)
-
-
-    
 
     return badPixelMap,median_counts,nz_counts
 
@@ -1432,4 +1328,4 @@ def smooth(x,width=5, kernel='boxcar'):
     if kernel == 'gaussian': the_kernel = Gaussian1DKernel(width)
 
     smoothed_data_box = convolve(x, the_kernel)
-    return smoothed_data_box
+    return smooth_data_box

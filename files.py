@@ -455,8 +455,18 @@ def load_raw_only (hdrs):
 
         
         # if entire row is same value, then mark as nan.
-        row_rms = np.repeat(np.nanstd(data,axis=3,keepdims=True),nx,axis=3);
+        row_rms = np.repeat(np.nanstd(data,axis=3,keepdims=True,dtype=np.float64),nx,axis=3);
+
+        row_rms1d= np.nanstd(data,axis=(0,1,3),dtype=np.float64)
+
+        goodrows = np.squeeze(np.argwhere(row_rms > 0.1))
+        data1=data[:,:,goodrows,:]
+        nr,nf,ny,nx = data.shape;
+
+        breakpoint()
         data = np.where(row_rms < 0.1, np.nan,data)
+        data = np.ar
+
         # if pixel doesn't change for an entire ramp then mark bad
         ramp_rms = np.repeat(np.nanstd(data,axis=1,keepdims=True),nf,axis=1);
         data = np.where(ramp_rms < 0.1, np.nan,data)
