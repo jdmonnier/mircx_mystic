@@ -457,19 +457,18 @@ def load_raw_only (hdrs):
         # if entire row is same value, then mark as nan.
         row_rms = np.repeat(np.nanstd(data,axis=3,keepdims=True,dtype=np.float64),nx,axis=3);
 
-        row_rms1d= np.nanstd(data,axis=(0,1,3),dtype=np.float64)
+        #row_rms1d= np.nanstd(data[:,:,:,:-1],axis=(0,1,3),dtype=np.float64)
+        row_rms1d=np.median(np.nanstd(data,axis=(3),dtype=np.float64),axis=(0,1) )
 
-        goodrows = np.squeeze(np.argwhere(row_rms > 0.1))
-        data1=data[:,:,goodrows,:]
+        goodrows = np.squeeze(np.argwhere(row_rms1d > 0.1))
+        # purge bad rows rather than carry them around as NANs. subtly changes timing....
+        data=data[:,:,goodrows,:]
         nr,nf,ny,nx = data.shape;
-
-        breakpoint()
-        data = np.where(row_rms < 0.1, np.nan,data)
-        data = np.ar
+        #breakpoint()
 
         # if pixel doesn't change for an entire ramp then mark bad
-        ramp_rms = np.repeat(np.nanstd(data,axis=1,keepdims=True),nf,axis=1);
-        data = np.where(ramp_rms < 0.1, np.nan,data)
+        # ramp_rms = np.repeat(np.nanstd(data,axis=1,keepdims=True),nf,axis=1);
+        # data = np.where(ramp_rms < 0.1, np.nan,data)
 
         #if hdr['INSTRUME'] == 'MIRC-X' or hdr['INSTRUME'] == 'MYSTIC':
         satlevel = 65534 # for MIRC-X and MYSTIC 
