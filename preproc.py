@@ -977,9 +977,6 @@ def remove_interference(hdr,cube,mjd):
     ft2= np.fft.rfft(signal2)
     ft3= np.fft.rfft(signal-signal2)
 
-
-    
-
     breakpoint() ;  
     time_data1 = np.reshape(time_data[:,:,None],(nr1,nf1,ny1))
     ft= np.fft.rfft(data.ravel())
@@ -1032,7 +1029,7 @@ def remove_interference_cum(hdr,cube,mjd):
     #data[:,-1,:,:]=np.nan
 
     # Find the columns with lowest fluxes (but no zero..)
-    data -= np.nanmean(data,axis=1,keepdims=True) # median average flux from each pixel per ramp.
+    data -= np.nanmean(data,axis=1,keepdims=True,dtype=np.float64) # median average flux from each pixel per ramp.
                                                  # this could more like a smooth high pass filter
     alldata = data.ravel()
 
@@ -1072,10 +1069,18 @@ def remove_interference_cum(hdr,cube,mjd):
     # find EXACT FREQUENCY 
     #intime=np.argsort(time.ravel())
     zeropad=np.zeros(len(time.ravel())*15)
-    data -=np.nanmean(data)
+    data -=np.nanmean(data,dtype=np.float64)
+    data_test = 25.*np.cos(time.ravel()*2*np.pi*93.990813)
+
     signal=np.concatenate( (data.ravel(),zeropad) )
+    signal_test=np.concatenate( (data_test.ravel(),zeropad) )
+    
+    signal_test = np.where(np.isnan(signal),0,signal_test)
     signal = np.where(np.isnan(signal),0,signal)
+        
     ft= np.fft.rfft(signal)
+    ft_test= np.fft.rfft(signal_test)
+
     #tt=time.ravel()
     hz=np.fft.rfftfreq(len(signal), d=tint/ny )
     
@@ -1097,6 +1102,51 @@ def remove_interference_cum(hdr,cube,mjd):
     poly3=np.polyfit(xtemp,ytemp,2)
     hzmax = -poly3[1]/(2*poly3[0])
     log.debug('Interference Removal: Interpolated Peak of FFT at %f Hz. '%(hzmax))
+    
+    rp0=np.interp(hzmax,hz,np.real(ft))/(len(signal)/2)
+    ip0=np.interp(hzmax,hz,np.imag(ft))/(len(signal)/2)
+    rp2=np.interp(hzmax*2,hz,np.real(ft))/(len(signal)/2)
+    ip2=np.interp(hzmax*2,hz,np.imag(ft))/(len(signal)/2)
+
+
+    
+    # in order to match this up with a signal in raw data, lets propogate a perfect sinewave through the same analysis.
+    sinetime=(mjd - tint/24/3600.  - mjd0)[:,:,None]*24.*3600. +rowtimes[None,None,:] #seconds
+    sinecube = 1.0*np.cos(sinetime*2*np.pi*hzmax)+1.0*np.cos(sinetime*2*np.pi*hzmax*2)
+    sinedata = np.diff (sinecube,axis=1,prepend=np.nan) # keep dimensions same.
+    sinedata -=np.nanmean(sinedata,dtype=np.float64)
+    sinesignal=np.concatenate( (sinedata.ravel(),zeropad) )
+    sinesignal = np.where(np.isnan(np.concatenate( (data.ravel(),zeropad) )),0,sinesignal) # use same nans
+    sineft= np.fft.rfft(sinesignal)
+    
+    sinerp0=np.interp(hzmax,hz,np.real(sineft))/(len(sinesignal)/2)
+    sineip0=np.interp(hzmax,hz,np.imag(sineft))/(len(sinesignal)/2)
+    sinerp2=np.interp(hzmax*2,hz,np.real(sineft))/(len(sinesignal)/2)
+    sineip2=np.interp(hzmax*2,hz,np.imag(sineft))/(len(sinesignal)/2)
+
+    cval = complex(rp0,ip0)/complex(sinerp0,sineip0)
+    cval2 = complex(rp2,ip2)/complex(sinerp2,sineip2)
+
+    sinecube2 = np.abs(cval)*np.cos(sinetime*2*np.pi*hzmax+np.angle(cval)) + np.abs(cval2)*np.cos(sinetime*2*np.pi*hzmax*2+np.angle(cval2))
+    sinedata2 = np.diff (sinecube2,axis=1,prepend=np.nan) # keep dimensions same.
+    sinedata2 -=np.nanmean(sinedata2,dtype=np.float64)
+    diffdata=data-sinedata2
+
+    diffsignal=np.concatenate( (diffdata.ravel(),zeropad) )
+    diffsignal = np.where(np.isnan(np.concatenate( (data.ravel(),zeropad) )),0,diffsignal) # use same nans
+    diffft= np.fft.rfft(diffsignal)
+    
+    tbin,dbin,data2=avg_fold(time,data,period,num=period/(tint/ny)*2) #period/tint*ny) # working well!
+    tbin2,dbin2,data3=avg_fold(time,diffdata,period,num=period/(tint/ny)*2) #period/tint*ny) # working well!
+
+    cubesum=np.nanmean(cube,axis=(3),dtype=np.float64)
+    cubesum -= gaussian_filter(cubesum,(0,.02/tint,0),mode='nearest')
+    tcube,dcube,data3=avg_fold(sinetime,cubesum,period,num=period/(tint/ny)*2) #period/tint*ny) # working well!
+
+
+    cubesum
+    np.nanmean(cube,axis=(0),keepdims=True,dtype=np.float64).astype('float32')
+
 
 
     #calc period using fft method
@@ -1106,7 +1156,7 @@ def remove_interference_cum(hdr,cube,mjd):
     dbin -= np.mean(dbin)
     phases=(time % period)/period
     data_fullsin=np.interp(phases,tbin,dbin)
-
+    breakpoint()
     ntotal = nr*nf*nbin*ny*nloops*nx
     # this seems intractable -- JDM :(
     nphases=100
@@ -1141,7 +1191,7 @@ def remove_interference_cum(hdr,cube,mjd):
     #goodcube2d=np.extract(cube2d != np.nan, cube2d)
     print('Try making matrix. try using pn library and check timing!')
     
-    #breakpoint()
+    breakpoint()
     for k in range(nphases): # top part too slow.
         yvector[k]=np.sum(np.extract(goodphi2d == k,goodcube2d) )/(nloops*nbin)
         Akj = np.sum(np.where(goodphi2d ==k, 1./nloops/nbin,0),axis=0)
@@ -1155,7 +1205,7 @@ def remove_interference_cum(hdr,cube,mjd):
             fitmatrix[k,i]=np.sum(Aij_sub*Akj_sub)
             print('k: %i i: %i  yvector %f Matrix %f'%(k,i, yvector[k],fitmatrix[k,i]))
     invmat=np.linalg.inv(fitmatrix)
-    waveform2 = np.matmult(invmat,yvector)
+    waveform2 = np.matmul(invmat,yvector)
     plt.plot(waveform )
     plt.plot(waveform2,'.')
     plt.show()
@@ -1263,7 +1313,7 @@ def remove_interference_cum(hdr,cube,mjd):
 
 def avg_fold(time0,data0,period,num=10,t0=0.0):
     nr,nf,ny = data0.shape
-    num=np.int(num)
+    num=int(num)
     data=np.extract( np.isnan(data0.ravel()) == False,data0.ravel() )
     time=np.extract( np.isnan(data0.ravel()) == False,time0.ravel() )
     
