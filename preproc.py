@@ -1139,6 +1139,11 @@ def remove_interference_cum(hdr,cube,mjd):
     tbin,dbin,data2=avg_fold(time,data,period,num=period/(tint/ny)*2) #period/tint*ny) # working well!
     tbin2,dbin2,data3=avg_fold(time,diffdata,period,num=period/(tint/ny)*2) #period/tint*ny) # working well!
 
+    #edge cases
+    # nframes = 5 or smaller.. this smoothing won't work great.. might be better to do differences, unravel, smooth over nans, then apply, but 
+    #possibly too slow .
+    
+
     cubesum=np.nanmean(cube,axis=(3),dtype=np.float64)
     cubesum -= gaussian_filter(cubesum,(0,.02/tint,0),mode='nearest')
     tcube,dcube,data3=avg_fold(sinetime,cubesum,period,num=period/(tint/ny)*2) #period/tint*ny) # working well!
