@@ -246,8 +246,11 @@ block_dict['START']=[temp['FILENUM'] for temp in group_first]
 block_dict['END']=[temp['FILENUM'] for temp in group_last]
 
 #HWP column tricky since mode did not always exist.
-if 'MIRC HWP0 POS' in hdrs[0].keys():
+if 'MIRC HWP0 POS' in hdrs[0].keys(): # Should always exist now. Added in header.load() if missing from fits file
     block_dict['HWP']=[temp['MIRC HWP0 POS'] for temp in group_first] #set if it exists
+
+# JDM. if we ever add HWP to MYSTIC then we will need to add more check to see if we are 
+# in a mircx or mystic file. 
 if 'MIRC STEPPER HWP_ELEVATOR POS' in hdrs[0].keys(): # if keyword exists then use it zero out the other values
     # if stepper goes up/down during night, should catch that.
     hwp_state = [(temp['MIRC STEPPER HWP_ELEVATOR POS'] < 1000000) for temp in group_first]

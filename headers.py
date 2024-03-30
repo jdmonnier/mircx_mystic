@@ -178,6 +178,7 @@ def load (files):
     '''
     Load the headers of all input files. The following keywords
     are added to each header: MJD-OBS, MJD-LOAD and ORIGNAME.
+    The following keywords are added if missing: MIRC HWP POS0-5.
     This routine 'fixes' various issues with the headers that arose over the years, including reconciling times and 
     identifying use of etalon, etc. 
     The output is a list of FITS headers.
@@ -228,13 +229,17 @@ def load (files):
                 hdr['MIRC COMBINER_TYPE'] = 'ALL-IN-ONE' # default to all-in-one for old data
                 log.debug ('Old data with no MIRC COMBINER_TYPE (set to ALL-IN-ONE)');
 
+            if 'MIRC HWP0 POS' not in hdr:
+                hdr['MIRC HWP0 POS'] == 0.0
+                log.debug ('Header missing keyword MIRC HWP0 POS (set to 0.0)')
+
             # Check change of card
             if 'ENDFR' in hdr:
                 log.debug ('Old data with ENDFR');
                 hdr.rename_keyword ('ENDFR','LASTFR');
 
             # Check NBIN
-            if 'NBIN' not in hdr and hdr['FILETYPE'] != 'FLAT_MAP':
+            if 'NBIN' not in hdr and hdr['FILETYPE'] != 'FLAT_MAP': #JD What is FLAT_MAP
                 log.debug ('Old data with no NBIN (set to one)');
                 hdr['NBIN'] = 1;
             
