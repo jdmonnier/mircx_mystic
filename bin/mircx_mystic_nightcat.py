@@ -253,13 +253,18 @@ if 'MIRC HWP0 POS' in hdrs[0].keys(): # Should always exist now. Added in header
 # The HWP plate elevator is only in the MIRCX BEAM. So this HWP field in the BLOCK
 # will only be populated if the elvator is down and we are using the MIRCX instrument
 # If MYSTIC some day has an HWP plate, then we will modify this part of code.
-    
-if (hdrs[0]["INSTRUME"] == 'MIRCX'):
+
+#log.info('OUTSDIE: '+ hdrs[0]["INSTRUME"])
+#log.info(('MIRCX' in hdrs[0]["INSTRUME"]))
+
+if ('MIRC-X' in hdrs[0]["INSTRUME"]):
+    #log.info('INSIDE: '+ hdrs[0]["INSTRUME"])
     if 'MIRC STEPPER HWP_ELEVATOR POS' in hdrs[0].keys(): # if keyword exists then use it zero out the other values
         # if stepper goes up/down during night, should catch that.
-        hwp_state = [(temp['MIRC STEPPER HWP_ELEVATOR POS'] > 1000000) for temp in group_first]
-        #High number means the hwp plate is IN. low number is out.
+        hwp_state = [(temp['MIRC STEPPER HWP_ELEVATOR POS'] > 2000000) for temp in group_first]
+        #TRUE means HWP OUT. High number means the hwp plate is IN. low number is out.
         #block_dict['HWP']=['' if hstate else hpol for hpol,hstate in zip(block_dict['HWP'],hwp_state) ]
+        #log.info('HWP State: %s %s '%(group_first[0]['MIRC STEPPER HWP_ELEVATOR POS'],hwp_state[0]))
         block_dict['HWP']=['' if hstate else hpol for hpol,hstate in zip(block_dict['HWP'],hwp_state)]
     else:   
         block_dict['HWP']='' # Mark as blank if no keyword for elevator
