@@ -249,12 +249,25 @@ block_dict['END']=[temp['FILENUM'] for temp in group_last]
 if 'MIRC HWP0 POS' in hdrs[0].keys(): # Should always exist now. Added in header.load() if missing from fits file
     block_dict['HWP']=[temp['MIRC HWP0 POS'] for temp in group_first] #set if it exists
 
-# JDM. if we ever add HWP to MYSTIC then we will need to add more check to see if we are 
-# in a mircx or mystic file. 
-if 'MIRC STEPPER HWP_ELEVATOR POS' in hdrs[0].keys(): # if keyword exists then use it zero out the other values
-    # if stepper goes up/down during night, should catch that.
-    hwp_state = [(temp['MIRC STEPPER HWP_ELEVATOR POS'] < 1000000) for temp in group_first]
-    block_dict['HWP']=['' if hstate else hpol for hpol,hstate in zip(block_dict['HWP'],hwp_state) ]
+# JDM.
+# The HWP plate elevator is only in the MIRCX BEAM. So this HWP field in the BLOCK
+# will only be populated if the elvator is down and we are using the MIRCX instrument
+# If MYSTIC some day has an HWP plate, then we will modify this part of code.
+    
+if (hdrs[0]["INSTRUME"] == 'MIRCX'):
+    if 'MIRC STEPPER HWP_ELEVATOR POS' in hdrs[0].keys(): # if keyword exists then use it zero out the other values
+        # if stepper goes up/down during night, should catch that.
+        hwp_state = [(temp['MIRC STEPPER HWP_ELEVATOR POS'] > 1000000) for temp in group_first]
+        #High number means the hwp plate is IN. low number is out.
+        #block_dict['HWP']=['' if hstate else hpol for hpol,hstate in zip(block_dict['HWP'],hwp_state) ]
+        block_dict['HWP']=['' if hstate else hpol for hpol,hstate in zip(block_dict['HWP'],hwp_state)]
+    else:   
+        block_dict['HWP']='' # Mark as blank if no keyword for elevator
+else:   
+    block_dict['HWP']='' # Mark as blank if not MIRCX
+#JDM. This logic may need t move also into header.load() so that future
+#header.assoc() can be done more easily.  ie, THIS_HWP_IN = True, False that is for this file
+    
 
 pblock = pd.DataFrame(block_dict,columns=columns)
 pblock_file=os.path.join(path,mrx_root+'_blocks.csv')

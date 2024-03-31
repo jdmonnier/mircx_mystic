@@ -230,7 +230,7 @@ def load (files):
                 log.debug ('Old data with no MIRC COMBINER_TYPE (set to ALL-IN-ONE)');
 
             if 'MIRC HWP0 POS' not in hdr:
-                hdr['MIRC HWP0 POS'] == 0.0
+                hdr['MIRC HWP0 POS'] = 0.0
                 log.debug ('Header missing keyword MIRC HWP0 POS (set to 0.0)')
 
             # Check change of card
