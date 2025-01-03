@@ -318,6 +318,7 @@ os.remove(tempfile)
 
 exit()
 
+#JDM the rest are snippets for later use. not relevant here.
 
 
 
