@@ -190,14 +190,14 @@ def load (files):
     log.info("First File: %s "%files[0])
     log.info("Last File : %s"%files[-1])
     for fn,f in enumerate (files):
-        try:
+        #try:
             
             # Read compressed file
             if f[-7:] == 'fits.fz':
                 #hdr = pyfits.getheader(f, 1);
                 hdulist=pyfits.open(f,memmap=False)
                 hdr=hdulist[1].header.copy()
-                del hdulist[1].header
+                del hdulist[1].header #  This is probably a no-no. 
                 hdulist.close()
                 del hdulist
                 fnum=int(f[-13:-8])  # might not always be true.
@@ -207,9 +207,10 @@ def load (files):
                 #hdr = pyfits.getheader(f, 0);
                 hdulist=pyfits.open(f,memmap=False)
                 hdr=hdulist[0].header.copy()
-                del hdulist[0].header # save a little memory along the way.
+                #del hdulist[0].header # save a little memory along the way.
                 hdulist.close()
                 del hdulist
+                breakpoint()
                 fnum=int(f[-10:-5])
 
             # Add file name
@@ -291,18 +292,19 @@ def load (files):
             # Append
             hdrs.append (hdr);
     
-        except (KeyboardInterrupt, SystemExit):
-            raise;
-        except Exception as exc:
-            log.warning ('Cannot get header of '+f+' ('+str(exc)+')');
+        #except (KeyboardInterrupt, SystemExit):
+        #    raise;
+        #except Exception as exc:
+        #    log.warning ('Cannot get header of '+f+' ('+str(exc)+')')
+        #    breakpoint()
         
         #progress bar
-        if fn == len(files)//4:   
-            log.info("PROGRESS 25% Done")
-        if fn == len(files)//2:   
-            log.info("PROGRESS 50% Done")
-        if fn == len(files)*3//4: 
-            log.info("PROGRESS 75% Done")
+            if fn == len(files)//4:   
+                log.info("PROGRESS 25% Done")
+            if fn == len(files)//2:   
+                log.info("PROGRESS 50% Done")
+            if fn == len(files)*3//4: 
+                log.info("PROGRESS 75% Done")
     log.info("PROGRESS 100% Done")
 
     log.debug('Reconciling frames time to consistent frame rate.')

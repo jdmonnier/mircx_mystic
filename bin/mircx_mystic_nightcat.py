@@ -180,7 +180,15 @@ else: # read header.
     # but one should not do this but rather share reduced info like wavelength tables,
     # kappa matrices, instead....
     mrx_utdate = (datetime.date.fromisoformat(hdrs[0]["DATE-OBS"])).strftime("%Y%b%d")
-    mrx_root = mrx_utdate+'_'+mrx_instrument+'_'+mrx_id
+    #mrx_root = mrx_utdate+'_'+mrx_instrument+'_'+mrx_id
+    #sometimes we have multiple directories with the same date when carrying out engineering. 
+    #so we will use the name of the raw directory instead of the date... should be the same in 99% of the cases.
+    mrx_utdate_label = argopt.raw_dir.split('/')[-1]
+    if mrx_utdate_label != mrx_utdate:
+        log.warning("UTDATE from directory name %s does not match UTDATE from header %s. Using directory name"%(mrx_utdate_label,mrx_utdate))
+        
+    mrx_root = mrx_utdate_label+'_'+mrx_instrument+'_'+mrx_id
+
     mrx_summary_dir=mrx_root+'_SUMMARY'
     path = os.path.join(argopt.mrx_dir, mrx_summary_dir)
     #log.info('Creating SUMMARY directory: %s' % (path))
