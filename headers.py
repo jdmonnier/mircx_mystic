@@ -210,7 +210,6 @@ def load (files):
                 #del hdulist[0].header # save a little memory along the way.
                 hdulist.close()
                 del hdulist
-                breakpoint()
                 fnum=int(f[-10:-5])
 
             # Add file name
