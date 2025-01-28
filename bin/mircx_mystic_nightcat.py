@@ -169,7 +169,7 @@ else: # read header.
     # Create Summary directory and save hdrs with all info needed to contineu 
     # analysis without requiring future info about data location
 
-    mrx_instrument = hdrs[0]["INSTRUME"] # assume all files from same instrument
+    mrx_instrument = hdrs[0]["INSTRUME"] # assume all files from same instrument but not config or combiner
     mrx_id = argopt.mrx_id
 
     # strip weird characters since we are creating a filename from these
