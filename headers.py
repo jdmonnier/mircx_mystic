@@ -195,22 +195,30 @@ def load (files):
             # Read compressed file
             if f[-7:] == 'fits.fz':
                 #hdr = pyfits.getheader(f, 1);
-                hdulist=pyfits.open(f,memmap=False)
-                hdr=hdulist[1].header.copy()
-                del hdulist[1].header #  This is probably a no-no. 
-                hdulist.close()
-                del hdulist
-                fnum=int(f[-13:-8])  # might not always be true.
+                try:
+                    hdulist=pyfits.open(f,memmap=False)                          
+                    hdr=hdulist[1].header.copy()
+                    del hdulist[1].header #  This is probably a no-no. 
+                    hdulist.close()
+                    del hdulist
+                    fnum=int(f[-13:-8])  # might not always be true.
+                except:
+                    log.warning('Problem loading fits file %s; SKIPPING'%f)
+                    continue
 
             # Read normal file
             else:
                 #hdr = pyfits.getheader(f, 0);
-                hdulist=pyfits.open(f,memmap=False)
-                hdr=hdulist[0].header.copy()
-                #del hdulist[0].header # save a little memory along the way.
-                hdulist.close()
-                del hdulist
-                fnum=int(f[-10:-5])
+                try:
+                    hdulist=pyfits.open(f,memmap=False)
+                    hdr=hdulist[0].header.copy()
+                    #del hdulist[0].header # save a little memory along the way.
+                    hdulist.close()
+                    del hdulist
+                    fnum=int(f[-10:-5])
+                except:
+                    log.warning('Problem loading fits file %s; SKIPPING'%f)
+                    continue
 
             # Add file name
             hdr['ORIGNAME'] = f;
@@ -218,12 +226,19 @@ def load (files):
 
             # Test if FRAME_RATE is in header
             if 'MIRC FRAME_RATE' not in hdr and 'EXPOSURE' in hdr:
-                log.warning ('Assume FRAME_RATE is 1/EXPOSURE');
+                log.warning ('Assume FRAME_RATE is 1/EXPOSURE for %s'%f);
+                if hdr['EXPOSURE'] < 0.001:
+                    log.warning ('EXPOSURE less than 0.001 mS for %s (using 0.001 mS)'%f)
+                    hdr['EXPOSURE'] = 0.001;
                 hdr['MIRC FRAME_RATE'] = 1e3/hdr['EXPOSURE'];
 
             # Test if NBIN is in header
             if 'NBIN' not in hdr:
                 hdr['NBIN'] = 1; 
+            
+            if 'GAIN' not in hdr:
+                log.warning('No GAIN keyword in %s (set to 1)'%f)
+                hdr['GAIN'] = 1; 
             
             if 'MIRC COMBINER_TYPE' not in hdr:
                 hdr['MIRC COMBINER_TYPE'] = 'ALL-IN-ONE' # default to all-in-one for old data
@@ -243,6 +258,30 @@ def load (files):
                 log.debug ('Old data with no NBIN (set to one)');
                 hdr['NBIN'] = 1;
             
+            if 'STARTFR' not in hdr:
+                #log.warning ('Old data without STARTFR keyword. SKIPPING FILE.')
+                #continue
+                log.warning ('Old data without STARTFR keyword. Setting to 1');
+                hdr['STARTFR'] = int(1)
+            
+            if 'LASTFR' not in hdr: # not needed now
+                #breakpoint()
+                #shouldn't go here now.
+                hdr['LASTFR'] = hdr['STARTFR']+hdr['NAXIS3']*hdr['NAXIS4']*hdr['NBIN']-1;
+                log.warning ('Old data without LASTFR keyword. Setting to %i'%(hdr['LASTFR']));
+
+            if 'FRMPRST' not in hdr:# not needed
+                #breakpoint()
+                hdr['FRMPRST'] = hdr['NAXIS3']*hdr['NBIN'];
+                log.warning ('Old data without FRMPRST keyword. Setting to %i'%(hdr['FRMPRST']));
+
+            if 'EXPOSURE' not in hdr:
+                log.warning ('Old data without EXPOSURE keyword. Setting to 0');
+                hdr['EXPOSURE'] = 0
+
+            if 'FILETYPE' not in hdr:
+                log.warning ('Old data without FILTEYPE keyword. Setting to UNKNOWN');
+                hdr['FILETYPE'] = 'UNKNOWN'
             # Rationalize the few fields when BIN != 1
             hdr['STARTFR'] /= hdr['NBIN'];
             hdr['LASTFR']  = (hdr['LASTFR']-(hdr['NBIN']-1))/hdr['NBIN'];
@@ -258,13 +297,20 @@ def load (files):
                         if conf_na[-5:] != '_WOLL': hdr['CONF_NA']=conf_na+'_WOLL'
 
 
+
             # Compute MJD from information in header
             mjd, temp_flag = get_mjd (hdr, Warning = (counters["gpstime"] == 0));
+            if temp_flag == None:
+                log.warning('Header for %s has time 0.'%f)
+                temp_flag=True # Set to True, meaning bad.
             #mjd, temp_flag = get_mjd (hdr, Warning = True);
+            
             if (counters["gpstime"] == 0) & temp_flag:
                     log.warning("Additional time discrepancy warnings suppressed.")
+
             if (temp_flag): 
                 counters["gpstime"]+=1            
+
             # Set in header
             hdr['MJD-OBS'] = (mjd, '[mjd] Observing time');
 
@@ -276,6 +322,8 @@ def load (files):
                 #log.info ('Set OBJECT = STS because STS_IR_FOLD is IN');
                 hdr['OBJECT'] = 'STS';
                 counters["sts"] +=1
+
+        
 
             
             # Check if ETALON
@@ -324,53 +372,77 @@ def load (files):
     for h in hdrs: h['MJD-OBS0']=h['MJD-OBS'] # save original time
 
 #JDM how does this work if NBIN=3?
-    gps = keygroup (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=False);
-    for gp in gps:
-        startfrs=np.array([gp0['STARTFR'] for gp0 in gp])
-        #lastfrs=np.array([gp0['LASTFR'] for gp0 in gp])
-        times=np.array([gp0['MJD-OBS'] for gp0 in gp])
-        dtimes=np.array([gp0['EXPOSURE'] for gp0 in gp]) # use zip?
-        restart_times = times-(np.median(dtimes)/1000./24./3600)*startfrs #all nums treated at double?
-
-         # find gaps of >10 seconds
-
-        gaps = restart_times-np.roll(restart_times,1)
-        gaptime=10. #Seconds
-        starts=np.concatenate( (np.array([0]),  (np.where( gaps  > gaptime/24./3600. ) )[0] ) )
-        lasts=np.roll(starts,-1)
-        lasts[-1]=len(times)
-        new_mjds=np.zeros(len(startfrs))
-        new_exposure=np.zeros(len(dtimes))
-        for in0,in1 in zip(starts,lasts):
-            #use a robust linear fit to each continuous chunk. TOTAL overkill but will handle any weird outlines well!!
-            xoffset=np.median(startfrs[in0:in1])
-            yoffset=np.median(times[in0:in1])
-            x=(startfrs[in0:in1]-xoffset)/1000000.
-            y=times[in0:in1] -yoffset
-            coefs = poly.polyfit(x, y, 1) # I'd have loved to use a robust estimator    
-            new_y = poly.polyval(x, coefs)
-            new_mjds[in0:in1] = new_y+yoffset
-            new_exposure[in0:in1]=coefs[1]*24.*3600./1000. #update.
-            
-            #median_frame = np.median(startfrs[in0:in1])
-            #median_time0 = np.median(times[in0:in1] - (np.median(dtimes)/1000./24./3600)*(startfrs[in0:in1]-median_frame))
-            #new_mjds[in0:in1]=median_time0+(np.median(dtimes)/1000./24./3600)*(startfrs[in0:in1]-median_frame)
-        #check
-        diffs=new_mjds-times
-        log.debug('Maximum time change in cam setting: %f milliseconds'%(24*3600*1000.*np.max(np.abs(new_mjds-times))))
-        #plt.plot(diffs*24*3600*1000.)
-        #plt.show()
-        #Update the original headers with the median EXPOSURE (detimes) for each camera mode
-        quickref=[gp0['ORIGNAME'] for gp0 in gp]
+    # Some dates have messed up headers in terms of times and frames. will create a list. maybe should be from a file.
+    alltimes = np.array([hdr_temp['MJD-OBS'] for hdr_temp in hdrs])
+    # for a normal night, the time of each file should be monotomically increasing and never zero. if any gaps between files do not
+    # match this then throw a warning and skip the fancy time and expsoure calculation.
+    gaps = alltimes[1:]-alltimes[:-1]
+    if np.any(gaps < 0) or np.any(gaps == 0):
+        log.warning('Time discrepancy in headers. Skipping time correction and exposure calculation.')
         for hdr in hdrs:
-            if hdr['ORIGNAME'] in quickref:
-                index= list.index(quickref,hdr['ORIGNAME'])
-                #log.info('Found %s'%hdr['ORIGNAME'])
-                hdr['EXPOSURE']=new_exposure[index] # unify 
-                hdr['MIRC FRAME_RATE']=1000./hdr['EXPOSURE']
-                hdr['MJD-OBS']=new_mjds[index] #save original MJD-OBS before overwriting!
-                hdr['RESTART0']= hdr['MJD-OBS']-(hdr['EXPOSURE']/1000./24./3600)*hdr['STARTFR'] #make perfect
+            #use default exposure, mjd-obs and calculate restart0 based on basics.
+            hdr['RESTART0']= hdr['MJD-OBS']-(hdr['EXPOSURE']/1000./24./3600)*hdr['STARTFR'] #time when camera was restarted last
+
+    else: # time increases in each file as expected.....
+        gps = keygroup (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=False);
+        for gp in gps:
+            startfrs=np.array([gp0['STARTFR'] for gp0 in gp])
+            #lastfrs=np.array([gp0['LASTFR'] for gp0 in gp])
+            times=np.array([gp0['MJD-OBS'] for gp0 in gp])
+            dtimes=np.array([gp0['EXPOSURE'] for gp0 in gp]) # use zip?
+            restart_times = times-(np.median(dtimes)/1000./24./3600)*startfrs #all nums treated at double?
+
+            # find gaps of >10 seconds
+
+            gaps = restart_times-np.roll(restart_times,1)
+            gaptime=10. #Seconds
+            starts=np.concatenate( (np.array([0]),  (np.where( gaps  > gaptime/24./3600. ) )[0] ) )
+            lasts=np.roll(starts,-1)
+            lasts[-1]=len(times)
+            new_mjds=np.zeros(len(startfrs))
+            new_exposure=np.zeros(len(dtimes))
+
+            
+            for in0,in1 in zip(starts,lasts):
+                #use a robust linear fit to each continuous chunk. TOTAL overkill but will handle any weird outlines well!!
+                xoffset=np.median(startfrs[in0:in1])
+                yoffset=np.median(times[in0:in1])
+                x=(startfrs[in0:in1]-xoffset)/1000000.
+                y=times[in0:in1] -yoffset
+                if len(x) >2:
+                    coefs = poly.polyfit(x, y, 1) # I'd have loved to use a robust estimator    
+                    new_y = poly.polyval(x, coefs)
+                    new_mjds[in0:in1] = new_y+yoffset
+                    new_exposure[in0:in1]=coefs[1]*24.*3600./1000. #update.
+                else: # use original values if not enough points to do a fit!
+                    new_mjds[in0:in1] = times[in0:in1]
+                    new_exposure[in0:in1]=dtimes[in0:in1]
+                #median_frame = np.median(startfrs[in0:in1])
+                #median_time0 = np.median(times[in0:in1] - (np.median(dtimes)/1000./24./3600)*(startfrs[in0:in1]-median_frame))
+                #new_mjds[in0:in1]=median_time0+(np.median(dtimes)/1000./24./3600)*(startfrs[in0:in1]-median_frame)
+            #check
+            diffs=new_mjds-times
+            log.debug('Maximum time change in cam setting: %f milliseconds'%(24*3600*1000.*np.max(np.abs(new_mjds-times))))
+            #plt.plot(diffs*24*3600*1000.)
+            #plt.show()
+            #Update the original headers with the median EXPOSURE (detimes) for each camera mode
+            quickref=[gp0['ORIGNAME'] for gp0 in gp]
+            for hdr in hdrs:
+                if hdr['ORIGNAME'] in quickref:
+                    index= list.index(quickref,hdr['ORIGNAME'])
+                    #log.info('Found %s'%hdr['ORIGNAME'])
+                    if new_exposure[index] < 0.001:
+                        log.warning('DERIVED EXPOSURE less than 0.001 mS for %s (using %f mS)'%(hdr['ORIGNAME'],new_exposure[index]))   
+                    else:
+                        hdr['EXPOSURE']=new_exposure[index] # unify 
+                    
+                    if hdr['EXPOSURE'] < 0.001:
+                        log.warning('KEYWORD EXPOSURE less than 0.001 mS for %s (using %f mS)'%(hdr['ORIGNAME'],hdr['EXPOSURE']))
+                    hdr['MIRC FRAME_RATE']=1000./np.clip(hdr['EXPOSURE'],.001,None) #update frame rate not to crash .
+                    hdr['MJD-OBS']=new_mjds[index] #save original MJD-OBS before overwriting!
+                    hdr['RESTART0']= hdr['MJD-OBS']-(hdr['EXPOSURE']/1000./24./3600)*hdr['STARTFR'] #time when camera was restarted last
     
+
     check_diffs=np.array([g['MJD-OBS']-g['MJD-OBS0'] for g in hdrs])
     alltimes=np.array([g['MJD-OBS'] for g in hdrs])
     exposures = np.array([g['EXPOSURE'] for g in hdrs])
@@ -455,9 +527,26 @@ def group (hdrs, mtype, delta=300.0, Delta=300.0, continuous=True, keys=[]):
 
     # Define the regular expression to match file type
     regex = re.compile ('^'+mtype+'$');
+
     # Sort by time
-    hdrs = sorted (hdrs,key=lambda h: h['MJD-OBS']);
+    #hdrs = sorted (hdrs,key=lambda h: h['MJD-OBS']);
     
+    #There are some few nights where the file order and time order are not the same due to some DAQ bug
+    #this is a problem since some code depends on this.  *MIGHT* be safer to sort in FILENUM ORDER.
+    hdrs= sorted (hdrs,key=lambda h: h['FILENUM']);
+
+    hdrs_by_mjd    = sorted(hdrs, key=lambda h: h['MJD-OBS'])
+
+    #   Compare the two lists.
+    # This works if the header dictionaries are the same objects in both lists.
+    if hdrs != hdrs_by_mjd:
+        log.error("Sorted orders differ: FILENUM and MJD-OBS orderings do not match. USING FILENUM Order")
+    
+
+
+
+    
+
     # Assume hdrs is sorted
     for h in hdrs:
         fileinfo = h['ORIGNAME'] + ' (' +h['FILETYPE']+')';

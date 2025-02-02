@@ -168,7 +168,6 @@ else: # read header.
 
     # Create Summary directory and save hdrs with all info needed to contineu 
     # analysis without requiring future info about data location
-
     mrx_instrument = hdrs[0]["INSTRUME"] # assume all files from same instrument but not config or combiner
     mrx_id = argopt.mrx_id
 
@@ -230,7 +229,9 @@ hdrs=headers.p2h(phdrs)
 # Group backgrounds
 # JDM for the 'block' file maybe we only want to group by target, conf, hwp, filetype....
 keys = setup.detwin + setup.detmode + setup.insmode+['OBJECT','MIRC COMBINER_TYPE','CONF_NA','GAIN','MIRC STEPPER HWP_ELEVATOR POS','MIRC HWP0 POS']
+
 gps = headers.group (hdrs, '.*', keys=keys,delta=1e20, Delta=1e20,continuous=True);
+
 # JDM. might want to have a MAXIMUM size for a group... esp for backgrounds, etc. but 
 
 #for g in gps: 
