@@ -196,7 +196,7 @@ def load (files):
             if f[-7:] == 'fits.fz':
                 #hdr = pyfits.getheader(f, 1);
                 try:
-                    hdulist=pyfits.open(f,memmap=False)                          
+                    hdulist=pyfits.open(f,memmap=False,lazy_load_hdus=True)                          
                     hdr=hdulist[1].header.copy()
                     del hdulist[1].header #  This is probably a no-no. 
                     hdulist.close()
@@ -210,7 +210,7 @@ def load (files):
             else:
                 #hdr = pyfits.getheader(f, 0);
                 try:
-                    hdulist=pyfits.open(f,memmap=False)
+                    hdulist=pyfits.open(f,memmap=False,lazy_load_hdus=True)
                     hdr=hdulist[0].header.copy()
                     #del hdulist[0].header # save a little memory along the way.
                     hdulist.close()
